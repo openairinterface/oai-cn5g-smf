@@ -46,27 +46,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/NsmfEventExposure'
         '400':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/400'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/400'
         '401':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/401'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/401'
         '403':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/403'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/403'
         '404':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/404'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/404'
         '411':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/411'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/411'
         '413':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/413'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/413'
         '415':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/415'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/415'
         '429':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/429'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/429'
         '500':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/500'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/500'
         '503':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/503'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/503'
         default:
-          $ref: 'TS29571_CommonData.yaml#/components/responses/default'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/default'
       callbacks:
         myNotification:
           '{$request.body#/notifUri}': 
@@ -83,27 +83,27 @@ paths:
                 '307':
                   description: temporary redirect
                 '400':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/400'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/400'
                 '401':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/401'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/401'
                 '403':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/403'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/403'
                 '404':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/404'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/404'
                 '411':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/411'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/411'
                 '413':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/413'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/413'
                 '415':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/415'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/415'
                 '429':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/429'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/429'
                 '500':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/500'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/500'
                 '503':
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/503'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/503'
                 default:
-                  $ref: 'TS29571_CommonData.yaml#/components/responses/default'
+                  $ref: '../TS29571_CommonData.yaml#/components/responses/default'
   /subscriptions/{subId}:
     get:
       operationId: GetIndividualSubcription
@@ -125,23 +125,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/NsmfEventExposure'
         '400':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/400'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/400'
         '401':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/401'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/401'
         '403':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/403'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/403'
         '404':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/404'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/404'
         '406':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/406'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/406'
         '429':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/429'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/429'
         '500':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/500'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/500'
         '503':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/503'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/503'
         default:
-          $ref: 'TS29571_CommonData.yaml#/components/responses/default'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/default'
     put:
       operationId: ReplaceIndividualSubcription
       summary: Replace an individual subscription for event notifications from the SMF
@@ -170,27 +170,27 @@ paths:
         '204':
           description: No Content. Resource was succesfully modified
         '400':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/400'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/400'
         '401':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/401'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/401'
         '403':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/403'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/403'
         '404':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/404'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/404'
         '411':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/411'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/411'
         '413':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/413'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/413'
         '415':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/415'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/415'
         '429':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/429'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/429'
         '500':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/500'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/500'
         '503':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/503'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/503'
         default:
-          $ref: 'TS29571_CommonData.yaml#/components/responses/default'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/default'
     delete:
       operationId: DeleteIndividualSubcription
       summary: Delete an individual subscription for event notifications from the SMF
@@ -207,21 +207,21 @@ paths:
         '204':
           description: No Content. Resource was succesfully deleted
         '400':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/400'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/400'
         '401':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/401'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/401'
         '403':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/403'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/403'
         '404':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/404'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/404'
         '429':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/429'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/429'
         '500':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/500'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/500'
         '503':
-          $ref: 'TS29571_CommonData.yaml#/components/responses/503'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/503'
         default:
-          $ref: 'TS29571_CommonData.yaml#/components/responses/default'
+          $ref: '../TS29571_CommonData.yaml#/components/responses/default'
 components:
   securitySchemes:
     oAuth2ClientCredentials:
@@ -236,33 +236,33 @@ components:
       type: object
       properties:
         supi:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Supi'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Supi'
         gpsi:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Gpsi'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Gpsi'
         anyUeInd:
           type: boolean
           description: Any UE indication. This IE shall be present if the event subscription is applicable to any UE. Default value "FALSE" is used, if not present.
         groupId:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/GroupId'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/GroupId'
         pduSeId:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/PduSessionId'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/PduSessionId'
         subId:
           $ref: '#/components/schemas/SubId'
         notifId:
           type: string
           description: Notification Correlation ID assigned by the NF service consumer.
         notifUri:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Uri'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Uri'
         altNotifIpv4Addrs:
           type: array
           items:
-            $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+            $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
           description: Alternate or backup IPv4 Addess(es) where to send Notifications.
           minItems: 1
         altNotifIpv6Addrs:
           type: array
           items:
-            $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Addr'
+            $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Addr'
           description: Alternate or backup IPv6 Addess(es) where to send Notifications.
           minItems: 1
         eventSubs:
@@ -276,18 +276,18 @@ components:
         notifMethod:
           $ref: '#/components/schemas/NotificationMethod'
         maxReportNbr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Uinteger'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Uinteger'
         expiry:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DateTime'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DateTime'
         repPeriod:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DurationSec'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DurationSec'
         guami:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Guami'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Guami'
         serviveName:
           type: string
           description: If the NF service consumer is an AMF, it should provide the name of a service produced by the AMF that makes use of notifications about subscribed events.
         supportedFeatures:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/SupportedFeatures'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/SupportedFeatures'
       required:
         - notifId
         - notifUri
@@ -313,7 +313,7 @@ components:
         event:
           $ref: '#/components/schemas/SmfEvent'
         dnaiChgType:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DnaiChangeType'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DnaiChangeType'
         dddTraDes:
           $ref: '#/components/schemas/DddTrafficDescriptor'
         dddStati:
@@ -329,49 +329,49 @@ components:
         event:
           $ref: '#/components/schemas/SmfEvent'
         timeStamp:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DateTime'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DateTime'
         supi:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Supi'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Supi'
         gpsi:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Gpsi'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Gpsi'
         sourceDnai:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Dnai'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Dnai'
         targetDnai:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Dnai'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Dnai'
         dnaiChgType:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DnaiChangeType'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DnaiChangeType'
         sourceUeIpv4Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
         sourceUeIpv6Prefix:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
         targetUeIpv4Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
         targetUeIpv6Prefix:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
         sourceTraRouting:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/RouteToLocation'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/RouteToLocation'
         targetTraRouting:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/RouteToLocation'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/RouteToLocation'
         ueMac:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/MacAddr48'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/MacAddr48'
         adIpv4Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
         adIpv6Prefix:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
         reIpv4Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
         reIpv6Prefix:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Prefix'
         plmnId:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/PlmnId'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/PlmnId'
         accType:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/AccessType'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/AccessType'
         pduSeId:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/PduSessionId'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/PduSessionId'
         dddStatus:
           $ref: '#/components/schemas/DddStatus'
         maxWaitTime:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/DateTime'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/DateTime'
       required:
         - event
         - timeStamp
@@ -379,11 +379,11 @@ components:
       type: object
       properties:
         ipv4Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv4Addr'
         ipv6Addr:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Ipv6Addr'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Ipv6Addr'
         port:
-          $ref: 'TS29571_CommonData.yaml#/components/schemas/Uinteger'
+          $ref: '../TS29571_CommonData.yaml#/components/schemas/Uinteger'
     SubId:
       type: string
       format: SubId
