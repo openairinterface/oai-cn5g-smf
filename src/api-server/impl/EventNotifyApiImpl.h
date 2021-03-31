@@ -50,7 +50,7 @@
 
 #include <pistache/optional.h>
 
-#include "NotificationData.h"
+#include "EventNotification.h"
 #include "ProblemDetails.h"
 #include "smf_app.hpp"
 
@@ -68,7 +68,7 @@ class EventNotifyApiImpl : public oai::smf_server::api::EventNotifyApi {
   ~EventNotifyApiImpl() {}
 
   void receive_status_notification(
-      const NotificationData& notificationData,
+      const EventNotification& EventNotification,
       Pistache::Http::ResponseWriter& response);
 
  private:

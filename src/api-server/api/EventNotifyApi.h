@@ -33,7 +33,7 @@
 #include <pistache/http_headers.h>
 #include <pistache/optional.h>
 
-#include "NotificationData.h"
+#include "EventNotification.h"
 #include "ProblemDetails.h"
 
 namespace oai {
@@ -68,9 +68,9 @@ class EventNotifyApi {
   /// <remarks>
   ///
   /// </remarks>
-  /// <param name="NotificationData"></param>
+  /// <param name="EventNotification"></param>
   virtual void receive_status_notification(
-      const NotificationData& notificationData,
+      const EventNotification& eventNotification,
       Pistache::Http::ResponseWriter& response) = 0;
 };
 

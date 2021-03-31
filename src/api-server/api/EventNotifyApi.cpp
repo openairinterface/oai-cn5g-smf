@@ -57,11 +57,25 @@ void EventNotifyApi::notify_status_handler(
     const Pistache::Rest::Request& request,
     Pistache::Http::ResponseWriter response) {
   // Getting the body param
-  NotificationData notificationData;
+	EventNotification eventNotification;
+
 
   try {
-    nlohmann::json::parse(request.body()).get_to(notificationData);
-    this->receive_status_notification(notificationData, response);
+    nlohmann::json::parse(request.body()).get_to(eventNotification);
+    SmfEvent smfEvent  = eventNotification.getEvent();
+    Logger::smf_api_server().info(
+          "EventNotifyApiImpl, received a NF status notification: %s", smfEvent.event.c_str());
+
+
+    nlohmann::json json_data = {};
+
+    to_json(json_data, eventNotification);
+
+    Logger::smf_api_server().info(
+        "EventNotifyApiImpl, received a NF status notification: %s", json_data.dump().c_str());
+
+
+    this->receive_status_notification(eventNotification, response);
   } catch (nlohmann::detail::exception& e) {
     // send a 400 error
     response.send(Pistache::Http::Code::Bad_Request, e.what());

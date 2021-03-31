@@ -41,6 +41,7 @@ class SmfEvent {
 
   /////////////////////////////////////////////
   /// SmfEvent members
+  std::string event;
 
   friend void to_json(nlohmann::json& j, const SmfEvent& o);
   friend void from_json(const nlohmann::json& j, SmfEvent& o);

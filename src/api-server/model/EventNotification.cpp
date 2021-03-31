@@ -12,6 +12,7 @@
  */
 
 #include "EventNotification.h"
+#include <iostream>
 
 namespace oai {
 namespace smf_server {

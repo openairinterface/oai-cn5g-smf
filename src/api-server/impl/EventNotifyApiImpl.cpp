@@ -54,12 +54,19 @@ EventNotifyApiImpl::EventNotifyApiImpl(
     : EventNotifyApi(rtr), m_smf_app(smf_app_inst), m_address(address) {}
 
 void EventNotifyApiImpl::receive_status_notification(
-    const NotificationData& notificationData,
+    const EventNotification& eventNotification,
     Pistache::Http::ResponseWriter& response) {
   Logger::smf_api_server().info(
       "EventNotifyApiImpl, received a NF status notification...");
 
-  smf::data_notification_msg notification_msg = {};
+ /* nlohmann::json json_data = {};
+
+  to_json(json_data, eventNotification);
+
+  Logger::smf_api_server().info(
+      "EventNotifyApiImpl, received a NF status notification: %s", json_data.dump().c_str());
+*/
+ /* smf::data_notification_msg notification_msg = {};
   // convert from NotificationData to data_notification_msg
   xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
 
@@ -83,6 +90,8 @@ void EventNotifyApiImpl::receive_status_notification(
         Pistache::Http::Mime::MediaType("application/problem+json"));
     response.send(Pistache::Http::Code(http_code), json_data.dump().c_str());
   }
+  */
+  response.send(Pistache::Http::Code(200));
 }
 
 }  // namespace api
