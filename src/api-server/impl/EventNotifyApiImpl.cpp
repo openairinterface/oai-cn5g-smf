@@ -56,8 +56,8 @@ EventNotifyApiImpl::EventNotifyApiImpl(
 void EventNotifyApiImpl::receive_status_notification(
     const EventNotification& eventNotification,
     Pistache::Http::ResponseWriter& response) {
-  Logger::smf_api_server().info(
-      "EventNotifyApiImpl, received a NF status notification...");
+//  Logger::smf_api_server().info(
+//      "EventNotifyApiImpl, received a NF status notification...");
 
  /* nlohmann::json json_data = {};
 
