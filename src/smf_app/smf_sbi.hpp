@@ -134,6 +134,9 @@ class smf_sbi {
   void subscribe_upf_status_notify(
       std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg);
 
+  //FLEXCN
+  void subscribe_pdu_session_status_notify(
+      std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> msg);
   /*
    * Create Curl handle for multi curl
    * @param [event_notification&] ev_notif: content of the event notification

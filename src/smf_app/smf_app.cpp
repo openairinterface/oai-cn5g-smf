@@ -352,6 +352,10 @@ smf_app::smf_app(const std::string& config_file)
     start_upf_association(*it);
   }
 
+  //FLEXCN
+  // Trigger SMFEventExpose subscription / to be noticed when a PDU session status changes
+  trigger_pdu_session_status_notification_subscribe();
+
   if (smf_cfg.discover_upf) {
     // Trigger NFStatusNotify subscription to be noticed when a new UPF becomes
     // available (if this option is enabled)
@@ -2081,6 +2085,44 @@ void smf_app::trigger_upf_status_notification_subscribe() {
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.nrf_addr.ipv4_addr))) +
       ":" + std::to_string(smf_cfg.nrf_addr.port) + NNRF_NFM_BASE +
       smf_cfg.nrf_addr.api_version + NNRF_NF_STATUS_SUBSCRIBE_URL;
+
+  itti_msg->url       = url;
+  itti_msg->json_data = json_data;
+  int ret             = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::trigger_pdu_session_status_notification_subscribe() {
+  Logger::smf_app().debug(
+      "Send ITTI msg to SBI task to subscribe to PDU Session Status notification "
+      "from SMF");
+
+  std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> itti_msg =
+      std::make_shared<itti_n11_subscribe_pdu_session_status_notify>(
+          TASK_SMF_APP, TASK_SMF_SBI);
+
+  nlohmann::json json_data = {};
+  json_data["notifUri"] =
+      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))) + ":" +
+      std::to_string(smf_cfg.sbi.port) + "/nsmf-nfstatus-notify/" +
+      smf_cfg.sbi_api_version + "/subscriptions";
+
+  json_data["notifId"]                     = "notifid01";
+
+  json_data["supi"] = "208950000000031";
+  json_data["eventSubs"]  = nlohmann::json::array();
+  nlohmann::json  tmp ={};
+  tmp["event"] = 3;
+  json_data["eventSubs"].push_back(tmp);
+
+  std::string url =
+      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.nrf_addr.ipv4_addr))) +
+      ":" + std::to_string(smf_cfg.nrf_addr.port) + "/nsmf_event-exposure/v1/subscriptions";
 
   itti_msg->url       = url;
   itti_msg->json_data = json_data;

@@ -859,6 +859,8 @@ class smf_app {
    * @return void
    */
   void trigger_upf_status_notification_subscribe();
+  //FlexCN
+  void trigger_pdu_session_status_notification_subscribe();
 };
 }  // namespace smf
 #include "smf_config.hpp"

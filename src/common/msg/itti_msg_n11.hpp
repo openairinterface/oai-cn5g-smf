@@ -485,4 +485,19 @@ class itti_n11_subscribe_upf_status_notify : public itti_n11_msg {
   uint8_t http_version;
 };
 
+
+//-----------------------------------------------------------------------------
+class itti_n11_subscribe_pdu_session_status_notify : public itti_n11_msg {
+ public:
+	itti_n11_subscribe_pdu_session_status_notify(
+      const task_id_t orig, const task_id_t dest)
+      : itti_n11_msg(N11_SUBSCRIBE_PDU_SESSION_STATUS_NOTIFY, orig, dest),
+        http_version(1) {}
+  const char* get_msg_name() { return "N11_SUBSCRIBE_PDU_SESSION_STATUS_NOTIFY"; };
+
+  std::string url;
+  nlohmann::json json_data;
+  uint8_t http_version;
+};
+
 #endif /* ITTI_MSG_N11_HPP_INCLUDED_ */

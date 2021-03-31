@@ -130,6 +130,12 @@ void smf_sbi_task(void* args_p) {
                 shared_msg));
         break;
 
+      case N11_SUBSCRIBE_PDU_SESSION_STATUS_NOTIFY:
+        smf_sbi_inst->subscribe_pdu_session_status_notify(
+            std::static_pointer_cast<itti_n11_subscribe_pdu_session_status_notify>(
+                shared_msg));
+        break;
+
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
         break;
 
@@ -993,6 +999,77 @@ void smf_sbi::subscribe_upf_status_notify(
   }
   curl_global_cleanup();
 }
+
+
+//-----------------------------------------------------------------------------------------------------
+//For FLEXCN
+void smf_sbi::subscribe_pdu_session_status_notify(
+    std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> msg) {
+  Logger::smf_sbi().debug(
+      "Send PDUSessionStatusSubscribeNotify to SMF to be notified when a new PDU Session status changes");
+
+  Logger::smf_sbi().debug(
+      "Send PDUSessionStatusSubscribeNotify to SMF, SMF URL %s", msg->url.c_str());
+
+  std::string body = msg->json_data.dump();
+  Logger::smf_sbi().debug(
+      "Send PDUSessionStatusSubscribeNotify to SMF, msg body: %s", body.c_str());
+
+  curl_global_init(CURL_GLOBAL_ALL);
+  CURL* curl = curl = curl_easy_init();
+
+  if (curl) {
+    CURLcode res               = {};
+    struct curl_slist* headers = nullptr;
+    // headers = curl_slist_append(headers, "charsets: utf-8");
+    headers = curl_slist_append(headers, "content-type: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, msg->url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, NRF_CURL_TIMEOUT_MS);
+
+    if (msg->http_version == 2) {
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      // we use a self-signed test server, skip verification during debugging
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+      curl_easy_setopt(
+          curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
+    }
+
+    // Response information.
+    long httpCode = {0};
+    std::unique_ptr<std::string> httpData(new std::string());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, httpData.get());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.length());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+
+    res = curl_easy_perform(curl);
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    Logger::smf_sbi().debug(
+        "PDUSessionStatusSubscribeNotify, response from SMF, HTTP Code: %d", httpCode);
+
+    if ((static_cast<http_response_codes_e>(httpCode) ==
+         http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
+        (static_cast<http_response_codes_e>(httpCode) ==
+         http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+      Logger::smf_sbi().debug(
+          "PDUSessionStatusSubscribeNotify, got successful response from SMF");
+
+    } else {
+      Logger::smf_sbi().warn(
+          "PDUSessionStatusSubscribeNotify, could not get response from SMF");
+    }
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+  }
+  curl_global_cleanup();
+}
+
+
 
 //------------------------------------------------------------------------------
 bool smf_sbi::get_sm_data(
