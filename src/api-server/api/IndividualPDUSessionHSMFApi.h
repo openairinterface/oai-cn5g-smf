@@ -45,7 +45,7 @@ class IndividualPDUSessionHSMFApi {
   virtual ~IndividualPDUSessionHSMFApi() {}
   void init();
 
-  const std::string base = NSMF_PDU_SESSION_BASE;
+  const std::string base = "/nsmf-pdusession/";
 
  private:
   void setupRoutes();

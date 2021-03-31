@@ -35,6 +35,32 @@
 #include "logger.hpp"
 #include "string.hpp"
 #include <boost/algorithm/string.hpp>
+#include "icmp6.h"
+
+/*! \struct  adv_prefix_t
+ * Data structure to store router advertisment informations.
+ */
+typedef struct AdvPrefix_t {
+  struct in6_addr Prefix;  // IPv6 prefix
+  uint8_t PrefixLen;       // Len of the IPv6 prefix - 64, by default
+  int AdvOnLinkFlag;  // When set, indicates that this prefix can be used for
+                      // on-link determination. When not set the advertisement
+                      // makes no statement about on-link or off-link properties
+                      // of the prefix. For instance, the prefix might be used
+                      // for address configuration with some of the addresses
+                      // belonging to the prefix being on-link and others being
+                      // off-link.
+  int AdvAutonomousFlag;  // When set, indicates that this prefix can be used
+                          // for autonomous address configuration as specified
+                          // in RFC 2462
+  uint32_t AdvValidLifetime;  // Length of time in seconds (relative to the time
+                              // the packet is sent) that the prefix is valid
+                              // for the purpose of on-link determination.
+  uint32_t AdvPreferredLifetime;  // Length of time in seconds (relative to the
+                                  // time the packet is sent) that addresses
+                                  // generated from the prefix via stateless
+                                  // address autoconfiguration remain preferred.
+} adv_prefix_t;
 
 class ipv6_pool {
  public:
@@ -324,6 +350,58 @@ class paa_dynamic {
     Logger::smf_app().warn(
         "Could not release PAA for DNN %s", dnn_label.c_str());
     return false;
+  }
+
+  //---------------------------------------------------------------------------------------------------------------------
+  int generate_router_advert(
+      const struct in6_addr& ipv6_address, struct nd_router_advert& radvert) {
+
+    unsigned char buff[512];
+    size_t len = 0;
+    memset(&buff, 0, sizeof(buff));
+    struct iovec iov;
+    adv_prefix_t prefix = {};
+    // TODO: set prefix info
+    prefix.Prefix    = ipv6_address;
+    prefix.PrefixLen = 64;  // TODO
+
+    radvert.nd_ra_type           = ND_ROUTER_ADVERT;
+    radvert.nd_ra_code           = 0;
+    radvert.nd_ra_cksum          = 0;
+    radvert.nd_ra_curhoplimit    = 1;
+    radvert.nd_ra_flags_reserved = 0;
+    radvert.nd_ra_flags_reserved = 0;
+    // if forwarding is disabled, send zero router lifetime
+    radvert.nd_ra_router_lifetime = 0;
+    radvert.nd_ra_reachable       = htonl(100);
+    radvert.nd_ra_retransmit      = htonl(100);
+    len                           = sizeof(struct nd_router_advert);
+    memcpy((void*) buff, &radvert, len);
+
+    // add prefix options
+    struct nd_opt_prefix_info* pinfo;
+    pinfo                       = (struct nd_opt_prefix_info*) (buff + len);
+    pinfo->nd_opt_pi_type       = ND_OPT_PREFIX_INFORMATION;
+    pinfo->nd_opt_pi_len        = 4;
+    pinfo->nd_opt_pi_prefix_len = prefix.PrefixLen;
+    pinfo->nd_opt_pi_flags_reserved =
+        (prefix.AdvOnLinkFlag) ? ND_OPT_PI_FLAG_ONLINK : 0;
+    pinfo->nd_opt_pi_flags_reserved |=
+        (prefix.AdvAutonomousFlag) ? ND_OPT_PI_FLAG_AUTO : 0;
+    memcpy(&pinfo->nd_opt_pi_prefix, &prefix.Prefix, sizeof(struct in6_addr));
+    len += sizeof(*pinfo);
+
+    iov.iov_len = len;
+    iov.iov_base = (caddr_t) buff;
+
+    /*
+    int err = icmp6_send(bce->link, 255, src, &bce->mn_link_local_addr, &iov, 1);
+    if (err < 0) {
+        dbg("Error: couldn't send a RA message ...\n");
+    } else {
+        dbg("RA LL ADDRESS sent on bce link %d\n", bce->link);
+    }
+    */
   }
 };
 
