@@ -2109,8 +2109,7 @@ void smf_app::trigger_pdu_session_status_notification_subscribe() {
   nlohmann::json json_data = {};
   json_data["notifUri"] =
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))) + ":" +
-      std::to_string(smf_cfg.sbi.port) + "/nsmf-nfstatus-notify/" +
-      smf_cfg.sbi_api_version + "/subscriptions";
+      std::to_string(smf_cfg.sbi.port) + "/flexcn-status-notify/v1/notifid01";
 
   json_data["notifId"]                     = "notifid01";
 

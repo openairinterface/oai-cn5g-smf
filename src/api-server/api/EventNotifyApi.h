@@ -48,7 +48,7 @@ class EventNotifyApi {
   virtual ~EventNotifyApi() {}
   void init();
 
-  const std::string base = "/flexcn-pdusession-notify/";
+  const std::string base = "/flexcn-status-notify/";
 
  private:
   void setupRoutes();

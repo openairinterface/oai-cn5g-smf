@@ -45,7 +45,7 @@ void EventNotifyApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Post(
-      *router, base + smf_cfg.sbi_api_version + "/subscriptions",
+      *router, base + smf_cfg.sbi_api_version + "/:notifRef",
       Routes::bind(&EventNotifyApi::notify_status_handler, this));
 
   // Default handler, called when a route is not found
