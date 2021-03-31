@@ -771,11 +771,6 @@ void smf_config::display() {
   Logger::smf_app().info("- Instance ..............: %d\n", instance);
   Logger::smf_app().info("- PID dir ...............: %s\n", pid_dir.c_str());
 
-  Logger::smf_app().info("- N4 Networking:");
-  Logger::smf_app().info("    Interface name ......: %s", n4.if_name.c_str());
-  Logger::smf_app().info("    IPv4 Addr ...........: %s", inet_ntoa(n4.addr4));
-  Logger::smf_app().info("    Port ................: %d", n4.port);
-
   Logger::smf_app().info("- SBI Networking:");
   Logger::smf_app().info("    Interface name ......: %s", sbi.if_name.c_str());
   Logger::smf_app().info("    IPv4 Addr ...........: %s", inet_ntoa(sbi.addr4));
@@ -784,189 +779,17 @@ void smf_config::display() {
   Logger::smf_app().info(
       "    API version..........: %s", sbi_api_version.c_str());
 
-  Logger::smf_app().info("- N4 Threading:");
-  Logger::smf_app().info(
-      "    CPU id ..............: %d", n4.thread_rd_sched_params.cpu_id);
-  Logger::smf_app().info(
-      "    Scheduling policy ...: %d", n4.thread_rd_sched_params.sched_policy);
-  Logger::smf_app().info(
-      "    Scheduling prio .....: %d",
-      n4.thread_rd_sched_params.sched_priority);
-
-  Logger::smf_app().info("- ITTI Timer Task Threading:");
-  Logger::smf_app().info(
-      "    CPU id ..............: %d", itti.itti_timer_sched_params.cpu_id);
-  Logger::smf_app().info(
-      "    Scheduling policy ...: %d",
-      itti.itti_timer_sched_params.sched_policy);
-  Logger::smf_app().info(
-      "    Scheduling prio .....: %d",
-      itti.itti_timer_sched_params.sched_priority);
-  Logger::smf_app().info("- ITTI N4 Task Threading :");
-  Logger::smf_app().info(
-      "    CPU id ..............: %d", itti.n4_sched_params.cpu_id);
-  Logger::smf_app().info(
-      "    Scheduling policy ...: %d", itti.n4_sched_params.sched_policy);
-  Logger::smf_app().info(
-      "    Scheduling prio .....: %d", itti.n4_sched_params.sched_priority);
-  Logger::smf_app().info("- ITTI SMF_APP task Threading:");
-  Logger::smf_app().info(
-      "    CPU id ..............: %d", itti.smf_app_sched_params.cpu_id);
-  Logger::smf_app().info(
-      "    Scheduling policy ...: %d", itti.smf_app_sched_params.sched_policy);
-  Logger::smf_app().info(
-      "    Scheduling prio .....: %d",
-      itti.smf_app_sched_params.sched_priority);
-  Logger::smf_app().info("- ITTI ASYNC_CMD task Threading:");
-  Logger::smf_app().info(
-      "    CPU id ..............: %d", itti.async_cmd_sched_params.cpu_id);
-  Logger::smf_app().info(
-      "    Scheduling policy ...: %d",
-      itti.async_cmd_sched_params.sched_policy);
-  Logger::smf_app().info(
-      "    Scheduling prio .....: %d",
-      itti.async_cmd_sched_params.sched_priority);
-  Logger::smf_app().info("- " SMF_CONFIG_STRING_IP_ADDRESS_POOL ":");
-  for (int i = 0; i < num_ue_pool; i++) {
-    std::string range_low(inet_ntoa(ue_pool_range_low[dnn[i].pool_id_iv4]));
-    std::string range_high(inet_ntoa(ue_pool_range_high[dnn[i].pool_id_iv4]));
-    Logger::smf_app().info(
-        "    IPv4 pool %d .........: %s - %s", i, range_low.c_str(),
-        range_high.c_str());
-  }
-  char str_addr6[INET6_ADDRSTRLEN];
-  for (int i = 0; i < num_paa6_pool; i++) {
-    if (inet_ntop(
-            AF_INET6, &paa_pool6_prefix[i], str_addr6, sizeof(str_addr6))) {
-      Logger::smf_app().info(
-          "    IPv6 pool %d .........: %s / %d", i, str_addr6,
-          paa_pool6_prefix_len[i]);
-    }
-  }
-  Logger::smf_app().info("- DEFAULT DNS:");
-  Logger::smf_app().info(
-      "    Primary DNS .........: %s",
-      inet_ntoa(*((struct in_addr*) &default_dnsv4)));
-  Logger::smf_app().info(
-      "    Secondary DNS .......: %s",
-      inet_ntoa(*((struct in_addr*) &default_dns_secv4)));
-  if (inet_ntop(AF_INET6, &default_dnsv6, str_addr6, sizeof(str_addr6))) {
-    Logger::smf_app().info("    Primary DNS v6 ......: %s", str_addr6);
-  }
-  if (inet_ntop(AF_INET6, &default_dns_secv6, str_addr6, sizeof(str_addr6))) {
-    Logger::smf_app().info("    Secondary DNS v6 ....: %s", str_addr6);
-  }
-
-  Logger::smf_app().info("- " SMF_CONFIG_STRING_DNN_LIST ":");
-  for (int i = 0; i < num_dnn; i++) {
-    Logger::smf_app().info("    DNN %d:", i);
-    Logger::smf_app().info(
-        "        " SMF_CONFIG_STRING_DNN_NI ":  %s", dnn[i].dnn.c_str());
-    Logger::smf_app().info(
-        "        " SMF_CONFIG_STRING_PDU_SESSION_TYPE ":  %s",
-        dnn[i].pdu_session_type.toString().c_str());
-    if (dnn[i].pool_id_iv4 >= 0) {
-      std::string range_low(inet_ntoa(ue_pool_range_low[dnn[i].pool_id_iv4]));
-      std::string range_high(inet_ntoa(ue_pool_range_high[dnn[i].pool_id_iv4]));
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_IPV4_POOL ":  %d ( %s - %s)",
-          dnn[i].pool_id_iv4, range_low.c_str(), range_high.c_str());
-    }
-    if (dnn[i].pool_id_iv6 >= 0) {
-      if (inet_ntop(
-              AF_INET6, &paa_pool6_prefix[dnn[i].pool_id_iv6], str_addr6,
-              sizeof(str_addr6))) {
-        Logger::smf_app().info(
-            "        " SMF_CONFIG_STRING_IPV6_POOL ":  %d (%s / %d)",
-            dnn[i].pool_id_iv6, str_addr6,
-            paa_pool6_prefix_len[dnn[i].pool_id_iv6]);
-      }
-    }
-  }
-
-  Logger::smf_app().info("- AMF:");
-  Logger::smf_app().info(
-      "    IPv4 Addr ...........: %s",
-      inet_ntoa(*((struct in_addr*) &amf_addr.ipv4_addr)));
-  Logger::smf_app().info("    Port ................: %lu  ", amf_addr.port);
-  Logger::smf_app().info(
-      "    API version .........: %s", amf_addr.api_version.c_str());
-
-  if (!use_local_subscription_info) {
-    Logger::smf_app().info("- UDM:");
-    Logger::smf_app().info(
-        "    IPv4 Addr ...........: %s",
-        inet_ntoa(*((struct in_addr*) &udm_addr.ipv4_addr)));
-    Logger::smf_app().info("    Port ................: %lu  ", udm_addr.port);
-    Logger::smf_app().info(
-        "    API version .........: %s", udm_addr.api_version.c_str());
-  }
-
-  if (register_nrf) {
-    Logger::smf_app().info("- NRF:");
+   Logger::smf_app().info("- SMF:");
     Logger::smf_app().info(
         "    IPv4 Addr ...........: %s",
         inet_ntoa(*((struct in_addr*) &nrf_addr.ipv4_addr)));
     Logger::smf_app().info("    Port ................: %lu  ", nrf_addr.port);
     Logger::smf_app().info(
         "    API version .........: %s", nrf_addr.api_version.c_str());
-  }
 
   Logger::smf_app().info("- Supported Features:");
   Logger::smf_app().info(
       "    Register to NRF............: %s", register_nrf ? "Yes" : "No");
-  Logger::smf_app().info(
-      "    Discover UPF...............: %s", discover_upf ? "Yes" : "No");
-  Logger::smf_app().info(
-      "    Use Local Subscription Info: %s",
-      use_local_subscription_info ? "Yes" : "No");
-  Logger::smf_app().info(
-      "    Push PCO (DNS+MTU).........: %s", force_push_pco ? "Yes" : "No");
-
-  if (use_local_subscription_info) {
-    Logger::smf_app().info(
-        "- " SMF_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST ":");
-    for (int i = 0; i < num_session_management_subscription; i++) {
-      Logger::smf_app().info("    Session Management Subscription Data %d:", i);
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_NSSAI_SST
-          ":  %d, " SMF_CONFIG_STRING_NSSAI_SD " %s",
-          session_management_subscription[i].single_nssai.sST,
-          session_management_subscription[i].single_nssai.sD.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_DNN ":  %s",
-          session_management_subscription[i].dnn.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_DEFAULT_SESSION_TYPE ":  %s",
-          session_management_subscription[i].session_type.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_DEFAULT_SSC_MODE ":  %d",
-          session_management_subscription[i].ssc_mode);
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_QOS_PROFILE_5QI ":  %d",
-          session_management_subscription[i].default_qos._5qi);
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_QOS_PROFILE_PRIORITY_LEVEL ":  %d",
-          session_management_subscription[i].default_qos.priority_level);
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_QOS_PROFILE_ARP_PRIORITY_LEVEL ":  %d",
-          session_management_subscription[i].default_qos.arp.priority_level);
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTCAP ":  %s",
-          session_management_subscription[i]
-              .default_qos.arp.preempt_cap.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTVULN ":  %s",
-          session_management_subscription[i]
-              .default_qos.arp.preempt_vuln.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_SESSION_AMBR_UL ":  %s",
-          session_management_subscription[i].session_ambr.uplink.c_str());
-      Logger::smf_app().info(
-          "        " SMF_CONFIG_STRING_SESSION_AMBR_DL ":  %s",
-          session_management_subscription[i].session_ambr.downlink.c_str());
-    }
-  }
 }
 
 //------------------------------------------------------------------------------

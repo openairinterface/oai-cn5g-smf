@@ -55,7 +55,7 @@ void Logger::_init(
 
   m_async_cmd      = new _Logger("async_c", m_sinks, ss.str().c_str());
   m_itti           = new _Logger("itti   ", m_sinks, ss.str().c_str());
-  m_smf_app        = new _Logger("smf_app", m_sinks, ss.str().c_str());
+  m_smf_app        = new _Logger("flexcn_app", m_sinks, ss.str().c_str());
   m_system         = new _Logger("system ", m_sinks, ss.str().c_str());
   m_udp            = new _Logger("udp    ", m_sinks, ss.str().c_str());
   m_pfcp           = new _Logger("pfcp   ", m_sinks, ss.str().c_str());
@@ -63,7 +63,7 @@ void Logger::_init(
   m_smf_n1         = new _Logger("smf_n1 ", m_sinks, ss.str().c_str());
   m_smf_n2         = new _Logger("smf_n2 ", m_sinks, ss.str().c_str());
   m_smf_n4         = new _Logger("smf_n4 ", m_sinks, ss.str().c_str());
-  m_smf_sbi        = new _Logger("smf_sbi", m_sinks, ss.str().c_str());
+  m_smf_sbi        = new _Logger("flexcn_sbi", m_sinks, ss.str().c_str());
   m_smf_api_server = new _Logger("sbi_srv", m_sinks, ss.str().c_str());
 }
 

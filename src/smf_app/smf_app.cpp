@@ -91,7 +91,7 @@ int smf_app::apply_config(const smf_config& cfg) {
       paa_dynamic::get_instance().add_pool(
           cfg.dnn[ia].dnn, pool_id, cfg.ue_pool_range_low[pool_id], range);
       // TODO: check with dnn_label
-      Logger::smf_app().info("Applied config %s", cfg.dnn[ia].dnn.c_str());
+      //Logger::smf_app().info("Applied config %s", cfg.dnn[ia].dnn.c_str());
       paa.ipv4_address = cfg.ue_pool_range_low[pool_id];
     }
     if (cfg.dnn[ia].pool_id_iv6 >= 0) {
@@ -102,8 +102,8 @@ int smf_app::apply_config(const smf_config& cfg) {
       paa.ipv6_address = cfg.paa_pool6_prefix[pool_id];
 
       // TODO: check with dnn_label
-      Logger::smf_app().info(
-          "Applied config for IPv6 %s", cfg.dnn[ia].dnn.c_str());
+    //  Logger::smf_app().info(
+    //      "Applied config for IPv6 %s", cfg.dnn[ia].dnn.c_str());
     }
   }
 
@@ -338,7 +338,7 @@ smf_app::smf_app(const std::string& config_file)
   }
 
   try {
-    smf_n4_inst  = new smf_n4();
+    //smf_n4_inst  = new smf_n4();
     smf_sbi_inst = new smf_sbi();
   } catch (std::exception& e) {
     Logger::smf_app().error("Cannot create SMF_APP: %s", e.what());
@@ -349,7 +349,7 @@ smf_app::smf_app(const std::string& config_file)
   // verified)
   for (std::vector<pfcp::node_id_t>::const_iterator it = smf_cfg.upfs.begin();
        it != smf_cfg.upfs.end(); ++it) {
-    start_upf_association(*it);
+    //start_upf_association(*it);
   }
 
   //FLEXCN
@@ -365,8 +365,8 @@ smf_app::smf_app(const std::string& config_file)
   // Register to NRF (if this option is enabled)
   if (smf_cfg.register_nrf) {
     unsigned int microsecond = 10000;  // 10ms
-    usleep(microsecond);
-    register_to_nrf();
+    //usleep(microsecond);
+    //register_to_nrf();
   }
 
   Logger::smf_app().startup("Started");
