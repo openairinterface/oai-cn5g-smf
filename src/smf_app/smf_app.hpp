@@ -494,15 +494,6 @@ class smf_app {
       const scid_t& scid, std::shared_ptr<smf_context_ref>& scf) const;
 
   /*
-   * Handle PDUSession_CreateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request>&] Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_create_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
-
-  /*
    * Handle PDUSession_UpdateSMContextRequest from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&] Request
    * message
