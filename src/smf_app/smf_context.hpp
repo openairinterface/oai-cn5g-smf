@@ -641,14 +641,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void handle_itti_msg(std::shared_ptr<itti_n4_session_report_request>&);
 
   /*
-   * Handle messages from AMF (e.g., PDU_SESSION_CreateSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request] smreq Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_create_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
-  /*
    * Handle messages from AMF (e.g., PDU_SESSION_UpdateSMContextRequest)
    * @param [std::shared_ptr<itti_n11_update_sm_context_request] smreq Request
    * message

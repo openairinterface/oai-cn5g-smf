@@ -95,7 +95,6 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 1;
-  m_smf_app->handle_pdu_session_create_sm_context_request(itti_msg);
 
   // Wait for the result from APP and send reply to AMF
   smf::pdu_session_create_sm_context_response sm_context_response = f.get();
