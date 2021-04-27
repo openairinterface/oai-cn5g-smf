@@ -650,21 +650,7 @@ class smf_app {
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
   void timer_nrf_deregistration(timer_id_t timer_id, uint64_t arg2_user);
-  /*
-   * To start an association with a UPF (SMF-initiated association)
-   * @param [const pfcp::node_id_t] node_id: UPF Node ID
-   * @return void
-   */
-  void start_upf_association(const pfcp::node_id_t& node_id);
-
-  /*
-   * To start an association with a UPF (SMF-initiated association)
-   * @param [const pfcp::node_id_t] node_id: UPF Node ID
-   * @return void
-   */
-  void start_upf_association(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
-
+  
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
    * triggered when the result is ready
