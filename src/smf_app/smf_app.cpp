@@ -1094,40 +1094,7 @@ void smf_app::trigger_nf_deregistration() {
 
 //------------------------------------------------------------------------------
 void smf_app::trigger_upf_status_notification_subscribe() {
-  Logger::smf_app().debug(
-      "Send ITTI msg to N11 task to subscribe to UPF status notification "
-      "from NRF");
-
-  std::shared_ptr<itti_n11_subscribe_upf_status_notify> itti_msg =
-      std::make_shared<itti_n11_subscribe_upf_status_notify>(
-          TASK_SMF_APP, TASK_SMF_SBI);
-
-  nlohmann::json json_data = {};
-  // TODO: remove hardcoded values
-  json_data["nfStatusNotificationUri"] =
-      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))) + ":" +
-      std::to_string(smf_cfg.sbi.port) + "/nsmf-nfstatus-notify/" +
-      smf_cfg.sbi_api_version + "/subscriptions";
-
-  json_data["subscrCond"]["NfTypeCond"]["nfType"] = "UPF";
-  json_data["reqNotifEvents"]                     = nlohmann::json::array();
-  json_data["reqNotifEvents"].push_back("NF_REGISTERED");
-  json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
-  json_data["validityTime"] = "20210531T235959";
-
-  std::string url =
-      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.nrf_addr.ipv4_addr))) +
-      ":" + std::to_string(smf_cfg.nrf_addr.port) + NNRF_NFM_BASE +
-      smf_cfg.nrf_addr.api_version + NNRF_NF_STATUS_SUBSCRIBE_URL;
-
-  itti_msg->url       = url;
-  itti_msg->json_data = json_data;
-  int ret             = itti_inst->send_msg(itti_msg);
-  if (RETURNok != ret) {
-    Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_SBI",
-        itti_msg->get_msg_name());
-  }
+  
 }
 
 //------------------------------------------------------------------------------
