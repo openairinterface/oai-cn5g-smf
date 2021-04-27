@@ -197,12 +197,6 @@ void smf_app_task(void*) {
     std::shared_ptr<itti_msg> shared_msg = itti_inst->receive_msg(task_id);
     auto* msg                            = shared_msg.get();
     switch (msg->msg_type) {
-      case N4_SESSION_ESTABLISHMENT_RESPONSE:
-        if (itti_n4_session_establishment_response* m =
-                dynamic_cast<itti_n4_session_establishment_response*>(msg)) {
-          smf_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
 
       case N4_SESSION_MODIFICATION_RESPONSE:
         if (itti_n4_session_modification_response* m =
@@ -446,19 +440,6 @@ void smf_app::start_upf_association(
     } else {
       Logger::smf_app().warn("Start_association() node_id IPV6, FQDN!");
     }
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n4_session_establishment_response& seresp) {
-  std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(seresp.seid, pc)) {
-    pc.get()->handle_itti_msg(seresp);
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Establishment Response seid" TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_context not found, discarded!",
-        seresp.seid, seresp.trxn_id);
   }
 }
 

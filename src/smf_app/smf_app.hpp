@@ -296,12 +296,6 @@ class smf_app {
       protocol_configuration_options_t& pco_resp,
       protocol_configuration_options_ids_t& pco_ids);
 
-  /*
-   * Handle ITTI message (N4 Session Establishment Response)
-   * @param [itti_n4_session_modification_response&] sne
-   * @return void
-   */
-  void handle_itti_msg(itti_n4_session_establishment_response& sne);
 
   /*
    * Handle ITTI message (N4 Session Modification Response)
