@@ -853,35 +853,7 @@ void smf_app::add_promise(
 void smf_app::trigger_create_context_error_response(
     const uint32_t& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
-  Logger::smf_app().debug(
-      "Send ITTI msg to SMF APP to trigger the response of Server");
-
-  oai::smf_server::model::SmContextCreateError sm_context = {};
-  oai::smf_server::model::ProblemDetails problem_details  = {};
-  oai::smf_server::model::RefToBinaryData refToBinaryData = {};
-  Logger::smf_app().warn("Create SmContextCreateError");
-  problem_details.setCause(pdu_session_application_error_e2str.at(cause));
-  sm_context.setError(problem_details);
-  refToBinaryData.setContentId(N1_SM_CONTENT_ID);
-  sm_context.setN1SmMsg(refToBinaryData);
-
-  std::shared_ptr<itti_n11_create_sm_context_response> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_response>(
-          TASK_SMF_SBI, TASK_SMF_APP, promise_id);
-  pdu_session_create_sm_context_response sm_context_response = {};
-  nlohmann::json json_data                                   = {};
-  to_json(json_data, sm_context);
-  sm_context_response.set_json_data(json_data);
-  sm_context_response.set_json_format("application/problem+json");
-  sm_context_response.set_n1_sm_message(n1_sm_msg);
-  sm_context_response.set_http_code(http_code);
-  itti_msg->res = sm_context_response;
-  int ret       = itti_inst->send_msg(itti_msg);
-  if (RETURNok != ret) {
-    Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_APP",
-        itti_msg->get_msg_name());
-  }
+  
 }
 
 //---------------------------------------------------------------------------------------------
