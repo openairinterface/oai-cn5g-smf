@@ -819,73 +819,7 @@ n2_sm_info_type_e smf_app::n2_sm_info_type_str2e(
 bool smf_app::get_session_management_subscription_data(
     const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
     std::shared_ptr<session_management_subscription> subscription) {
-  Logger::smf_app().debug(
-      "Get Session Management Subscription from configuration file");
-
-  for (int i = 0; i < smf_cfg.num_session_management_subscription; i++) {
-    if ((0 == dnn.compare(smf_cfg.session_management_subscription[i].dnn)) and
-        (snssai.sST ==
-         smf_cfg.session_management_subscription[i].single_nssai.sST)) {
-      std::shared_ptr<dnn_configuration_t> dnn_configuration =
-          std::make_shared<dnn_configuration_t>();
-
-      // PDU Session Type
-      pdu_session_type_t pdu_session_type(
-          pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
-      Logger::smf_app().debug(
-          "Default session type %s",
-          smf_cfg.session_management_subscription[i].session_type.c_str());
-
-      std::string session_type =
-          smf_cfg.session_management_subscription[i].session_type;
-      if (boost::iequals(session_type, "IPv4")) {
-        pdu_session_type.pdu_session_type =
-            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
-      } else if (boost::iequals(session_type, "IPv6")) {
-        pdu_session_type.pdu_session_type =
-            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV6;
-      } else if (boost::iequals(session_type, "IPv4v6")) {
-        pdu_session_type.pdu_session_type =
-            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6;
-      }
-
-      dnn_configuration->pdu_session_types.default_session_type =
-          pdu_session_type;
-
-      // Ssc_Mode
-      dnn_configuration->ssc_modes.default_ssc_mode.ssc_mode =
-          smf_cfg.session_management_subscription[i].ssc_mode;
-
-      // 5gQosProfile
-      dnn_configuration->_5g_qos_profile._5qi =
-          smf_cfg.session_management_subscription[i].default_qos._5qi;
-      dnn_configuration->_5g_qos_profile.arp.priority_level =
-          smf_cfg.session_management_subscription[i]
-              .default_qos.arp.priority_level;
-      dnn_configuration->_5g_qos_profile.arp.preempt_cap =
-          smf_cfg.session_management_subscription[i]
-              .default_qos.arp.preempt_cap;
-      dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
-          smf_cfg.session_management_subscription[i]
-              .default_qos.arp.preempt_vuln;
-      dnn_configuration->_5g_qos_profile.priority_level =
-          smf_cfg.session_management_subscription[i].default_qos.priority_level;
-
-      // session_ambr
-      dnn_configuration->session_ambr.uplink =
-          smf_cfg.session_management_subscription[i].session_ambr.uplink;
-      dnn_configuration->session_ambr.downlink =
-          smf_cfg.session_management_subscription[i].session_ambr.downlink;
-      Logger::smf_app().debug(
-          "Session AMBR Uplink %s, Downlink %s",
-          dnn_configuration->session_ambr.uplink.c_str(),
-          dnn_configuration->session_ambr.downlink.c_str());
-
-      subscription->insert_dnn_configuration(dnn, dnn_configuration);
-      return true;
-    }
-  }
-  return false;
+  return true;
 }
 
 //---------------------------------------------------------------------------------------------
