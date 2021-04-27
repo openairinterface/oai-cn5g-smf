@@ -616,42 +616,7 @@ void smf_app::trigger_pdu_session_modification(
     const supi_t& supi, const std::string& dnn,
     const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
     const pfcp::qfi_t& qfi, const uint8_t& http_version) {
-  // SMF-requested session modification, see section 4.3.3.2@3GPP TS 23.502
-  // The SMF may decide to modify PDU Session. This procedure also may be
-  // triggered based on locally configured policy or triggered from the (R)AN
-  // (see clause 4.2.6 and clause 4.9.1).  It may also be triggered if the UP
-  // connection is activated (as described in Service Request procedure) and the
-  // SMF has marked that the status of one or more QoS Flows are deleted in the
-  // 5GC but not synchronized with  the UE yet.
-
-  std::shared_ptr<itti_nx_trigger_pdu_session_modification> itti_msg =
-      std::make_shared<itti_nx_trigger_pdu_session_modification>(
-          TASK_SMF_APP, TASK_SMF_SBI);
-  itti_msg->http_version = http_version;
-
-  // step 1. collect the necessary information
-  itti_msg->msg.set_supi(supi);
-  itti_msg->msg.set_dnn(dnn);
-  itti_msg->msg.set_pdu_session_id(pdu_session_id);
-  itti_msg->msg.set_snssai(snssai);
-  itti_msg->msg.add_qfi(qfi);
-  supi64_t supi64 = smf_supi_to_u64(supi);
-
-  // Step 2. find the smf context
-  std::shared_ptr<smf_context> sc = {};
-
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
-  } else {
-    Logger::smf_app().debug(
-        "SMF context with SUPI " SUPI_64_FMT "does not exist", supi64);
-    return;
-  }
-
-  // handle the message in smf_context
-  sc.get()->handle_pdu_session_modification_network_requested(itti_msg);
+  
 }
 
 //------------------------------------------------------------------------------
