@@ -756,56 +756,7 @@ void smf_app::update_pdu_session_status(
 //---------------------------------------------------------------------------------------------
 void smf_app::update_pdu_session_upCnx_state(
     const scid_t& scid, const upCnx_state_e& state) {
-  Logger::smf_app().info("Update UpCnx_State");
-
-  // get the smf context
-  std::shared_ptr<smf_context_ref> scf = {};
-
-  if (is_scid_2_smf_context(scid)) {
-    scf = scid_2_smf_context(scid);
-  } else {
-    Logger::smf_app().warn(
-        "Context associated with this id " SCID_FMT " does not exit!", scid);
-  }
-
-  supi_t supi                     = scf.get()->supi;
-  supi64_t supi64                 = smf_supi_to_u64(supi);
-  pdu_session_id_t pdu_session_id = scf.get()->pdu_session_id;
-
-  std::shared_ptr<smf_context> sc = {};
-
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
-  } else {
-    Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
-  }
-
-  // get dnn context
-  std::shared_ptr<dnn_context> sd = {};
-
-  if (!sc.get()->find_dnn_context(scf.get()->nssai, scf.get()->dnn, sd)) {
-    if (nullptr == sd.get()) {
-      Logger::smf_app().warn(
-          "Could not retrieve the corresponding DNN context!");
-    }
-  }
-  // get smd_pdu_session
-  std::shared_ptr<smf_pdu_session> sp = {};
-  bool find_pdn = sd.get()->find_pdu_session(pdu_session_id, sp);
-
-  if (nullptr == sp.get()) {
-    Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF PDU Session context!");
-  }
-  sp.get()->set_upCnx_state(state);
-  Logger::smf_app().info(
-      "Set PDU Session UpCnxState to %s",
-      upCnx_state_e2str.at(static_cast<int>(state)).c_str());
+  
 }
 //---------------------------------------------------------------------------------------------
 void smf_app::timer_t3591_timeout(timer_id_t timer_id, uint64_t arg2_user) {
