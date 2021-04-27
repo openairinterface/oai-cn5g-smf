@@ -622,32 +622,7 @@ void smf_app::trigger_pdu_session_modification(
 //------------------------------------------------------------------------------
 evsub_id_t smf_app::handle_event_exposure_subscription(
     std::shared_ptr<itti_sbi_event_exposure_request> msg) {
-  Logger::smf_app().info(
-      "Handle an Event Exposure Subscription Request from a NF (HTTP version "
-      "%d)",
-      msg->http_version);
-
-  // Generate a subscription ID Id and store the corresponding information in a
-  // map (subscription id, info)
-  evsub_id_t evsub_id = generate_ev_subscription_id();
-
-  std::shared_ptr<smf_subscription> ss =
-      std::shared_ptr<smf_subscription>(new smf_subscription());
-  ss.get()->sub_id = evsub_id;
-  if (msg->event_exposure.is_supi_is_set()) {
-    supi64_t supi64 = smf_supi_to_u64(msg->event_exposure.get_supi());
-    ss.get()->supi  = supi64;
-  }
-  ss.get()->notif_id  = msg->event_exposure.get_notif_id();
-  ss.get()->notif_uri = msg->event_exposure.get_notif_uri();
-
-  std::vector<event_subscription_t> event_subscriptions =
-      msg->event_exposure.get_event_subs();
-  // store subscription
-  for (auto i : event_subscriptions) {
-    ss.get()->ev_type = i.smf_event;
-    add_event_subscription(evsub_id, i.smf_event, ss);
-  }
+  
 }
 
 //------------------------------------------------------------------------------
