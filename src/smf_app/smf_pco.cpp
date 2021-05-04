@@ -59,22 +59,7 @@ int smf_app::process_pco_request_ipcp(
 int smf_app::process_pco_dns_server_request(
     protocol_configuration_options_t& pco_resp,
     const pco_protocol_or_container_id_t* const poc_id) {
-  in_addr_t ipcp_out_dns_prim_ipv4_addr      = smf_cfg.default_dnsv4.s_addr;
-  pco_protocol_or_container_id_t poc_id_resp = {0};
-  uint8_t dns_array[4];
-
-  Logger::smf_app().debug(
-      "PCO: Protocol identifier IPCP option DNS Server Request");
-  poc_id_resp.protocol_id = PCO_CONTAINER_IDENTIFIER_DNS_SERVER_IPV4_ADDRESS;
-  poc_id_resp.length_of_protocol_id_contents = 4;
-  dns_array[0] = (uint8_t)(ipcp_out_dns_prim_ipv4_addr & 0x000000FF);
-  dns_array[1] = (uint8_t)((ipcp_out_dns_prim_ipv4_addr >> 8) & 0x000000FF);
-  dns_array[2] = (uint8_t)((ipcp_out_dns_prim_ipv4_addr >> 16) & 0x000000FF);
-  dns_array[3] = (uint8_t)((ipcp_out_dns_prim_ipv4_addr >> 24) & 0x000000FF);
-  std::string tmp_s((const char*) &dns_array[0], sizeof(dns_array));
-  poc_id_resp.protocol_id_contents = tmp_s;
-
-  return pco_push_protocol_or_container_id(pco_resp, &poc_id_resp);
+  return RETURNok;
 }
 
 //------------------------------------------------------------------------------
