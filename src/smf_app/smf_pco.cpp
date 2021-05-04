@@ -45,21 +45,6 @@ extern smf_config smf_cfg;
 int smf_app::pco_push_protocol_or_container_id(
     protocol_configuration_options_t& pco,
     pco_protocol_or_container_id_t* const poc_id) {
-  if (PCO_UNSPEC_MAXIMUM_PROTOCOL_ID_OR_CONTAINER_ID <=
-      pco.num_protocol_or_container_id) {
-    return RETURNerror;
-  }
-  pco_protocol_or_container_id_t pco_item = {};
-  pco_item.protocol_id                    = poc_id->protocol_id;
-  pco_item.length_of_protocol_id_contents =
-      poc_id->length_of_protocol_id_contents;
-  pco_item.protocol_id_contents = poc_id->protocol_id_contents;
-  //  assert(pco_item.length_of_protocol_id_contents ==
-  //    				pco_item.protocol_id_contents.size());
-  //    pco_item.protocol_id_contents = nullptr;
-
-  pco.protocol_or_container_ids.push_back(pco_item);
-  pco.num_protocol_or_container_id += 1;
   return RETURNok;
 }
 
