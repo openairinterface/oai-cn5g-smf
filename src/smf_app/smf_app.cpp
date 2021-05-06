@@ -368,153 +368,29 @@ smf_app::smf_app(const std::string& config_file)
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n4_session_modification_response& smresp) {
-  std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(smresp.seid, pc)) {
-    pc.get()->handle_itti_msg(smresp);
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Modification Response seid" TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_context not found, discarded!",
-        smresp.seid, smresp.trxn_id);
-  }
+
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n4_session_deletion_response& smresp) {
-  std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(smresp.seid, pc)) {
-    pc.get()->handle_itti_msg(smresp);
-
-    if (pc->get_number_dnn_contexts() == 0) {
-      delete_smf_context(pc);
-    }
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Deletion Response seid" TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_context not found, discarded!",
-        smresp.seid, smresp.trxn_id);
-  }
+  
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(
     std::shared_ptr<itti_n4_session_report_request> snr) {
-  std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(snr->seid, pc)) {
-    pc.get()->handle_itti_msg(snr);
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Report Request seid" TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_context not found, discarded!",
-        snr->seid, snr->trxn_id);
-  }
+  
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {
-  pfcp::node_id_t node_id = snf->node_id;
-
-  for (auto it : scid2smf_context) {
-    if (it.second->upf_node_id == node_id) {
-      supi64_t supi64 = smf_supi_to_u64(it.second->supi);
-      Logger::smf_app().debug(
-          "Remove the associated PDU session (SUPI " SUPI_64_FMT
-          ", PDU Sessin Id %d)",
-          supi64, it.second->pdu_session_id);
-      // TODO: remove the session
-    }
-  }
+  
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(
     itti_n11_n1n2_message_transfer_response_status& m) {
-  Logger::smf_app().info("Process N1N2MessageTransfer Response");
 
-  switch (m.procedure_type) {
-    case session_management_procedures_type_e::
-        PDU_SESSION_ESTABLISHMENT_UE_REQUESTED: {
-      // Update PDU Session accordingly
-      Logger::smf_app().info("PDU_SESSION_ESTABLISHMENT_UE_REQUESTED");
-      pdu_session_status_e status = {
-          pdu_session_status_e::PDU_SESSION_INACTIVE};
-      upCnx_state_e state = {upCnx_state_e::UPCNX_STATE_DEACTIVATED};
-
-      if ((static_cast<http_response_codes_e>(m.response_code) ==
-           http_response_codes_e::HTTP_RESPONSE_CODE_OK) or
-          (static_cast<http_response_codes_e>(m.response_code) ==
-           http_response_codes_e::HTTP_RESPONSE_CODE_ACCEPTED)) {
-        if (m.msg_type == PDU_SESSION_ESTABLISHMENT_REJECT) {
-          status = pdu_session_status_e::PDU_SESSION_INACTIVE;
-        } else if (m.msg_type == PDU_SESSION_ESTABLISHMENT_ACCEPT) {
-          status = pdu_session_status_e::PDU_SESSION_ESTABLISHMENT_PENDING;
-          state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
-        }
-        update_pdu_session_status(m.scid, status);
-        update_pdu_session_upCnx_state(m.scid, state);
-        Logger::smf_app().debug(
-            "Got successful response from AMF (response code %d), set session "
-            "status to %s",
-            m.response_code,
-            pdu_session_status_e2str.at(static_cast<int>(status)).c_str());
-      } else {
-        // TODO:
-        Logger::smf_app().debug(
-            "Got response from AMF (response code %d)", m.response_code);
-      }
-    } break;
-
-    case session_management_procedures_type_e::
-        SERVICE_REQUEST_NETWORK_TRIGGERED: {
-      Logger::smf_app().debug(
-          "Got response from AMF (response code %d) with cause %s",
-          m.response_code, m.cause.c_str());
-      if ((static_cast<http_response_codes_e>(m.response_code) !=
-           http_response_codes_e::HTTP_RESPONSE_CODE_OK) and
-          (static_cast<http_response_codes_e>(m.response_code) !=
-           http_response_codes_e::HTTP_RESPONSE_CODE_ACCEPTED)) {
-        Logger::smf_app().debug("Send failure indication to UPF");
-        // TODO: to be completed
-        pfcp::node_id_t up_node_id = {};
-        // Get UPF node
-        std::shared_ptr<smf_context_ref> scf = {};
-        if (smf_app_inst->is_scid_2_smf_context(m.scid)) {
-          scf        = scid_2_smf_context(m.scid);
-          up_node_id = scf.get()->upf_node_id;
-        } else {
-          Logger::smf_app().warn(
-              "SM Context associated with this id " SCID_FMT " does not exit!",
-              m.scid);
-          return;
-        }
-
-        itti_n4_session_failure_indication* itti_n4 =
-            new itti_n4_session_failure_indication(TASK_SMF_APP, TASK_SMF_N4);
-        itti_n4->seid    = m.seid;
-        itti_n4->trxn_id = m.trxn_id;
-        itti_n4->r_endpoint =
-            endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
-        std::shared_ptr<itti_n4_session_failure_indication>
-            itti_n4_failure_indication =
-                std::shared_ptr<itti_n4_session_failure_indication>(itti_n4);
-
-        Logger::smf_app().info(
-            "Sending ITTI message %s to task TASK_SMF_N4",
-            itti_n4->get_msg_name());
-        int ret = itti_inst->send_msg(itti_n4_failure_indication);
-        if (RETURNok != ret) {
-          Logger::smf_app().error(
-              "Could not send ITTI message %s to task TASK_SMF_N4",
-              itti_n4->get_msg_name());
-          return;
-        }
-      }
-    } break;
-
-    default: {
-      Logger::smf_app().warn("Unknown procedure type %d", m.procedure_type);
-    }
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -528,41 +404,17 @@ void smf_app::handle_itti_msg(itti_n11_update_pdu_session_status& m) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
-  Logger::smf_app().debug(
-      "PDU Session Create SM Context: Set promise with ID %d to ready", m.pid);
-  pdu_session_create_sm_context_response sm_context_response = {};
-  std::unique_lock lock(m_sm_context_create_promises);
-  if (sm_context_create_promises.count(m.pid) > 0) {
-    sm_context_create_promises[m.pid]->set_value(m.res);
-    // Remove this promise from list
-    sm_context_create_promises.erase(m.pid);
-  }
+
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_update_sm_context_response& m) {
-  Logger::smf_app().debug(
-      "PDU Session Update SM Context: Set promise with ID %d to ready", m.pid);
-  pdu_session_update_sm_context_response sm_context_response = {};
-  std::unique_lock lock(m_sm_context_update_promises);
-  if (sm_context_update_promises.count(m.pid) > 0) {
-    sm_context_update_promises[m.pid]->set_value(m.res);
-    // Remove this promise from list
-    sm_context_update_promises.erase(m.pid);
-  }
+
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
-  Logger::smf_app().debug(
-      "PDU Session Release SM Context: Set promise with ID %d to ready", m.pid);
-  pdu_session_release_sm_context_response sm_context_response = {};
-  std::unique_lock lock(m_sm_context_release_promises);
-  if (sm_context_release_promises.count(m.pid) > 0) {
-    sm_context_release_promises[m.pid]->set_value(m.res);
-    // Remove this promise from list
-    sm_context_release_promises.erase(m.pid);
-  }
+  
 }
 
 //------------------------------------------------------------------------------
@@ -588,16 +440,7 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
-  Logger::smf_app().debug("NF Update NF response");
-
-  Logger::smf_app().debug(
-      "Set NRF Heartbeat timer (%d)",
-      nf_instance_profile.get_nf_heartBeat_timer());
-
-  // Set heartbeat timer
-  //  timer_nrf_heartbeat = itti_inst->timer_setup(
-  //      nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
-  //      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0); //TODO arg2_user
+  
 }
 
 //------------------------------------------------------------------------------

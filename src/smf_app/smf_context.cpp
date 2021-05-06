@@ -480,96 +480,22 @@ bool smf_pdu_session::get_default_qos_rule(QOSRulesIE& qos_rule) const {
 //------------------------------------------------------------------------------
 bool smf_pdu_session::get_qos_rule(
     const uint8_t rule_id, QOSRulesIE& qos_rule) const {
-  Logger::smf_app().info("Find QoS Rule with Rule Id %d", (uint8_t) rule_id);
-  std::shared_lock lock(m_pdu_session_mutex);
-  if (qos_rules.count(rule_id) > 0) {
-    qos_rule = qos_rules.at(rule_id);
-  }
   return false;
 }
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::update_qos_rule(const QOSRulesIE& qos_rule) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
 
-  Logger::smf_app().info(
-      "Update QoS Rule with Rule Id %d", (uint8_t) qos_rule.qosruleidentifer);
-  uint8_t rule_id = qos_rule.qosruleidentifer;
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      lock.lock();  // Lock it here
-      qos_rules.erase(rule_id);
-      qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rule));
-      // marked to be synchronised with UE
-      qos_rules_to_be_synchronised.push_back(rule_id);
-      Logger::smf_app().trace("Update QoS rule (%d) success", rule_id);
-    } else {
-      Logger::smf_app().error(
-          "Update QoS Rule (%d) failed, rule does not existed", rule_id);
-    }
-
-  } else {
-    Logger::smf_app().error(
-        "Update QoS rule (%d) failed, invalid Rule Id", rule_id);
-  }
 }
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::mark_qos_rule_to_be_synchronised(const uint8_t rule_id) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      lock.lock();  // Lock it here
-      qos_rules_to_be_synchronised.push_back(rule_id);
-      Logger::smf_app().trace(
-          "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) success",
-          rule_id);
-    } else {
-      Logger::smf_app().error(
-          "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) failed, rule "
-          "does not existed",
-          rule_id);
-    }
 
-  } else {
-    Logger::smf_app().error(
-        "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) failed, invalid "
-        "Rule Id",
-        rule_id);
-  }
 }
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::add_qos_rule(const QOSRulesIE& qos_rule) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
-  Logger::smf_app().info(
-      "Add QoS Rule with Rule Id %d", (uint8_t) qos_rule.qosruleidentifer);
-  uint8_t rule_id = qos_rule.qosruleidentifer;
 
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      Logger::smf_app().error(
-          "Failed to add rule (Id %d), rule existed", rule_id);
-    } else {
-      lock.lock();  // Lock it here
-      qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rule));
-      Logger::smf_app().trace(
-          "Rule (Id %d) has been added successfully", rule_id);
-    }
-
-  } else {
-    Logger::smf_app().error(
-        "Failed to add rule (Id %d) failed: invalid rule Id", rule_id);
-  }
 }
 
 //------------------------------------------------------------------------------
@@ -643,238 +569,26 @@ bool smf_context::find_procedure(
 
 //------------------------------------------------------------------------------
 void smf_context::remove_procedure(smf_procedure* proc) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  auto found = std::find_if(
-      pending_procedures.begin(), pending_procedures.end(),
-      [proc](const std::shared_ptr<smf_procedure>& i) {
-        return i.get() == proc;
-      });
-  if (found != pending_procedures.end()) {
-    pending_procedures.erase(found);
-  }
 }
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     itti_n4_session_establishment_response& seresp) {
-  std::shared_ptr<smf_procedure> proc = {};
-  if (find_procedure(seresp.trxn_id, proc)) {
-    Logger::smf_app().debug(
-        "Received N4 Session Establishment Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 "",
-        seresp.seid, seresp.trxn_id);
-    proc->handle_itti_msg(seresp, shared_from_this());
-    remove_procedure(proc.get());
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Establishment Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_procedure not found, discarded!",
-        seresp.seid, seresp.trxn_id);
-  }
 }
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     itti_n4_session_modification_response& smresp) {
-  std::shared_ptr<smf_procedure> proc = {};
-  if (find_procedure(smresp.trxn_id, proc)) {
-    Logger::smf_app().debug(
-        "Received N4 Session Modification Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 " ",
-        smresp.seid, smresp.trxn_id);
-    proc->handle_itti_msg(smresp, shared_from_this());
-    remove_procedure(proc.get());
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Modification Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_procedure not found, discarded!",
-        smresp.seid, smresp.trxn_id);
-  }
-  Logger::smf_app().info(
-      "Handle N4 Session Modification Response with SMF context %s",
-      toString().c_str());
 }
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(itti_n4_session_deletion_response& sdresp) {
-  std::shared_ptr<smf_procedure> proc = {};
-  if (find_procedure(sdresp.trxn_id, proc)) {
-    Logger::smf_app().debug(
-        "Received N4 Session Deletion Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 " ",
-        sdresp.seid, sdresp.trxn_id);
-    proc->handle_itti_msg(sdresp, shared_from_this());
-    remove_procedure(proc.get());
-  } else {
-    Logger::smf_app().debug(
-        "Received N4 Session Deletion Response sender teid " TEID_FMT
-        "  pfcp_tx_id %" PRIX64 ", smf_procedure not found, discarded!",
-        sdresp.seid, sdresp.trxn_id);
-  }
-
-  Logger::smf_app().info(
-      "Handle N4 Session Deletion Response with SMF context %s",
-      toString().c_str());
 }
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     std::shared_ptr<itti_n4_session_report_request>& req) {
-  pfcp::report_type_t report_type;
-  if (req->pfcp_ies.get(report_type)) {
-    pfcp::pdr_id_t pdr_id;
-    // Downlink Data Report
-    if (report_type.dldr) {
-      pfcp::downlink_data_report data_report;
-      if (req->pfcp_ies.get(data_report)) {
-        pfcp::pdr_id_t pdr_id;
-        if (data_report.get(pdr_id)) {
-          std::shared_ptr<dnn_context> sd     = {};
-          std::shared_ptr<smf_pdu_session> sp = {};
-          pfcp::qfi_t qfi                     = {};
-          if (find_pdu_session(pdr_id, qfi, sd, sp)) {
-            // Step 1. send N4 Data Report Ack to UPF
-            pfcp::node_id_t up_node_id = {};
-            scid_t scid                = get_scid();
-            // Get UPF node
-            std::shared_ptr<smf_context_ref> scf = {};
-            if (smf_app_inst->is_scid_2_smf_context(scid)) {
-              scf        = smf_app_inst->scid_2_smf_context(scid);
-              up_node_id = scf.get()->upf_node_id;
-            } else {
-              Logger::smf_app().warn(
-                  "SM Context associated with this id " SCID_FMT
-                  " does not exit!",
-                  scid);
-              return;
-            }
 
-            itti_n4_session_report_response* n4_ser =
-                new itti_n4_session_report_response(TASK_SMF_APP, TASK_SMF_N4);
-            n4_ser->seid    = req->seid;
-            n4_ser->trxn_id = req->trxn_id;
-            n4_ser->r_endpoint =
-                endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
-            std::shared_ptr<itti_n4_session_report_response> n4_report_ack =
-                std::shared_ptr<itti_n4_session_report_response>(n4_ser);
-
-            Logger::smf_app().info(
-                "Sending ITTI message %s to task TASK_SMF_N4",
-                n4_ser->get_msg_name());
-            int ret = itti_inst->send_msg(n4_report_ack);
-            if (RETURNok != ret) {
-              Logger::smf_app().error(
-                  "Could not send ITTI message %s to task TASK_SMF_N4",
-                  n4_ser->get_msg_name());
-              return;
-            }
-
-            // Step 2. Send N1N2MessageTranfer to AMF
-            pdu_session_report_response session_report_msg = {};
-            // set the required IEs
-            session_report_msg.set_supi(supi);
-            session_report_msg.set_snssai(sd.get()->nssai);
-            session_report_msg.set_dnn(sd.get()->dnn_in_use);
-            session_report_msg.set_pdu_session_type(
-                sp.get()->get_pdu_session_type().pdu_session_type);
-            // get supi and put into URL
-            std::string supi_prefix = {};
-            get_supi_prefix(supi_prefix);
-            std::string supi_str = supi_prefix + "-" + smf_supi_to_string(supi);
-            std::string url =
-                // std::string(inet_ntoa(
-                //    *((struct in_addr*) &smf_cfg.amf_addr.ipv4_addr))) +
-                //":" + std::to_string(smf_cfg.amf_addr.port) +
-                sp.get()->get_amf_addr() + NAMF_COMMUNICATION_BASE +
-                smf_cfg.amf_addr.api_version +
-                fmt::format(
-                    NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL,
-                    supi_str.c_str());
-            session_report_msg.set_amf_url(url);
-            // seid and trxn_id to be used in Failure indication
-            session_report_msg.set_seid(req->seid);
-            session_report_msg.set_trxn_id(req->trxn_id);
-
-            // QFIs, QoS profiles, CN Tunnel
-            smf_qos_flow flow = {};
-            sp.get()->get_qos_flow(qfi, flow);
-            // ADD QoS Flow to be updated
-            qos_flow_context_updated qcu = {};
-            qcu.set_qfi(qfi);
-            qcu.set_ul_fteid(flow.ul_fteid);
-            qcu.set_qos_profile(flow.qos_profile);
-            session_report_msg.add_qos_flow_context_updated(qcu);
-
-            // Create N2 SM Information: PDU Session Resource Setup Request
-            // Transfer IE
-            // N2 SM Information
-            std::string n2_sm_info, n2_sm_info_hex;
-            smf_n2::get_instance()
-                .create_n2_pdu_session_resource_setup_request_transfer(
-                    session_report_msg, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-                    n2_sm_info);
-
-            smf_app_inst->convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-            session_report_msg.set_n2_sm_information(n2_sm_info_hex);
-
-            // Fill the json part
-            nlohmann::json json_data = {};
-            json_data["n2InfoContainer"]["n2InformationClass"] =
-                N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
-                session_report_msg.get_pdu_session_id();
-            // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
-                     ["ngapIeType"] = "PDU_RES_SETUP_REQ";  // NGAP message type
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
-                     ["contentId"] = N2_SM_CONTENT_ID;  // NGAP part
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
-                session_report_msg.get_snssai().sST;
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-                session_report_msg.get_snssai().sD;
-
-            session_report_msg.set_json_data(json_data);
-
-            itti_n11_session_report_request* itti_n11 =
-                new itti_n11_session_report_request(TASK_SMF_APP, TASK_SMF_SBI);
-            itti_n11->http_version = 1;  // use HTTPv1 for the moment
-            std::shared_ptr<itti_n11_session_report_request> itti_n11_report =
-                std::shared_ptr<itti_n11_session_report_request>(itti_n11);
-            itti_n11_report->res = session_report_msg;
-            // send ITTI message to N11 interface to trigger N1N2MessageTransfer
-            // towards AMFs
-            Logger::smf_app().info(
-                "Sending ITTI message %s to task TASK_SMF_SBI",
-                itti_n11_report->get_msg_name());
-
-            ret = itti_inst->send_msg(itti_n11_report);
-            if (RETURNok != ret) {
-              Logger::smf_app().error(
-                  "Could not send ITTI message %s to task TASK_SMF_SBI",
-                  itti_n11_report->get_msg_name());
-            }
-          }
-        }
-      }
-    }
-    // Usage Report
-    if (report_type.usar) {
-      // TODO
-      Logger::smf_app().debug("PFCP_SESSION_REPORT_REQUEST/Usage Report");
-    }
-    // Error Indication Report
-    if (report_type.erir) {
-      // TODO
-      Logger::smf_app().debug(
-          "PFCP_SESSION_REPORT_REQUEST/Error Indication Report");
-    }
-    // User Plane Inactivity Report
-    if (report_type.upir) {
-      // TODO
-      Logger::smf_app().debug(
-          "PFCP_SESSION_REPORT_REQUEST/User Plane Inactivity Report");
-    }
-  }
 }
 
 //------------------------------------------------------------------------------
