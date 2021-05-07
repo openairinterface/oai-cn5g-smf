@@ -868,18 +868,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
 
   /*
-   * Get the default value of Session-AMBR
-   * @param [SessionAMBR &] session_ambr
-   * @param [const snssai_t &] snssai
-   * @param [const std::string &] dnn
-   * @return void
-   */
-  void get_session_ambr(
-      SessionAMBR& session_ambr, const snssai_t& snssai,
-      const std::string& dnn);
-
-
-  /*
    * Find the PDU Session, QFI associated with a given PDR_ID
    * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
    * @param [pfcp::qfi_t &] qfi: QFI

@@ -611,17 +611,6 @@ void smf_context::get_default_qos_rule(
   
 }
 
-//------------------------------------------------------------------------------
-void smf_context::get_session_ambr(
-    SessionAMBR& session_ambr, const snssai_t& snssai, const std::string& dnn) {
-  
-}
-
-
-
-
-
-
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_response_transfer(
     std::string& n2_sm_information,
