@@ -36,11 +36,11 @@
 #include <utility>
 #include <vector>
 
-#include "3gpp_24.008.h"
-#include "3gpp_29.244.h"
-#include "3gpp_29.502.h"
-#include "3gpp_29.503.h"
-#include "common_root_types.h"
+#include "3gpp_24.008.h" // common
+#include "3gpp_29.244.h" // common
+#include "3gpp_29.502.h" // common
+#include "3gpp_29.503.h" // common
+#include "common_root_types.h" // common
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
 #include "pistache/endpoint.h"
@@ -48,14 +48,13 @@
 #include "pistache/router.h"
 #include "smf_event.hpp"
 #include "smf_procedure.hpp"
-#include "uint_generator.hpp"
+#include "uint_generator.hpp" // common
 
 extern "C" {
-#include "Ngap_PDUSessionAggregateMaximumBitRate.h"
-#include "PDUSessionEstablishmentAccept.h"
-#include "QOSFlowDescriptions.h"
-#include "QOSRules.h"
-#include "nas_message.h"
+#include "PDUSessionEstablishmentAccept.h" // nas
+#include "QOSFlowDescriptions.h" // nas
+#include "QOSRules.h" // nas
+#include "nas_message.h" // nas
 }
 
 namespace smf {
@@ -976,17 +975,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       SessionAMBR& session_ambr, const snssai_t& snssai,
       const std::string& dnn);
 
-  /*
-   * Get the default value of Session-AMBR and stored as
-   * Ngap_PDUSessionAggregateMaximumBitRate
-   * @param [Ngap_PDUSessionAggregateMaximumBitRate_t &] session_ambr
-   * @param [const snssai_t &] snssai
-   * @param [const std::string &] dnn
-   * @return void
-   */
-  void get_session_ambr(
-      Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
-      const snssai_t& snssai, const std::string& dnn);
 
   /*
    * Find the PDU Session, QFI associated with a given PDR_ID

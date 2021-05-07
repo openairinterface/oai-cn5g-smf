@@ -32,9 +32,9 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 
-#include "3gpp_24.501.h"
-#include "3gpp_29.500.h"
-#include "3gpp_29.502.h"
+#include "3gpp_24.501.h" //common
+#include "3gpp_29.500.h" //common
+#include "3gpp_29.502.h" //common 
 #include "SmContextCreatedData.h"
 #include "itti.hpp"
 #include "logger.hpp"
@@ -629,13 +629,6 @@ void smf_context::get_default_qos_flow_description(
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
     SessionAMBR& session_ambr, const snssai_t& snssai, const std::string& dnn) {
-  
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_session_ambr(
-    Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
-    const snssai_t& snssai, const std::string& dnn) {
   
 }
 
