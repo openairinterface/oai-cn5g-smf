@@ -56,7 +56,6 @@
 #include "pfcp.hpp" // pfcp
 #include "smf.h" // common
 #include "smf_event.hpp" //smf_app
-#include "smf_n1.hpp"
 #include "smf_sbi.hpp"
 #include "smf_n4.hpp"
 #include "smf_paa_dynamic.hpp"

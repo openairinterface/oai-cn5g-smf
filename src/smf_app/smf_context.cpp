@@ -174,149 +174,6 @@ void smf_pdu_session::get_paa(paa_t& paa) {
 }
 
 //------------------------------------------------------------------------------
-void smf_pdu_session::add_qos_flow(const smf_qos_flow& flow) {
-  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
-      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    Logger::smf_app().trace(
-        "QoS Flow (flow Id %d) has been added successfully", flow.qfi.qfi);
-    std::unique_lock lock(m_pdu_session_mutex);
-    qos_flows.erase(flow.qfi.qfi);
-    qos_flows.insert(
-        std::pair<uint8_t, smf_qos_flow>((uint8_t) flow.qfi.qfi, flow));
-  } else {
-    Logger::smf_app().error(
-        "Failed to add QoS flow (flow Id %d), invalid QFI", flow.qfi.qfi);
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(
-    const pfcp::pdr_id_t& pdr_id, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.pdr_id_ul.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
-    if (it.second.pdr_id_dl.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(
-    const pfcp::far_id_t& far_id, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if ((it.second.far_id_ul.first) &&
-        (it.second.far_id_ul.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
-    if ((it.second.far_id_dl.first) &&
-        (it.second.far_id_dl.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.qfi == qfi) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::set_default_qos_flow(const pfcp::qfi_t& qfi) {
-  default_qfi.qfi = qfi.qfi;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_default_qos_flow(smf_qos_flow& flow) {
-  Logger::smf_app().debug("Get default QoS Flow of this PDU session.");
-  return get_qos_flow(default_qfi, flow);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_flows(std::vector<smf_qos_flow>& flows) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  flows.clear();
-  for (auto it : qos_flows) {
-    flows.push_back(it.second);
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::find_qos_flow(
-    const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    if ((it->second.pdr_id_ul == pdr_id) || (it->second.pdr_id_dl == pdr_id)) {
-      flow = it->second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flow(const pfcp::qfi_t& qfi) {
-  std::unique_lock lock(m_pdu_session_mutex);
-  smf_qos_flow& flow = qos_flows[qfi.qfi];
-  flow.deallocate_ressources();
-  qos_flows.erase(qfi.qfi);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flow(smf_qos_flow& flow) {
-  std::unique_lock lock(m_pdu_session_mutex);
-  pfcp::qfi_t qfi = {.qfi = flow.qfi.qfi};
-  flow.deallocate_ressources();
-  qos_flows.erase(qfi.qfi);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flows() {
-  std::unique_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    it->second.deallocate_ressources();
-  }
-  qos_flows.clear();
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    // TODO: release FAR_ID, PDR_ID
-    // release_pdr_id(it->second.pdr_id_dl);
-    // release_pdr_id(it->second.pdr_id_ul);
-    // release_far_id(it->second.far_id_dl.second);
-    // release_far_id(it->second.far_id_ul.second);
-    it->second.deallocate_ressources();
-  }
-  if (ipv4) {
-    paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
-  }
-  clear();  // including qos_flows.clear()
-  Logger::smf_app().info(
-      "Resources associated with this PDU Session have been released");
-}
-
-//------------------------------------------------------------------------------
 void smf_pdu_session::generate_seid() {}
 
 void smf_pdu_session::set_seid(const uint64_t& s) {
@@ -386,14 +243,6 @@ std::string smf_pdu_session::toString() const {
 
   s.append("\tSEID:\t\t\t\t").append(std::to_string(seid)).append("\n");
 
-  if (default_qfi.qfi) {
-    s.append("Default ");
-    for (auto it : qos_flows) {
-      if (it.second.qfi == default_qfi.qfi) {
-        s.append(it.second.toString());
-      }
-    }
-  }
   return s;
 }
 
@@ -434,59 +283,9 @@ pdu_session_type_t smf_pdu_session::get_pdu_session_type() const {
   return pdu_session_type;
 }
 
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_rules_to_be_synchronised(
-    std::vector<QOSRulesIE>& rules) const {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules_to_be_synchronised) {
-    if (qos_rules.count(it) > 0) rules.push_back(qos_rules.at(it));
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_rules(
-    const pfcp::qfi_t& qfi, std::vector<QOSRulesIE>& rules) const {
-  Logger::smf_app().info(
-      "Get QoS Rules associated with Flow with QFI %d", qfi.qfi);
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules) {
-    if (it.second.qosflowidentifer == qfi.qfi)
-      rules.push_back(qos_rules.at(it.first));
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_default_qos_rule(QOSRulesIE& qos_rule) const {
-  Logger::smf_app().info(
-      "Get default QoS Rule this PDU Session (ID %d)", pdu_session_id);
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules) {
-    if (it.second.dqrbit == THE_QOS_RULE_IS_DEFAULT_QOS_RULE) {
-      qos_rule = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_rule(
-    const uint8_t rule_id, QOSRulesIE& qos_rule) const {
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::update_qos_rule(const QOSRulesIE& qos_rule) {
-
-}
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::mark_qos_rule_to_be_synchronised(const uint8_t rule_id) {
-
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::add_qos_rule(const QOSRulesIE& qos_rule) {
 
 }
 
@@ -605,12 +404,6 @@ void smf_context::get_default_qos(
   
 }
 
-//------------------------------------------------------------------------------
-void smf_context::get_default_qos_rule(
-    QOSRulesIE& qos_rule, uint8_t pdu_session_type) {
-  
-}
-
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_response_transfer(
     std::string& n2_sm_information,
@@ -651,20 +444,6 @@ bool smf_context::handle_service_request(
   sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
 
   // get QFIs associated with PDU session ID
-  std::vector<smf_qos_flow> qos_flows = {};
-  sp.get()->get_qos_flows(qos_flows);
-  for (auto i : qos_flows) {
-    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
-
-    qos_flow_context_updated qcu = {};
-    qcu.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-    qcu.set_qfi(i.qfi);
-    qcu.set_ul_fteid(i.ul_fteid);
-    qcu.set_qos_profile(i.qos_profile);
-    sm_context_resp.get()->res.add_qos_flow_context_updated(qcu);
-  }
-
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP1;
 
@@ -844,18 +623,6 @@ void smf_context::set_supi_prefix(std::string const& prefix) {
 bool smf_context::find_pdu_session(
     const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi,
     std::shared_ptr<dnn_context>& sd, std::shared_ptr<smf_pdu_session>& sp) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  for (auto it : dnns) {
-    for (auto session : it.get()->pdu_sessions) {
-      smf_qos_flow flow = {};
-      if (session->find_qos_flow(pdr_id, flow)) {
-        qfi.qfi = flow.qfi.qfi;
-        sp      = session;
-        sd      = it;
-        return true;
-      }
-    }
-  }
   return false;
 }
 
@@ -912,19 +679,6 @@ void dnn_context::insert_pdu_session(std::shared_ptr<smf_pdu_session>& sp) {
   pdu_sessions.push_back(sp);
 }
 
-//------------------------------------------------------------------------------
-bool dnn_context::remove_pdu_session(const uint32_t pdu_session_id) {
-  std::unique_lock lock(m_context);
-  for (auto it = pdu_sessions.begin(); it != pdu_sessions.end(); ++it) {
-    if (pdu_session_id == (*it).get()->pdu_session_id) {
-      (*it).get()->remove_qos_flows();
-      (*it).get()->clear();
-      pdu_sessions.erase(it);
-      return true;
-    }
-  }
-  return false;
-}
 //------------------------------------------------------------------------------
 size_t dnn_context::get_number_pdu_sessions() const {
   std::shared_lock lock(m_context);

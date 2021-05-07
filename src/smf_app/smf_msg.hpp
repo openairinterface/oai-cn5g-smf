@@ -36,13 +36,9 @@
 #include "3gpp_29.244.h"
 #include "3gpp_29.508.h"
 #include "3gpp_29.571.h"
-#include "NgRanTargetId.h"
+#include "NgRanTargetId.h" //api server model
 #include "pistache/http.h"
 #include "smf_profile.hpp"
-
-extern "C" {
-#include "QOSRules.h"
-}
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -76,7 +72,6 @@ class qos_flow_context_updated {
   void set_qfi(const pfcp::qfi_t& q);
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
-  void add_qos_rule(const QOSRulesIE& rule);
   void set_qos_profile(const qos_profile_t& profile);
   void set_priority_level(uint8_t p);
 
@@ -84,7 +79,6 @@ class qos_flow_context_updated {
   pfcp::qfi_t qfi;
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
-  std::map<uint8_t, QOSRulesIE> qos_rules;
   qos_profile_t qos_profile;
   bool to_be_removed;
 };

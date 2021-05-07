@@ -116,7 +116,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     pdu_session_type    = {};
     seid                = 0;
     up_fseid            = {};
-    qos_flows.clear();
     released           = false;
     default_qfi.qfi    = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
     pdu_session_status = pdu_session_status_e::PDU_SESSION_INACTIVE;
@@ -140,87 +139,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return void
    */
   void get_paa(paa_t& paa);
-
-  /*
-   * Find a QoS flow by a PDR ID
-   * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
-   * @param [const smf_qos_flow &] flow: flow to be assigned
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by a FAR
-   * @param [const pfcp::far_id_t &] far_id: FAR ID
-   * @param [const smf_qos_flow &] flow: flow to be assigned if found
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::far_id_t& far_id, smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by its QFI
-   * @param [const pfcp::qfi_t &] QFI
-   * @param [const smf_qos_flow &] flow: flow to be assigned
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& flow);
-
-  /*
-   * Add a QoS flow to a PDU Session
-   * @param [const smf_qos_flow &] flow: Flow to be added
-   * @return void
-   */
-  void add_qos_flow(const smf_qos_flow& flow);
-
-  /*
-   * Get all QoS Flows associated with this PDU Session
-   * @param [std::vector<smf_qos_flow> &] flows: list of Flows associated with
-   * this session
-   * @return void
-   */
-  void get_qos_flows(std::vector<smf_qos_flow>& flows);
-
-  /*
-   * Set a default flow for this PDU Session
-   * @param [const pfcp::qfi_t &] qfi: Default QFI
-   * @return void
-   */
-  void set_default_qos_flow(const pfcp::qfi_t& qfi);
-
-  /*
-   * Get the default QoS flow of this PDU Session
-   * @param [smf_qos_flow &] flow: Default QoS flow
-   * @return bool: Return true if the default QoS flow exist
-   */
-  bool get_default_qos_flow(smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by its PDR ID
-   * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
-   * @param [smf_qos_flow &] flow: Flow to be returned if found
-   * @return bool: return true if a flow is found, otherwise false
-   */
-  bool find_qos_flow(const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow);
-
-  /*
-   * Remove a QoS flow identified by its QFI
-   * @param [const pfcp::qfi_t &] qfi: QFI of the flow to be removed
-   * @return void
-   */
-  void remove_qos_flow(const pfcp::qfi_t& qfi);
-
-  /*
-   * Remove a QoS flow
-   * @param [smf_qos_flow &] flow: flow to be removed
-   * @return void
-   */
-  void remove_qos_flow(smf_qos_flow& flow);
-
-  /*
-   * Remove all QoS flow associated with this PDU Session
-   * @return void
-   */
-  void remove_qos_flows();
 
   /*
    * Set current status of PDU Session
@@ -328,53 +246,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void mark_qos_rule_to_be_synchronised(const uint8_t rule_id);
 
   /*
-   * Get all QoS Rules to be synchronised with UE
-   * @param [std::vector<QOSRulesIE> &]: qos_rules: List of QoS Rules to be
-   * synchronised with UE
-   * @return void
-   */
-  void get_qos_rules_to_be_synchronised(
-      std::vector<QOSRulesIE>& qos_rules) const;
-
-  /*
-   * Get list of QoS rules associated with a given QFI
-   * @param [pfcp::qfi_t &] qfi
-   * @param [std::vector<QOSRulesIE> &] rules
-   * @void
-   */
-  void get_qos_rules(
-      const pfcp::qfi_t& qfi, std::vector<QOSRulesIE>& rules) const;
-
-  /*
-   * Get default QoS Rule associated with this PDU Session
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  bool get_default_qos_rule(QOSRulesIE& qos_rule) const;
-
-  /*
-   * Get QoS Rule with Rule ID
-   * @param [uint8_t] rule_id: Rule ID
-   * @param [QOSRulesIE &] qos_rule
-   * @return bool: Return true if Rule exist, otherwise return false
-   */
-  bool get_qos_rule(const uint8_t rule_id, QOSRulesIE& qos_rule) const;
-
-  /*
-   * Update QoS Rule
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  void update_qos_rule(const QOSRulesIE& qos_rule);
-
-  /*
-   * Add a QoS Rule
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  void add_qos_rule(const QOSRulesIE& qos_rule);
-
-  /*
    * Get PDN Type of this PDU session
    * @param void
    * @return pdu_session_type_t: PDN Type
@@ -427,8 +298,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   timer_id_t timer_T3592;
 
   pfcp::qfi_t default_qfi;                    // Default QFI for this session
-  std::map<uint8_t, smf_qos_flow> qos_flows;  // QFI <-> QoS Flow
-  std::map<uint8_t, QOSRulesIE> qos_rules;    // QRI <-> QoS Rules
   std::vector<uint8_t> qos_rules_to_be_synchronised;
   std::vector<uint8_t> qos_rules_to_be_removed;
   // 5GSM parameters and capabilities
@@ -514,14 +383,6 @@ class dnn_context {
    * @return void
    */
   void insert_pdu_session(std::shared_ptr<smf_pdu_session>& sp);
-
-  /*
-   * Delete a PDU Session identified by its ID
-   * @param [const uint32_t] pdu_session_id
-   * @return bool: return true if the pdu session is deleted, otherwise, return
-   * false
-   */
-  bool remove_pdu_session(const uint32_t pdu_session_id);
 
   /*
    * Get number of pdu sessions associated with this context (dnn and Nssai)
@@ -856,16 +717,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return void
    */
   void set_supi_prefix(std::string const& value);
-
-  /*
-   * Get the default QoS Rule for all QFIs
-   * @param [QOSRulesIE] qos_rule
-   * @param [const uint8_t] pdu_session_type: PDU session type (e.g., Ipv4,
-   * Ipv6)
-   * @return void
-   */
-  void get_default_qos_rule(QOSRulesIE& qos_rule, uint8_t pdu_session_type);
-
 
   /*
    * Find the PDU Session, QFI associated with a given PDR_ID

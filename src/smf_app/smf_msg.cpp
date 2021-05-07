@@ -54,18 +54,6 @@ void qos_flow_context_updated::set_dl_fteid(const pfcp::fteid_t& teid) {
 }
 
 //-----------------------------------------------------------------------------
-void qos_flow_context_updated::add_qos_rule(const QOSRulesIE& rule) {
-  uint8_t rule_id = rule.qosruleidentifer;
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    qos_rules.erase(rule_id);
-    qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, rule));
-    Logger::smf_app().trace(
-        "qos_flow_context_updated::add_qos_rule(%d) success", rule_id);
-  }
-}
-
-//-----------------------------------------------------------------------------
 
 void qos_flow_context_updated::set_qos_profile(const qos_profile_t& profile) {
   qos_profile = profile;

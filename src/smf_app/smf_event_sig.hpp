@@ -32,7 +32,7 @@
 
 #include <boost/signals2.hpp>
 #include <string>
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.h" //common/nas
 
 namespace bs2 = boost::signals2;
 

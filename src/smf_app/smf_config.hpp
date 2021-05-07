@@ -36,10 +36,10 @@
 #include <libconfig.h++>
 #include <mutex>
 #include <vector>
-#include "thread_sched.hpp"
+#include "thread_sched.hpp" //comon/utils/
 
-#include "3gpp_29.244.h"
-#include "pfcp.hpp"
+#include "3gpp_29.244.h" // common
+#include "pfcp.hpp" //pfcp
 #include "smf.h"
 
 #define SMF_CONFIG_STRING_SMF_CONFIG "SMF"

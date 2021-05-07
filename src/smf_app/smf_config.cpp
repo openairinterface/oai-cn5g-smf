@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include "string.hpp"
+#include "string.hpp" //common/utils
 
 // C includes
 #include <arpa/inet.h>
@@ -46,8 +46,8 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "common_defs.h"
-#include "epc.h"
-#include "if.hpp"
+#include "epc.h" //common/utils
+#include "if.hpp" //common/utils
 #include "logger.hpp"
 #include "smf_app.hpp"
 
