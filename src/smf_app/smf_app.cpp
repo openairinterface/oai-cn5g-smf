@@ -339,13 +339,6 @@ smf_app::smf_app(const std::string& config_file)
     throw;
   }
 
-  // TODO: should be done when SMF select UPF for a particular UE (should be
-  // verified)
-  for (std::vector<pfcp::node_id_t>::const_iterator it = smf_cfg.upfs.begin();
-       it != smf_cfg.upfs.end(); ++it) {
-    //start_upf_association(*it);
-  }
-
   //FLEXCN
   // Trigger SMFEventExpose subscription / to be noticed when a PDU session status changes
   trigger_pdu_session_status_notification_subscribe();
@@ -419,23 +412,7 @@ void smf_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
-  Logger::smf_app().debug("Handle NF Instance Registration response");
-
-  nf_instance_profile = r.profile;
-  // Set heartbeat timer
-  Logger::smf_app().debug(
-      "Set value of NRF Heartbeat timer to %d",
-      r.profile.get_nf_heartBeat_timer());
-  timer_nrf_heartbeat = itti_inst->timer_setup(
-      r.profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
-      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
-      0);  // TODO arg2_user
-
-  /*  //Set timer to send NF Deregistration (for testing purpose)
-    itti_inst->timer_setup(50, 0,
-                               TASK_SMF_APP,
-    TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION, 0);  // TODO arg2_user
-  */
+  
 }
 
 //------------------------------------------------------------------------------
@@ -715,58 +692,6 @@ void smf_app::trigger_update_context_error_response(
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_http_response(
     const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type) {
-  Logger::smf_app().debug(
-      "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
-  switch (msg_type) {
-    case N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE: {
-      std::shared_ptr<itti_n11_release_sm_context_response> itti_msg =
-          std::make_shared<itti_n11_release_sm_context_response>(
-              TASK_SMF_SBI, TASK_SMF_APP, promise_id);
-      pdu_session_release_sm_context_response sm_context_response = {};
-      sm_context_response.set_http_code(http_code);
-      itti_msg->res = sm_context_response;
-      int ret       = itti_inst->send_msg(itti_msg);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
-            itti_msg->get_msg_name());
-      }
-    } break;
-
-    case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE: {
-      std::shared_ptr<itti_n11_create_sm_context_response> itti_msg =
-          std::make_shared<itti_n11_create_sm_context_response>(
-              TASK_SMF_SBI, TASK_SMF_APP, promise_id);
-      pdu_session_create_sm_context_response sm_context_response = {};
-      sm_context_response.set_http_code(http_code);
-      itti_msg->res = sm_context_response;
-      int ret       = itti_inst->send_msg(itti_msg);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
-            itti_msg->get_msg_name());
-      }
-    } break;
-
-    case N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE: {
-      std::shared_ptr<itti_n11_update_sm_context_response> itti_msg =
-          std::make_shared<itti_n11_update_sm_context_response>(
-              TASK_SMF_SBI, TASK_SMF_APP, promise_id);
-      pdu_session_update_sm_context_response sm_context_response = {};
-      sm_context_response.set_http_code(http_code);
-      itti_msg->res = sm_context_response;
-      int ret       = itti_inst->send_msg(itti_msg);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
-            itti_msg->get_msg_name());
-      }
-    } break;
-
-    default: {
-      Logger::smf_app().debug("Unknown message type %d", msg_type);
-    }
-  }
 }
 
 //---------------------------------------------------------------------------------------------
@@ -969,6 +894,7 @@ void smf_app::trigger_pdu_session_status_notification_subscribe() {
 
   itti_msg->url       = url;
   itti_msg->json_data = json_data;
+  Logger::smf_app().info(json_data.dump().c_str());
   int ret             = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
