@@ -51,14 +51,6 @@
 #include "string.hpp"
 
 extern "C" {
-#include "Ngap_AssociatedQosFlowItem.h"
-#include "Ngap_GTPTunnel.h"
-#include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupUnsuccessfulTransfer.h"
-#include "Ngap_QosFlowAddOrModifyResponseItem.h"
-#include "Ngap_QosFlowAddOrModifyResponseList.h"
 #include "dynamic_memory_check.h"
 }
 
@@ -620,62 +612,15 @@ void smf_context::get_default_qos_rule(
 }
 
 //------------------------------------------------------------------------------
-void smf_context::get_default_qos_flow_description(
-    QOSFlowDescriptionsContents& qos_flow_description, uint8_t pdu_session_type,
-    const pfcp::qfi_t& qfi) {
-  
-}
-
-//------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
     SessionAMBR& session_ambr, const snssai_t& snssai, const std::string& dnn) {
   
 }
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_modification_request(
-    nas_message_t& nas_msg,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  return true;
-}
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_modification_complete(
-    nas_message_t& nas_msg,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  
-  }
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_modification_command_reject(
-    nas_message_t& nas_msg,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  return true;
-}
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_release_request(
-    nas_message_t& nas_msg,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  return true;
-}
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_release_complete(
-    nas_message_t& nas_msg,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  return true;
-}
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_response_transfer(
@@ -934,14 +879,6 @@ void smf_context::handle_sm_context_status_change(
 //------------------------------------------------------------------------------
 void smf_context::handle_ee_pdu_session_release(
     supi64_t supi, pdu_session_id_t pdu_session_id, uint8_t http_version) {
-  
-}
-
-//------------------------------------------------------------------------------
-void smf_context::update_qos_info(
-    std::shared_ptr<smf_pdu_session>& sp,
-    smf::pdu_session_update_sm_context_response& res,
-    const nas_message_t& nas_msg) {
   
 }
 
