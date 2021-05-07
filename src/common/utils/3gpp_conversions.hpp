@@ -33,7 +33,6 @@
 #include "3gpp_24.501.h"
 #include "endpoint.hpp"
 #include "3gpp_24.008.h"
-#include "nas_lib.h"
 #include "SmContextMessage.h"
 #include "SmContextUpdateMessage.h"
 #include "SmContextReleaseMessage.h"
@@ -41,10 +40,6 @@
 #include "NsmfEventExposure.h"
 #include "smf_msg.hpp"
 #include "itti_msg_n11.hpp"
-
-extern "C" {
-#include "nas_message.h"
-}
 
 namespace xgpp_conv {
 
@@ -69,26 +64,6 @@ void pdn_ip_to_pfcp_ue_ip_address(
     const pdu_session_type_t& pdu_session_type,
     const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
     pfcp::ue_ip_address_t& ue_ip_address);
-
-/*
- * Convert PCO in NAS into core type
- * @param [const protocol_configuration_options_nas_t&] pco_nas: PCO in NAS msg
- * @param [protocol_configuration_options_t&] pco: PCO in core type
- * @return void
- */
-void pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco);
-
-/*
- * Convert PCO in core type to NAS type
- * @param [const protocol_configuration_options_t&] pco: PCO in cpre type
- * @param [protocol_configuration_options_nas_t&] pco_nas: PCO in NAS type
- * @return void
- */
-void pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas);
 
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU
@@ -150,16 +125,6 @@ void data_notification_from_openapi(
 void smf_event_exposure_notification_from_openapi(
     const oai::smf_server::model::NsmfEventExposure& nee,
     smf::event_exposure_msg& eem);
-
-/*
- * Convert NAS to SM Context Request msg
- * @param [const nas_message_t&] nm: NAS msg
- * @param [smf::pdu_session_create_sm_context_request&] pcr: PDU
- * SessionCreateSMContextRequest msg
- * @return void
- */
-void sm_context_request_from_nas(
-    const nas_message_t& nm, smf::pdu_session_create_sm_context_request& pcr);
 
 void create_sm_context_response_from_ct_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,
