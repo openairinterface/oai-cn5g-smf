@@ -36,10 +36,6 @@
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
 
-extern "C" {
-#include "nas_message.h"
-}
-
 namespace smf {
 
 class smf_n1 {
@@ -169,14 +165,6 @@ class smf_n1 {
       pdu_session_modification_network_requested& msg, std::string& nas_msg_str,
       cause_value_5gsm_e sm_cause);
 
-  /*
-   * Decode N1 SM Container into the NAS mesasge (using NAS lib)
-   * @param [nas_message_t&] nas_msg Store NAS message after decoded
-   * @param [const std::string&] n1_sm_msg N1 SM Container
-   * @return status of the decode process
-   */
-  int decode_n1_sm_container(
-      nas_message_t& nas_msg, const std::string& n1_sm_msg);
 };
 
 }  // namespace smf

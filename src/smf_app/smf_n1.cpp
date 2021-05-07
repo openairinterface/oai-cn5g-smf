@@ -40,7 +40,6 @@
 
 extern "C" {
 #include "dynamic_memory_check.h"
-#include "nas_message.h"
 }
 
 using namespace smf;
@@ -95,8 +94,3 @@ bool create_n1_pdu_session_release_command(
   return true;
 }
 
-//------------------------------------------------------------------------------
-int smf_n1::decode_n1_sm_container(
-    nas_message_t& nas_msg, const std::string& n1_sm_msg) {
-  return 0;
-}
