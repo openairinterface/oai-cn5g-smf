@@ -43,28 +43,27 @@
 #include "3gpp_conversions.hpp"
 #include "ProblemDetails.h"
 #include "RefToBinaryData.h"
-#include "SmContextCreateError.h"
-#include "SmContextCreatedData.h"
-#include "SmContextMessage.h"
-#include "SmContextUpdateError.h"
-#include "async_shell_cmd.hpp"
-#include "common_defs.h"
-#include "conversions.hpp"
-#include "itti.hpp"
-#include "itti_msg_nx.hpp"
-#include "logger.hpp"
-#include "pfcp.hpp"
-#include "smf.h"
-#include "smf_event.hpp"
+#include "SmContextCreateError.h" //
+#include "SmContextCreatedData.h" //
+#include "SmContextMessage.h" //
+#include "SmContextUpdateError.h" //
+#include "async_shell_cmd.hpp" //
+#include "common_defs.h" //
+#include "conversions.hpp" //
+#include "itti.hpp" //
+#include "itti_msg_nx.hpp" //
+#include "logger.hpp" // common
+#include "pfcp.hpp" // pfcp
+#include "smf.h" // common
+#include "smf_event.hpp" //smf_app
 #include "smf_n1.hpp"
 #include "smf_sbi.hpp"
 #include "smf_n4.hpp"
 #include "smf_paa_dynamic.hpp"
-#include "string.hpp"
+#include "string.hpp" // 
 
 extern "C" {
 #include "dynamic_memory_check.h"
-#include "nas_message.h"
 }
 
 using namespace smf;
