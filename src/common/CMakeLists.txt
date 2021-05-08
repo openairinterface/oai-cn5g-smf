@@ -21,8 +21,8 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/msg)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/nas)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ngap)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/nas)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ngap)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common/utils)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
@@ -32,4 +32,19 @@ add_library(3GPP_COMMON_TYPES STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/logger.cpp
 )
 
+file(GLOB COMMON_src_files
+    ${SRC_TOP_DIR}/common/utils/*.c
+    ${SRC_TOP_DIR}/common/utils/bstr/*.c
+    ${SRC_TOP_DIR}/common/*.c
+)   
+
+include_directories(${SRC_TOP_DIR}/common)
+include_directories(${SRC_TOP_DIR}/common/msg)
+include_directories(${SRC_TOP_DIR}/common/utils)
+include_directories(${SRC_TOP_DIR}/common/utils/bstr)
+include_directories(${SRC_TOP_DIR}/common/nas)
+
+# TODO: Determine if we need nettle lib and cryto lib here
+# They are added here just by "history" reasons.
+add_library(COMMON ${COMMON_src_files} ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES})
 

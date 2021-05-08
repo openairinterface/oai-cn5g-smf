@@ -27,17 +27,14 @@ include_directories(${SRC_TOP_DIR}/common/nas)
 include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/smf)
-include_directories(${SRC_TOP_DIR}/ngap)
-include_directories(${SRC_TOP_DIR}/ngap/asn1c)
-include_directories(${SRC_TOP_DIR}/ngap/ies)
-include_directories(${SRC_TOP_DIR}/nas)
-include_directories(${SRC_TOP_DIR}/nas/ies)
-include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-include_directories(${SRC_TOP_DIR}/nas/mm)
-include_directories(${SRC_TOP_DIR}/nas/mm/msg)
-include_directories(${SRC_TOP_DIR}/nas/sm)
-include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-include_directories(${SRC_TOP_DIR}/nas/security)
+# include_directories(${SRC_TOP_DIR}/nas)
+# include_directories(${SRC_TOP_DIR}/nas/ies)
+# include_directories(${SRC_TOP_DIR}/nas/sm/msg)
+# include_directories(${SRC_TOP_DIR}/nas/mm)
+# include_directories(${SRC_TOP_DIR}/nas/mm/msg)
+# include_directories(${SRC_TOP_DIR}/nas/sm)
+# include_directories(${SRC_TOP_DIR}/nas/sm/msg)
+# include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
 include_directories(${SRC_TOP_DIR}/api-server/api)
@@ -49,8 +46,6 @@ add_library (SMF STATIC
   smf_app.cpp
   smf_config.cpp
   smf_context.cpp
-  smf_n1.cpp
-  smf_n2.cpp
   smf_pfcp_association.cpp
   smf_pco.cpp
   smf_procedure.cpp
