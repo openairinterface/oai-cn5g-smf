@@ -49,7 +49,6 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
-#include "smf_pco.hpp"
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 #include "ProblemDetails.h"
@@ -155,56 +154,6 @@ class smf_app {
    */
   int apply_config(const smf_config& cfg);
 
-  /*
-   * pco_push_protocol_or_container_id
-   * @param [protocol_configuration_options_t &] pco
-   * @param [pco_protocol_or_container_id_t *const] proc_id
-   * @return
-   */
-  int pco_push_protocol_or_container_id(
-      protocol_configuration_options_t& pco,
-      pco_protocol_or_container_id_t* const
-          poc_id /* STOLEN_REF poc_id->contents*/);
-
-  /*
-   * process_pco_request_ipcp
-   * @param [protocol_configuration_options_t &] pco_resp
-   * @param [pco_protocol_or_container_id_t *const] proc_id
-   * @return
-   */
-  int process_pco_request_ipcp(
-      protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
-
-  /*
-   * process_pco_dns_server_request
-   * @param [protocol_configuration_options_t &] pco_resp
-   * @param [pco_protocol_or_container_id_t *const] proc_id
-   * @return
-   */
-  int process_pco_dns_server_request(
-      protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
-
-  /*
-   * process_pco_dns_server_v6_request
-   * @param [protocol_configuration_options_t &] pco_resp
-   * @param [pco_protocol_or_container_id_t *const] proc_id
-   * @return
-   */
-  int process_pco_dns_server_v6_request(
-      protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
-
-  /*
-   * process_pco_link_mtu_request
-   * @param [protocol_configuration_options_t &] pco_resp
-   * @param [pco_protocol_or_container_id_t *const] proc_id
-   * @return
-   */
-  int process_pco_link_mtu_request(
-      protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
 
  public:
   explicit smf_app(const std::string& config_file);
@@ -283,19 +232,6 @@ class smf_app {
    * @return pool index
    */
   int static_paa_get_pool_id(const struct in_addr& ue_addr);
-
-  /*
-   * process_pco_request
-   * @param [const protocol_configuration_options_t &] pco_req
-   * @param [const protocol_configuration_options_t &] pco_resp
-   * @param [const protocol_configuration_options_ids_t &] pco_ids
-   * @return pool index
-   */
-  int process_pco_request(
-      const protocol_configuration_options_t& pco_req,
-      protocol_configuration_options_t& pco_resp,
-      protocol_configuration_options_ids_t& pco_ids);
-
 
   /*
    * Handle ITTI message (N4 Session Modification Response)
