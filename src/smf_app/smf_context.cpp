@@ -41,9 +41,7 @@
 #include "smf_app.hpp"
 #include "smf_config.hpp"
 #include "smf_event.hpp"
-#include "smf_n1.hpp"
 #include "smf_sbi.hpp"
-#include "smf_n2.hpp"
 #include "smf_paa_dynamic.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
@@ -446,12 +444,6 @@ bool smf_context::handle_service_request(
   // get QFIs associated with PDU session ID
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP1;
-
-  // Create N2 SM Information: PDU Session Resource Setup Request Transfer IE
-  // N2 SM Information
-  smf_n2::get_instance().create_n2_pdu_session_resource_setup_request_transfer(
-      sm_context_resp.get()->res, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-      n2_sm_info);
 
   smf_app_inst->convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
   sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
