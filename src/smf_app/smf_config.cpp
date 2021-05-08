@@ -46,7 +46,7 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "common_defs.h"
-#include "epc.h" //common/utils
+// #include "epc.h" //common/utils
 #include "if.hpp" //common/utils
 #include "logger.hpp"
 #include "smf_app.hpp"
@@ -173,6 +173,34 @@ int smf_config::load_itti(const Setting& itti_cfg, itti_cfg_t& cfg) {
   }
 
   return RETURNok;
+}
+
+std::string dnn_label(const std::string& dnn) {
+  std::string dnn_label = {};
+  bool to_count         = true;
+  uint8_t counted       = 0;
+  int index             = 0;
+
+  dnn_label.push_back('?');
+
+  for (int i = 0; i < dnn.length(); ++i) {
+    if (isalnum(dnn[i]) || (dnn[i] == '-')) {
+      dnn_label.push_back(dnn[i]);
+      counted++;
+    } else if (dnn[i] == '.') {
+      dnn_label.push_back('?');
+      if (to_count) {  // always true
+        dnn_label[index] = counted;
+      }
+      to_count = true;
+      counted  = 0;
+      index    = dnn_label.length() - 1;
+    }
+  }
+  if (to_count) {
+    dnn_label[index] = counted;
+  }
+  return dnn_label;
 }
 
 //------------------------------------------------------------------------------
@@ -432,7 +460,7 @@ int smf_config::load(const string& config_file) {
       const Setting& dnn_cfg = dnn_list_cfg[i];
       dnn_cfg.lookupValue(SMF_CONFIG_STRING_DNN_NI, astring);
       dnn[dnn_idx].dnn       = astring;
-      dnn[dnn_idx].dnn_label = EPC::Utility::dnn_label(astring);
+      dnn[dnn_idx].dnn_label = dnn_label(astring);
       dnn_cfg.lookupValue(SMF_CONFIG_STRING_PDU_SESSION_TYPE, astring);
       if (boost::iequals(astring, "IPv4")) {
         dnn[dnn_idx].pdu_session_type.pdu_session_type =
