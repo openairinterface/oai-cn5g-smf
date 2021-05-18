@@ -63,5 +63,18 @@ typedef bs2::signal_type<
 // TODO: PLMN Change
 // TODO: Downlink data delivery status
 
+// FlexCN event
+// currently, we don't know yet what event we might be interested
+// therefore, this name here is more like a placeholder.
+// Meaning of parameters by the order: 
+//    SUPI
+//    PDU Session
+//    HTTP version 
+typedef bs2::signal_type<
+    void(supi64_t, pdu_session_id_t, uint8_t),
+    bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
+    flexcn_no_1_sig_t;
+
+
 }  // namespace smf
 #endif /* FILE_SMF_EVENT_SIG_HPP_SEEN */

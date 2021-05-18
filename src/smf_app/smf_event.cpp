@@ -51,3 +51,9 @@ bs2::connection smf_event::subscribe_ee_pdu_session_release(
     const ee_pdu_session_release_sig_t::slot_type& sig) {
   return ee_pdu_session_release.connect(sig);
 }
+
+//------------------------------------------------------------------------------
+bs2::connection smf_event::subscribe_flexcn_no_1_change(
+    const flexcn_no_1_sig_t::slot_type& sig) {
+  return flexcn_no_1.connect(sig);
+}
