@@ -1651,6 +1651,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
           sm_context_resp_pending->get_msg_name());
     }
   }
+  // what is the expectation here? 
+
 }
 
 //-------------------------------------------------------------------------------------
@@ -2015,6 +2017,8 @@ bool smf_context::handle_pdu_session_release_complete(
     }
   }
   // TODO: Invoke Nudm_UECM_Deregistration
+  // Hung: should add the event here when we are 
+  // sure that all the ops are completed ??? 
   return true;
 }
 
@@ -3124,6 +3128,7 @@ void smf_context::handle_pdu_session_status_change(
    supi_t supi                     = scf.get()->supi;
    supi64_t supi64                 = smf_supi_to_u64(supi);
    pdu_session_id_t pdu_session_id = scf.get()->pdu_session_id;
+  //  scf.get()->
 
    std::shared_ptr<smf_context> sc = {};
 
@@ -3187,8 +3192,15 @@ void smf_context::handle_pdu_session_status_change(
         	   cj["ue_ipv4_addr"]  = conv::toString(sp->ipv4_address);
            }
            cj["pdu_session_type"]  = sp->pdu_session_type.toString();
+           cj["seid"] = std::to_string(sp->seid);
+           cj["amf_addr"] = sp->amf_addr;
+           cj["amf_id"] = sp->amf_id;
+           cj["default_qfi.qfi"] = std::to_string(sp->default_qfi.qfi);
+           cj["default_qfi.spare"] = std::to_string(sp->default_qfi.spare);
+           cj["ipv6_address"] = conv::toString(sp->ipv6_address);
+           cj["up_fseid.ipv4_addr"] = conv::toString(sp->up_fseid.ipv4_address);
        }
-
+       
        ev_notif.set_custom_info(cj);
        itti_msg->event_notifs.push_back(ev_notif);
      }
