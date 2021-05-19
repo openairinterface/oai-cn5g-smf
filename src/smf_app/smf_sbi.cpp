@@ -158,8 +158,8 @@ void smf_sbi_task(void* args_p) {
 smf_sbi::smf_sbi() {
   Logger::smf_sbi().startup("Starting...");
   if (itti_inst->create_task(TASK_SMF_SBI, smf_sbi_task, nullptr)) {
-    Logger::smf_sbi().error("Cannot create task TASK_SMF_SBI");
-    throw std::runtime_error("Cannot create task TASK_SMF_SBI");
+    Logger::smf_sbi().error("Cannot create task TASK_FLEXCN_SBI");
+    throw std::runtime_error("Cannot create task TASK_FLEXCN_SBI");
   }
   Logger::smf_sbi().startup("Started");
 }
@@ -273,7 +273,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
 
@@ -475,7 +475,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
 
@@ -754,13 +754,13 @@ void smf_sbi::register_nf_instance(
               TASK_SMF_SBI, TASK_SMF_APP);
       itti_msg->http_response_code = httpCode;
       itti_msg->http_version       = msg->http_version;
-      Logger::smf_app().debug("Registered SMF profile (from NRF)");
+      Logger::smf_app().debug("Registered FLEXCN profile (from NRF)");
       itti_msg->profile.from_json(response_data);
 
       int ret = itti_inst->send_msg(itti_msg);
       if (RETURNok != ret) {
         Logger::smf_sbi().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
+            "Could not send ITTI message %s to task TASK_FLEXCN_APP",
             itti_msg->get_msg_name());
       }
     } else {
@@ -852,7 +852,7 @@ void smf_sbi::update_nf_instance(
       int ret = itti_inst->send_msg(itti_msg);
       if (RETURNok != ret) {
         Logger::smf_sbi().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
+            "Could not send ITTI message %s to task TASK_FLEXCN_APP",
             itti_msg->get_msg_name());
       }
     } else {

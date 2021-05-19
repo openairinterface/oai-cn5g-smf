@@ -795,7 +795,7 @@ int smf_config::load(const string& config_file) {
 void smf_config::display() {
   Logger::smf_app().info(
       "==== EURECOM %s v%s ====", PACKAGE_NAME, PACKAGE_VERSION);
-  Logger::smf_app().info("Configuration SMF:");
+  Logger::smf_app().info("Configuration FLEXCN:");
   Logger::smf_app().info("- Instance ..............: %d\n", instance);
   Logger::smf_app().info("- PID dir ...............: %s\n", pid_dir.c_str());
 
@@ -807,7 +807,7 @@ void smf_config::display() {
   Logger::smf_app().info(
       "    API version..........: %s", sbi_api_version.c_str());
 
-   Logger::smf_app().info("- SMF:");
+   Logger::smf_app().info("- FLEXCN:");
     Logger::smf_app().info(
         "    IPv4 Addr ...........: %s",
         inet_ntoa(*((struct in_addr*) &nrf_addr.ipv4_addr)));

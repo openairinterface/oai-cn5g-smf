@@ -336,10 +336,10 @@ void smf_profile::display() const {
 
   // SMF info
   if (smf_info.snssai_smf_info_list.size() > 0) {
-    Logger::smf_app().debug("\tSMF Info:");
+    Logger::smf_app().debug("\tFLEXCN Info:");
   }
   for (auto s : smf_info.snssai_smf_info_list) {
-    Logger::smf_app().debug("\t\tParameters supported by the SMF:");
+    Logger::smf_app().debug("\t\tParameters supported by the FLEXCN:");
     Logger::smf_app().debug(
         "\t\t\tSNSSAI (SST %d, SD %s)", s.snssai.sST, s.snssai.sD.c_str());
     for (auto d : s.dnn_smf_info_list) {
@@ -383,22 +383,22 @@ void smf_profile::to_json(nlohmann::json& data) const {
   data["custom_info"] = custom_info;
 
   // SMF info
-  data["smfInfo"]                      = {};
-  data["smfInfo"]["sNssaiSmfInfoList"] = nlohmann::json::array();
+  data["flexcnInfo"]                      = {};
+  data["flexcnInfo"]["sNssaiFlexcnInfoList"] = nlohmann::json::array();
   for (auto s : smf_info.snssai_smf_info_list) {
     nlohmann::json tmp    = {};
     tmp["sNssai"]["sst"]  = s.snssai.sST;
     tmp["sNssai"]["sd"]   = s.snssai.sD;
-    tmp["dnnSmfInfoList"] = nlohmann::json::array();
+    tmp["dnnFlexcnInfoList"] = nlohmann::json::array();
     for (auto d : s.dnn_smf_info_list) {
       nlohmann::json dnn_json = {};
       dnn_json["dnn"]         = d.dnn;
-      tmp["dnnSmfInfoList"].push_back(dnn_json);
+      tmp["dnnFlexcnInfoList"].push_back(dnn_json);
     }
-    data["smfInfo"]["sNssaiSmfInfoList"].push_back(tmp);
+    data["flexcnInfo"]["sNssaiFlexcnInfoList"].push_back(tmp);
   }
 
-  Logger::smf_app().debug("SMF profile to json:\n %s", data.dump().c_str());
+  Logger::smf_app().debug("Flexcn profile to json:\n %s", data.dump().c_str());
 }
 
 //------------------------------------------------------------------------------
@@ -408,14 +408,14 @@ void smf_profile::from_json(const nlohmann::json& data) {
   // TODO: custom_info;
 
   // SMF info
-  if (data.find("smfInfo") != data.end()) {
-    nlohmann::json info = data["smfInfo"];
+  if (data.find("flexcnInfo") != data.end()) {
+    nlohmann::json info = data["flexcnInfo"];
 
     dnn_smf_info_item_t dnn_item = {};
 
-    if (info.find("sNssaiSmfInfoList") != info.end()) {
+    if (info.find("sNssaiFlexcnInfoList") != info.end()) {
       nlohmann::json snssai_smf_info_list =
-          data["smfInfo"]["sNssaiSmfInfoList"];
+          data["flexcnInfo"]["sNssaiFlexcnInfoList"];
 
       for (auto it : snssai_smf_info_list) {
         snssai_smf_info_item_t smf_info_item = {};
@@ -425,8 +425,8 @@ void smf_profile::from_json(const nlohmann::json& data) {
           if (it["sNssai"].find("sd") != it["sNssai"].end())
             smf_info_item.snssai.sD = it["sNssai"]["sd"].get<std::string>();
         }
-        if (it.find("dnnSmfInfoList") != it.end()) {
-          for (auto d : it["dnnSmfInfoList"]) {
+        if (it.find("dnnFlexcnInfoList") != it.end()) {
+          for (auto d : it["dnnFlexcnInfoList"]) {
             if (d.find("dnn") != d.end()) {
               dnn_item.dnn = d["dnn"].get<std::string>();
               smf_info_item.dnn_smf_info_list.push_back(dnn_item);
@@ -489,11 +489,11 @@ void upf_profile::to_json(nlohmann::json& data) const {
     nlohmann::json tmp    = {};
     tmp["sNssai"]["sst"]  = s.snssai.sST;
     tmp["sNssai"]["sd"]   = s.snssai.sD;
-    tmp["dnnSmfInfoList"] = nlohmann::json::array();
+    tmp["dnnFlexcnInfoList"] = nlohmann::json::array();
     for (auto d : s.dnn_upf_info_list) {
       nlohmann::json dnn_json = {};
       dnn_json["dnn"]         = d.dnn;
-      tmp["dnnSmfInfoList"].push_back(dnn_json);
+      tmp["dnnFlexcnInfoList"].push_back(dnn_json);
     }
     data["upfInfo"]["sNssaiUpfInfoList"].push_back(tmp);
   }

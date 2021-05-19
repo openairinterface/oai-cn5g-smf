@@ -231,8 +231,8 @@ smf_n4::smf_n4()
   cp_function_features.load = 0;
 
   if (itti_inst->create_task(TASK_SMF_N4, smf_n4_task, nullptr)) {
-    Logger::smf_n4().error("Cannot create task TASK_SMF_N4");
-    throw std::runtime_error("Cannot create task TASK_SMF_N4");
+    Logger::smf_n4().error("Cannot create task TASK_FLEXCN_N4");
+    throw std::runtime_error("Cannot create task TASK_FLEXCN_N4");
   }
   Logger::smf_n4().startup("Started");
 }
@@ -621,7 +621,7 @@ void smf_n4::handle_receive_session_establishment_response(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_n4().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
   }
@@ -649,7 +649,7 @@ void smf_n4::handle_receive_session_modification_response(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_n4().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
   }
@@ -677,7 +677,7 @@ void smf_n4::handle_receive_session_deletion_response(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_n4().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
   }
@@ -705,7 +705,7 @@ void smf_n4::handle_receive_session_report_request(
     int ret = itti_inst->send_msg(i);
     if (RETURNok != ret) {
       Logger::smf_n4().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
+          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
           i->get_msg_name());
     }
   }

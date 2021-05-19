@@ -133,7 +133,7 @@ void smf_pdu_session::set(const paa_t& paa) {
       break;
     default:
       Logger::smf_app().error(
-          "smf_pdu_session::set(paa_t) Unknown PDN type %d",
+          "flexcn_pdu_session::set(paa_t) Unknown PDN type %d",
           paa.pdu_session_type.pdu_session_type);
   }
 }
@@ -165,7 +165,7 @@ void smf_pdu_session::get_paa(paa_t& paa) {
       break;
     default:
       Logger::smf_app().error(
-          "smf_pdu_session::get_paa (paa_t) Unknown PDN type %d",
+          "flexcn_pdu_session::get_paa (paa_t) Unknown PDN type %d",
           pdu_session_type.pdu_session_type);
   }
   paa.pdu_session_type.pdu_session_type = pdu_session_type.pdu_session_type;
@@ -385,7 +385,7 @@ std::string smf_context::toString() const {
   std::unique_lock<std::recursive_mutex> lock(m_context);
   std::string s = {};
   s.append("\n");
-  s.append("SMF CONTEXT:\n");
+  s.append("FLEXCN CONTEXT:\n");
   s.append("\tSUPI:\t\t\t\t")
       .append(smf_supi_to_string(supi).c_str())
       .append("\n");

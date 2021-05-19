@@ -160,7 +160,7 @@ class smf_app {
   smf_app(smf_app const&) = delete;
 
   virtual ~smf_app() {
-    Logger::smf_app().debug("Delete SMF_APP instance...");
+    Logger::smf_app().debug("Delete FLEXCN_APP instance...");
     // TODO: Unregister NRF
   }
 

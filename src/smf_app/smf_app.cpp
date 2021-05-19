@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_app.cpp
+/*! \file flexcn_app.cpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -325,15 +325,15 @@ smf_app::smf_app(const std::string& config_file)
   apply_config(smf_cfg);
 
   if (itti_inst->create_task(TASK_SMF_APP, smf_app_task, nullptr)) {
-    Logger::smf_app().error("Cannot create task TASK_SMF_APP");
-    throw std::runtime_error("Cannot create task TASK_SMF_APP");
+    Logger::smf_app().error("Cannot create task TASK_FLEXCN_APP");
+    throw std::runtime_error("Cannot create task TASK_FLEXCN_APP");
   }
 
   try {
     //smf_n4_inst  = new smf_n4();
     smf_sbi_inst = new smf_sbi();
   } catch (std::exception& e) {
-    Logger::smf_app().error("Cannot create SMF_APP: %s", e.what());
+    Logger::smf_app().error("Cannot create FLEXCN_APP: %s", e.what());
     throw;
   }
 
@@ -601,7 +601,7 @@ void smf_app::timer_nrf_heartbeat_timeout(
   int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
         itti_msg->get_msg_name());
   } else {
     Logger::smf_app().debug(
@@ -744,8 +744,8 @@ void smf_app::generate_smf_profile() {
   // generate UUID
   generate_uuid();
   nf_instance_profile.set_nf_instance_id(smf_instance_id);
-  nf_instance_profile.set_nf_instance_name("OAI-SMF");
-  nf_instance_profile.set_nf_type("SMF");
+  nf_instance_profile.set_nf_instance_name("OAI-FLEXCN");
+  nf_instance_profile.set_nf_type("FLEXCN");
   nf_instance_profile.set_nf_status("REGISTERED");
   nf_instance_profile.set_nf_heartBeat_timer(50);
   nf_instance_profile.set_nf_priority(1);
@@ -754,6 +754,7 @@ void smf_app::generate_smf_profile() {
 
   // NF services
   nf_service_t nf_service        = {};
+  // HUNG-TODO: change the name of service to nflexcn 
   nf_service.service_instance_id = "nsmf-pdusession";
   nf_service.service_name        = "nsmf-pdusession";
   nf_service_version_t version   = {};
@@ -836,7 +837,7 @@ void smf_app::trigger_nf_registration_request() {
   int ret           = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
         itti_msg->get_msg_name());
   }
 }
@@ -853,7 +854,7 @@ void smf_app::trigger_nf_deregistration() {
   int ret                   = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
         itti_msg->get_msg_name());
   }
 }
@@ -867,7 +868,7 @@ void smf_app::trigger_upf_status_notification_subscribe() {
 void smf_app::trigger_pdu_session_status_notification_subscribe() {
   Logger::smf_app().debug(
       "Send ITTI msg to SBI task to subscribe to PDU Session Status notification "
-      "from SMF");
+      "from FLEXCN");
 
   std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> itti_msg =
       std::make_shared<itti_n11_subscribe_pdu_session_status_notify>(
@@ -896,7 +897,7 @@ void smf_app::trigger_pdu_session_status_notification_subscribe() {
   int ret             = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
         itti_msg->get_msg_name());
   }
 }
