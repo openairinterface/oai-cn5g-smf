@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-CONFIG_DIR="/openair-smf/etc"
+CONFIG_DIR="/openair-flexcn/etc"
 
 for c in ${CONFIG_DIR}/*.conf; do
     # grep variable names (format: ${VAR}) from template to be rendered
