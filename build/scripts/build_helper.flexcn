@@ -19,7 +19,7 @@
 #      contact@openairinterface.org
 ################################################################################
 
-# file build_helper.smf
+# file build_helper.flexcn
 # brief
 # author Laurent Thomas, Lionel GAUTHIER
 #
@@ -100,7 +100,7 @@ install_spdlog_from_git() {
     git clone $GIT_URL
     cd spdlog && git checkout master
     ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
-    # enable syslog, Useless (defined in SMF code)
+    # enable syslog, Useless (defined in flexcn code)
     sed -i '/#define SPDLOG_ENABLE_SYSLOG/s/^\/\///g' include/spdlog/tweakme.h
     popd
   fi
@@ -292,7 +292,7 @@ install_nghttp2_from_git() {
 #-------------------------------------------------------------------------------
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
-check_install_smf_deps() {
+check_install_flexcn_deps() {
 
   if [ $1 -gt 0 ]; then
     OPTION="-y"
@@ -434,7 +434,7 @@ check_install_smf_deps() {
 #-------------------------------------------------------------------------------
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
-check_install_smf_min_deps() {
+check_install_flexcn_min_deps() {
 
   if [ $1 -gt 0 ]; then
     OPTION="-y"

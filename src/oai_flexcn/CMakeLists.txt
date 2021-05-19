@@ -273,11 +273,11 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/api-server ${CMAKE_CURREN
 #ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/test ${CMAKE_CURRENT_BINARY_DIR}/test)
 
 ################################################################################
-# Specific part for oai_smf folder
-add_definitions("-DPACKAGE_NAME=\"SMF\"")
+# Specific part for oai_flexcn folder
+add_definitions("-DPACKAGE_NAME=\"FLEXCN\"")
 
-include_directories(${SRC_TOP_DIR}/smf_app)
-include_directories(${SRC_TOP_DIR}/oai_smf)
+include_directories(${SRC_TOP_DIR}/flexcn_app)
+include_directories(${SRC_TOP_DIR}/oai_flexcn)
 include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
@@ -291,31 +291,21 @@ include_directories(${SRC_TOP_DIR}/api-server)
 include_directories(${SRC_TOP_DIR}/api-server/api)
 include_directories(${SRC_TOP_DIR}/api-server/impl)
 include_directories(${SRC_TOP_DIR}/api-server/model)
-# include_directories(${SRC_TOP_DIR}/nas)
-# include_directories(${SRC_TOP_DIR}/nas/ies)
-# include_directories(${SRC_TOP_DIR}/nas/mm)
-# include_directories(${SRC_TOP_DIR}/nas/mm/msg)
-# include_directories(${SRC_TOP_DIR}/nas/sm)
-# include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-# include_directories(${SRC_TOP_DIR}/nas/security)
-# include_directories(${SRC_TOP_DIR}/ngap)
-# include_directories(${SRC_TOP_DIR}/ngap/asn1c)
-# include_directories(${SRC_TOP_DIR}/ngap/ies)
 
-add_executable(smf
-  ${SRC_TOP_DIR}/oai_smf/main.cpp
-  ${SRC_TOP_DIR}/oai_smf/options.cpp
+add_executable(flexcn
+  ${SRC_TOP_DIR}/oai_flexcn/main.cpp
+  ${SRC_TOP_DIR}/oai_flexcn/options.cpp
   ${SRC_TOP_DIR}/itti/itti.cpp
   ${SRC_TOP_DIR}/itti/itti_msg.cpp
   )
 
 IF(STATIC_LINKING)
     SET(CMAKE_EXE_LINKER_FLAGS "-static")
-    SET_TARGET_PROPERTIES(smf PROPERTIES LINK_SEARCH_END_STATIC 1)
+    SET_TARGET_PROPERTIES(flexcn PROPERTIES LINK_SEARCH_END_STATIC 1)
     # asan do not support static linking
     SET(ASAN)
 ENDIF(STATIC_LINKING)   
 
-target_link_libraries (smf ${ASAN} 
-    -Wl,--start-group CN_UTILS SMF UDP  PFCP 3GPP_COMMON_TYPES SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto COMMON gflags glog dl double-conversion folly -Wl,--end-group pthread m rt config++ event boost_system pistache curl) #NAS
+target_link_libraries (flexcn ${ASAN} 
+    -Wl,--start-group CN_UTILS FLEXCN UDP  PFCP 3GPP_COMMON_TYPES FLEXCN_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto COMMON gflags glog dl double-conversion folly -Wl,--end-group pthread m rt config++ event boost_system pistache curl) #NAS
     

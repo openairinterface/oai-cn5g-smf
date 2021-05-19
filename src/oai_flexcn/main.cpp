@@ -80,13 +80,13 @@ void my_app_signal_handler(int s) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
   }
-  std::cout << "SMF API Server memory done." << std::endl;
+  std::cout << "FLEXCN API Server memory done." << std::endl;
   if (itti_inst) delete itti_inst;
   itti_inst = nullptr;
   std::cout << "ITTI memory done." << std::endl;
   if (smf_app_inst) delete smf_app_inst;
   smf_app_inst = nullptr;
-  std::cout << "SMF APP memory done." << std::endl;
+  std::cout << "FLEXCN APP memory done." << std::endl;
   std::cout << "Freeing Allocated memory done" << std::endl;
   exit(0);
 }
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
   }
 
   // Logger
-  Logger::init("smf", Options::getlogStdout(), Options::getlogRotFilelog());
+  Logger::init("flexcn", Options::getlogStdout(), Options::getlogRotFilelog());
   Logger::smf_app().startup("Options parsed");
 
   struct sigaction sigIntHandler;
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
   smf_http2_manager.join();
 
   FILE* fp             = NULL;
-  std::string filename = fmt::format("/tmp/smf_{}.status", getpid());
+  std::string filename = fmt::format("/tmp/flexcn_{}.status", getpid());
   fp                   = fopen(filename.c_str(), "w+");
   fprintf(fp, "STARTED\n");
   fflush(fp);
