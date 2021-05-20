@@ -52,4 +52,4 @@ COPY . /openair-flexcn
 WORKDIR /openair-flexcn/build/scripts
 RUN ./build_flexcn --install-deps --force
 
-ENTRYPOINT ["/bin/bash"]
+# ENTRYPOINT ["/bin/bash"]
