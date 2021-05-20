@@ -19,13 +19,13 @@
 #      contact@openairinterface.org
 ################################################################################
 
-set(SMF_API_SERVER_DIR "${SRC_TOP_DIR}/api-server")
+set(FLEXCN_API_SERVER_DIR "${SRC_TOP_DIR}/api-server")
 
-include_directories(${SMF_API_SERVER_DIR}/api)
-include_directories(${SMF_API_SERVER_DIR}/impl)
-include_directories(${SMF_API_SERVER_DIR}/model)
-include_directories(${SMF_API_SERVER_DIR}/)
-include_directories(${SRC_TOP_DIR}/smf_app)
+include_directories(${FLEXCN_API_SERVER_DIR}/api)
+include_directories(${FLEXCN_API_SERVER_DIR}/impl)
+include_directories(${FLEXCN_API_SERVER_DIR}/model)
+include_directories(${FLEXCN_API_SERVER_DIR}/)
+include_directories(${SRC_TOP_DIR}/flexcn_app)
 include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
@@ -44,13 +44,13 @@ include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
 
-file(GLOB SMF_API_SERVER_src_files
-    ${SMF_API_SERVER_DIR}/smf-http2-server.cpp
-    ${SMF_API_SERVER_DIR}/smf-api-server.cpp
-    ${SMF_API_SERVER_DIR}/model/*.cpp
-    ${SMF_API_SERVER_DIR}/api/*.cpp
-    ${SMF_API_SERVER_DIR}/impl/*.cpp
+file(GLOB FLEXCN_API_SERVER_src_files
+    ${FLEXCN_API_SERVER_DIR}/smf-http2-server.cpp
+    ${FLEXCN_API_SERVER_DIR}/smf-api-server.cpp
+    ${FLEXCN_API_SERVER_DIR}/model/*.cpp
+    ${FLEXCN_API_SERVER_DIR}/api/*.cpp
+    ${FLEXCN_API_SERVER_DIR}/impl/*.cpp
 )
  
-add_library(SMF_API STATIC
-           ${SMF_API_SERVER_src_files})
+add_library(FLEXCN_API STATIC
+           ${FLEXCN_API_SERVER_src_files})
