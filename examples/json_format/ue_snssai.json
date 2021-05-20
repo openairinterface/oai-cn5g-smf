@@ -1,0 +1,37 @@
+[{
+    "SNSSAI": "snssai-00000000001",
+    "children": [{
+            "ueid": "imsi-00000000001",
+            "ranid": ["enb01", "gnb01"],
+            "adlpv4Addr": ["1.1.1.2", "2.2.2.2"],
+            "adlpv6Addr": "",
+            "others": "others---0111"
+        },
+        {
+            "ueid": "supi-00000000001",
+            "ranid": ["enb01", "gnb01"],
+            "adlpv4Addr": ["1.1.1.2", "2.2.2.2"],
+            "adlpv6Addr": "",
+            "others": "others---0111"
+        }
+    ]
+},
+{
+    "SNSSAI": "snssai-00000000002",
+    "children": [{
+            "ueid": "imsi-00000000001",
+            "ranid": ["enb01", "gnb01"],
+            "adlpv4Addr": ["1.1.1.2", "2.2.2.2"],
+            "adlpv6Addr": "",
+            "others": "others---0111"
+        },
+        {
+            "ueid": "imsi-00000000001",
+            "ranid": ["enb01", "gnb01"],
+            "adlpv4Addr": ["1.1.1.2", "2.2.2.2"],
+            "adlpv6Addr": "",
+            "others": "others---0111"
+        }
+    ]
+}
+]

@@ -1,0 +1,73 @@
+[{
+    "ranid": "enb01",
+    "children": [{
+            "ueid": "imsi-00000000001",
+            "children": [{
+                    "SNSSAI": "snssai-00000000002",
+                    "adlpv4Addr": "",
+                    "adlpv6Addr": "",
+                    "others": "others---0111"
+                },
+                {
+                    "SNSSAI": "snssai-00000000002",
+                    "adlpv4Addr": "",
+                    "adlpv6Addr": "",
+                    "others": "others---0111"
+                }
+            ]
+        },
+        {
+            "ueid": "imsi-222222222222",
+            "children": [{
+                    "SNSSAI": "snssai-00000000001",
+                    "adlpv4Addr": "1.2.2.3",
+                    "adlpv6Addr": "11::22::33::55::66",
+                    "others": "others---0111"
+                },
+                {
+                    "NSSAI": "nssai-00000000002",
+                    "adlpv4Addr": "2.3.5.6",
+                    "adlpv6Addr": "01::02::05::06::08::09",
+                    "others": "others---0111"
+                }
+            ]
+        }
+    ]
+},
+{
+    "ranid": "enb02",
+    "children": [{
+            "ueid": "imsi-00000000001",
+            "children": [{
+                    "NSSAI": "nssai-00000000002",
+                    "adlpv4Addr": "",
+                    "adlpv6Addr": "",
+                    "others": "others---0111"
+                },
+                {
+                    "NSSAI": "nssai-00000000002",
+                    "adlpv4Addr": "",
+                    "adlpv6Addr": "",
+                    "others": "others---0111"
+                }
+            ]
+        },
+        {
+            "ueid": "imsi-222222222222",
+            "children": [{
+                    "NSSAI": "nssai-00000000001",
+                    "adlpv4Addr": "1.2.2.3",
+                    "adlpv6Addr": "11::22::33::55::66",
+                    "others": "others---0111"
+                },
+                {
+                    "NSSAI": "nssai-00000000002",
+                    "adlpv4Addr": "2.3.5.6",
+                    "adlpv6Addr": "01::02::05::06::08::09",
+                    "others": "others---0111"
+                }
+            ]
+        }
+    ]
+}
+]
