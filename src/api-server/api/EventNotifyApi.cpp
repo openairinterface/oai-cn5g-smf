@@ -63,19 +63,13 @@ void EventNotifyApi::notify_status_handler(
 	 "Received a notification from SMF.");
 	  Logger::smf_api_server().info("body: %s\n", request.body().c_str());
 
+
+
   try {
     nlohmann::json::parse(request.body()).get_to(eventNotification);
     SmfEvent smfEvent  = eventNotification.getEvent();
-    //Logger::smf_api_server().info(
-    //      "EventNotifyApiImpl, received a NF status notification: %s", smfEvent.event.c_str());
 
-/*    nlohmann::json json_data = {};
-
-    to_json(json_data, eventNotification);
-
-    Logger::smf_api_server().info(
-        "EventNotifyApiImpl, received a NF status notification: %s", json_data.dump().c_str());
-*/
+    // handle this notification for this details
 
     this->receive_status_notification(eventNotification, response);
   } catch (nlohmann::detail::exception& e) {
