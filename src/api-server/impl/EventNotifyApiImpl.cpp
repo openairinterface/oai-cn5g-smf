@@ -56,6 +56,9 @@ EventNotifyApiImpl::EventNotifyApiImpl(
 void EventNotifyApiImpl::receive_status_notification(
     const EventNotification& eventNotification,
     Pistache::Http::ResponseWriter& response) {
+
+
+    m_smf_app->add_data_event(eventNotification);
 //  Logger::smf_api_server().info(
 //      "EventNotifyApiImpl, received a NF status notification...");
 
