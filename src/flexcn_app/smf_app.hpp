@@ -52,6 +52,8 @@
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 #include "ProblemDetails.h"
+#include "EventNotification.h"
+#include "ueinfo_smf_record.hpp"
 
 namespace smf {
 
@@ -98,6 +100,9 @@ class smf_context_ref {
   std::string amf_addr;
   pfcp::node_id_t upf_node_id;
 };
+
+// map (ueid, UEinfo)
+// typedef std::map<std::string, > UERecord 
 
 class smf_app {
  private:
@@ -156,6 +161,9 @@ class smf_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
+  std::map<std::string, // ueid
+                CNRecord> m_database;
+
   /*
    * Apply the config from the configuration file for DNN pools
    * @param [const smf_config &cfg] cfg
@@ -183,6 +191,9 @@ class smf_app {
    */
   void set_seid_2_smf_context(
       const seid_t& seid, std::shared_ptr<smf_context>& pc);
+
+
+  void add_data_event(const EventNotification &dataEvent);
 
   /*
    * Find SMF context associated with a Session ID
