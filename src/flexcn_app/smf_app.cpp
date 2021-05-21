@@ -61,6 +61,8 @@
 #include "smf_paa_dynamic.hpp"
 #include "string.hpp" // 
 
+#include "EventNotification.h"
+
 extern "C" {
 #include "dynamic_memory_check.h"
 }
@@ -120,6 +122,31 @@ uint64_t smf_app::generate_seid() {
   ls.unlock();
   return seid;
 }
+
+// ----------------------------------------------------------
+void smf_app::add_data_event(const EventNotification &data_event){
+  Logger::smf_app().info("Add/Merge the following record to database : ");
+  Logger::smf_app().info(data_event.to_json());
+
+  // get UE ID from data_event
+  std::string supi = data_event.getSupi();
+
+  // get the item from the list of app that has the same ueid
+  // data structure: ueid as key, 
+  m_database[supi].merge(data_event);  
+
+  // update the data related to this ue with the new data fields.
+  // if event == event_0: 
+  //     update these field of data that related to this ueid address
+  // if ueid in m_datase:
+  //     current_ue_context = m_database.get(ueid)
+  //     current_ue_context.update(data_event)
+  // else:
+  //     new_context = new ue_context()     
+  // how far should we update these items.
+  // done the process. 
+}
+
 
 //------------------------------------------------------------------------------
 void smf_app::generate_smf_context_ref(std::string& smf_ref) {
