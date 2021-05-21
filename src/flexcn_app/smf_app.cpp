@@ -126,7 +126,9 @@ uint64_t smf_app::generate_seid() {
 // ----------------------------------------------------------
 void smf_app::add_data_event(const EventNotification &data_event){
   Logger::smf_app().info("Add/Merge the following record to database : ");
-  Logger::smf_app().info(data_event.to_json());
+
+  // genera
+  // Logger::smf_app().info(data_event.to_json());
 
   // get UE ID from data_event
   std::string supi = data_event.getSupi();
