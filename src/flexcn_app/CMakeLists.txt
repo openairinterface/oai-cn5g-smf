@@ -28,14 +28,6 @@ include_directories(${SRC_TOP_DIR}/common/nas)
 include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/flexcn)
-# include_directories(${SRC_TOP_DIR}/nas)
-# include_directories(${SRC_TOP_DIR}/nas/ies)
-# include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-# include_directories(${SRC_TOP_DIR}/nas/mm)
-# include_directories(${SRC_TOP_DIR}/nas/mm/msg)
-# include_directories(${SRC_TOP_DIR}/nas/sm)
-# include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-# include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
 include_directories(${SRC_TOP_DIR}/api-server/api)
@@ -44,6 +36,7 @@ include_directories(${SRC_TOP_DIR}/api-server/model)
 include_directories(${SRC_TOP_DIR}/api-server/)
 
 add_library (FLEXCN STATIC
+  ueinfo_smf_record.cpp
   smf_app.cpp
   smf_config.cpp
   smf_context.cpp
@@ -56,4 +49,5 @@ add_library (FLEXCN STATIC
   smf_subscription.cpp
   smf_msg.cpp
 )
+
 
