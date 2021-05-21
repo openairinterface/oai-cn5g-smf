@@ -114,7 +114,6 @@ void to_json(nlohmann::json& j, const CNRecord& o) {
   if (o.adIpv6PrefixIsSet()) j["adIpv6Prefix"] = o.m_AdIpv6Prefix;
   if (o.reIpv6PrefixIsSet()) j["reIpv6Prefix"] = o.m_ReIpv6Prefix;
   if (o.plmnIdIsSet()) j["plmnId"] = o.m_PlmnId;
-  if (o.accTypeIsSet()) j["accType"] = o.m_AccType;
   if (o.pduSeIdIsSet()) j["pduSeId"] = o.m_PduSeId;
   if (o.dddStatusIsSet()) j["dddStatus"] = o.m_DddStatus;
   if (o.maxWaitTimeIsSet()) j["maxWaitTime"] = o.m_MaxWaitTime;
@@ -334,7 +333,7 @@ void CNRecord::unsetUlFteid(){
 }
 
 // eNB/gNB/CU IP@
-int32_t CNRecord::getRanId() const{
+std::string CNRecord::getRanId() const{
    return m_RanIP;
 }
 void CNRecord::setRanId(int32_t const value){
