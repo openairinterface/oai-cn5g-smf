@@ -262,7 +262,7 @@ class CNRecord {
   void unsetUlFteid();
 
   // eNB/gNB/CU IP@
-  int32_t getRanId() const;
+  std::string getRanId() const;
   void setRanId(int32_t const value);
   bool ranIdIsSet() const;
   void unsetRanId();
@@ -270,8 +270,8 @@ class CNRecord {
 
   // ===========================
 
-  friend void to_json(nlohmann::json& j, const EventNotification& o);
-  friend void from_json(const nlohmann::json& j, EventNotification& o);
+  friend void to_json(nlohmann::json& j, const CNRecord& o);
+  friend void from_json(const nlohmann::json& j, CNRecord& o);
 
  protected:
   SmfEvent m_Event;
