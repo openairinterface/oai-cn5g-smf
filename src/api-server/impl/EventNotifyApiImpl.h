@@ -68,7 +68,7 @@ class EventNotifyApiImpl : public oai::smf_server::api::EventNotifyApi {
   ~EventNotifyApiImpl() {}
 
   void receive_status_notification(
-      const EventNotification& EventNotification,
+      const NsmfEventExposureNotification& eventExposureNotification,
       Pistache::Http::ResponseWriter& response);
 
  private:

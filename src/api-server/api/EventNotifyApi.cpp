@@ -57,15 +57,16 @@ void EventNotifyApi::notify_status_handler(
     const Pistache::Rest::Request& request,
     Pistache::Http::ResponseWriter response) {
   // Getting the body param
-	EventNotification eventNotification;
+	EventNotification eventNotification = {};
+	NsmfEventExposureNotification eventExposureNotification = {};
 
    Logger::smf_api_server().info(
 	 "Received a notification from SMF.");
 	  Logger::smf_api_server().info("body: %s\n", request.body().c_str());
 
   try {
-    nlohmann::json::parse(request.body()).get_to(eventNotification);
-    SmfEvent smfEvent  = eventNotification.getEvent();
+    nlohmann::json::parse(request.body()).get_to(eventExposureNotification);
+   // SmfEvent smfEvent  = eventExposureNotification.getEvent();
     //Logger::smf_api_server().info(
     //      "EventNotifyApiImpl, received a NF status notification: %s", smfEvent.event.c_str());
 
@@ -77,7 +78,7 @@ void EventNotifyApi::notify_status_handler(
         "EventNotifyApiImpl, received a NF status notification: %s", json_data.dump().c_str());
 */
 
-    this->receive_status_notification(eventNotification, response);
+    this->receive_status_notification(eventExposureNotification, response);
   } catch (nlohmann::detail::exception& e) {
     // send a 400 error
     response.send(Pistache::Http::Code::Bad_Request, e.what());

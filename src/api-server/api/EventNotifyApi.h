@@ -35,6 +35,7 @@
 
 #include "EventNotification.h"
 #include "ProblemDetails.h"
+#include "NsmfEventExposureNotification.h"
 
 namespace oai {
 namespace smf_server {
@@ -70,8 +71,9 @@ class EventNotifyApi {
   /// </remarks>
   /// <param name="EventNotification"></param>
   virtual void receive_status_notification(
-      const EventNotification& eventNotification,
+      const NsmfEventExposureNotification& eventExposureNotification,
       Pistache::Http::ResponseWriter& response) = 0;
+
 };
 
 }  // namespace api
