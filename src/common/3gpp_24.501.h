@@ -33,6 +33,8 @@
 extern "C" {
 #endif
 
+#include <netinet/in.h>
+
 // 9.3.1 Security header type
 #define SECURITY_HEADER_TYPE_NOT_PROTECTED 0b0000
 #define SECURITY_HEADER_TYPE_INTEGRITY_PROTECTED 0b0001
