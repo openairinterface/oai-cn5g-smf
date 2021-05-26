@@ -724,24 +724,12 @@ void smf_app::trigger_http_response(
 //---------------------------------------------------------------------------------------------
 void smf_app::add_event_subscription(
     evsub_id_t sub_id, smf_event_t ev, std::shared_ptr<smf_subscription> ss) {
-  Logger::smf_app().debug(
-      "Add an Event subscription (Sub ID %d, Event %d)", sub_id, (uint8_t) ev);
-  std::unique_lock lock(m_smf_event_subscriptions);
-  smf_event_subscriptions.emplace(std::make_pair(sub_id, ev), ss);
-}
+  }
 
 //---------------------------------------------------------------------------------------------
 void smf_app::get_ee_subscriptions(
     smf_event_t ev,
     std::vector<std::shared_ptr<smf_subscription>>& subscriptions) {
-  for (auto const& i : smf_event_subscriptions) {
-    if ((uint8_t) std::get<1>(i.first) == (uint8_t) ev) {
-      Logger::smf_app().debug(
-          "Found an event subscription (Event ID %d, Event %d)",
-          (uint8_t) std::get<0>(i.first), (uint8_t) ev);
-      subscriptions.push_back(i.second);
-    }
-  }
 }
 
 //---------------------------------------------------------------------------------------------
@@ -913,8 +901,25 @@ void smf_app::trigger_pdu_session_status_notification_subscribe() {
   json_data["supi"] = "208950000000031";
   json_data["eventSubs"]  = nlohmann::json::array();
   nlohmann::json  tmp ={};
-  tmp["event"] = 3;
+  tmp["event"] = "PDU_SES_REL";
+
+  nlohmann::json  tmp2 ={};
+  tmp2["event"] = "UE_IP_CH";
+  
+  nlohmann::json  tmp3 ={};
+  tmp3["event"] = "DDDS";
+  
+  nlohmann::json  tmp4 ={};
+  tmp4["event"] = "PLMN_CH";
+
+  nlohmann::json  tmp5 ={};
+  tmp5["event"] = "FLEXCN";
+
   json_data["eventSubs"].push_back(tmp);
+  json_data["eventSubs"].push_back(tmp2);
+  json_data["eventSubs"].push_back(tmp3);
+  json_data["eventSubs"].push_back(tmp4);
+  json_data["eventSubs"].push_back(tmp5);
 
   std::string url =
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.nrf_addr.ipv4_addr))) +

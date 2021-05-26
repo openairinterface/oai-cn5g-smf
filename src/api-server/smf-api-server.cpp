@@ -76,12 +76,6 @@ void SMFApiServer::init(size_t thr) {
   opts.flags(Pistache::Tcp::Options::ReuseAddr);
   opts.maxRequestSize(PISTACHE_SERVER_MAX_PAYLOAD);
   m_httpEndpoint->init(opts);
-  m_individualPDUSessionHSMFApiImpl->init();
-  m_individualSMContextApiImpl->init();
-  m_pduSessionsCollectionApiImpl->init();
-  m_smContextsCollectionApiImpl->init();
-  m_individualSubscriptionDocumentApiImpl->init();
-  m_subscriptionsCollectionApiImpl->init();
   m_nfStatusNotifyApiImpl->init();
   m_eventNotifyApiImpl->init();
 }

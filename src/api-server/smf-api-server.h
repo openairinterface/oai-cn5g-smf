@@ -43,12 +43,6 @@
 #include <unistd.h>
 #endif
 
-#include "IndividualPDUSessionHSMFApiImpl.h"
-#include "IndividualSMContextApiImpl.h"
-#include "PDUSessionsCollectionApiImpl.h"
-#include "SMContextsCollectionApiImpl.h"
-#include "IndividualSubscriptionDocumentApiImpl.h"
-#include "SubscriptionsCollectionApiImpl.h"
 #include "NFStatusNotifyApiImpl.h"
 #include "EventNotifyApiImpl.h"
 
@@ -61,23 +55,6 @@ class SMFApiServer {
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();
-    m_individualPDUSessionHSMFApiImpl =
-        std::make_shared<IndividualPDUSessionHSMFApiImpl>(
-            m_router, smf_app_inst, m_address);
-    m_individualSMContextApiImpl = std::make_shared<IndividualSMContextApiImpl>(
-        m_router, smf_app_inst, m_address);
-    m_pduSessionsCollectionApiImpl =
-        std::make_shared<PDUSessionsCollectionApiImpl>(
-            m_router, smf_app_inst, m_address);
-    m_smContextsCollectionApiImpl =
-        std::make_shared<SMContextsCollectionApiImpl>(
-            m_router, smf_app_inst, m_address);
-    m_individualSubscriptionDocumentApiImpl =
-        std::make_shared<IndividualSubscriptionDocumentApiImpl>(
-            m_router, smf_app_inst, m_address);
-    m_subscriptionsCollectionApiImpl =
-        std::make_shared<SubscriptionsCollectionApiImpl>(
-            m_router, smf_app_inst, m_address);
     m_nfStatusNotifyApiImpl = std::make_shared<NFStatusNotifyApiImpl>(
         m_router, smf_app_inst, m_address);
     m_eventNotifyApiImpl = std::make_shared<EventNotifyApiImpl>(
@@ -90,15 +67,6 @@ class SMFApiServer {
  private:
   std::shared_ptr<Pistache::Http::Endpoint> m_httpEndpoint;
   std::shared_ptr<Pistache::Rest::Router> m_router;
-  std::shared_ptr<IndividualPDUSessionHSMFApiImpl>
-      m_individualPDUSessionHSMFApiImpl;
-  std::shared_ptr<IndividualSMContextApiImpl> m_individualSMContextApiImpl;
-  std::shared_ptr<PDUSessionsCollectionApiImpl> m_pduSessionsCollectionApiImpl;
-  std::shared_ptr<SMContextsCollectionApiImpl> m_smContextsCollectionApiImpl;
-  std::shared_ptr<IndividualSubscriptionDocumentApiImpl>
-      m_individualSubscriptionDocumentApiImpl;
-  std::shared_ptr<SubscriptionsCollectionApiImpl>
-      m_subscriptionsCollectionApiImpl;
   std::shared_ptr<NFStatusNotifyApiImpl> m_nfStatusNotifyApiImpl;
   std::shared_ptr<EventNotifyApiImpl> m_eventNotifyApiImpl;
   std::string m_address;
