@@ -51,14 +51,14 @@
 using namespace oai::smf_server::api;
 class SMFApiServer {
  public:
-  SMFApiServer(Pistache::Address address, smf::smf_app* smf_app_inst)
+  SMFApiServer(Pistache::Address address, smf::flexcn_app* flexcn_app_inst)
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();
     m_nfStatusNotifyApiImpl = std::make_shared<NFStatusNotifyApiImpl>(
-        m_router, smf_app_inst, m_address);
+        m_router, flexcn_app_inst, m_address);
     m_eventNotifyApiImpl = std::make_shared<EventNotifyApiImpl>(
-        m_router, smf_app_inst, m_address);
+        m_router, flexcn_app_inst, m_address);
   }
   void init(size_t thr = 1);
   void start();

@@ -77,7 +77,7 @@ class Logger {
 
   static _Logger& async_cmd() { return *singleton().m_async_cmd; }
   static _Logger& itti() { return *singleton().m_itti; }
-  static _Logger& smf_app() { return *singleton().m_smf_app; }
+  static _Logger& flexcn_app() { return *singleton().m_smf_app; }
   static _Logger& system() { return *singleton().m_system; }
   static _Logger& udp() { return *singleton().m_udp; }
   static _Logger& pfcp() { return *singleton().m_pfcp; }

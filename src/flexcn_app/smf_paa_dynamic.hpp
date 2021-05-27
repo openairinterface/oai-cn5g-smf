@@ -223,7 +223,7 @@ class paa_dynamic {
             return true;
           }
         }
-        Logger::smf_app().warn(
+        Logger::flexcn_app().warn(
             "Could not get PAA PDU_SESSION_TYPE_E_IPV4 for DNN %s",
             dnn_label.c_str());
         return false;
@@ -250,7 +250,7 @@ class paa_dynamic {
           }
           ipv4_pools[ipv4_pool_id].free_address(paa.ipv4_address);
         }
-        Logger::smf_app().warn(
+        Logger::flexcn_app().warn(
             "Could not get PAA PDU_SESSION_TYPE_E_IPV4V6 for DNN %s",
             dnn_label.c_str());
         return false;
@@ -263,13 +263,13 @@ class paa_dynamic {
             return true;
           }
         }
-        Logger::smf_app().warn(
+        Logger::flexcn_app().warn(
             "Could not get PAA PDU_SESSION_TYPE_E_IPV6 for DNN %s",
             dnn_label.c_str());
         return false;
       }
     }
-    Logger::smf_app().warn("Could not get PAA for DNN %s", dnn_label.c_str());
+    Logger::flexcn_app().warn("Could not get PAA for DNN %s", dnn_label.c_str());
     return false;
   }
 
@@ -299,11 +299,11 @@ class paa_dynamic {
         return false;
       } else if (
           paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
-        Logger::smf_app().debug("IPv6 is not fully supported yet!");
+        Logger::flexcn_app().debug("IPv6 is not fully supported yet!");
         return true;
       }
     }
-    Logger::smf_app().warn(
+    Logger::flexcn_app().warn(
         "Could not release PAA for DNN %s", dnn_label.c_str());
     return false;
   }
@@ -321,7 +321,7 @@ class paa_dynamic {
         }
       }
     }
-    Logger::smf_app().warn(
+    Logger::flexcn_app().warn(
         "Could not release PAA for DNN %s", dnn_label.c_str());
     return false;
   }

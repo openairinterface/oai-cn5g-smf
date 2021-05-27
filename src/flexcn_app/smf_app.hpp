@@ -104,7 +104,7 @@ class smf_context_ref {
 // map (ueid, UEinfo)
 // typedef std::map<std::string, > UERecord 
 
-class smf_app {
+class flexcn_app {
  private:
 
   // list of events 
@@ -173,15 +173,15 @@ class smf_app {
 
 
  public:
-  explicit smf_app(const std::string& config_file);
-  smf_app(smf_app const&) = delete;
+  explicit flexcn_app(const std::string& config_file);
+  flexcn_app(flexcn_app const&) = delete;
 
-  virtual ~smf_app() {
-    Logger::smf_app().debug("Delete FLEXCN_APP instance...");
+  virtual ~flexcn_app() {
+    Logger::flexcn_app().debug("Delete FLEXCN_APP instance...");
     // TODO: Unregister NRF
   }
 
-  void operator=(smf_app const&) = delete;
+  void operator=(flexcn_app const&) = delete;
 
   /*
    * Set the association between Seid and SM Context
@@ -705,52 +705,6 @@ class smf_app {
    */
   void trigger_http_response(
       const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type);
-
-  /*
-   * Add an Event Subscription to the list
-   * @param [const evsub_id_t&] sub_id: Subscription ID
-   * @param [smf_event_t] ev: Event type
-   * @param [std::shared_ptr<smf_subscription>] ss: a shared pointer stored
-   * information of the subscription
-   * @return void
-   */
-  void add_event_subscription(
-      evsub_id_t sub_id, smf_event_t ev, std::shared_ptr<smf_subscription> ss);
-
-  /*
-   * Get a list of subscription associated with a particular event
-   * @param [smf_event_t] ev: Event type
-   * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:
-   * store the list of the subscription associated with this event type
-   * @return void
-   */
-  void get_ee_subscriptions(
-      smf_event_t ev,
-      std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
-
-  /*
-   * Get a list of subscription associated with a particular event
-   * @param [evsub_id_t] sub_id: Subscription ID
-   * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:
-   * store the list of the subscription associated with this event type
-   * @return void
-   */
-  void get_ee_subscriptions(
-      evsub_id_t sub_id,
-      std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
-
-  /*
-   * Get a list of subscription associated with a particular event
-   * @param [smf_event_t] ev: Event type
-   * @param [supi64_t] supi: SUPI
-   * @param [pdu_session_id_t] pdu_session_id: PDU Session ID
-   * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:
-   * store the list of the subscription associated with this event type
-   * @return void
-   */
-  void get_ee_subscriptions(
-      smf_event_t ev, supi64_t supi, pdu_session_id_t pdu_session_id,
-      std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
 
   /*
    * Trigger NF instance registration to NRF

@@ -342,7 +342,7 @@ void smf_http2_server::create_sm_contexts_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the pdu_session_create_sm_context_request message in smf_app
+  // Handle the pdu_session_create_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
       std::make_shared<itti_n11_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
@@ -383,7 +383,7 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().info(
       "Handle PDU Session Update SM Context Request.");
 
-  // Get the SmContextUpdateData from this message and process in smf_app
+  // Get the SmContextUpdateData from this message and process in flexcn_app
   Logger::smf_api_server().info(
       "Received a PDUSession_UpdateSMContext Request from AMF.");
 
@@ -406,7 +406,7 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_update_sm_context_request message in smf_app
+  // Handle the itti_n11_update_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
       std::make_shared<itti_n11_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);

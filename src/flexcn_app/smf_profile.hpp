@@ -321,7 +321,7 @@ class smf_profile : public nf_profile {
   // smf_profile(smf_profile &b) = delete;
 
   virtual ~smf_profile() {
-    Logger::smf_app().debug("Delete FLEXCN Profile instance...");
+    Logger::flexcn_app().debug("Delete FLEXCN Profile instance...");
   }
 
   /*
@@ -439,7 +439,7 @@ class upf_profile : public nf_profile {
   // upf_profile(upf_profile &b) = delete;
 
   virtual ~upf_profile() {
-    Logger::smf_app().debug("Delete UPF Profile instance...");
+    Logger::flexcn_app().debug("Delete UPF Profile instance...");
   }
 
   /*

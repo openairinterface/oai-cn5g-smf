@@ -96,10 +96,10 @@ bool pfcp_associations::add_association(
   } else {
     // Resolve FQDN to get UPF IP address if necessary
     if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
-      Logger::smf_app().info("Node ID Type FQDN: %s", node_id.fqdn.c_str());
+      Logger::flexcn_app().info("Node ID Type FQDN: %s", node_id.fqdn.c_str());
       struct hostent* record = gethostbyname(node_id.fqdn.c_str());
       if (record == NULL) {
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Add association with node (FQDN) %s: cannot resolve the hostname!",
             node_id.fqdn.c_str());
         return false;
@@ -109,12 +109,12 @@ bool pfcp_associations::add_association(
         in_addr* address        = (struct in_addr*) record->h_addr;
         node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
         node_id.u1.ipv4_address = *address;
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Node ID Type FQDN: %s, IPv4 Addr: %s", node_id.fqdn.c_str(),
             inet_ntoa(*address));
       } else if (record->h_addrtype == AF_INET6) {
         // TODO
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Node ID Type FQDN: %s. IPv6 Addr, this mode has not been "
             "supported yet!",
             node_id.fqdn.c_str());
@@ -135,7 +135,7 @@ bool pfcp_associations::add_association(
              pending_associations.begin();
          it < pending_associations.end(); ++it) {
       if (((*it)->node_id == node_id) and ((*it)->is_upf_profile_set())) {
-        Logger::smf_app().info("Associate with UPF profile");
+        Logger::flexcn_app().info("Associate with UPF profile");
         sa->set_upf_node_profile((*it)->get_upf_node_profile());
         break;
       }
@@ -165,10 +165,10 @@ bool pfcp_associations::add_association(
     sa->function_features.second = function_features;
   } else {
     if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
-      Logger::smf_app().info("Node ID Type FQDN: %s", node_id.fqdn.c_str());
+      Logger::flexcn_app().info("Node ID Type FQDN: %s", node_id.fqdn.c_str());
       struct hostent* record = gethostbyname(node_id.fqdn.c_str());
       if (record == NULL) {
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Add association with node (FQDN) %s: cannot resolve the hostname!",
             node_id.fqdn.c_str());
         return false;
@@ -177,12 +177,12 @@ bool pfcp_associations::add_association(
         in_addr* address        = (struct in_addr*) record->h_addr;
         node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
         node_id.u1.ipv4_address = *address;
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Node ID Type FQDN: %s, IPv4 Addr: %s", node_id.fqdn.c_str(),
             inet_ntoa(*address));
       } else if (record->h_addrtype == AF_INET6) {
         // TODO
-        Logger::smf_app().info(
+        Logger::flexcn_app().info(
             "Node ID Type FQDN: %s. IPv6 Addr, this mode has not been "
             "supported yet!",
             node_id.fqdn.c_str());
@@ -205,7 +205,7 @@ bool pfcp_associations::add_association(
              pending_associations.begin();
          it < pending_associations.end(); ++it) {
       if (((*it)->node_id == node_id) and ((*it)->is_upf_profile_set())) {
-        Logger::smf_app().info("Associate with UPF profile");
+        Logger::flexcn_app().info("Associate with UPF profile");
         sa->set_upf_node_profile((*it)->get_upf_node_profile());
         break;
       }
@@ -429,7 +429,7 @@ bool pfcp_associations::select_up_node(
     // get the first node id if there's no upf profile (get UPFs from conf file)
     if (!a->upf_profile_is_set) {
       node_id = it->second->node_id;
-      Logger::smf_app().info(
+      Logger::flexcn_app().info(
           "Could not found UPF profile, select the first available UPF");
       return true;
     }
@@ -442,7 +442,7 @@ bool pfcp_associations::select_up_node(
         for (auto d : ui.dnn_upf_info_list) {
           if (d.dnn.compare(dnn) == 0) {
             node_id = it->second->node_id;
-            Logger::smf_app().info(
+            Logger::flexcn_app().info(
                 "Select the UPF for the corresponding DNN %s, NSSSAI (SD: %s, "
                 "SST: %d) ",
                 d.dnn.c_str(), snssai.sD, snssai.sST);
@@ -480,7 +480,7 @@ bool pfcp_associations::add_peer_candidate_node(
        it < pending_associations.end(); ++it) {
     if ((*it)->node_id == node_id) {
       // TODO purge sessions of this node
-      Logger::smf_app().info("TODO purge sessions of this node");
+      Logger::flexcn_app().info("TODO purge sessions of this node");
       pending_associations.erase(it);
       break;
     }
@@ -500,7 +500,7 @@ bool pfcp_associations::add_peer_candidate_node(
        it < pending_associations.end(); ++it) {
     if ((*it)->node_id == node_id) {
       // TODO purge sessions of this node
-      Logger::smf_app().info("TODO purge sessions of this node");
+      Logger::flexcn_app().info("TODO purge sessions of this node");
       pending_associations.erase(it);
       break;
     }

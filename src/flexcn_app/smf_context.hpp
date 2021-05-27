@@ -431,7 +431,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   smf_context(smf_context& b) = delete;
 
   virtual ~smf_context() {
-    Logger::smf_app().debug("Delete FLEXCN Context instance...");
+    Logger::flexcn_app().debug("Delete FLEXCN Context instance...");
     // Disconnect the boost connection
     if (sm_context_status_connection.connected())
       sm_context_status_connection.disconnect();

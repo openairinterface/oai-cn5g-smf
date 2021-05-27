@@ -56,41 +56,41 @@ void CNRecord::merge(const EventNotification& event_data){
         mergeDDDS(event_data);
     }
     else {
-      Logger::smf_app().info("Event from SMF not supported");
+      Logger::flexcn_app().info("Event from SMF not supported");
     }
 }
 
 void CNRecord::mergeAccessTypeChange(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with the access type change event: NOT SUPPORTED");
+  Logger::flexcn_app().info("Merge with the access type change event: NOT SUPPORTED");
 }
 
 void CNRecord::mergeUpPathChange(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with the up path change event: NOT SUPPORTED");
+  Logger::flexcn_app().info("Merge with the up path change event: NOT SUPPORTED");
 }
 
 void CNRecord::mergePDUSessRelease(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with pdu sess release event");
+  Logger::flexcn_app().info("Merge with pdu sess release event");
   if (event_data.pduSeIdIsSet()){
     m_PduSeId = event_data.getPduSeId();
   }
 }
 
 void CNRecord::mergePLMNChange(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with the PLMN change event");
+  Logger::flexcn_app().info("Merge with the PLMN change event");
   if (event_data.plmnIdIsSet()){
     m_PlmnId = event_data.getPlmnId();
   }
 }
 
 void CNRecord::mergeUEIPChange(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with the UE IP change event");
+  Logger::flexcn_app().info("Merge with the UE IP change event");
   if (event_data.adIpv4AddrIsSet()){
     m_AdIpv4Addr = event_data.getAdIpv4Addr();
   }
 }
 
 void CNRecord::mergeDDDS(const EventNotification& event_data){
-  Logger::smf_app().info("Merge with the DDDS change event");
+  Logger::flexcn_app().info("Merge with the DDDS change event");
   if (event_data.dddStatusIsSet()){
     m_DddStatus = event_data.getDddStatus();
   }

@@ -169,29 +169,29 @@ void nf_profile::get_nf_ipv4_addresses(std::vector<struct in_addr>& a) const {
 
 //------------------------------------------------------------------------------
 void nf_profile::display() const {
-  Logger::smf_app().debug("NF instance info");
-  Logger::smf_app().debug("\tInstance ID: %s", nf_instance_id.c_str());
+  Logger::flexcn_app().debug("NF instance info");
+  Logger::flexcn_app().debug("\tInstance ID: %s", nf_instance_id.c_str());
 
-  Logger::smf_app().debug("\tInstance name: %s", nf_instance_name.c_str());
-  Logger::smf_app().debug("\tInstance type: %s", nf_type.c_str());
-  Logger::smf_app().debug("\tStatus: %s", nf_status.c_str());
-  Logger::smf_app().debug("\tHeartBeat timer: %d", heartBeat_timer);
-  Logger::smf_app().debug("\tPriority: %d", priority);
-  Logger::smf_app().debug("\tCapacity: %d", capacity);
+  Logger::flexcn_app().debug("\tInstance name: %s", nf_instance_name.c_str());
+  Logger::flexcn_app().debug("\tInstance type: %s", nf_type.c_str());
+  Logger::flexcn_app().debug("\tStatus: %s", nf_status.c_str());
+  Logger::flexcn_app().debug("\tHeartBeat timer: %d", heartBeat_timer);
+  Logger::flexcn_app().debug("\tPriority: %d", priority);
+  Logger::flexcn_app().debug("\tCapacity: %d", capacity);
   // SNSSAIs
   if (snssais.size() > 0) {
-    Logger::smf_app().debug("\tSNSSAI:");
+    Logger::flexcn_app().debug("\tSNSSAI:");
   }
   for (auto s : snssais) {
-    Logger::smf_app().debug("\t\t SST, SD: %d, %s", s.sST, s.sD.c_str());
+    Logger::flexcn_app().debug("\t\t SST, SD: %d, %s", s.sST, s.sD.c_str());
   }
 
   // IPv4 Addresses
   if (ipv4_addresses.size() > 0) {
-    Logger::smf_app().debug("\tIPv4 Addr:");
+    Logger::flexcn_app().debug("\tIPv4 Addr:");
   }
   for (auto address : ipv4_addresses) {
-    Logger::smf_app().debug("\t\t %s", inet_ntoa(address));
+    Logger::flexcn_app().debug("\t\t %s", inet_ntoa(address));
   }
 }
 
@@ -261,7 +261,7 @@ void nf_profile::from_json(const nlohmann::json& data) {
       if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) == 1) {
         memcpy(&addr4, buf_in_addr, sizeof(struct in_addr));
       } else {
-        Logger::smf_app().warn(
+        Logger::flexcn_app().warn(
             "Address conversion: Bad value %s", util::trim(address).c_str());
       }
       add_nf_ipv4_addresses(addr4);
@@ -324,26 +324,26 @@ void smf_profile::display() const {
 
   // NF services
   if (nf_services.size() > 0) {
-    Logger::smf_app().debug("\tNF Service");
+    Logger::flexcn_app().debug("\tNF Service");
   }
   for (auto service : nf_services) {
-    Logger::smf_app().debug("\t\t%s", service.to_string().c_str());
+    Logger::flexcn_app().debug("\t\t%s", service.to_string().c_str());
   }
 
   if (!custom_info.empty()) {
-    Logger::smf_app().debug("\tCustom info: %s", custom_info.dump().c_str());
+    Logger::flexcn_app().debug("\tCustom info: %s", custom_info.dump().c_str());
   }
 
   // SMF info
   if (smf_info.snssai_smf_info_list.size() > 0) {
-    Logger::smf_app().debug("\tFLEXCN Info:");
+    Logger::flexcn_app().debug("\tFLEXCN Info:");
   }
   for (auto s : smf_info.snssai_smf_info_list) {
-    Logger::smf_app().debug("\t\tParameters supported by the FLEXCN:");
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug("\t\tParameters supported by the FLEXCN:");
+    Logger::flexcn_app().debug(
         "\t\t\tSNSSAI (SST %d, SD %s)", s.snssai.sST, s.snssai.sD.c_str());
     for (auto d : s.dnn_smf_info_list) {
-      Logger::smf_app().debug("\t\t\tDNN %s", d.dnn.c_str());
+      Logger::flexcn_app().debug("\t\t\tDNN %s", d.dnn.c_str());
     }
   }
 }
@@ -398,7 +398,7 @@ void smf_profile::to_json(nlohmann::json& data) const {
     data["flexcnInfo"]["sNssaiFlexcnInfoList"].push_back(tmp);
   }
 
-  Logger::smf_app().debug("Flexcn profile to json:\n %s", data.dump().c_str());
+  Logger::flexcn_app().debug("Flexcn profile to json:\n %s", data.dump().c_str());
 }
 
 //------------------------------------------------------------------------------
@@ -443,7 +443,7 @@ void smf_profile::from_json(const nlohmann::json& data) {
 
 //------------------------------------------------------------------------------
 void smf_profile::handle_heartbeart_timeout(uint64_t ms) {
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Handle heartbeart timeout profile %s, time %d", nf_instance_id.c_str(),
       ms);
   set_nf_status("SUSPENDED");
@@ -466,14 +466,14 @@ void upf_profile::display() const {
 
   // UPF info
   if (upf_info.snssai_upf_info_list.size() > 0) {
-    Logger::smf_app().debug("\tUPF Info:");
+    Logger::flexcn_app().debug("\tUPF Info:");
   }
   for (auto s : upf_info.snssai_upf_info_list) {
-    Logger::smf_app().debug("\t\tParameters supported by the UPF:");
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug("\t\tParameters supported by the UPF:");
+    Logger::flexcn_app().debug(
         "\t\t\tSNSSAI (SST %d, SD %s)", s.snssai.sST, s.snssai.sD.c_str());
     for (auto d : s.dnn_upf_info_list) {
-      Logger::smf_app().debug("\t\t\tDNN %s", d.dnn.c_str());
+      Logger::flexcn_app().debug("\t\t\tDNN %s", d.dnn.c_str());
     }
   }
 }
@@ -498,7 +498,7 @@ void upf_profile::to_json(nlohmann::json& data) const {
     data["upfInfo"]["sNssaiUpfInfoList"].push_back(tmp);
   }
 
-  Logger::smf_app().debug("UPF profile to json:\n %s", data.dump().c_str());
+  Logger::flexcn_app().debug("UPF profile to json:\n %s", data.dump().c_str());
 }
 
 //------------------------------------------------------------------------------

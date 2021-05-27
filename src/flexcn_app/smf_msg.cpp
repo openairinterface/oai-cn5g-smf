@@ -530,11 +530,11 @@ void pdu_session_update_sm_context_response::add_qos_flow_context_updated(
     qos_flow_context_updateds.insert(
         std::pair<uint8_t, qos_flow_context_updated>(
             (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
+    Logger::flexcn_app().trace(
         "A QoS Flow Context (QFI %d) has been added successfully",
         flow.qfi.qfi);
   } else {
-    Logger::smf_app().error(
+    Logger::flexcn_app().error(
         "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
   }
 }
@@ -670,11 +670,11 @@ void pdu_session_modification_network_requested::add_qos_flow_context_updated(
     qos_flow_context_updateds.insert(
         std::pair<uint8_t, qos_flow_context_updated>(
             (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
+    Logger::flexcn_app().trace(
         "A QoS Flow Context (QFI %d) has been added successfully",
         flow.qfi.qfi);
   } else {
-    Logger::smf_app().error(
+    Logger::flexcn_app().error(
         "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
   }
 }
@@ -713,11 +713,11 @@ void pdu_session_report_response::add_qos_flow_context_updated(
     qos_flow_context_updateds.insert(
         std::pair<uint8_t, qos_flow_context_updated>(
             (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
+    Logger::flexcn_app().trace(
         "A QoS Flow Context (QFI %d) has been added successfully",
         flow.qfi.qfi);
   } else {
-    Logger::smf_app().error(
+    Logger::flexcn_app().error(
         "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
   }
 }

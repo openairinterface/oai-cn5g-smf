@@ -95,7 +95,7 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
 void xgpp_conv::sm_context_create_from_openapi(
     const oai::smf_server::model::SmContextMessage& scd,
     smf::pdu_session_create_sm_context_request& pcr) {
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
 
@@ -103,16 +103,16 @@ void xgpp_conv::sm_context_create_from_openapi(
   if (scd.jsonDataIsSet()) {
     context_data = scd.getJsonData();
   } else {
-    Logger::smf_app().warn("No Json data available");
+    Logger::flexcn_app().warn("No Json data available");
   }
 
   if (scd.binaryDataN1SmMessageIsSet()) {
     std::string n1_sm_msg = scd.getBinaryDataN1SmMessage();
     // N1 SM Message
     pcr.set_n1_sm_message(n1_sm_msg);
-    Logger::smf_app().debug("N1 SM message: %s", n1_sm_msg.c_str());
+    Logger::flexcn_app().debug("N1 SM message: %s", n1_sm_msg.c_str());
   } else {
-    Logger::smf_app().warn("No N1 SM Message available");
+    Logger::flexcn_app().warn("No N1 SM Message available");
   }
 
   if (context_data.supiIsSet()) {
@@ -124,45 +124,45 @@ void xgpp_conv::sm_context_create_from_openapi(
     smf_string_to_supi(&supi, supi_str.c_str());
     pcr.set_supi(supi);
     pcr.set_supi_prefix(supi_prefix);
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug(
         "SUPI %s, SUPI Prefix %s, IMSI %s", context_data.getSupi().c_str(),
         supi_prefix.c_str(), supi_str.c_str());
   } else {
-    Logger::smf_app().warn("No SUPI available");
+    Logger::flexcn_app().warn("No SUPI available");
   }
 
   // TODO: unauthenticatedSupi
   // DNN
   if (context_data.dnnIsSet()) {
-    Logger::smf_app().debug("DNN %s", context_data.getDnn().c_str());
+    Logger::flexcn_app().debug("DNN %s", context_data.getDnn().c_str());
     pcr.set_dnn(context_data.getDnn().c_str());
   } else {
-    Logger::smf_app().warn("No DNN available");
+    Logger::flexcn_app().warn("No DNN available");
   }
 
   // S-Nssai
   if (context_data.sNssaiIsSet()) {
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug(
         "S-NSSAI SST %d, SD %s", context_data.getSNssai().getSst(),
         context_data.getSNssai().getSd().c_str());
     snssai_t snssai(
         context_data.getSNssai().getSst(), context_data.getSNssai().getSd());
     pcr.set_snssai(snssai);
   } else {
-    Logger::smf_app().warn("No SNSSAI available");
+    Logger::flexcn_app().warn("No SNSSAI available");
   }
 
   // PDU session ID
   if (context_data.pduSessionIdIsSet()) {
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug(
         "PDU Session ID %d", context_data.getPduSessionId());
     pcr.set_pdu_session_id(context_data.getPduSessionId());
   } else {
-	  Logger::smf_app().warn("No PDU Session ID available");
+	  Logger::flexcn_app().warn("No PDU Session ID available");
   }
 
   // AMF ID (ServingNFId/NfInstanceId)
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "ServingNfId %s", context_data.getServingNfId().c_str());
   pcr.set_serving_nf_id(context_data.getServingNfId()
                             .c_str());  // TODO: should be verified that AMF ID
@@ -170,28 +170,28 @@ void xgpp_conv::sm_context_create_from_openapi(
 
   // Request Type
   if (context_data.requestTypeIsSet()) {
-    Logger::smf_app().debug(
+    Logger::flexcn_app().debug(
         "RequestType %s", context_data.getRequestType().c_str());
     pcr.set_request_type(context_data.getRequestType());
   } else {
-    Logger::smf_app().warn("No Request Type available");
+    Logger::flexcn_app().warn("No Request Type available");
   }
 
   // SMContextStatusUri
   pcr.set_sm_context_status_uri(context_data.getSmContextStatusUri());
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "SMContextStatusUri %s", context_data.getSmContextStatusUri().c_str());
 
   // DNN Selection Mode
   if (context_data.selModeIsSet()) {
-    Logger::smf_app().debug("SelMode %s", context_data.getSelMode().c_str());
+    Logger::flexcn_app().debug("SelMode %s", context_data.getSelMode().c_str());
     pcr.set_dnn_selection_mode(context_data.getSelMode());
   } else {
-    Logger::smf_app().warn("No SelMode available");
+    Logger::flexcn_app().warn("No SelMode available");
   }
 
   // ServingNetwork (PlmnId)
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Serving Network (MCC %s, MNC %s)",
       context_data.getServingNetwork().getMcc().c_str(),
       context_data.getServingNetwork().getMnc().c_str());
@@ -201,22 +201,22 @@ void xgpp_conv::sm_context_create_from_openapi(
           context_data.getServingNetwork().getMnc())) {
     pcr.set_plmn(p);
   } else {
-    Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
+    Logger::flexcn_app().warn("Error while converting MCC, MNC to PLMN");
   }
 
   // anType (AccessType)
-  Logger::smf_app().debug("AN Type %s", context_data.getAnType().c_str());
+  Logger::flexcn_app().debug("AN Type %s", context_data.getAnType().c_str());
   pcr.set_an_type(context_data.getAnType());
 
   // Guami
   if (context_data.guamiIsSet()) {
-    // Logger::smf_app().debug("GUAMI %s", context_data.getGuami().c_str());
+    // Logger::flexcn_app().debug("GUAMI %s", context_data.getGuami().c_str());
     guami_5g_t guami = {};
     guami.amf_id     = context_data.getGuami().getAmfId();
     if (!conv::plmnFromString(
             guami.plmn, context_data.getGuami().getPlmnId().getMcc(),
             context_data.getGuami().getPlmnId().getMnc())) {
-      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
+      Logger::flexcn_app().warn("Error while converting MCC, MNC to PLMN");
     }
     pcr.set_guami(guami);
   }
@@ -237,7 +237,7 @@ void xgpp_conv::sm_context_create_from_openapi(
 void xgpp_conv::sm_context_update_from_openapi(
     const oai::smf_server::model::SmContextUpdateMessage& scu,
     smf::pdu_session_update_sm_context_request& pur) {
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
 
@@ -246,14 +246,14 @@ void xgpp_conv::sm_context_update_from_openapi(
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
     std::string n2_sm_information = scu.getBinaryDataN2SmInformation();
-    Logger::smf_app().debug("N2 SM Information %s", n2_sm_information.c_str());
+    Logger::flexcn_app().debug("N2 SM Information %s", n2_sm_information.c_str());
     pur.set_n2_sm_information(n2_sm_information);
     pur.set_n2_sm_info_type(context_data.getN2SmInfoType());
   }
   if (context_data.n1SmMsgIsSet()) {
     // N1 SM (for session modification)
     std::string n1_sm_message = scu.getBinaryDataN1SmMessage();
-    Logger::smf_app().debug("N1 SM message %s", n1_sm_message.c_str());
+    Logger::flexcn_app().debug("N1 SM message %s", n1_sm_message.c_str());
     pur.set_n1_sm_message(n1_sm_message);
   }
 
@@ -309,7 +309,7 @@ void xgpp_conv::sm_context_update_from_openapi(
 void xgpp_conv::sm_context_release_from_openapi(
     const oai::smf_server::model::SmContextReleaseMessage& srm,
     smf::pdu_session_release_sm_context_request& prr) {
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
 
@@ -318,7 +318,7 @@ void xgpp_conv::sm_context_release_from_openapi(
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
     std::string n2_sm_information = srm.getBinaryDataN2SmInformation();
-    Logger::smf_app().debug("N2 SM Information %s", n2_sm_information.c_str());
+    Logger::flexcn_app().debug("N2 SM Information %s", n2_sm_information.c_str());
 
     std::string n2_sm_info_type = context_data.getN2SmInfoType();
     prr.set_n2_sm_information(n2_sm_information);
@@ -340,7 +340,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 void xgpp_conv::data_notification_from_openapi(
     const oai::smf_server::model::NotificationData& nd,
     smf::data_notification_msg& dn_msg) {
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Convert NotificationData (OpenAPI) to "
       "Data Notification Msg");
 
@@ -363,7 +363,7 @@ void xgpp_conv::data_notification_from_openapi(
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
     const oai::smf_server::model::NsmfEventExposure& nee,
     smf::event_exposure_msg& eem) {
-  Logger::smf_app().debug(
+  Logger::flexcn_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "
       "Event Exposure Msg");
 

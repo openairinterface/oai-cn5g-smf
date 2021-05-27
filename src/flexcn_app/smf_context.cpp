@@ -55,7 +55,7 @@ extern "C" {
 using namespace smf;
 
 extern itti_mw* itti_inst;
-extern smf::smf_app* smf_app_inst;
+extern smf::flexcn_app* flexcn_app_inst;
 extern smf::smf_config smf_cfg;
 
 //------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ std::string smf_qos_flow::toString() const {
 //------------------------------------------------------------------------------
 void smf_qos_flow::deallocate_ressources() {
   clear();
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Resources associated with this QoS Flow (%d) have been released",
       (uint8_t) qfi.qfi);
 }
@@ -132,7 +132,7 @@ void smf_pdu_session::set(const paa_t& paa) {
       pdu_session_type.pdu_session_type = paa.pdu_session_type.pdu_session_type;
       break;
     default:
-      Logger::smf_app().error(
+      Logger::flexcn_app().error(
           "flexcn_pdu_session::set(paa_t) Unknown PDN type %d",
           paa.pdu_session_type.pdu_session_type);
   }
@@ -164,7 +164,7 @@ void smf_pdu_session::get_paa(paa_t& paa) {
       ipv6 = false;
       break;
     default:
-      Logger::smf_app().error(
+      Logger::flexcn_app().error(
           "flexcn_pdu_session::get_paa (paa_t) Unknown PDN type %d",
           pdu_session_type.pdu_session_type);
   }
@@ -248,7 +248,7 @@ std::string smf_pdu_session::toString() const {
 void smf_pdu_session::set_pdu_session_status(
     const pdu_session_status_e& status) {
   // TODO: Should consider congestion handling
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Set PDU Session Status to %s",
       pdu_session_status_e2str.at(static_cast<int>(status)).c_str());
   std::unique_lock lock(m_pdu_session_mutex);
@@ -263,7 +263,7 @@ pdu_session_status_e smf_pdu_session::get_pdu_session_status() const {
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::set_upCnx_state(const upCnx_state_e& state) {
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Set upCnxState to %s",
       upCnx_state_e2str.at(static_cast<int>(state)).c_str());
   std::unique_lock lock(m_pdu_session_mutex);
@@ -316,7 +316,7 @@ void session_management_subscription::insert_dnn_configuration(
 void session_management_subscription::find_dnn_configuration(
     const std::string& dnn,
     std::shared_ptr<dnn_configuration_t>& dnn_configuration) const {
-  Logger::smf_app().info("Find DNN configuration with DNN %s", dnn.c_str());
+  Logger::flexcn_app().info("Find DNN configuration with DNN %s", dnn.c_str());
   std::shared_lock lock(m_mutex);
   if (dnn_configurations.count(dnn) > 0) {
     dnn_configuration = dnn_configurations.at(dnn);
@@ -445,7 +445,7 @@ bool smf_context::handle_service_request(
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP1;
 
-  smf_app_inst->convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
+  flexcn_app_inst->convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
   sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
 
   // fill the content of SmContextUpdatedData
@@ -502,7 +502,7 @@ void smf_context::insert_dnn_subscription(
   std::unique_lock<std::recursive_mutex> lock(m_context);
 
   dnn_subscriptions[(uint8_t) snssai.sST] = ss;
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Inserted DNN Subscription, key: %d", (uint8_t) snssai.sST);
 }
 
@@ -532,7 +532,7 @@ bool smf_context::is_dnn_snssai_subscription_data(
 bool smf_context::find_dnn_subscription(
     const snssai_t& snssai,
     std::shared_ptr<session_management_subscription>& ss) {
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "Find a DNN Subscription with key: %d, map size %d", (uint8_t) snssai.sST,
       dnn_subscriptions.size());
   std::unique_lock<std::recursive_mutex> lock(m_context);
@@ -541,7 +541,7 @@ bool smf_context::find_dnn_subscription(
     return true;
   }
 
-  Logger::smf_app().info(
+  Logger::flexcn_app().info(
       "DNN subscription (SNSSAI %d) not found", (uint8_t) snssai.sST);
   return false;
 }

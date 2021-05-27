@@ -42,7 +42,7 @@ using namespace oai::smf_server::api;
 
 itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
-smf_app* smf_app_inst                 = nullptr;
+flexcn_app* flexcn_app_inst                 = nullptr;
 smf_config smf_cfg;
 SMFApiServer* smf_api_server_1     = nullptr;
 smf_http2_server* smf_api_server_2 = nullptr;
@@ -55,7 +55,7 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
   std::shared_ptr<itti_msg_ping> i = std::shared_ptr<itti_msg_ping>(itti_msg);
   int ret                          = itti_inst->send_broadcast_msg(i);
   if (RETURNok != ret) {
-    Logger::smf_app().error(
+    Logger::flexcn_app().error(
         "Could not send ITTI message %s to task TASK_ALL", i->get_msg_name());
   }
 }
@@ -84,8 +84,8 @@ void my_app_signal_handler(int s) {
   if (itti_inst) delete itti_inst;
   itti_inst = nullptr;
   std::cout << "ITTI memory done." << std::endl;
-  if (smf_app_inst) delete smf_app_inst;
-  smf_app_inst = nullptr;
+  if (flexcn_app_inst) delete flexcn_app_inst;
+  flexcn_app_inst = nullptr;
   std::cout << "FLEXCN APP memory done." << std::endl;
   std::cout << "Freeing Allocated memory done" << std::endl;
   exit(0);
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
 
   // Logger
   Logger::init("flexcn", Options::getlogStdout(), Options::getlogRotFilelog());
-  Logger::smf_app().startup("Options parsed");
+  Logger::flexcn_app().startup("Options parsed");
 
   struct sigaction sigIntHandler;
   sigIntHandler.sa_handler = my_app_signal_handler;
@@ -123,13 +123,13 @@ int main(int argc, char** argv) {
       new async_shell_cmd(smf_cfg.itti.async_cmd_sched_params);
 
   // SMF application layer
-  smf_app_inst = new smf_app(Options::getlibconfigConfig());
+  flexcn_app_inst = new flexcn_app(Options::getlibconfigConfig());
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
   string pid_file_name = get_exe_absolute_path("/var/run", smf_cfg.instance);
   if (!is_pid_file_lock_success(pid_file_name.c_str())) {
-    Logger::smf_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
+    Logger::flexcn_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
     exit(-EDEADLK);
   }
 
@@ -137,13 +137,13 @@ int main(int argc, char** argv) {
   Pistache::Address addr(
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))),
       Pistache::Port(smf_cfg.sbi.port));
-  smf_api_server_1 = new SMFApiServer(addr, smf_app_inst);
+  smf_api_server_1 = new SMFApiServer(addr, flexcn_app_inst);
   smf_api_server_1->init(2);
   // smf_api_server_1->start();
   std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
   // SMF NGHTTP API server (HTTP2)
   smf_api_server_2 = new smf_http2_server(
-      conv::toString(smf_cfg.sbi.addr4), smf_cfg.sbi_http2_port, smf_app_inst);
+      conv::toString(smf_cfg.sbi.addr4), smf_cfg.sbi_http2_port, flexcn_app_inst);
   // smf_api_server_2->start();
   std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
 

@@ -754,7 +754,7 @@ void smf_sbi::register_nf_instance(
               TASK_SMF_SBI, TASK_SMF_APP);
       itti_msg->http_response_code = httpCode;
       itti_msg->http_version       = msg->http_version;
-      Logger::smf_app().debug("Registered FLEXCN profile (from NRF)");
+      Logger::flexcn_app().debug("Registered FLEXCN profile (from NRF)");
       itti_msg->profile.from_json(response_data);
 
       int ret = itti_inst->send_msg(itti_msg);

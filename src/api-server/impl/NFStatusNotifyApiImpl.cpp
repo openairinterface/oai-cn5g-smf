@@ -49,9 +49,9 @@ namespace api {
 using namespace oai::smf_server::model;
 
 NFStatusNotifyApiImpl::NFStatusNotifyApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
+    std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
     std::string address)
-    : NFStatusNotifyApi(rtr), m_smf_app(smf_app_inst), m_address(address) {}
+    : NFStatusNotifyApi(rtr), m_smf_app(flexcn_app_inst), m_address(address) {}
 
 void NFStatusNotifyApiImpl::receive_nf_status_notification(
     const NotificationData& notificationData,
@@ -63,7 +63,7 @@ void NFStatusNotifyApiImpl::receive_nf_status_notification(
   // convert from NotificationData to data_notification_msg
   xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
 
-  // Handle the message in smf_app
+  // Handle the message in flexcn_app
   std::shared_ptr<itti_sbi_notification_data> itti_msg =
       std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg->notification_msg = notification_msg;

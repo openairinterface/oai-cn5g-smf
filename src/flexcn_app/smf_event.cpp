@@ -33,7 +33,7 @@
 #include "smf_subscription.hpp"
 
 using namespace smf;
-extern smf::smf_app* smf_app_inst;
+extern smf::flexcn_app* flexcn_app_inst;
 extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------

@@ -53,7 +53,7 @@ using namespace smf;
 using namespace std;
 
 extern itti_mw* itti_inst;
-extern smf::smf_app* smf_app_inst;
+extern smf::flexcn_app* flexcn_app_inst;
 extern smf::smf_config smf_cfg;
 
 //------------------------------------------------------------------------------
