@@ -345,7 +345,7 @@ void smf_http2_server::create_sm_contexts_handler(
   // Handle the pdu_session_create_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
       std::make_shared<itti_n11_create_sm_context_request>(
-          TASK_SMF_SBI, TASK_SMF_APP, promise_id);
+          TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
 
@@ -409,7 +409,7 @@ void smf_http2_server::update_sm_context_handler(
   // Handle the itti_n11_update_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
       std::make_shared<itti_n11_update_sm_context_request>(
-          TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
+          TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
   m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
@@ -494,7 +494,7 @@ void smf_http2_server::release_sm_context_handler(
       "request from AMF.");
   std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
       std::make_shared<itti_n11_release_sm_context_request>(
-          TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
+          TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->scid         = smf_ref;
   itti_msg->http_version = 2;

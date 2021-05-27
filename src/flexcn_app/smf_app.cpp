@@ -217,7 +217,7 @@ void flexcn_app::restore_n4_sessions(const seid_t& seid) const {
 
 //------------------------------------------------------------------------------
 void smf_app_task(void*) {
-  const task_id_t task_id = TASK_SMF_APP;
+  const task_id_t task_id = TASK_FLEXCN_APP;
   itti_inst->notify_task_ready(task_id);
 
   do {
@@ -353,7 +353,7 @@ flexcn_app::flexcn_app(const std::string& config_file)
 
   apply_config(smf_cfg);
 
-  if (itti_inst->create_task(TASK_SMF_APP, smf_app_task, nullptr)) {
+  if (itti_inst->create_task(TASK_FLEXCN_APP, smf_app_task, nullptr)) {
     Logger::flexcn_app().error("Cannot create task TASK_FLEXCN_APP");
     throw std::runtime_error("Cannot create task TASK_FLEXCN_APP");
   }
@@ -617,7 +617,7 @@ void flexcn_app::timer_nrf_heartbeat_timeout(
 
   std::shared_ptr<itti_n11_update_nf_instance_request> itti_msg =
       std::make_shared<itti_n11_update_nf_instance_request>(
-          TASK_SMF_APP, TASK_SMF_SBI);
+          TASK_FLEXCN_APP, TASK_SMF_SBI);
 
   oai::smf_server::model::PatchItem patch_item = {};
   //{"op":"replace","path":"/nfStatus", "value": "REGISTERED"}
@@ -637,7 +637,7 @@ void flexcn_app::timer_nrf_heartbeat_timeout(
         "Set a timer to the next Heart-beat (%d)",
         nf_instance_profile.get_nf_heartBeat_timer());
     timer_nrf_heartbeat = itti_inst->timer_setup(
-        nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
+        nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_FLEXCN_APP,
         TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
         0);  // TODO arg2_user
   }
@@ -815,7 +815,7 @@ void flexcn_app::trigger_nf_registration_request() {
 
   std::shared_ptr<itti_n11_register_nf_instance_request> itti_msg =
       std::make_shared<itti_n11_register_nf_instance_request>(
-          TASK_SMF_APP, TASK_SMF_SBI);
+          TASK_FLEXCN_APP, TASK_SMF_SBI);
   itti_msg->profile = nf_instance_profile;
   int ret           = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
@@ -832,7 +832,7 @@ void flexcn_app::trigger_nf_deregistration() {
 
   std::shared_ptr<itti_n11_deregister_nf_instance> itti_msg =
       std::make_shared<itti_n11_deregister_nf_instance>(
-          TASK_SMF_APP, TASK_SMF_SBI);
+          TASK_FLEXCN_APP, TASK_SMF_SBI);
   itti_msg->smf_instance_id = smf_instance_id;
   int ret                   = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
@@ -855,7 +855,7 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
 
   std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> itti_msg =
       std::make_shared<itti_n11_subscribe_pdu_session_status_notify>(
-          TASK_SMF_APP, TASK_SMF_SBI);
+          TASK_FLEXCN_APP, TASK_SMF_SBI);
 
   nlohmann::json json_data = {};
   json_data["notifUri"] =

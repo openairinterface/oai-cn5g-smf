@@ -347,12 +347,12 @@ void pfcp_associations::timeout_heartbeat_request(
       // be deleted-> Send request to SMF App to remove all associated sessions
       // and notify AMF accordingly
       std::shared_ptr<itti_n4_node_failure> itti_msg =
-          std::make_shared<itti_n4_node_failure>(TASK_SMF_N4, TASK_SMF_APP);
+          std::make_shared<itti_n4_node_failure>(TASK_SMF_N4, TASK_FLEXCN_APP);
       itti_msg->node_id = pit->second->node_id;
       int ret           = itti_inst->send_msg(itti_msg);
       if (RETURNok != ret) {
         Logger::smf_n4().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
+            "Could not send ITTI message %s to task TASK_FLEXCN_APP",
             itti_msg->get_msg_name());
       }
 

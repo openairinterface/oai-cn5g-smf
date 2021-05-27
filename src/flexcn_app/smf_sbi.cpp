@@ -255,7 +255,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // send response to APP to process
     itti_n11_n1n2_message_transfer_response_status* itti_msg =
         new itti_n11_n1n2_message_transfer_response_status(
-            TASK_SMF_SBI, TASK_SMF_APP);
+            TASK_SMF_SBI, TASK_FLEXCN_APP);
     itti_msg->set_response_code(httpCode);
     itti_msg->set_scid(sm_context_res->scid);
     itti_msg->set_procedure_type(session_management_procedures_type_e::
@@ -461,7 +461,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // send response to APP to process
     itti_n11_n1n2_message_transfer_response_status* itti_msg =
         new itti_n11_n1n2_message_transfer_response_status(
-            TASK_SMF_SBI, TASK_SMF_APP);
+            TASK_SMF_SBI, TASK_FLEXCN_APP);
     itti_msg->set_response_code(httpCode);
     itti_msg->set_procedure_type(session_management_procedures_type_e::
                                      SERVICE_REQUEST_NETWORK_TRIGGERED);
@@ -751,7 +751,7 @@ void smf_sbi::register_nf_instance(
       // send response to APP to process
       std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg =
           std::make_shared<itti_n11_register_nf_instance_response>(
-              TASK_SMF_SBI, TASK_SMF_APP);
+              TASK_SMF_SBI, TASK_FLEXCN_APP);
       itti_msg->http_response_code = httpCode;
       itti_msg->http_version       = msg->http_version;
       Logger::flexcn_app().debug("Registered FLEXCN profile (from NRF)");
@@ -844,7 +844,7 @@ void smf_sbi::update_nf_instance(
       // send response to APP to process
       std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
           std::make_shared<itti_n11_update_nf_instance_response>(
-              TASK_SMF_SBI, TASK_SMF_APP);
+              TASK_SMF_SBI, TASK_FLEXCN_APP);
       itti_msg->http_response_code = httpCode;
       itti_msg->http_version       = msg->http_version;
       itti_msg->smf_instance_id    = msg->smf_instance_id;

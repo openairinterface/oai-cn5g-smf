@@ -611,7 +611,7 @@ void smf_n4::handle_receive_session_establishment_response(
   handle_receive_message_cb(msg, remote_endpoint, TASK_SMF_N4, error, trxn_id);
   if (!error) {
     itti_n4_session_establishment_response* itti_msg =
-        new itti_n4_session_establishment_response(TASK_SMF_N4, TASK_SMF_APP);
+        new itti_n4_session_establishment_response(TASK_SMF_N4, TASK_FLEXCN_APP);
     itti_msg->pfcp_ies   = msg_ies_container;
     itti_msg->r_endpoint = remote_endpoint;
     itti_msg->trxn_id    = trxn_id;
@@ -639,7 +639,7 @@ void smf_n4::handle_receive_session_modification_response(
   handle_receive_message_cb(msg, remote_endpoint, TASK_SMF_N4, error, trxn_id);
   if (!error) {
     itti_n4_session_modification_response* itti_msg =
-        new itti_n4_session_modification_response(TASK_SMF_N4, TASK_SMF_APP);
+        new itti_n4_session_modification_response(TASK_SMF_N4, TASK_FLEXCN_APP);
     itti_msg->pfcp_ies   = msg_ies_container;
     itti_msg->r_endpoint = remote_endpoint;
     itti_msg->trxn_id    = trxn_id;
@@ -667,7 +667,7 @@ void smf_n4::handle_receive_session_deletion_response(
   handle_receive_message_cb(msg, remote_endpoint, TASK_SMF_N4, error, trxn_id);
   if (!error) {
     itti_n4_session_deletion_response* itti_msg =
-        new itti_n4_session_deletion_response(TASK_SMF_N4, TASK_SMF_APP);
+        new itti_n4_session_deletion_response(TASK_SMF_N4, TASK_FLEXCN_APP);
     itti_msg->pfcp_ies   = msg_ies_container;
     itti_msg->r_endpoint = remote_endpoint;
     itti_msg->trxn_id    = trxn_id;
@@ -695,7 +695,7 @@ void smf_n4::handle_receive_session_report_request(
   handle_receive_message_cb(msg, remote_endpoint, TASK_SMF_N4, error, trxn_id);
   if (!error) {
     itti_n4_session_report_request* itti_msg =
-        new itti_n4_session_report_request(TASK_SMF_N4, TASK_SMF_APP);
+        new itti_n4_session_report_request(TASK_SMF_N4, TASK_FLEXCN_APP);
     itti_msg->pfcp_ies   = msg_ies_container;
     itti_msg->r_endpoint = remote_endpoint;
     itti_msg->trxn_id    = trxn_id;

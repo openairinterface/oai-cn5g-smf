@@ -51,7 +51,7 @@ void send_heartbeat_to_tasks(const uint32_t sequence);
 
 //------------------------------------------------------------------------------
 void send_heartbeat_to_tasks(const uint32_t sequence) {
-  itti_msg_ping* itti_msg = new itti_msg_ping(TASK_SMF_APP, TASK_ALL, sequence);
+  itti_msg_ping* itti_msg = new itti_msg_ping(TASK_FLEXCN_APP, TASK_ALL, sequence);
   std::shared_ptr<itti_msg_ping> i = std::shared_ptr<itti_msg_ping>(itti_msg);
   int ret                          = itti_inst->send_broadcast_msg(i);
   if (RETURNok != ret) {
@@ -64,7 +64,7 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 void my_app_signal_handler(int s) {
   std::cout << "Caught signal " << s << std::endl;
   Logger::system().startup("exiting");
-  itti_inst->send_terminate_msg(TASK_SMF_APP);
+  itti_inst->send_terminate_msg(TASK_FLEXCN_APP);
   itti_inst->wait_tasks_end();
   std::cout << "Freeing Allocated memory..." << std::endl;
   if (async_shell_cmd_inst) delete async_shell_cmd_inst;
