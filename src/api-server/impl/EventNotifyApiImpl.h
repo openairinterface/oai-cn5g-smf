@@ -50,7 +50,7 @@
 
 #include <pistache/optional.h>
 
-#include "EventNotification.h"
+#include "FlexCNEventNotification.h"
 #include "ProblemDetails.h"
 #include "smf_app.hpp"
 
@@ -68,7 +68,7 @@ class EventNotifyApiImpl : public oai::smf_server::api::EventNotifyApi {
   ~EventNotifyApiImpl() {}
 
   void receive_status_notification(
-      const NsmfEventExposureNotification& eventExposureNotification,
+      const std::string& eventExposureNotification,
       Pistache::Http::ResponseWriter& response);
 
  private:
