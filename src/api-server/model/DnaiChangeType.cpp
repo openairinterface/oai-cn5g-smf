@@ -29,7 +29,9 @@ void to_json(nlohmann::json& j, const DnaiChangeType& o) {
   j = nlohmann::json();
 }
 
-void from_json(const nlohmann::json& j, DnaiChangeType& o) {}
+void from_json(const nlohmann::json& j, DnaiChangeType& o) {
+  o.dnaiChgType = j.get<std::string>();
+}
 
 }  // namespace model
 }  // namespace smf_server

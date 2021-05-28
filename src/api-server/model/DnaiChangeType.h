@@ -48,6 +48,7 @@ class DnaiChangeType {
   friend void from_json(const nlohmann::json& j, DnaiChangeType& o);
 
  protected:
+  std::string dnaiChgType;
 };
 
 }  // namespace model
