@@ -42,6 +42,7 @@ class Ipv6Prefix {
   friend void from_json(const nlohmann::json& j, Ipv6Prefix& o);
 
  protected:
+   std::string data;
 };
 
 }  // namespace model
