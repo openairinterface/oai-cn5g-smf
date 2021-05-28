@@ -44,12 +44,12 @@ std::string NsmfEventExposureNotification::getNotifId() const {
 void NsmfEventExposureNotification::setNotifId(std::string const& value) {
   m_NotifId = value;
 }
-std::vector<EventNotification>&
+std::vector<CNRecord>&
 NsmfEventExposureNotification::getEventNotifs() {
   return m_EventNotifs;
 }
 void NsmfEventExposureNotification::setEventNotifs(
-    std::vector<EventNotification> const& value) {
+    std::vector<CNRecord> const& value) {
   m_EventNotifs = value;
 }
 

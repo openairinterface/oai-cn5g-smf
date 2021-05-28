@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include "EventNotification.h"
+#include "FlexCNEventNotification.h"
 #include <nlohmann/json.hpp>
 
 namespace oai {
@@ -49,8 +50,8 @@ class NsmfEventExposureNotification {
   /// <summary>
   /// Notifications about Individual Events
   /// </summary>
-  std::vector<EventNotification>& getEventNotifs();
-  void setEventNotifs(std::vector<EventNotification> const& value);
+  std::vector<CNRecord>& getEventNotifs();
+  void setEventNotifs(std::vector<CNRecord> const& value);
 
   friend void to_json(
       nlohmann::json& j, const NsmfEventExposureNotification& o);
@@ -59,8 +60,7 @@ class NsmfEventExposureNotification {
 
  protected:
   std::string m_NotifId;
-
-  std::vector<EventNotification> m_EventNotifs;
+  std::vector<CNRecord> m_EventNotifs;
 };
 
 }  // namespace model
