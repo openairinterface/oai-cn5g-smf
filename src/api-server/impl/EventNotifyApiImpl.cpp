@@ -54,47 +54,10 @@ EventNotifyApiImpl::EventNotifyApiImpl(
     : EventNotifyApi(rtr), m_smf_app(flexcn_app_inst), m_address(address) {}
 
 void EventNotifyApiImpl::receive_status_notification(
-    const NsmfEventExposureNotification& eventExposureNotification,
+    const std::string& eventExposureNotification,
     Pistache::Http::ResponseWriter& response) {
-
-
-    // m_smf_app->add_data_event(eventExposureNotification);
-//  Logger::smf_api_server().info(
-//      "EventNotifyApiImpl, received a NF status notification...");
-
- /* nlohmann::json json_data = {};
-
-  to_json(json_data, eventNotification);
-
-  Logger::smf_api_server().info(
-      "EventNotifyApiImpl, received a NF status notification: %s", json_data.dump().c_str());
-*/
- /* smf::data_notification_msg notification_msg = {};
-  // convert from NotificationData to data_notification_msg
-  xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
-
-  // Handle the message in flexcn_app
-  std::shared_ptr<itti_sbi_notification_data> itti_msg =
-      std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_FLEXCN_APP);
-  itti_msg->notification_msg = notification_msg;
-  itti_msg->http_version     = 1;
-
-  ProblemDetails problem_details = {};
-  uint8_t http_code              = 0;
-
-  if (m_smf_app->handle_nf_status_notification(
-          itti_msg, problem_details, http_code)) {
-    response.send(Pistache::Http::Code(204));
-  } else {
-    nlohmann::json json_data = {};
-    to_json(json_data, problem_details);
-    // content type
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType("application/problem+json"));
-    response.send(Pistache::Http::Code(http_code), json_data.dump().c_str());
-  }
-  */
-  response.send(Pistache::Http::Code(200));
+    m_smf_app->add_data_event(eventExposureNotification);
+    response.send(Pistache::Http::Code(200));
 }
 
 }  // namespace api
