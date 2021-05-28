@@ -1,0 +1,7 @@
+## UE_IP_CH event:
+{"eventNotifs":[{"adIpv4Addr":"12.1.1.10","event":"UE_IP_CH","pduSeId":1,"supi":"208950000000031","timeStamp":"3831095939"}],"notifId":"notifid01"}
+
+
+## FLEXCN event:
+{"eventNotifs":[{"customized_data":{"amf_addr":"192.168.74.195","dnn":"default","pdu_session_type":"IPV4","plmn":{"mcc":"208","mnc":"95"},"qos_flow":[{"an_addr":{"ipv4":"192.168.74.198"},"qfi":6,"upf_addr":{"ipv4":"192.168.74.197"}}],"snssai":{"sd":"123","sst":222},"ue_ipv4_addr":"12.1.1.10"},"event":"FLEXCN","pduSeId":1,"supi":"208950000000031","timeStamp":"3831095939"}],"notifId":"notifid01"}
+
