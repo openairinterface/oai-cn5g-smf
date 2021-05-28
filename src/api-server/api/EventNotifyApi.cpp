@@ -57,38 +57,40 @@ void EventNotifyApi::notify_status_handler(
     const Pistache::Rest::Request& request,
     Pistache::Http::ResponseWriter response) {
   // Getting the body param
-	EventNotification eventNotification = {};
+  // CNRecord eventExposureNotification = {};
 	NsmfEventExposureNotification eventExposureNotification = {};
 
-   Logger::smf_api_server().info(
+   Logger::smf_api_server().debug(
 	 "Received a notification from SMF.");
-	  Logger::smf_api_server().info("body: %s\n", request.body().c_str());
+	  Logger::smf_api_server().debug("body: %s\n", request.body().c_str());
 
 
 
   try {
     nlohmann::json::parse(request.body()).get_to(eventExposureNotification);
-   // SmfEvent smfEvent  = eventExposureNotification.getEvent();
-    //Logger::smf_api_server().info(
-    //      "EventNotifyApiImpl, received a NF status notification: %s", smfEvent.event.c_str());
+    this->receive_status_notification(request.body(), response);
+    nlohmann::json j = eventExposureNotification;
 
-/*    nlohmann::json json_data = {};
-
-    to_json(json_data, eventNotification);
-
-    // handle this notification for this details
-*/
-    this->receive_status_notification(eventExposureNotification, response);
+    Logger::smf_api_server().info("Parsing this event success!!");
+    Logger::smf_api_server().info("After parsing: ");
+    Logger::smf_api_server().info(j.dump(4).c_str());
+    
   } catch (nlohmann::detail::exception& e) {
     // send a 400 error
     response.send(Pistache::Http::Code::Bad_Request, e.what());
+    Logger::smf_api_server().info("Parsing this event failed");
+    Logger::smf_api_server().info(e.what());
     return;
   } catch (Pistache::Http::HttpError& e) {
     response.send(static_cast<Pistache::Http::Code>(e.code()), e.what());
+        Logger::smf_api_server().info("Parsing this event failed");
+
     return;
   } catch (std::exception& e) {
     // send a 500 error
     response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+        Logger::smf_api_server().info("Parsing this event failed");
+
     return;
   }
 }
