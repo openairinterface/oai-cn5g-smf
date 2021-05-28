@@ -78,6 +78,29 @@ extern itti_mw* itti_inst;
 
 void smf_app_task(void*);
 
+nlohmann::json flexcn_app::get_summarization_in_json_format() {
+
+  
+  nlohmann::json j = {};
+  j["num_ue"] = int(m_database.size());
+  try{
+    
+    j["supi_list"] = nlohmann::json::array();
+    j["ue_data"] = nlohmann::json::array();
+
+    for (const auto& [supi, data] : m_database){
+        j["supi_list"].push_back(supi); // .c_str()
+        nlohmann::json t = data;
+        j["ue_data"].push_back(t);  
+    }
+  } catch (nlohmann::detail::exception& e) {
+      Logger::smf_api_server().info("Parsing this event failed");
+    Logger::smf_api_server().info(e.what());
+  }
+
+  return j;
+};
+
 //------------------------------------------------------------------------------
 int flexcn_app::apply_config(const smf_config& cfg) {
   Logger::flexcn_app().info("Apply config...");
@@ -124,18 +147,55 @@ uint64_t flexcn_app::generate_seid() {
 }
 
 // ----------------------------------------------------------
-void flexcn_app::add_data_event(const EventNotification &data_event){
+void flexcn_app::add_data_event(const std::string &data_event){
   Logger::flexcn_app().info("Add/Merge the following record to database : ");
+  Logger::flexcn_app().info(data_event.c_str());
 
-  // genera
-  // Logger::smf_app().info(data_event.to_json());
+  //parse string to json
 
+  //TODO: valid the source of data
+  // store the list of valid sources inside the smf-app and verify? 
+  nlohmann::json json_data;
+  try
+  {
+      json_data = nlohmann::json::parse(data_event.c_str());
+  }
+  catch (nlohmann::json::parse_error& ex)
+  {
+      Logger::flexcn_app().error("Invalid json format:");
+      Logger::flexcn_app().error(data_event.c_str());
+      Logger::flexcn_app().error("Invalid json format: parse error at byte %i !", ex.byte);
+  }
+  
+  if (!json_data.contains("eventNotifs")){
+      Logger::flexcn_app().error("Message don't contains eventNotifs key!");
+      Logger::flexcn_app().error(data_event.c_str());
+      return;
+  }
+  if (!json_data["eventNotifs"].is_array()) {
+    Logger::flexcn_app().error("Event Notifs field is not an array");
+    Logger::flexcn_app().error(data_event.c_str());
+    return; 
+  }
+
+  //TODO: must check of json object of eventNotifs is array
+  for (auto field : json_data["eventNotifs"]){
+    if (!field.contains("supi")){
+       Logger::flexcn_app().info("Event doesn't contains supi");
+       Logger::flexcn_app().info(field.dump().c_str());
+    }
+    // adding this to database
+    // CNRecord t;
+    // field.get_to(t);
+    m_database[field["supi"]].push_back(field);
+    // todo: field fusion
+  } 
   // get UE ID from data_event
-  std::string supi = data_event.getSupi();
+  // std::string supi = data_event.getSupi();
 
   // get the item from the list of app that has the same ueid
   // data structure: ueid as key, 
-  m_database[supi].merge(data_event);  
+  // m_database[supi].merge(data_event);  
 
   // update the data related to this ue with the new data fields.
   // if event == event_0: 
@@ -324,6 +384,7 @@ void smf_app_task(void*) {
         if (itti_msg_terminate* terminate =
                 dynamic_cast<itti_msg_terminate*>(msg)) {
           Logger::flexcn_app().info("Received terminate message");
+          flexcn_app_inst->summarize();
           return;
         }
         break;
@@ -335,6 +396,17 @@ void smf_app_task(void*) {
         Logger::flexcn_app().info("no handler for msg type %d", msg->msg_type);
     }
   } while (true);
+}
+
+void flexcn_app::summarize(){
+  Logger::flexcn_app().info("Number of ue: %d", m_database.size());
+    Logger::flexcn_app().info("List of ue's supi:");
+    for (const auto& [supi, data] : m_database){
+        Logger::flexcn_app().info("   %s", supi.c_str());
+        if (data.size() > 0){
+            Logger::flexcn_app().info("The first event of this ue: \n %s", data[0].dump(4).c_str());
+        } 
+    }
 }
 
 //------------------------------------------------------------------------------

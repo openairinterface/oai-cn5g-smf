@@ -162,8 +162,7 @@ class flexcn_app {
   timer_id_t timer_nrf_heartbeat;
 
   std::map<std::string, // ueid
-                CNRecord> m_database;
-
+                std::vector<nlohmann::json>> m_database;
   /*
    * Apply the config from the configuration file for DNN pools
    * @param [const smf_config &cfg] cfg
@@ -193,7 +192,9 @@ class flexcn_app {
       const seid_t& seid, std::shared_ptr<smf_context>& pc);
 
 
-  void add_data_event(const EventNotification &dataEvent);
+  void add_data_event(const std::string &dataEvent);
+  void summarize();
+  nlohmann::json get_summarization_in_json_format();
 
   /*
    * Find SMF context associated with a Session ID
