@@ -17,19 +17,19 @@ namespace oai {
 namespace smf_server {
 namespace model {
 
-DddStatus::DddStatus() {}
+// DddStatus::DddStatus() {}
 
-DddStatus::~DddStatus() {}
+// DddStatus::~DddStatus() {}
 
-void DddStatus::validate() {
-  // TODO: implement validation
-}
+// void DddStatus::validate() {
+//   // TODO: implement validation
+// }
 
-void to_json(nlohmann::json& j, const DddStatus& o) {
-  j = nlohmann::json();
-}
+// void to_json(nlohmann::json& j, const DddStatus& o) {
+//   j = nlohmann::json();
+// }
 
-void from_json(const nlohmann::json& j, DddStatus& o) {}
+// void from_json(const nlohmann::json& j, DddStatus& o) {}
 
 }  // namespace model
 }  // namespace smf_server
