@@ -30,6 +30,8 @@ namespace model {
 /// <summary>
 ///
 /// </summary>
+// typedef std::string Ipv6Addr;
+
 class RouteInformation {
  public:
   RouteInformation();

@@ -19,6 +19,7 @@ namespace model {
 
 RouteInformation::RouteInformation() {
   m_Ipv4Addr      = "";
+  m_Ipv6Addr = "";
   m_Ipv4AddrIsSet = false;
   m_Ipv6AddrIsSet = false;
   m_PortNumber    = 0;
