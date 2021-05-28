@@ -27,26 +27,27 @@ namespace oai {
 namespace smf_server {
 namespace model {
 
+typedef std::string DddStatus;
 /// <summary>
 /// Possible values are - BUFFERED: The downlink data are buffered. -
 /// TRANSMITTED: The downlink data are transmitted - DISCARDED: The downlink
 /// data are discarded.
 /// </summary>
-class DddStatus {
- public:
-  DddStatus();
-  virtual ~DddStatus();
+// class DddStatus {
+//  public:
+//   DddStatus();
+//   virtual ~DddStatus();
 
-  void validate();
+//   void validate();
 
-  /////////////////////////////////////////////
-  /// DddStatus members
+//   /////////////////////////////////////////////
+//   /// DddStatus members
 
-  friend void to_json(nlohmann::json& j, const DddStatus& o);
-  friend void from_json(const nlohmann::json& j, DddStatus& o);
+//   friend void to_json(nlohmann::json& j, const DddStatus& o);
+//   friend void from_json(const nlohmann::json& j, DddStatus& o);
 
- protected:
-};
+//  protected:
+// };
 
 }  // namespace model
 }  // namespace smf_server
