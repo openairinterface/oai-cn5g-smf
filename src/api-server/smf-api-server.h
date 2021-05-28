@@ -45,6 +45,7 @@
 
 #include "NFStatusNotifyApiImpl.h"
 #include "EventNotifyApiImpl.h"
+#include "FlexCNStatImpl.h"
 
 #include "smf_app.hpp"
 
@@ -59,6 +60,8 @@ class SMFApiServer {
         m_router, flexcn_app_inst, m_address);
     m_eventNotifyApiImpl = std::make_shared<EventNotifyApiImpl>(
         m_router, flexcn_app_inst, m_address);
+    m_flexCNStatImpl = std::make_shared<FlexCNStatImpl>(
+        m_router, flexcn_app_inst, m_address);
   }
   void init(size_t thr = 1);
   void start();
@@ -69,6 +72,7 @@ class SMFApiServer {
   std::shared_ptr<Pistache::Rest::Router> m_router;
   std::shared_ptr<NFStatusNotifyApiImpl> m_nfStatusNotifyApiImpl;
   std::shared_ptr<EventNotifyApiImpl> m_eventNotifyApiImpl;
+  std::shared_ptr<FlexCNStatImpl> m_flexCNStatImpl;
   std::string m_address;
 };
 

@@ -36,7 +36,6 @@ include_directories(${SRC_TOP_DIR}/api-server/model)
 include_directories(${SRC_TOP_DIR}/api-server/)
 
 add_library (FLEXCN STATIC
-  ueinfo_smf_record.cpp
   smf_app.cpp
   smf_config.cpp
   smf_context.cpp

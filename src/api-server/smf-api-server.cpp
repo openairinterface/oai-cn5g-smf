@@ -78,6 +78,7 @@ void SMFApiServer::init(size_t thr) {
   m_httpEndpoint->init(opts);
   m_nfStatusNotifyApiImpl->init();
   m_eventNotifyApiImpl->init();
+  m_flexCNStatImpl->init();
 }
 void SMFApiServer::start() {
   Logger::smf_api_server().info("HTTP1 server started");
