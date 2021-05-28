@@ -28,21 +28,23 @@ namespace model {
 /// <summary>
 ///
 /// </summary>
-class Ipv6Addr {
- public:
-  Ipv6Addr();
-  virtual ~Ipv6Addr();
+typedef std::string Ipv6Addr;
+// class Ipv6Addr {
+//  public:
+//   Ipv6Addr();
+//   virtual ~Ipv6Addr();
 
-  void validate();
+//   void validate();
 
-  /////////////////////////////////////////////
-  /// Ipv6Addr members
+//   /////////////////////////////////////////////
+//   /// Ipv6Addr members
 
-  friend void to_json(nlohmann::json& j, const Ipv6Addr& o);
-  friend void from_json(const nlohmann::json& j, Ipv6Addr& o);
+//   friend void to_json(nlohmann::json& j, const Ipv6Addr& o);
+//   friend void from_json(const nlohmann::json& j, Ipv6Addr& o);
 
- protected:
-};
+//  protected:
+//     std::string addr;
+// };
 
 }  // namespace model
 }  // namespace smf_server
