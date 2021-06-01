@@ -48,7 +48,7 @@ using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::smf_server::model;
 
-extern smf::flexcn_config flexcn_cfg;
+extern flexcn::flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {
@@ -148,7 +148,7 @@ void smf_http2_server::start() {
             Logger::smf_api_server().debug(
                 "Message content \n %s", msg.c_str());
 
-            // Get the smf reference context and method
+            // Get the flexcn reference context and method
             std::vector<std::string> split_result;
             boost::split(
                 split_result, request.uri().path, boost::is_any_of("/"));
@@ -318,7 +318,7 @@ void smf_http2_server::create_sm_contexts_handler(
   Logger::smf_api_server().debug(
       "Create a pdu_session_create_sm_context_request message and store the "
       "necessary information");
-  smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
+  flexcn::pdu_session_create_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextMessage to pdu_session_create_sm_context_request
   xgpp_conv::sm_context_create_from_openapi(
@@ -331,10 +331,10 @@ void smf_http2_server::create_sm_contexts_handler(
       NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
 
   boost::shared_ptr<
-      boost::promise<smf::pdu_session_create_sm_context_response> >
+      boost::promise<flexcn::pdu_session_create_sm_context_response> >
       p = boost::make_shared<
-          boost::promise<smf::pdu_session_create_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_create_sm_context_response> f;
+          boost::promise<flexcn::pdu_session_create_sm_context_response> >();
+  boost::shared_future<flexcn::pdu_session_create_sm_context_response> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
@@ -350,7 +350,7 @@ void smf_http2_server::create_sm_contexts_handler(
   itti_msg->http_version = 2;
 
   // Wait for the result from APP and send reply to AMF
-  smf::pdu_session_create_sm_context_response sm_context_response = f.get();
+  flexcn::pdu_session_create_sm_context_response sm_context_response = f.get();
   Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
   nlohmann::json json_data = {};
   sm_context_response.get_json_data(json_data);
@@ -387,7 +387,7 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_UpdateSMContext Request from AMF.");
 
-  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  flexcn::pdu_session_update_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextUpdateMessage to
   // pdu_session_update_sm_context_request
@@ -395,10 +395,10 @@ void smf_http2_server::update_sm_context_handler(
       smContextUpdateMessage, sm_context_req_msg);
 
   boost::shared_ptr<
-      boost::promise<smf::pdu_session_update_sm_context_response> >
+      boost::promise<flexcn::pdu_session_update_sm_context_response> >
       p = boost::make_shared<
-          boost::promise<smf::pdu_session_update_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_update_sm_context_response> f;
+          boost::promise<flexcn::pdu_session_update_sm_context_response> >();
+  boost::shared_future<flexcn::pdu_session_update_sm_context_response> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
@@ -415,7 +415,7 @@ void smf_http2_server::update_sm_context_handler(
   m_flexcn_app->handle_pdu_session_update_sm_context_request(itti_msg);
 
   // Wait for the result from APP and send reply to AMF
-  smf::pdu_session_update_sm_context_response sm_context_response = f.get();
+  flexcn::pdu_session_update_sm_context_response sm_context_response = f.get();
   Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
   nlohmann::json json_data = {};
@@ -470,17 +470,17 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Handle PDU Session Release SM Context Request.");
 
-  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  flexcn::pdu_session_release_sm_context_request sm_context_req_msg = {};
   // Convert from SmContextReleaseMessage to
   // pdu_session_release_sm_context_request
   xgpp_conv::sm_context_release_from_openapi(
       smContextReleaseMessage, sm_context_req_msg);
 
   boost::shared_ptr<
-      boost::promise<smf::pdu_session_release_sm_context_response> >
+      boost::promise<flexcn::pdu_session_release_sm_context_response> >
       p = boost::make_shared<
-          boost::promise<smf::pdu_session_release_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_release_sm_context_response> f;
+          boost::promise<flexcn::pdu_session_release_sm_context_response> >();
+  boost::shared_future<flexcn::pdu_session_release_sm_context_response> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
@@ -501,7 +501,7 @@ void smf_http2_server::release_sm_context_handler(
   m_flexcn_app->handle_pdu_session_release_sm_context_request(itti_msg);
 
   // wait for the result from APP and send reply to AMF
-  smf::pdu_session_release_sm_context_response sm_context_response = f.get();
+  flexcn::pdu_session_release_sm_context_response sm_context_response = f.get();
   Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
   response.write_head(sm_context_response.get_http_code());

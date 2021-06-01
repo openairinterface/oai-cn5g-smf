@@ -54,7 +54,7 @@ typedef enum {
   PDU_SESSION_MSG_TYPE_MAX
 } pdu_session_msg_type_t;
 
-namespace smf {
+namespace flexcn {
 
 //-----------------------------------------------------------------------------
 // QoS flow to be created/modified/removed
@@ -657,6 +657,6 @@ class data_notification_msg {
   // std::vector<ChangeItem> m_ProfileChanges;
   // bool m_ProfileChangesIsSet;
 };
-}  // namespace smf
+}  // namespace flexcn
 
 #endif

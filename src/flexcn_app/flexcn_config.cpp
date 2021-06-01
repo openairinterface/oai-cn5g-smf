@@ -53,7 +53,7 @@
 
 using namespace std;
 using namespace libconfig;
-using namespace smf;
+using namespace flexcn;
 
 extern flexcn_config flexcn_cfg;
 

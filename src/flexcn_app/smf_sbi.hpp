@@ -37,7 +37,7 @@
 #include "smf.h"
 #include "smf_context.hpp"
 
-namespace smf {
+namespace flexcn {
 
 #define TASK_SMF_SBI_TIMEOUT_NRF_HEARTBEAT_REQUEST 1
 
@@ -166,5 +166,5 @@ class smf_sbi {
    */
   void subscribe_sm_data();
 };
-}  // namespace smf
+}  // namespace flexcn
 #endif /* FILE_SMF_SBI_HPP_SEEN */

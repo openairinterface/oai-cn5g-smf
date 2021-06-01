@@ -39,7 +39,7 @@
 #include "flexcn_config.hpp"
 
 using namespace pfcp;
-using namespace smf;
+using namespace flexcn;
 using namespace std;
 
 extern itti_mw* itti_inst;

@@ -42,7 +42,7 @@
 #include "logger.hpp"
 #include "smf.h"
 
-namespace smf {
+namespace flexcn {
 
 using namespace std;
 class nf_profile : public std::enable_shared_from_this<nf_profile> {
@@ -360,22 +360,22 @@ class smf_profile : public nf_profile {
   void get_custom_info(nlohmann::json& c) const;
 
   /*
-   * Set smf info
-   * @param [smf_info_t &] s: smf info
+   * Set flexcn info
+   * @param [smf_info_t &] s: flexcn info
    * @return void
    */
   void set_smf_info(const smf_info_t& s);
 
   /*
-   * Add an snssai_smf_info_item to the smf info
+   * Add an snssai_smf_info_item to the flexcn info
    * @param [const snssai_smf_info_item_t &] s: snssai_smf_info_item
    * @return void
    */
   void add_smf_info_item(const snssai_smf_info_item_t& s);
 
   /*
-   * Get NF instance smf info
-   * @param [smf_info_t &] s: store instance's smf info
+   * Get NF instance flexcn info
+   * @param [smf_info_t &] s: store instance's flexcn info
    * @return void:
    */
   void get_smf_info(smf_info_t& s) const;
@@ -496,6 +496,6 @@ class upf_profile : public nf_profile {
   upf_info_t upf_info;
 };
 
-}  // namespace smf
+}  // namespace flexcn
 
 #endif

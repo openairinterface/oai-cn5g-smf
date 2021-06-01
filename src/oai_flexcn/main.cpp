@@ -35,7 +35,7 @@
 #include <stdlib.h>  // srand
 #include <unistd.h>  // get_pid(), pause()
 
-using namespace smf;
+using namespace flexcn;
 using namespace util;
 using namespace std;
 using namespace oai::smf_server::api;

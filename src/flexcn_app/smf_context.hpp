@@ -50,7 +50,7 @@
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp" // common
 
-namespace smf {
+namespace flexcn {
 
 class smf_qos_flow {
  public:
@@ -788,6 +788,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   bs2::connection sm_context_status_connection;
   bs2::connection ee_pdu_session_release_connection;
 };
-}  // namespace smf
+}  // namespace flexcn
 
 #endif

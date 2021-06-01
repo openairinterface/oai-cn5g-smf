@@ -28,7 +28,7 @@
  */
 #include "smf_msg.hpp"
 
-using namespace smf;
+using namespace flexcn;
 
 /*
  * class: QoS Flow Context Updated

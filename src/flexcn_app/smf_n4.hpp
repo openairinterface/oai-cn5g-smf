@@ -35,7 +35,7 @@
 #include "pfcp.hpp"
 #include "smf_pfcp_association.hpp"
 
-namespace smf {
+namespace flexcn {
 
 #define TASK_SMF_N4_TRIGGER_HEARTBEAT_REQUEST (0)
 #define TASK_SMF_N4_TIMEOUT_HEARTBEAT_REQUEST (1)
@@ -122,5 +122,5 @@ class smf_n4 : public pfcp::pfcp_l4_stack {
 
   void time_out_itti_event(const uint32_t timer_id);
 };
-}  // namespace smf
+}  // namespace flexcn
 #endif /* FILE_SMF_N4_HPP_SEEN */

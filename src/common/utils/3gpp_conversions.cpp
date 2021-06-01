@@ -94,7 +94,7 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
     const oai::smf_server::model::SmContextMessage& scd,
-    smf::pdu_session_create_sm_context_request& pcr) {
+    flexcn::pdu_session_create_sm_context_request& pcr) {
   Logger::flexcn_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
@@ -236,7 +236,7 @@ void xgpp_conv::sm_context_create_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_update_from_openapi(
     const oai::smf_server::model::SmContextUpdateMessage& scu,
-    smf::pdu_session_update_sm_context_request& pur) {
+    flexcn::pdu_session_update_sm_context_request& pur) {
   Logger::flexcn_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
@@ -308,7 +308,7 @@ void xgpp_conv::sm_context_update_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_release_from_openapi(
     const oai::smf_server::model::SmContextReleaseMessage& srm,
-    smf::pdu_session_release_sm_context_request& prr) {
+    flexcn::pdu_session_release_sm_context_request& prr) {
   Logger::flexcn_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
@@ -339,7 +339,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::data_notification_from_openapi(
     const oai::smf_server::model::NotificationData& nd,
-    smf::data_notification_msg& dn_msg) {
+    flexcn::data_notification_msg& dn_msg) {
   Logger::flexcn_app().debug(
       "Convert NotificationData (OpenAPI) to "
       "Data Notification Msg");
@@ -347,11 +347,11 @@ void xgpp_conv::data_notification_from_openapi(
   dn_msg.set_notification_event_type(nd.getEvent());
   dn_msg.set_nf_instance_uri(nd.getNfInstanceUri());
 
-  std::shared_ptr<smf::nf_profile> p = {};
+  std::shared_ptr<flexcn::nf_profile> p = {};
 
   // Only support UPF for now
   if (nd.getNfProfile().getNfType() == "UPF")
-    p = std::make_shared<smf::upf_profile>();
+    p = std::make_shared<flexcn::upf_profile>();
 
   nlohmann::json pj = {};
   to_json(pj, nd.getNfProfile());
@@ -362,7 +362,7 @@ void xgpp_conv::data_notification_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
     const oai::smf_server::model::NsmfEventExposure& nee,
-    smf::event_exposure_msg& eem) {
+    flexcn::event_exposure_msg& eem) {
   Logger::flexcn_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "
       "Event Exposure Msg");

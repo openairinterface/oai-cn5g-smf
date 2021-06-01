@@ -67,7 +67,7 @@ extern "C" {
 #include "dynamic_memory_check.h"
 }
 
-using namespace smf;
+using namespace flexcn;
 
 extern util::async_shell_cmd* async_shell_cmd_inst;
 extern flexcn_app* flexcn_app_inst;
@@ -154,7 +154,7 @@ void flexcn_app::add_data_event(const std::string &data_event){
   //parse string to json
 
   //TODO: valid the source of data
-  // store the list of valid sources inside the smf-app and verify? 
+  // store the list of valid sources inside the flexcn-app and verify? 
   nlohmann::json json_data;
   try
   {

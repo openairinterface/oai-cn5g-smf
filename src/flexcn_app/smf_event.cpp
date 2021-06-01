@@ -32,8 +32,8 @@
 #include "flexxcn_app.hpp"
 #include "smf_subscription.hpp"
 
-using namespace smf;
-extern smf::flexcn_app* flexcn_app_inst;
+using namespace flexcn;
+extern flexcn::flexcn_app* flexcn_app_inst;
 extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------

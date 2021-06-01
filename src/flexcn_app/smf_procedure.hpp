@@ -42,7 +42,7 @@
 #include "smf_msg.hpp"
 #include "uint_generator.hpp"
 
-namespace smf {
+namespace flexcn {
 
 class smf_context;
 class smf_pdu_session;
@@ -64,13 +64,13 @@ class smf_procedure {
   virtual itti_msg_type_t get_procedure_type() { return ITTI_MSG_TYPE_NONE; }
   virtual void handle_itti_msg(
       itti_n4_session_establishment_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {}
+      std::shared_ptr<flexcn::smf_context> pc) {}
   virtual void handle_itti_msg(
       itti_n4_session_modification_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {}
+      std::shared_ptr<flexcn::smf_context> pc) {}
   virtual void handle_itti_msg(
       itti_n4_session_deletion_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {}
+      std::shared_ptr<flexcn::smf_context> pc) {}
 };
 
 class smf_qos_flow;
@@ -108,23 +108,23 @@ class session_create_sm_context_procedure : public smf_procedure {
    * Execute N11 Create SM Context Request procedure
    * @param [itti_n11_create_sm_context_request] req
    * @param [itti_n11_create_sm_context_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc: flexcn context
    * @return
    */
   int run(
       std::shared_ptr<itti_n11_create_sm_context_request> req,
       std::shared_ptr<itti_n11_create_sm_context_response> resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   /*
    * Handle N4 Session Establishment Response from UPF
    * @param [itti_n4_session_establishment_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc flexcn context
    * @return void
    */
   void handle_itti_msg(
       itti_n4_session_establishment_response& resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   std::shared_ptr<itti_n4_session_establishment_request> n4_triggered;
   std::shared_ptr<smf_pdu_session> sps;
@@ -149,23 +149,23 @@ class session_update_sm_context_procedure : public smf_procedure {
    * Execute N11 Update SM Context Request procedure
    * @param [itti_n11_update_sm_context_request] req
    * @param [itti_n11_update_sm_context_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc: flexcn context
    * @return
    */
   int run(
       std::shared_ptr<itti_n11_update_sm_context_request> req,
       std::shared_ptr<itti_n11_update_sm_context_response> resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
    * @param [itti_n4_session_modification_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc flexcn context
    * @return void
    */
   void handle_itti_msg(
       itti_n4_session_modification_response& resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   std::shared_ptr<itti_n4_session_modification_request> n4_triggered;
   std::shared_ptr<smf_pdu_session> sps;
@@ -190,23 +190,23 @@ class session_release_sm_context_procedure : public smf_procedure {
    * Execute N11 Release SM Context Request procedure
    * @param [itti_n11_release_sm_context_request] req
    * @param [itti_n11_release_sm_context_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc: flexcn context
    * @return
    */
   int run(
       std::shared_ptr<itti_n11_release_sm_context_request> req,
       std::shared_ptr<itti_n11_release_sm_context_response> resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
    * @param [itti_n4_session_modification_response] resp
-   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @param [std::shared_ptr<flexcn::smf_context>] sc flexcn context
    * @return void
    */
   void handle_itti_msg(
       itti_n4_session_deletion_response& resp,
-      std::shared_ptr<smf::smf_context> sc);
+      std::shared_ptr<flexcn::smf_context> sc);
 
   std::shared_ptr<itti_n4_session_deletion_request> n4_triggered;
   std::shared_ptr<smf_pdu_session> sps;

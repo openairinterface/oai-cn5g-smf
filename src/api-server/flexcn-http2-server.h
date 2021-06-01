@@ -44,7 +44,7 @@ using namespace oai::smf_server::model;
 
 class smf_http2_server {
  public:
-  smf_http2_server(std::string addr, uint32_t port, smf::flexcn_app* flexcn_app_inst)
+  smf_http2_server(std::string addr, uint32_t port, flexcn::flexcn_app* flexcn_app_inst)
       : m_address(addr), m_port(port), server(), m_flexcn_app(flexcn_app_inst) {}
   void start();
   void init(size_t thr) {}
@@ -66,7 +66,7 @@ class smf_http2_server {
   std::string m_address;
   uint32_t m_port;
   http2 server;
-  smf::flexcn_app* m_flexcn_app;
+  flexcn::flexcn_app* m_flexcn_app;
 
  protected:
   static uint64_t generate_promise_id() {

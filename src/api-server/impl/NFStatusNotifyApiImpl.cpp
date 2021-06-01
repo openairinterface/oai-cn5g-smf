@@ -40,7 +40,7 @@
 #include "flexcn_config.hpp"
 #include "3gpp_conversions.hpp"
 
-extern smf::flexcn_config flexcn_cfg;
+extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {
@@ -49,7 +49,7 @@ namespace api {
 using namespace oai::smf_server::model;
 
 NFStatusNotifyApiImpl::NFStatusNotifyApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
+    std::shared_ptr<Pistache::Rest::Router> rtr, flexcn::flexcn_app* flexcn_app_inst,
     std::string address)
     : NFStatusNotifyApi(rtr), m_flexcn_app(flexcn_app_inst), m_address(address) {}
 
@@ -59,7 +59,7 @@ void NFStatusNotifyApiImpl::receive_nf_status_notification(
   Logger::smf_api_server().info(
       "NFStatusNotifyApiImpl, received a NF status notification...");
 
-  smf::data_notification_msg notification_msg = {};
+  flexcn::data_notification_msg notification_msg = {};
   // convert from NotificationData to data_notification_msg
   xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
 

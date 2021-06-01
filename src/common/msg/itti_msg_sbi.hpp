@@ -64,7 +64,7 @@ class itti_sbi_event_exposure_request : public itti_sbi_msg {
         event_exposure(i.event_exposure),
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_EVENT_EXPOSURE_REQUEST"; };
-  smf::event_exposure_msg event_exposure;
+  flexcn::event_exposure_msg event_exposure;
   uint8_t http_version;
 };
 
@@ -86,7 +86,7 @@ class itti_sbi_notification_data : public itti_sbi_msg {
         notification_msg(i.notification_msg),
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
-  smf::data_notification_msg notification_msg;
+  flexcn::data_notification_msg notification_msg;
   uint8_t http_version;
 };
 

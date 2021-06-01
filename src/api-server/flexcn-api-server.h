@@ -52,7 +52,7 @@
 using namespace oai::smf_server::api;
 class FLEXCNApiServer {
  public:
-  FLEXCNApiServer(Pistache::Address address, smf::flexcn_app* flexcn_app_inst)
+  FLEXCNApiServer(Pistache::Address address, flexcn::flexcn_app* flexcn_app_inst)
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();

@@ -55,7 +55,7 @@
 #include "EventNotification.h"
 #include "ueinfo_smf_record.hpp"
 
-namespace smf {
+namespace flexcn {
 
 #define TASK_FLEXCN_APP_TRIGGER_T3591 (0)
 #define TASK_FLEXCN_APP_TIMEOUT_T3591 (1)
@@ -111,7 +111,7 @@ class flexcn_app {
   // std::vector<CNRecords> cn_table;
   // merge CNrecords to one
 
-  // Hung_TODO: change the smf name to flexcn 
+  // Hung_TODO: change the flexcn name to flexcn 
   // keep the old name for compiling purpose.  
 
 
@@ -751,7 +751,7 @@ class flexcn_app {
   //FlexCN
   void trigger_pdu_session_status_notification_subscribe();
 };
-}  // namespace smf
+}  // namespace flexcn
 #include "flexcn_config.hpp"
 
 #endif /* FILE_FLEXCN_APP_HPP_SEEN */

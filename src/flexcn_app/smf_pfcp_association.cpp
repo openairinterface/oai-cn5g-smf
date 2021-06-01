@@ -33,7 +33,7 @@
 #include "smf_n4.hpp"
 #include "smf_procedure.hpp"
 
-using namespace smf;
+using namespace flexcn;
 using namespace std;
 
 extern itti_mw* itti_inst;

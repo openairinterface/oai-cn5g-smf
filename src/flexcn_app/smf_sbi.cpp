@@ -51,7 +51,7 @@ extern "C" {
 using namespace Pistache::Http;
 using namespace Pistache::Http::Mime;
 
-using namespace smf;
+using namespace flexcn;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;

@@ -52,11 +52,11 @@ extern "C" {
 #include "dynamic_memory_check.h"
 }
 
-using namespace smf;
+using namespace flexcn;
 
 extern itti_mw* itti_inst;
-extern smf::flexcn_app* flexcn_app_inst;
-extern smf::flexcn_config flexcn_cfg;
+extern flexcn::flexcn_app* flexcn_app_inst;
+extern flexcn::flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 void smf_qos_flow::mark_as_released() {

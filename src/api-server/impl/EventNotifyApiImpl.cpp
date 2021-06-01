@@ -40,7 +40,7 @@
 #include "flexcn_config.hpp"
 #include "3gpp_conversions.hpp"
 
-extern smf::flexcn_config flexcn_cfg;
+extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {
@@ -49,7 +49,7 @@ namespace api {
 using namespace oai::smf_server::model;
 
 EventNotifyApiImpl::EventNotifyApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
+    std::shared_ptr<Pistache::Rest::Router> rtr, flexcn::flexcn_app* flexcn_app_inst,
     std::string address)
     : EventNotifyApi(rtr), m_flexcn_app(flexcn_app_inst), m_address(address) {}
 

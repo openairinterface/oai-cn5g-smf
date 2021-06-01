@@ -36,7 +36,7 @@ namespace bs2 = boost::signals2;
 #include "smf.h"
 #include "smf_event_sig.hpp"
 
-namespace smf {
+namespace flexcn {
 class smf_event {
  public:
   smf_event(){};
@@ -79,5 +79,5 @@ class smf_event {
   ee_pdu_session_release_sig_t
       ee_pdu_session_release;  // Signal for SM Context status update
 };
-}  // namespace smf
+}  // namespace flexcn
 #endif /* FILE_SMF_EVENT_HPP_SEEN */

@@ -37,7 +37,7 @@
 #include "itti.hpp"
 #include "smf_profile.hpp"
 
-namespace smf {
+namespace flexcn {
 
 #define PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC 10
 #define PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES 2
@@ -227,6 +227,6 @@ class pfcp_associations {
   bool remove_association(const std::string& node_instance_id);
   bool remove_association(const int32_t& hash_node_id);
 };
-}  // namespace smf
+}  // namespace flexcn
 
 #endif /* FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN */

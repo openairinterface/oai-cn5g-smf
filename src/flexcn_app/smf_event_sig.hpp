@@ -36,7 +36,7 @@
 
 namespace bs2 = boost::signals2;
 
-namespace smf {
+namespace flexcn {
 
 // Signal for PDU session status
 // SCID, PDU Session Status, HTTP version
@@ -57,5 +57,5 @@ typedef bs2::signal_type<
 // TODO: PLMN Change
 // TODO: Downlink data delivery status
 
-}  // namespace smf
+}  // namespace flexcn
 #endif /* FILE_SMF_EVENT_SIG_HPP_SEEN */

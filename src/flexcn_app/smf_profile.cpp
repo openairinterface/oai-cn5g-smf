@@ -35,7 +35,7 @@
 #include "string.hpp"
 
 using namespace std;
-using namespace smf;
+using namespace flexcn;
 
 //------------------------------------------------------------------------------
 void nf_profile::set_nf_instance_id(const std::string& instance_id) {

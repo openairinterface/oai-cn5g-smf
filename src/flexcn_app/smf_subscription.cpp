@@ -34,7 +34,7 @@
 #include "common_defs.h"
 #include "itti_msg_sbi.hpp"
 
-using namespace smf;
+using namespace flexcn;
 
-extern smf::flexcn_app* flexcn_app_inst;
+extern flexcn::flexcn_app* flexcn_app_inst;
 extern itti_mw* itti_inst;

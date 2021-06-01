@@ -63,7 +63,7 @@ using namespace oai::smf_server::model;
 class EventNotifyApiImpl : public oai::smf_server::api::EventNotifyApi {
  public:
   EventNotifyApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::flexcn_app* flexcn_app_inst,
+      std::shared_ptr<Pistache::Rest::Router>, flexcn::flexcn_app* flexcn_app_inst,
       std::string address);
   ~EventNotifyApiImpl() {}
 
@@ -72,7 +72,7 @@ class EventNotifyApiImpl : public oai::smf_server::api::EventNotifyApi {
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::flexcn_app* m_flexcn_app;
+  flexcn::flexcn_app* m_flexcn_app;
   std::string m_address;
 };
 

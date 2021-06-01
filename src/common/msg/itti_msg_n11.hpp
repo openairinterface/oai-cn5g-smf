@@ -76,7 +76,7 @@ class itti_n11_create_sm_context_request : public itti_n11_msg {
     return "N11_SESSION_CREATE_SM_CONTEXT_REQUEST";
   };
   void set_scid(scid_t id) { scid = id; };
-  smf::pdu_session_create_sm_context_request req;
+  flexcn::pdu_session_create_sm_context_request req;
   scid_t scid;   // SM Context ID
   uint32_t pid;  // Promise Id
   uint8_t http_version;
@@ -111,7 +111,7 @@ class itti_n11_create_sm_context_response : public itti_n11_msg {
   };
   void set_scid(scid_t id) { scid = id; };
 
-  smf::pdu_session_create_sm_context_response res;
+  flexcn::pdu_session_create_sm_context_response res;
   scid_t scid;           // SM Context ID
   uint32_t pid;          // Promise Id
   uint8_t http_version;  // HTTP version
@@ -146,7 +146,7 @@ class itti_n11_update_sm_context_request : public itti_n11_msg {
   const char* get_msg_name() {
     return "N11_SESSION_UPDATE_SM_CONTEXT_REQUEST";
   };
-  smf::pdu_session_update_sm_context_request req;
+  flexcn::pdu_session_update_sm_context_request req;
   uint32_t pid;
   std::string scid;  // SM Context ID
   uint8_t http_version;
@@ -177,7 +177,7 @@ class itti_n11_update_sm_context_response : public itti_n11_msg {
   const char* get_msg_name() {
     return "N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE";
   };
-  smf::pdu_session_update_sm_context_response res;
+  flexcn::pdu_session_update_sm_context_response res;
   uint32_t pid;  // promise Id
   session_management_procedures_type_e session_procedure_type;
 };
@@ -301,7 +301,7 @@ class itti_n11_release_sm_context_request : public itti_n11_msg {
   const char* get_msg_name() {
     return "N11_SESSION_RELEASE_SM_CONTEXT_REQUEST";
   };
-  smf::pdu_session_release_sm_context_request req;
+  flexcn::pdu_session_release_sm_context_request req;
   std::string scid;      // SM Context ID
   uint32_t pid;          // Promise Id
   uint8_t http_version;  // HTTP version
@@ -325,7 +325,7 @@ class itti_n11_release_sm_context_response : public itti_n11_msg {
   const char* get_msg_name() {
     return "N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE";
   };
-  smf::pdu_session_release_sm_context_response res;
+  flexcn::pdu_session_release_sm_context_response res;
   uint32_t pid;  // Promise Id
 };
 
@@ -343,7 +343,7 @@ class itti_n11_session_report_request : public itti_n11_msg {
       const task_id_t dest)
       : itti_n11_msg(i, orig, dest), res(i.res), http_version(i.http_version) {}
   const char* get_msg_name() { return "N11_SESSION_REPORT_RESPONSE"; };
-  smf::pdu_session_report_response res;
+  flexcn::pdu_session_report_response res;
   uint8_t http_version;
 };
 
@@ -401,7 +401,7 @@ class itti_n11_notify_subscribed_event : public itti_n11_msg {
   const char* get_msg_name() { return "N11_NOTIFY_SUBSCRIBED_EVENT"; };
 
   std::string notif_id;
-  std::vector<smf::event_notification> event_notifs;
+  std::vector<flexcn::event_notification> event_notifs;
   uint8_t http_version;
 };
 
@@ -414,7 +414,7 @@ class itti_n11_register_nf_instance_request : public itti_n11_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_REGISTER_NF_INSTANCE_REQUEST"; };
 
-  smf::smf_profile profile;
+  flexcn::smf_profile profile;
   uint8_t http_version;
 };
 
@@ -427,7 +427,7 @@ class itti_n11_register_nf_instance_response : public itti_n11_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_REGISTER_NF_INSTANCE_RESPONSE"; };
 
-  smf::smf_profile profile;
+  flexcn::smf_profile profile;
   uint8_t http_version;
   uint8_t http_response_code;
 };

@@ -62,7 +62,7 @@ using namespace oai::smf_server::model;
 class FlexCNStatImpl : public oai::smf_server::api::FlexCNStat {
  public:
   FlexCNStatImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::flexcn_app* flexcn_app_inst,
+      std::shared_ptr<Pistache::Rest::Router>, flexcn::flexcn_app* flexcn_app_inst,
       std::string address);
   ~FlexCNStatImpl() {}
 
@@ -70,7 +70,7 @@ class FlexCNStatImpl : public oai::smf_server::api::FlexCNStat {
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::flexcn_app* m_flexcn_app;
+  flexcn::flexcn_app* m_flexcn_app;
   std::string m_address;
 };
 

@@ -49,12 +49,12 @@
 #include "3gpp_24.501.h"
 
 using namespace pfcp;
-using namespace smf;
+using namespace flexcn;
 using namespace std;
 
 extern itti_mw* itti_inst;
-extern smf::flexcn_app* flexcn_app_inst;
-extern smf::flexcn_config flexcn_cfg;
+extern flexcn::flexcn_app* flexcn_app_inst;
+extern flexcn::flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 int n4_session_restore_procedure::run() {
@@ -65,14 +65,14 @@ int n4_session_restore_procedure::run() {
 int session_create_sm_context_procedure::run(
     std::shared_ptr<itti_n11_create_sm_context_request> sm_context_req,
     std::shared_ptr<itti_n11_create_sm_context_response> sm_context_resp,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
   return RETURNok;
 }
 
 //------------------------------------------------------------------------------
 void session_create_sm_context_procedure::handle_itti_msg(
     itti_n4_session_establishment_response& resp,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
 
 }
 
@@ -80,14 +80,14 @@ void session_create_sm_context_procedure::handle_itti_msg(
 int session_update_sm_context_procedure::run(
     std::shared_ptr<itti_n11_update_sm_context_request> sm_context_req,
     std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
     return RETURNok;
 }
 
 //------------------------------------------------------------------------------
 void session_update_sm_context_procedure::handle_itti_msg(
     itti_n4_session_modification_response& resp,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
 
 }
 
@@ -95,13 +95,13 @@ void session_update_sm_context_procedure::handle_itti_msg(
 int session_release_sm_context_procedure::run(
     std::shared_ptr<itti_n11_release_sm_context_request> sm_context_req,
     std::shared_ptr<itti_n11_release_sm_context_response> sm_context_res,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
   return RETURNok;
 }
 
 //------------------------------------------------------------------------------
 void session_release_sm_context_procedure::handle_itti_msg(
     itti_n4_session_deletion_response& resp,
-    std::shared_ptr<smf::smf_context> sc) {
+    std::shared_ptr<flexcn::smf_context> sc) {
   
 }

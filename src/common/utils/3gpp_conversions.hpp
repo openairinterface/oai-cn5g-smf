@@ -70,61 +70,61 @@ void pdn_ip_to_pfcp_ue_ip_address(
  * SessionCreateSMContextRequest msg
  * @param [const oai::smf_server::model::SmContextMessage&] scm: SM Context
  * Create Msg in OpenAPI
- * @param [smf::pdu_session_create_sm_context_request&] pcr: PDU
+ * @param [flexcn::pdu_session_create_sm_context_request&] pcr: PDU
  * SessionCreateSMContextRequest msg
  * @return void
  */
 void sm_context_create_from_openapi(
     const oai::smf_server::model::SmContextMessage& scm,
-    smf::pdu_session_create_sm_context_request& pcr);
+    flexcn::pdu_session_create_sm_context_request& pcr);
 
 /*
  * Convert SM Context Update Msg from OpenAPI into PDU
  * SessionUpdateSMContextRequest msg
  * @param [const oai::smf_server::model::SmContextUpdateMessage&] scu: SM
  * Context Update Msg in OpenAPI
- * @param [smf::pdu_session_update_sm_context_request&] pur: PDU
+ * @param [flexcn::pdu_session_update_sm_context_request&] pur: PDU
  * SessionUpdateSMContextRequest msg
  * @return void
  */
 void sm_context_update_from_openapi(
     const oai::smf_server::model::SmContextUpdateMessage& scu,
-    smf::pdu_session_update_sm_context_request& pur);
+    flexcn::pdu_session_update_sm_context_request& pur);
 
 /*
  * Convert SM Context Release Msg from OpenAPI into PDU
  * SessionReleaseSMContextRequest msg
  * @param [const oai::smf_server::model::SmContextReleaseMessage&] srm: SM
  * Context Release Msg in OpenAPI
- * @param [smf::pdu_session_release_sm_context_request&] prr: PDU
+ * @param [flexcn::pdu_session_release_sm_context_request&] prr: PDU
  * SessionReleaseSMContextRequest msg
  * @return void
  */
 void sm_context_release_from_openapi(
     const oai::smf_server::model::SmContextReleaseMessage& srm,
-    smf::pdu_session_release_sm_context_request& prr);
+    flexcn::pdu_session_release_sm_context_request& prr);
 
 /*
  * Convert Data Notification from OpenAPI into Data Notification Msg
  * @param [const oai::smf_server::model::NotificationData&] nd: Data
  * Notification in OpenAPI
- * @param [smf::data_notification_msg&] dn_msg: Data Notification msg
+ * @param [flexcn::data_notification_msg&] dn_msg: Data Notification msg
  * @return void
  */
 void data_notification_from_openapi(
     const oai::smf_server::model::NotificationData& nd,
-    smf::data_notification_msg& dn_msg);
+    flexcn::data_notification_msg& dn_msg);
 
 /*
  * Convert NsmfEventExposure from OpenAPI into Event Exposure Msg
  * @param [const oai::smf_server::model::NsmfEventExposure&] nee:
  * NsmfEventExposure in OpenAPI
- * @param [smf::event_exposure_msg&] eem: Event Exposure Msg
+ * @param [flexcn::event_exposure_msg&] eem: Event Exposure Msg
  * @return void
  */
 void smf_event_exposure_notification_from_openapi(
     const oai::smf_server::model::NsmfEventExposure& nee,
-    smf::event_exposure_msg& eem);
+    flexcn::event_exposure_msg& eem);
 
 void create_sm_context_response_from_ct_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,

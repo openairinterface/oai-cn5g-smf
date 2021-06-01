@@ -63,7 +63,7 @@ using namespace oai::smf_server::model;
 class NFStatusNotifyApiImpl : public oai::smf_server::api::NFStatusNotifyApi {
  public:
   NFStatusNotifyApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::flexcn_app* flexcn_app_inst,
+      std::shared_ptr<Pistache::Rest::Router>, flexcn::flexcn_app* flexcn_app_inst,
       std::string address);
   ~NFStatusNotifyApiImpl() {}
 
@@ -72,7 +72,7 @@ class NFStatusNotifyApiImpl : public oai::smf_server::api::NFStatusNotifyApi {
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::flexcn_app* m_flexcn_app;
+  flexcn::flexcn_app* m_flexcn_app;
   std::string m_address;
 };
 
