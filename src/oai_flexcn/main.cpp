@@ -21,7 +21,7 @@
 #include "options.hpp"
 #include "pid_file.hpp"
 #include "flexcn_app.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 #include "flexcn-api-server.h"
 #include "pistache/endpoint.h"
 #include "pistache/http.h"

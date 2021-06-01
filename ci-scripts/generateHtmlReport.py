@@ -993,8 +993,8 @@ class HtmlReport():
 		self.file.write('	   <td bgcolor="lightcyan" >Container Config</td>\n')
 		cwd = os.getcwd()
 
-		if os.path.isfile(cwd + '/archives/smf_config.log'):
-			cmd = 'grep -c OK ' + cwd + '/archives/smf_config.log'
+		if os.path.isfile(cwd + '/archives/flexcn_config.log'):
+			cmd = 'grep -c OK ' + cwd + '/archives/flexcn_config.log'
 			try:
 				is_ok = subprocess.check_output(cmd, shell=True, universal_newlines=True)
 			except:

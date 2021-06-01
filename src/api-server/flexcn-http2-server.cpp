@@ -40,7 +40,7 @@
 #include "3gpp_29.502.h"
 #include "mime_parser.hpp"
 #include "3gpp_29.500.h"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 #include "smf.h"
 #include "3gpp_conversions.hpp"
 

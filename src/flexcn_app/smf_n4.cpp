@@ -36,7 +36,7 @@
 #include "common_defs.h"
 #include "itti.hpp"
 #include "logger.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 
 using namespace pfcp;
 using namespace smf;

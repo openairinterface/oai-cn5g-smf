@@ -41,7 +41,7 @@
 #include "itti_msg_n4_restore.hpp"
 #include "logger.hpp"
 #include "flexcn_app.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 #include "smf_context.hpp"
 #include "smf_sbi.hpp"
 #include "smf_pfcp_association.hpp"

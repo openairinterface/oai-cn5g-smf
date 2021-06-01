@@ -37,7 +37,7 @@
 #include "logger.hpp"
 #include "smf_msg.hpp"
 #include "itti_msg_sbi.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 #include "3gpp_conversions.hpp"
 
 extern smf::flexcn_config flexcn_cfg;

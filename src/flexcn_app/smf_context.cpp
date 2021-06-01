@@ -39,7 +39,7 @@
 #include "itti.hpp"
 #include "logger.hpp"
 #include "flexcn_app.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 #include "smf_event.hpp"
 #include "smf_sbi.hpp"
 #include "smf_paa_dynamic.hpp"

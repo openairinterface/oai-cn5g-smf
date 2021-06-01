@@ -27,7 +27,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 
 #include <cstdlib>
 #include <iomanip>

@@ -37,7 +37,7 @@ include_directories(${SRC_TOP_DIR}/api-server/)
 
 add_library (FLEXCN STATIC
   flexcn_app.cpp
-  smf_config.cpp
+  flexcn_config.cpp
   smf_context.cpp
   smf_pfcp_association.cpp
   smf_procedure.cpp

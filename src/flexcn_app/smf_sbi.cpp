@@ -42,7 +42,7 @@
 #include "mime_parser.hpp"
 #include "smf.h"
 #include "flexcn_app.hpp"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"

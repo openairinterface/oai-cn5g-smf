@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config.hpp
+/*! \file flexcn_config.hpp
  * \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,8 +27,8 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_CONFIG_HPP_SEEN
-#define FILE_SMF_CONFIG_HPP_SEEN
+#ifndef FILE_FLEXCN_CONFIG_HPP_SEEN
+#define FILE_FLEXCN_CONFIG_HPP_SEEN
 
 #include <arpa/inet.h>
 #include <netinet/in.h>

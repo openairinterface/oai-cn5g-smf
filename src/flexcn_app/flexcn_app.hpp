@@ -752,6 +752,6 @@ class flexcn_app {
   void trigger_pdu_session_status_notification_subscribe();
 };
 }  // namespace smf
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 
 #endif /* FILE_FLEXCN_APP_HPP_SEEN */

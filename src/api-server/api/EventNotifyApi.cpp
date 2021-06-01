@@ -21,7 +21,7 @@
 
 #include "EventNotifyApi.h"
 #include "Helpers.h"
-#include "smf_config.hpp"
+#include "flexcn_config.hpp"
 
 extern smf::flexcn_config flexcn_cfg;
 
