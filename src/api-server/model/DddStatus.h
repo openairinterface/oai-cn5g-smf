@@ -24,7 +24,7 @@
 #include <nlohmann/json.hpp>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 typedef std::string DddStatus;
@@ -50,7 +50,7 @@ typedef std::string DddStatus;
 // };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* DddStatus_H_ */

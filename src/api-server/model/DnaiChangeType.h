@@ -25,7 +25,7 @@
 #include <nlohmann/json.hpp>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 /// <summary>
@@ -52,7 +52,7 @@ class DnaiChangeType {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* DnaiChangeType_H_ */

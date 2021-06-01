@@ -14,7 +14,7 @@
 #include "DddTrafficDescriptor.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 DddTrafficDescriptor::DddTrafficDescriptor() {
@@ -94,5 +94,5 @@ void DddTrafficDescriptor::unsetPort() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

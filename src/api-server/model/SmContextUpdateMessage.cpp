@@ -15,7 +15,7 @@
 #include "SmContextUpdateMessage.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 SmContextUpdateMessage::SmContextUpdateMessage() {

@@ -14,7 +14,7 @@
 #include "Cause.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 Cause::Cause() {}
@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const Cause& o) {
 void from_json(const nlohmann::json& j, Cause& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

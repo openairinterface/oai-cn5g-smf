@@ -14,7 +14,7 @@
 #include "Dynamic5Qi.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 Dynamic5Qi::Dynamic5Qi() {
@@ -110,5 +110,5 @@ void Dynamic5Qi::unsetMaxDataBurstVol() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

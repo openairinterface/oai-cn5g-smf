@@ -14,7 +14,7 @@
 #include "PduSessionNotifyItem.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 PduSessionNotifyItem::PduSessionNotifyItem() {}

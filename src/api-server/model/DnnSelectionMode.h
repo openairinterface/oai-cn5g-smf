@@ -22,7 +22,7 @@
 #include <nlohmann/json.hpp>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 /// <summary>
@@ -45,7 +45,7 @@ class DnnSelectionMode {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* DnnSelectionMode_H_ */

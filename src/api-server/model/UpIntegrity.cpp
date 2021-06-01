@@ -14,7 +14,7 @@
 #include "UpIntegrity.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 UpIntegrity::UpIntegrity() {}

@@ -14,7 +14,7 @@
 #include "Ipv6Prefix.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 Ipv6Prefix::Ipv6Prefix() {}

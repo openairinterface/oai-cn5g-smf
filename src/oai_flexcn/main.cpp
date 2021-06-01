@@ -38,7 +38,7 @@
 using namespace flexcn;
 using namespace util;
 using namespace std;
-using namespace oai::smf_server::api;
+using namespace oai::flexcn_server::api;
 
 itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;

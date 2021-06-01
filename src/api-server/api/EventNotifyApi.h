@@ -39,10 +39,10 @@
 #include "FlexCNEventNotification.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
 class EventNotifyApi {
  public:
@@ -78,7 +78,7 @@ class EventNotifyApi {
 };
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* EventNotifyApi_H_ */

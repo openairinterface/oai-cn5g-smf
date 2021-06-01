@@ -14,7 +14,7 @@
 #include "PresenceState.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 PresenceState::PresenceState() {}

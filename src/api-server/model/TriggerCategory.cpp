@@ -14,7 +14,7 @@
 #include "TriggerCategory.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 TriggerCategory::TriggerCategory() {}

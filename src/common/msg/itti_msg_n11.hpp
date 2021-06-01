@@ -441,7 +441,7 @@ class itti_n11_update_nf_instance_request : public itti_n11_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_UPDATE_NF_INSTANCE_REQUEST"; };
 
-  std::vector<oai::smf_server::model::PatchItem> patch_items;
+  std::vector<oai::flexcn_server::model::PatchItem> patch_items;
   uint8_t http_version;
   std::string smf_instance_id;
 };

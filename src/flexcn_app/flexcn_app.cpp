@@ -547,7 +547,7 @@ evsub_id_t flexcn_app::handle_event_exposure_subscription(
 //------------------------------------------------------------------------------
 bool flexcn_app::handle_nf_status_notification(
     std::shared_ptr<itti_sbi_notification_data>& msg,
-    oai::smf_server::model::ProblemDetails& problem_details,
+    oai::flexcn_server::model::ProblemDetails& problem_details,
     uint8_t& http_code) {
   return true;
 }
@@ -691,7 +691,7 @@ void flexcn_app::timer_nrf_heartbeat_timeout(
       std::make_shared<itti_n11_update_nf_instance_request>(
           TASK_FLEXCN_APP, TASK_SMF_SBI);
 
-  oai::smf_server::model::PatchItem patch_item = {};
+  oai::flexcn_server::model::PatchItem patch_item = {};
   //{"op":"replace","path":"/nfStatus", "value": "REGISTERED"}
   patch_item.setOp("replace");
   patch_item.setPath("/nfStatus");

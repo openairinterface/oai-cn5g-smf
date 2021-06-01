@@ -14,7 +14,7 @@
 #include "MaReleaseIndication.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 MaReleaseIndication::MaReleaseIndication() {}

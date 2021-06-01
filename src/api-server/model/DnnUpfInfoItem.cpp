@@ -14,7 +14,7 @@
 #include "DnnUpfInfoItem.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 DnnUpfInfoItem::DnnUpfInfoItem() {
@@ -84,5 +84,5 @@ void DnnUpfInfoItem::unsetPduSessionTypes() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

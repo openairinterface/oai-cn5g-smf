@@ -75,7 +75,7 @@ void pdn_ip_to_pfcp_ue_ip_address(
  * @return void
  */
 void sm_context_create_from_openapi(
-    const oai::smf_server::model::SmContextMessage& scm,
+    const oai::flexcn_server::model::SmContextMessage& scm,
     flexcn::pdu_session_create_sm_context_request& pcr);
 
 /*
@@ -88,7 +88,7 @@ void sm_context_create_from_openapi(
  * @return void
  */
 void sm_context_update_from_openapi(
-    const oai::smf_server::model::SmContextUpdateMessage& scu,
+    const oai::flexcn_server::model::SmContextUpdateMessage& scu,
     flexcn::pdu_session_update_sm_context_request& pur);
 
 /*
@@ -101,7 +101,7 @@ void sm_context_update_from_openapi(
  * @return void
  */
 void sm_context_release_from_openapi(
-    const oai::smf_server::model::SmContextReleaseMessage& srm,
+    const oai::flexcn_server::model::SmContextReleaseMessage& srm,
     flexcn::pdu_session_release_sm_context_request& prr);
 
 /*
@@ -112,7 +112,7 @@ void sm_context_release_from_openapi(
  * @return void
  */
 void data_notification_from_openapi(
-    const oai::smf_server::model::NotificationData& nd,
+    const oai::flexcn_server::model::NotificationData& nd,
     flexcn::data_notification_msg& dn_msg);
 
 /*
@@ -123,7 +123,7 @@ void data_notification_from_openapi(
  * @return void
  */
 void smf_event_exposure_notification_from_openapi(
-    const oai::smf_server::model::NsmfEventExposure& nee,
+    const oai::flexcn_server::model::NsmfEventExposure& nee,
     flexcn::event_exposure_msg& eem);
 
 void create_sm_context_response_from_ct_request(

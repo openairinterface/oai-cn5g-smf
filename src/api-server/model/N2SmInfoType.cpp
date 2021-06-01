@@ -14,7 +14,7 @@
 #include "N2SmInfoType.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 N2SmInfoType::N2SmInfoType() {}

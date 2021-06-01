@@ -14,7 +14,7 @@
 #include "ChangeItem.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 ChangeItem::ChangeItem() {
@@ -110,5 +110,5 @@ void ChangeItem::unsetNewValue() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

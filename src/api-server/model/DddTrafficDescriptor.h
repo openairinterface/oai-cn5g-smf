@@ -24,7 +24,7 @@
 #include <nlohmann/json.hpp>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 /// <summary>
@@ -75,7 +75,7 @@ class DddTrafficDescriptor {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* DddTrafficDescriptor_H_ */

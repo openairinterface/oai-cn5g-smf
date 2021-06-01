@@ -14,7 +14,7 @@
 #include "PartialRecordMethod.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 PartialRecordMethod::PartialRecordMethod() {}

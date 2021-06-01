@@ -14,7 +14,7 @@
 #include "SmContextReleaseData.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 SmContextReleaseData::SmContextReleaseData() {

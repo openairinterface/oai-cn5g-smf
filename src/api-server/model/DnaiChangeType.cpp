@@ -14,7 +14,7 @@
 #include "DnaiChangeType.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 DnaiChangeType::DnaiChangeType() {}
@@ -34,5 +34,5 @@ void from_json(const nlohmann::json& j, DnaiChangeType& o) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

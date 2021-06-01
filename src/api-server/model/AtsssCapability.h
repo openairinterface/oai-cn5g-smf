@@ -22,7 +22,7 @@
 #include <nlohmann/json.hpp>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 /// <summary>
@@ -64,7 +64,7 @@ class AtsssCapability {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* AtsssCapability_H_ */

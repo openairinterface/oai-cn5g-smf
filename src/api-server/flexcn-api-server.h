@@ -49,7 +49,7 @@
 
 #include "flexcn_app.hpp"
 
-using namespace oai::smf_server::api;
+using namespace oai::flexcn_server::api;
 class FLEXCNApiServer {
  public:
   FLEXCNApiServer(Pistache::Address address, flexcn::flexcn_app* flexcn_app_inst)

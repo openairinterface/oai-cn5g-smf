@@ -93,13 +93,13 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
-    const oai::smf_server::model::SmContextMessage& scd,
+    const oai::flexcn_server::model::SmContextMessage& scd,
     flexcn::pdu_session_create_sm_context_request& pcr) {
   Logger::flexcn_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
 
-  oai::smf_server::model::SmContextCreateData context_data = {};
+  oai::flexcn_server::model::SmContextCreateData context_data = {};
   if (scd.jsonDataIsSet()) {
     context_data = scd.getJsonData();
   } else {
@@ -235,13 +235,13 @@ void xgpp_conv::sm_context_create_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_update_from_openapi(
-    const oai::smf_server::model::SmContextUpdateMessage& scu,
+    const oai::flexcn_server::model::SmContextUpdateMessage& scu,
     flexcn::pdu_session_update_sm_context_request& pur) {
   Logger::flexcn_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
 
-  oai::smf_server::model::SmContextUpdateData context_data = scu.getJsonData();
+  oai::flexcn_server::model::SmContextUpdateData context_data = scu.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -307,13 +307,13 @@ void xgpp_conv::sm_context_update_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_release_from_openapi(
-    const oai::smf_server::model::SmContextReleaseMessage& srm,
+    const oai::flexcn_server::model::SmContextReleaseMessage& srm,
     flexcn::pdu_session_release_sm_context_request& prr) {
   Logger::flexcn_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
 
-  oai::smf_server::model::SmContextReleaseData context_data = srm.getJsonData();
+  oai::flexcn_server::model::SmContextReleaseData context_data = srm.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -338,7 +338,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::data_notification_from_openapi(
-    const oai::smf_server::model::NotificationData& nd,
+    const oai::flexcn_server::model::NotificationData& nd,
     flexcn::data_notification_msg& dn_msg) {
   Logger::flexcn_app().debug(
       "Convert NotificationData (OpenAPI) to "
@@ -361,7 +361,7 @@ void xgpp_conv::data_notification_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
-    const oai::smf_server::model::NsmfEventExposure& nee,
+    const oai::flexcn_server::model::NsmfEventExposure& nee,
     flexcn::event_exposure_msg& eem) {
   Logger::flexcn_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "

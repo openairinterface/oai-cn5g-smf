@@ -26,7 +26,7 @@
 #include <map>
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace helpers {
 
 std::string toStringValue(const std::string& value);

@@ -26,11 +26,11 @@
 extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::helpers;
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::helpers;
+using namespace oai::flexcn_server::model;
 
 FlexCNStat::FlexCNStat(
     std::shared_ptr<Pistache::Rest::Router> rtr) {
@@ -83,5 +83,5 @@ void FlexCNStat::stat_request_default_handler(
 }
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

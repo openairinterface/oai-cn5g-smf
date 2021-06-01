@@ -14,7 +14,7 @@
 #include "SmContextType.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 SmContextType::SmContextType() {}

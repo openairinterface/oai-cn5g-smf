@@ -46,7 +46,7 @@
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
 extern flexcn::flexcn_config flexcn_cfg;
 

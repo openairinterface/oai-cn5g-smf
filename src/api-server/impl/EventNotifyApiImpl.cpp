@@ -43,10 +43,10 @@
 extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
 EventNotifyApiImpl::EventNotifyApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, flexcn::flexcn_app* flexcn_app_inst,
@@ -61,5 +61,5 @@ void EventNotifyApiImpl::receive_status_notification(
 }
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

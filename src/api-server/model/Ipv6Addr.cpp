@@ -14,7 +14,7 @@
 #include "Ipv6Addr.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 // Ipv6Addr::Ipv6Addr() {}

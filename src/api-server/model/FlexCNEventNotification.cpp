@@ -2,7 +2,7 @@
 #include "FlexCNEventNotification.h"
 #include "SmfEvent.h"
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 CNRecord::CNRecord() {

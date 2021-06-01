@@ -14,7 +14,7 @@
 #include "PduSessionCreateError.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 PduSessionCreateError::PduSessionCreateError() {

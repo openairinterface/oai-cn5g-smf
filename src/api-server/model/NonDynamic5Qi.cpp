@@ -14,7 +14,7 @@
 #include "NonDynamic5Qi.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 NonDynamic5Qi::NonDynamic5Qi() {

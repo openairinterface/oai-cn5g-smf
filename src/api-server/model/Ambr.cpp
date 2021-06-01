@@ -14,7 +14,7 @@
 #include "Ambr.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 Ambr::Ambr() {
@@ -53,5 +53,5 @@ void Ambr::setDownlink(std::string const& value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

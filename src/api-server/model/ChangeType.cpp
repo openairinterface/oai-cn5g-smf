@@ -14,7 +14,7 @@
 #include "ChangeType.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 ChangeType::ChangeType() {}
@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const ChangeType& o) {
 void from_json(const nlohmann::json& j, ChangeType& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

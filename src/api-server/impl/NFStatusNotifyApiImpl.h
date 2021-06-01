@@ -55,12 +55,12 @@
 #include "flexcn_app.hpp"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
-class NFStatusNotifyApiImpl : public oai::smf_server::api::NFStatusNotifyApi {
+class NFStatusNotifyApiImpl : public oai::flexcn_server::api::NFStatusNotifyApi {
  public:
   NFStatusNotifyApiImpl(
       std::shared_ptr<Pistache::Rest::Router>, flexcn::flexcn_app* flexcn_app_inst,
@@ -77,7 +77,7 @@ class NFStatusNotifyApiImpl : public oai::smf_server::api::NFStatusNotifyApi {
 };
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif

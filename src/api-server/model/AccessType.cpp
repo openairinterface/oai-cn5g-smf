@@ -14,7 +14,7 @@
 #include "AccessType.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 AccessType::AccessType() {}
@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const AccessType& o) {
 void from_json(const nlohmann::json& j, AccessType& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

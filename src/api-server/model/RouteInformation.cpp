@@ -14,7 +14,7 @@
 #include "RouteInformation.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 RouteInformation::RouteInformation() {

@@ -49,7 +49,7 @@
 
 
 
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
 class CNRecord {
  public:

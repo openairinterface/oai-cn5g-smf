@@ -69,7 +69,7 @@ void setUpUnixSignals(std::vector<int> quitSignals) {
 }
 #endif
 
-using namespace oai::smf_server::api;
+using namespace oai::flexcn_server::api;
 
 void FLEXCNApiServer::init(size_t thr) {
   auto opts = Pistache::Http::Endpoint::options().threads(thr);

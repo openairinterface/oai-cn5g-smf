@@ -14,7 +14,7 @@
 #include "BackupAmfInfo.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 BackupAmfInfo::BackupAmfInfo() {
@@ -59,5 +59,5 @@ void BackupAmfInfo::unsetGuamiList() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

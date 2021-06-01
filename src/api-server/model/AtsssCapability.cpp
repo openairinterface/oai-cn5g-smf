@@ -14,7 +14,7 @@
 #include "AtsssCapability.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 AtsssCapability::AtsssCapability() {
@@ -75,5 +75,5 @@ void AtsssCapability::unsetMptcp() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

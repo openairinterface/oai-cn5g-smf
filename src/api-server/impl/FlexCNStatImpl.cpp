@@ -43,10 +43,10 @@
 extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::model;
 
 FlexCNStatImpl::FlexCNStatImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, flexcn::flexcn_app* flexcn_app_inst,
@@ -87,5 +87,5 @@ void FlexCNStatImpl::receive_stat_request(
 }
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

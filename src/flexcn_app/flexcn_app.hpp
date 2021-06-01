@@ -471,7 +471,7 @@ class flexcn_app {
 
   bool handle_nf_status_notification(
       std::shared_ptr<itti_sbi_notification_data>& msg,
-      oai::smf_server::model::ProblemDetails& problem_details,
+      oai::flexcn_server::model::ProblemDetails& problem_details,
       uint8_t& http_code);
 
   // Hung: adding new record to the cntable

@@ -14,7 +14,7 @@
 #include "AdditionalQosFlowInfo.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 AdditionalQosFlowInfo::AdditionalQosFlowInfo() {}
@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const AdditionalQosFlowInfo& o) {
 void from_json(const nlohmann::json& j, AdditionalQosFlowInfo& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

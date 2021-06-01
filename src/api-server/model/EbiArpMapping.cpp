@@ -14,7 +14,7 @@
 #include "EbiArpMapping.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 EbiArpMapping::EbiArpMapping() {
@@ -52,5 +52,5 @@ void EbiArpMapping::setArp(Arp const& value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

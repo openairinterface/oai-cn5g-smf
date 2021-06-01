@@ -26,11 +26,11 @@
 extern flexcn::flexcn_config flexcn_cfg;
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace api {
 
-using namespace oai::smf_server::helpers;
-using namespace oai::smf_server::model;
+using namespace oai::flexcn_server::helpers;
+using namespace oai::flexcn_server::model;
 
 NFStatusNotifyApi::NFStatusNotifyApi(
     std::shared_ptr<Pistache::Rest::Router> rtr) {
@@ -83,5 +83,5 @@ void NFStatusNotifyApi::notify_nf_status_default_handler(
 }
 
 }  // namespace api
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

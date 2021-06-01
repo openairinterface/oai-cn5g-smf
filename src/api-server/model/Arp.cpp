@@ -14,7 +14,7 @@
 #include "Arp.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 Arp::Arp() {
@@ -60,5 +60,5 @@ void Arp::setPreemptVuln(PreemptionVulnerability const& value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

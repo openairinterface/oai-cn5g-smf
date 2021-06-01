@@ -14,7 +14,7 @@
 #include "NFProfile.h"
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 NFProfile::NFProfile() {
