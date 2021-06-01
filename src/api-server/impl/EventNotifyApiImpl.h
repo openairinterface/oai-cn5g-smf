@@ -52,7 +52,7 @@
 
 #include "FlexCNEventNotification.h"
 #include "ProblemDetails.h"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 
 namespace oai {
 namespace smf_server {

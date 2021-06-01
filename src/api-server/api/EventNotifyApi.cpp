@@ -23,7 +23,7 @@
 #include "Helpers.h"
 #include "smf_config.hpp"
 
-extern smf::smf_config smf_cfg;
+extern smf::smf_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {
@@ -45,7 +45,7 @@ void EventNotifyApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Post(
-      *router, base + smf_cfg.sbi_api_version + "/:notifRef",
+      *router, base + flexcn_cfg.sbi_api_version + "/:notifRef",
       Routes::bind(&EventNotifyApi::notify_status_handler, this));
 
   // Default handler, called when a route is not found

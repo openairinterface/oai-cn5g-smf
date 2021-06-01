@@ -23,7 +23,7 @@
 #include "Helpers.h"
 #include "smf_config.hpp"
 
-extern smf::smf_config smf_cfg;
+extern smf::smf_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {
@@ -45,11 +45,11 @@ void FlexCNStat::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Get(
-      *router, base + smf_cfg.sbi_api_version + "/stats",
+      *router, base + flexcn_cfg.sbi_api_version + "/stats",
       Routes::bind(&FlexCNStat::stat_request_handler, this));
 
   Logger::smf_api_server().info( "Full path to query FlexCN is: ");
-  Logger::smf_api_server().info((base + smf_cfg.sbi_api_version + "/stats").c_str());
+  Logger::smf_api_server().info((base + flexcn_cfg.sbi_api_version + "/stats").c_str());
 
   // Default handler, called when a route is not found
   router->addCustomHandler(

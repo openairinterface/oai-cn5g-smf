@@ -73,6 +73,6 @@ openair-cn5g-smf
     ├── ngap:      NGAP protocol implememtation.
     ├── oai_smf:   SMF main directory, contains the "main" CMakeLists.txt file.
     ├── pfcp:      Generic PFCP stack implementation.
-    ├── smf_app:   SMF network functions procedures and contexts.
+    ├── flexcn_app:   SMF network functions procedures and contexts.
     └── udp :      UDP server implementation.
 </pre>

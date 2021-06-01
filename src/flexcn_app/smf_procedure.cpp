@@ -40,7 +40,7 @@
 #include "itti.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "logger.hpp"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 #include "smf_config.hpp"
 #include "smf_context.hpp"
 #include "smf_sbi.hpp"
@@ -54,7 +54,7 @@ using namespace std;
 
 extern itti_mw* itti_inst;
 extern smf::flexcn_app* flexcn_app_inst;
-extern smf::smf_config smf_cfg;
+extern smf::smf_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 int n4_session_restore_procedure::run() {

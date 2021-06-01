@@ -47,12 +47,12 @@
 #include "EventNotifyApiImpl.h"
 #include "FlexCNStatImpl.h"
 
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 
 using namespace oai::smf_server::api;
-class SMFApiServer {
+class FLEXCNApiServer {
  public:
-  SMFApiServer(Pistache::Address address, smf::flexcn_app* flexcn_app_inst)
+  FLEXCNApiServer(Pistache::Address address, smf::flexcn_app* flexcn_app_inst)
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();

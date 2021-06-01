@@ -27,7 +27,7 @@
  \email: tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf-http2-server.h"
+#include "flexcn-http2-server.h"
 #include <string>
 #include <boost/algorithm/string.hpp>
 #include <boost/thread.hpp>
@@ -48,7 +48,7 @@ using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::smf_server::model;
 
-extern smf::smf_config smf_cfg;
+extern smf::smf_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {
@@ -57,7 +57,7 @@ void smf_http2_server::start() {
   Logger::smf_api_server().info("HTTP2 server started");
   // Create SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg.sbi_api_version +
+      NSMF_PDU_SESSION_BASE + flexcn_cfg.sbi_api_version +
           NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
@@ -136,7 +136,7 @@ void smf_http2_server::start() {
 
   // Update SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg.sbi_api_version +
+      NSMF_PDU_SESSION_BASE + flexcn_cfg.sbi_api_version +
           NSMF_PDU_SESSION_SM_CONTEXT_UPDATE_URL,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
@@ -327,7 +327,7 @@ void smf_http2_server::create_sm_contexts_handler(
   // Set api root to be used as location header in HTTP response
   sm_context_req_msg.set_api_root(
       // m_address + ":" + std::to_string(m_port) +
-      NSMF_PDU_SESSION_BASE + smf_cfg.sbi_api_version +
+      NSMF_PDU_SESSION_BASE + flexcn_cfg.sbi_api_version +
       NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
 
   boost::shared_ptr<

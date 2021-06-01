@@ -38,7 +38,7 @@
 #include "SmContextCreatedData.h"
 #include "itti.hpp"
 #include "logger.hpp"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 #include "smf_config.hpp"
 #include "smf_event.hpp"
 #include "smf_sbi.hpp"
@@ -56,7 +56,7 @@ using namespace smf;
 
 extern itti_mw* itti_inst;
 extern smf::flexcn_app* flexcn_app_inst;
-extern smf::smf_config smf_cfg;
+extern smf::smf_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 void smf_qos_flow::mark_as_released() {

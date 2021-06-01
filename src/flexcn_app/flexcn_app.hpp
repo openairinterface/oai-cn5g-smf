@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_app.hpp
+/*! \file flexcn_app.hpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,8 +27,8 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_APP_HPP_SEEN
-#define FILE_SMF_APP_HPP_SEEN
+#ifndef FILE_FLEXCN_APP_HPP_SEEN
+#define FILE_FLEXCN_APP_HPP_SEEN
 
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
@@ -754,4 +754,4 @@ class flexcn_app {
 }  // namespace smf
 #include "smf_config.hpp"
 
-#endif /* FILE_SMF_APP_HPP_SEEN */
+#endif /* FILE_FLEXCN_APP_HPP_SEEN */

@@ -446,4 +446,4 @@ class CNRecord {
 }  // namespace smf_server
 }  // namespace oai
 
-#endif /* FILE_SMF_APP_HPP_SEEN */
+#endif /* FILE_FLEXCN_APP_HPP_SEEN */

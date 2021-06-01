@@ -30,7 +30,7 @@
 #ifndef FILE_SMF_HTTP2_SERVER_SEEN
 #define FILE_SMF_HTTP2_SERVER_SEEN
 
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 #include <nghttp2/asio_http2_server.h>
 #include "SmContextUpdateMessage.h"
 #include "SmContextMessage.h"

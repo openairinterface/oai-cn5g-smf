@@ -71,7 +71,7 @@ void setUpUnixSignals(std::vector<int> quitSignals) {
 
 using namespace oai::smf_server::api;
 
-void SMFApiServer::init(size_t thr) {
+void FLEXCNApiServer::init(size_t thr) {
   auto opts = Pistache::Http::Endpoint::options().threads(thr);
   opts.flags(Pistache::Tcp::Options::ReuseAddr);
   opts.maxRequestSize(PISTACHE_SERVER_MAX_PAYLOAD);
@@ -80,11 +80,11 @@ void SMFApiServer::init(size_t thr) {
   m_eventNotifyApiImpl->init();
   m_flexCNStatImpl->init();
 }
-void SMFApiServer::start() {
+void FLEXCNApiServer::start() {
   Logger::smf_api_server().info("HTTP1 server started");
   m_httpEndpoint->setHandler(m_router->handler());
   m_httpEndpoint->serve();
 }
-void SMFApiServer::shutdown() {
+void FLEXCNApiServer::shutdown() {
   m_httpEndpoint->shutdown();
 }

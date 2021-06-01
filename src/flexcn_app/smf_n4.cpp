@@ -43,7 +43,7 @@ using namespace smf;
 using namespace std;
 
 extern itti_mw* itti_inst;
-extern smf_config smf_cfg;
+extern smf_config flexcn_cfg;
 extern smf_n4* smf_n4_inst;
 
 void smf_n4_task(void*);
@@ -205,8 +205,8 @@ void smf_n4_task(void* args_p) {
 //------------------------------------------------------------------------------
 smf_n4::smf_n4()
     : pfcp_l4_stack(
-          string(inet_ntoa(smf_cfg.n4.addr4)), smf_cfg.n4.port,
-          smf_cfg.n4.thread_rd_sched_params) {
+          string(inet_ntoa(flexcn_cfg.n4.addr4)), flexcn_cfg.n4.port,
+          flexcn_cfg.n4.thread_rd_sched_params) {
   Logger::smf_n4().startup("Starting...");
   // TODO  refine this, look at RFC5905
   std::tm tm_epoch       = {0};          // Feb 8th, 2036
@@ -390,7 +390,7 @@ void smf_n4::handle_receive_association_setup_request(
     pfcp::cause_t cause = {.cause_value = pfcp::CAUSE_VALUE_REQUEST_ACCEPTED};
     a.pfcp_ies.set(cause);
     pfcp::node_id_t node_id = {};
-    if (smf_cfg.get_pfcp_node_id(node_id) == RETURNok) {
+    if (flexcn_cfg.get_pfcp_node_id(node_id) == RETURNok) {
       a.pfcp_ies.set(node_id);
       pfcp::recovery_time_stamp_t r = {.recovery_time_stamp =
                                            (uint32_t) recovery_time_stamp};
@@ -492,7 +492,7 @@ void smf_n4::handle_receive_association_update_request(
     cause.cause_value = pfcp::CAUSE_VALUE_MANDATORY_IE_MISSING;
   }
 
-  if (smf_cfg.get_pfcp_node_id(node_id) != RETURNok) {
+  if (flexcn_cfg.get_pfcp_node_id(node_id) != RETURNok) {
     Logger::smf_n4().warn(
         "Received N4 ASSOCIATION UPDATE REQUEST could not set node id!, ignore "
         "message");
@@ -576,7 +576,7 @@ void smf_n4::handle_receive_association_release_response(
   }
 
   pfcp::node_id_t node_id = {};
-  if (smf_cfg.get_pfcp_node_id(node_id) != RETURNok) {
+  if (flexcn_cfg.get_pfcp_node_id(node_id) != RETURNok) {
     Logger::smf_n4().warn(
         "Received N4 ASSOCIATION RELEASE RESPONSE with an invalid node ID!, "
         "ignore message");

@@ -359,4 +359,4 @@ class CNRecord {
   // ===========================
 };
 
-#endif /* FILE_SMF_APP_HPP_SEEN */
+#endif /* FILE_FLEXCN_HPP_SEEN */

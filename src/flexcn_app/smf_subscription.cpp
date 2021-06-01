@@ -29,7 +29,7 @@
 
 #include "smf_subscription.hpp"
 #include "itti.hpp"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 
 #include "common_defs.h"
 #include "itti_msg_sbi.hpp"

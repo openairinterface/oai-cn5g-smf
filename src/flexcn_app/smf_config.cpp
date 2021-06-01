@@ -49,13 +49,13 @@
 // #include "epc.h" //common/utils
 #include "if.hpp" //common/utils
 #include "logger.hpp"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 
 using namespace std;
 using namespace libconfig;
 using namespace smf;
 
-extern smf_config smf_cfg;
+extern smf_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 int smf_config::finalize() {
@@ -279,30 +279,30 @@ int smf_config::load(const string& config_file) {
   const Setting& root = cfg.getRoot();
 
   try {
-    const Setting& smf_cfg = root[SMF_CONFIG_STRING_SMF_CONFIG];
+    const Setting& flexcn_cfg = root[SMF_CONFIG_STRING_SMF_CONFIG];
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().error("%s : %s", nfex.what(), nfex.getPath());
     return RETURNerror;
   }
 
-  const Setting& smf_cfg = root[SMF_CONFIG_STRING_SMF_CONFIG];
+  const Setting& flexcn_cfg = root[SMF_CONFIG_STRING_SMF_CONFIG];
 
   try {
-    smf_cfg.lookupValue(SMF_CONFIG_STRING_INSTANCE, instance);
+    flexcn_cfg.lookupValue(SMF_CONFIG_STRING_INSTANCE, instance);
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().info(
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
   }
 
   try {
-    smf_cfg.lookupValue(SMF_CONFIG_STRING_PID_DIRECTORY, pid_dir);
+    flexcn_cfg.lookupValue(SMF_CONFIG_STRING_PID_DIRECTORY, pid_dir);
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().info(
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
   }
 
   try {
-    const Setting& itti_cfg = smf_cfg[SMF_CONFIG_STRING_ITTI_TASKS];
+    const Setting& itti_cfg = flexcn_cfg[SMF_CONFIG_STRING_ITTI_TASKS];
     load_itti(itti_cfg, itti);
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().info(
@@ -310,7 +310,7 @@ int smf_config::load(const string& config_file) {
   }
 
   try {
-    const Setting& nw_if_cfg = smf_cfg[SMF_CONFIG_STRING_INTERFACES];
+    const Setting& nw_if_cfg = flexcn_cfg[SMF_CONFIG_STRING_INTERFACES];
 
     const Setting& n4_cfg = nw_if_cfg[SMF_CONFIG_STRING_INTERFACE_N4];
     load_interface(n4_cfg, n4);
@@ -340,7 +340,7 @@ int smf_config::load(const string& config_file) {
   try {
     string astring;
 
-    const Setting& pool_cfg = smf_cfg[SMF_CONFIG_STRING_IP_ADDRESS_POOL];
+    const Setting& pool_cfg = flexcn_cfg[SMF_CONFIG_STRING_IP_ADDRESS_POOL];
 
     const Setting& ipv4_pool_cfg =
         pool_cfg[SMF_CONFIG_STRING_IPV4_ADDRESS_LIST];
@@ -452,7 +452,7 @@ int smf_config::load(const string& config_file) {
       num_paa6_pool += 1;
     }
 
-    const Setting& dnn_list_cfg = smf_cfg[SMF_CONFIG_STRING_DNN_LIST];
+    const Setting& dnn_list_cfg = flexcn_cfg[SMF_CONFIG_STRING_DNN_LIST];
     count                       = dnn_list_cfg.getLength();
     int dnn_idx                 = 0;
     num_dnn                     = 0;
@@ -531,18 +531,18 @@ int smf_config::load(const string& config_file) {
             dnn[dnn_idx].dnn.c_str());
       }
     }
-    smf_cfg.lookupValue(SMF_CONFIG_STRING_DEFAULT_DNS_IPV4_ADDRESS, astring);
+    flexcn_cfg.lookupValue(SMF_CONFIG_STRING_DEFAULT_DNS_IPV4_ADDRESS, astring);
     IPV4_STR_ADDR_TO_INADDR(
         util::trim(astring).c_str(), default_dnsv4,
         "BAD IPv4 ADDRESS FORMAT FOR DEFAULT DNS !");
 
-    smf_cfg.lookupValue(
+    flexcn_cfg.lookupValue(
         SMF_CONFIG_STRING_DEFAULT_DNS_SEC_IPV4_ADDRESS, astring);
     IPV4_STR_ADDR_TO_INADDR(
         util::trim(astring).c_str(), default_dns_secv4,
         "BAD IPv4 ADDRESS FORMAT FOR DEFAULT DNS !");
 
-    smf_cfg.lookupValue(SMF_CONFIG_STRING_DEFAULT_DNS_IPV6_ADDRESS, astring);
+    flexcn_cfg.lookupValue(SMF_CONFIG_STRING_DEFAULT_DNS_IPV6_ADDRESS, astring);
     if (inet_pton(AF_INET6, util::trim(astring).c_str(), buf_in6_addr) == 1) {
       memcpy(&default_dnsv6, buf_in6_addr, sizeof(struct in6_addr));
     } else {
@@ -555,7 +555,7 @@ int smf_config::load(const string& config_file) {
           " %s",
           astring.c_str());
     }
-    smf_cfg.lookupValue(
+    flexcn_cfg.lookupValue(
         SMF_CONFIG_STRING_DEFAULT_DNS_SEC_IPV6_ADDRESS, astring);
     if (inet_pton(AF_INET6, util::trim(astring).c_str(), buf_in6_addr) == 1) {
       memcpy(&default_dns_secv6, buf_in6_addr, sizeof(struct in6_addr));
@@ -570,12 +570,12 @@ int smf_config::load(const string& config_file) {
           astring.c_str());
     }
 
-    smf_cfg.lookupValue(SMF_CONFIG_STRING_UE_MTU, ue_mtu);
+    flexcn_cfg.lookupValue(SMF_CONFIG_STRING_UE_MTU, ue_mtu);
 
     // Support features
     try {
       const Setting& support_features =
-          smf_cfg[SMF_CONFIG_STRING_SUPPORT_FEATURES];
+          flexcn_cfg[SMF_CONFIG_STRING_SUPPORT_FEATURES];
       string opt;
       support_features.lookupValue(
           SMF_CONFIG_STRING_SUPPORT_FEATURES_REGISTER_NRF, opt);
@@ -615,7 +615,7 @@ int smf_config::load(const string& config_file) {
     }
 
     // AMF
-    const Setting& amf_cfg = smf_cfg[SMF_CONFIG_STRING_AMF];
+    const Setting& amf_cfg = flexcn_cfg[SMF_CONFIG_STRING_AMF];
     struct in_addr amf_ipv4_addr;
     unsigned int amf_port = 0;
     std::string amf_api_version;
@@ -638,7 +638,7 @@ int smf_config::load(const string& config_file) {
     amf_addr.api_version = amf_api_version;
 
     // UDM
-    const Setting& udm_cfg = smf_cfg[SMF_CONFIG_STRING_UDM];
+    const Setting& udm_cfg = flexcn_cfg[SMF_CONFIG_STRING_UDM];
     struct in_addr udm_ipv4_addr;
     unsigned int udm_port = 0;
     std::string udm_api_version;
@@ -662,7 +662,7 @@ int smf_config::load(const string& config_file) {
 
     // UPF list
     unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
-    const Setting& upf_list_cfg = smf_cfg[SMF_CONFIG_STRING_UPF_LIST];
+    const Setting& upf_list_cfg = flexcn_cfg[SMF_CONFIG_STRING_UPF_LIST];
     count                       = upf_list_cfg.getLength();
     for (int i = 0; i < count; i++) {
       const Setting& upf_cfg = upf_list_cfg[i];
@@ -690,7 +690,7 @@ int smf_config::load(const string& config_file) {
     }
 
     // NRF
-    const Setting& nrf_cfg = smf_cfg[SMF_CONFIG_STRING_NRF];
+    const Setting& nrf_cfg = flexcn_cfg[SMF_CONFIG_STRING_NRF];
     struct in_addr nrf_ipv4_addr;
     unsigned int nrf_port = 0;
     std::string nrf_api_version;
@@ -714,7 +714,7 @@ int smf_config::load(const string& config_file) {
 
     // Local configuration
     num_session_management_subscription = 0;
-    const Setting& local_cfg = smf_cfg[SMF_CONFIG_STRING_LOCAL_CONFIGURATION];
+    const Setting& local_cfg = flexcn_cfg[SMF_CONFIG_STRING_LOCAL_CONFIGURATION];
 
     const Setting& session_management_subscription_list_cfg =
         local_cfg[SMF_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST];
@@ -861,18 +861,18 @@ smf_config::~smf_config() {}
 bool smf_config::is_dotted_dnn_handled(
     const std::string& dnn, const pdu_session_type_t& pdn_session_type) {
   Logger::flexcn_app().debug("Requested DNN: %s", dnn.c_str());
-  for (int i = 0; i < smf_cfg.num_dnn; i++) {
+  for (int i = 0; i < flexcn_cfg.num_dnn; i++) {
     Logger::flexcn_app().debug(
-        "DNN label: %s, dnn: %s", smf_cfg.dnn[i].dnn_label.c_str(),
-        smf_cfg.dnn[i].dnn.c_str());
-    // if (0 == dnn.compare(smf_cfg.dnn[i].dnn_label)) {
-    if (0 == dnn.compare(smf_cfg.dnn[i].dnn)) {
+        "DNN label: %s, dnn: %s", flexcn_cfg.dnn[i].dnn_label.c_str(),
+        flexcn_cfg.dnn[i].dnn.c_str());
+    // if (0 == dnn.compare(flexcn_cfg.dnn[i].dnn_label)) {
+    if (0 == dnn.compare(flexcn_cfg.dnn[i].dnn)) {
       Logger::flexcn_app().debug("DNN matched!");
       Logger::flexcn_app().debug(
           "PDU Session Type %d, PDN Type %d", pdn_session_type.pdu_session_type,
-          smf_cfg.dnn[i].pdu_session_type.pdu_session_type);
+          flexcn_cfg.dnn[i].pdu_session_type.pdu_session_type);
       if (pdn_session_type.pdu_session_type ==
-          smf_cfg.dnn[i].pdu_session_type.pdu_session_type) {
+          flexcn_cfg.dnn[i].pdu_session_type.pdu_session_type) {
         return true;
       }
     }
@@ -882,6 +882,6 @@ bool smf_config::is_dotted_dnn_handled(
 
 //------------------------------------------------------------------------------
 std::string smf_config::get_default_dnn() {
-  Logger::flexcn_app().debug("Default DNN: %s", smf_cfg.dnn[0].dnn.c_str());
-  return smf_cfg.dnn[0].dnn;
+  Logger::flexcn_app().debug("Default DNN: %s", flexcn_cfg.dnn[0].dnn.c_str());
+  return flexcn_cfg.dnn[0].dnn;
 }

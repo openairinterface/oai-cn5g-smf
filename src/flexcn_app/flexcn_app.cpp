@@ -27,7 +27,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/algorithm/string.hpp>
@@ -71,7 +71,7 @@ using namespace smf;
 
 extern util::async_shell_cmd* async_shell_cmd_inst;
 extern flexcn_app* flexcn_app_inst;
-extern smf_config smf_cfg;
+extern smf_config flexcn_cfg;
 smf_n4* smf_n4_inst   = nullptr;
 smf_sbi* smf_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
@@ -423,7 +423,7 @@ flexcn_app::flexcn_app(const std::string& config_file)
   set_seid_n4       = {};
   seid_n4_generator = 0;
 
-  apply_config(smf_cfg);
+  apply_config(flexcn_cfg);
 
   if (itti_inst->create_task(TASK_FLEXCN_APP, smf_app_task, nullptr)) {
     Logger::flexcn_app().error("Cannot create task TASK_FLEXCN_APP");
@@ -442,14 +442,14 @@ flexcn_app::flexcn_app(const std::string& config_file)
   // Trigger SMFEventExpose subscription / to be noticed when a PDU session status changes
   trigger_pdu_session_status_notification_subscribe();
 
-  if (smf_cfg.discover_upf) {
+  if (flexcn_cfg.discover_upf) {
     // Trigger NFStatusNotify subscription to be noticed when a new UPF becomes
     // available (if this option is enabled)
     trigger_upf_status_notification_subscribe();
   }
 
   // Register to NRF (if this option is enabled)
-  if (smf_cfg.register_nrf) {
+  if (flexcn_cfg.register_nrf) {
     unsigned int microsecond = 10000;  // 10ms
     //usleep(microsecond);
     //register_to_nrf();
@@ -621,7 +621,7 @@ bool flexcn_app::scid_2_smf_context(
 bool flexcn_app::use_local_configuration_subscription_data(
     const std::string& dnn_selection_mode) {
   // TODO: should be implemented
-  return smf_cfg.use_local_subscription_info;
+  return flexcn_cfg.use_local_subscription_info;
 }
 
 //------------------------------------------------------------------------------
@@ -805,7 +805,7 @@ void flexcn_app::generate_smf_profile() {
   nf_instance_profile.set_nf_heartBeat_timer(50);
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
-  nf_instance_profile.add_nf_ipv4_addresses(smf_cfg.sbi.addr4);
+  nf_instance_profile.add_nf_ipv4_addresses(flexcn_cfg.sbi.addr4);
 
   // NF services
   nf_service_t nf_service        = {};
@@ -824,7 +824,7 @@ void flexcn_app::generate_smf_profile() {
   nf_instance_profile.get_nf_ipv4_addresses(addrs);
   endpoint.ipv4_address = addrs[0];  // TODO: use first IP ADDR for now
   endpoint.transport    = "TCP";
-  endpoint.port         = smf_cfg.sbi.port;
+  endpoint.port         = flexcn_cfg.sbi.port;
   nf_service.ip_endpoints.push_back(endpoint);
 
   nf_instance_profile.add_nf_service(nf_service);
@@ -832,8 +832,8 @@ void flexcn_app::generate_smf_profile() {
   // TODO: custom info
 
   int i = 0;
-  for (auto sms : smf_cfg.session_management_subscription) {
-    if (i < smf_cfg.num_session_management_subscription)
+  for (auto sms : flexcn_cfg.session_management_subscription) {
+    if (i < flexcn_cfg.num_session_management_subscription)
       i++;
     else
       break;
@@ -931,8 +931,8 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
 
   nlohmann::json json_data = {};
   json_data["notifUri"] =
-      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))) + ":" +
-      std::to_string(smf_cfg.sbi.port) + "/flexcn-status-notify/v1/notifid01";
+      std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.sbi.addr4))) + ":" +
+      std::to_string(flexcn_cfg.sbi.port) + "/flexcn-status-notify/v1/notifid01";
 
   json_data["notifId"]                     = "notifid01";
 
@@ -960,8 +960,8 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
   json_data["eventSubs"].push_back(tmp5);
 
   std::string url =
-      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.nrf_addr.ipv4_addr))) +
-      ":" + std::to_string(smf_cfg.nrf_addr.port) + "/nsmf_event-exposure/v1/subscriptions";
+      std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.nrf_addr.ipv4_addr))) +
+      ":" + std::to_string(flexcn_cfg.nrf_addr.port) + "/nsmf_event-exposure/v1/subscriptions";
 
   itti_msg->url       = url;
   itti_msg->json_data = json_data;

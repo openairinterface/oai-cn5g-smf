@@ -20,13 +20,13 @@
 #include "logger.hpp"
 #include "options.hpp"
 #include "pid_file.hpp"
-#include "smf_app.hpp"
+#include "flexcn_app.hpp"
 #include "smf_config.hpp"
 #include "flexcn-api-server.h"
 #include "pistache/endpoint.h"
 #include "pistache/http.h"
 #include "pistache/router.h"
-#include "smf-http2-server.h"
+#include "flexcn-http2-server.h"
 
 #include <iostream>
 #include <thread>
@@ -43,9 +43,9 @@ using namespace oai::smf_server::api;
 itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
 flexcn_app* flexcn_app_inst                 = nullptr;
-smf_config smf_cfg;
-SMFApiServer* smf_api_server_1     = nullptr;
-smf_http2_server* smf_api_server_2 = nullptr;
+smf_config flexcn_cfg;
+FLEXCNApiServer* flexcn_api_server_1     = nullptr;
+smf_http2_server* flexcn_api_server_2 = nullptr;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -70,15 +70,15 @@ void my_app_signal_handler(int s) {
   if (async_shell_cmd_inst) delete async_shell_cmd_inst;
   async_shell_cmd_inst = nullptr;
   std::cout << "Async Shell CMD memory done." << std::endl;
-  if (smf_api_server_1) {
-    smf_api_server_1->shutdown();
-    delete smf_api_server_1;
-    smf_api_server_1 = nullptr;
+  if (flexcn_api_server_1) {
+    flexcn_api_server_1->shutdown();
+    delete flexcn_api_server_1;
+    flexcn_api_server_1 = nullptr;
   }
-  if (smf_api_server_2) {
-    smf_api_server_2->stop();
-    delete smf_api_server_2;
-    smf_api_server_2 = nullptr;
+  if (flexcn_api_server_2) {
+    flexcn_api_server_2->stop();
+    delete flexcn_api_server_2;
+    flexcn_api_server_2 = nullptr;
   }
   std::cout << "FLEXCN API Server memory done." << std::endl;
   if (itti_inst) delete itti_inst;
@@ -111,23 +111,23 @@ int main(int argc, char** argv) {
   sigaction(SIGINT, &sigIntHandler, NULL);
 
   // Config
-  smf_cfg.load(Options::getlibconfigConfig());
-  smf_cfg.display();
+  flexcn_cfg.load(Options::getlibconfigConfig());
+  flexcn_cfg.display();
 
   // Inter-task Interface
   itti_inst = new itti_mw();
-  itti_inst->start(smf_cfg.itti.itti_timer_sched_params);
+  itti_inst->start(flexcn_cfg.itti.itti_timer_sched_params);
 
   // system command
   async_shell_cmd_inst =
-      new async_shell_cmd(smf_cfg.itti.async_cmd_sched_params);
+      new async_shell_cmd(flexcn_cfg.itti.async_cmd_sched_params);
 
   // SMF application layer
   flexcn_app_inst = new flexcn_app(Options::getlibconfigConfig());
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
-  string pid_file_name = get_exe_absolute_path("/var/run", smf_cfg.instance);
+  string pid_file_name = get_exe_absolute_path("/var/run", flexcn_cfg.instance);
   if (!is_pid_file_lock_success(pid_file_name.c_str())) {
     Logger::flexcn_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
     exit(-EDEADLK);
@@ -135,17 +135,17 @@ int main(int argc, char** argv) {
 
   // SMF Pistache API server (HTTP1)
   Pistache::Address addr(
-      std::string(inet_ntoa(*((struct in_addr*) &smf_cfg.sbi.addr4))),
-      Pistache::Port(smf_cfg.sbi.port));
-  smf_api_server_1 = new SMFApiServer(addr, flexcn_app_inst);
-  smf_api_server_1->init(2);
-  // smf_api_server_1->start();
-  std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
+      std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.sbi.addr4))),
+      Pistache::Port(flexcn_cfg.sbi.port));
+  flexcn_api_server_1 = new FLEXCNApiServer(addr, flexcn_app_inst);
+  flexcn_api_server_1->init(2);
+  // flexcn_api_server_1->start();
+  std::thread smf_http1_manager(&FLEXCNApiServer::start, flexcn_api_server_1);
   // SMF NGHTTP API server (HTTP2)
-  smf_api_server_2 = new smf_http2_server(
-      conv::toString(smf_cfg.sbi.addr4), smf_cfg.sbi_http2_port, flexcn_app_inst);
-  // smf_api_server_2->start();
-  std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
+  flexcn_api_server_2 = new smf_http2_server(
+      conv::toString(flexcn_cfg.sbi.addr4), flexcn_cfg.sbi_http2_port, flexcn_app_inst);
+  // flexcn_api_server_2->start();
+  std::thread smf_http2_manager(&smf_http2_server::start, flexcn_api_server_2);
 
   smf_http1_manager.join();
   smf_http2_manager.join();
