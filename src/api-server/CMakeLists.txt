@@ -46,7 +46,7 @@ include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
 
 file(GLOB FLEXCN_API_SERVER_src_files
     ${FLEXCN_API_SERVER_DIR}/smf-http2-server.cpp
-    ${FLEXCN_API_SERVER_DIR}/smf-api-server.cpp
+    ${FLEXCN_API_SERVER_DIR}/flexcn-api-server.cpp
     ${FLEXCN_API_SERVER_DIR}/model/*.cpp
     ${FLEXCN_API_SERVER_DIR}/api/*.cpp
     ${FLEXCN_API_SERVER_DIR}/impl/*.cpp

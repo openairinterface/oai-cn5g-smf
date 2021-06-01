@@ -30,7 +30,7 @@
  *      contact@openairinterface.org
  */
 
-#include "smf-api-server.h"
+#include "flexcn-api-server.h"
 #include "pistache/endpoint.h"
 #include "pistache/http.h"
 #include "pistache/router.h"
