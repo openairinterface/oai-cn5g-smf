@@ -40,7 +40,7 @@
 #include "smf_config.hpp"
 #include "3gpp_conversions.hpp"
 
-extern smf::smf_config flexcn_cfg;
+extern smf::flexcn_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {

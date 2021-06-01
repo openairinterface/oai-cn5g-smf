@@ -159,7 +159,7 @@ typedef struct itti_cfg_s {
   util::thread_sched_params async_cmd_sched_params;
 } itti_cfg_t;
 
-class smf_config {
+class flexcn_config {
  private:
   int load_itti(const libconfig::Setting& itti_cfg, itti_cfg_t& cfg);
   int load_interface(const libconfig::Setting& if_cfg, interface_cfg_t& cfg);
@@ -250,7 +250,7 @@ class smf_config {
       [SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX];
   uint8_t num_session_management_subscription;
 
-  smf_config()
+  flexcn_config()
       : m_rw_lock(),
         num_dnn(0),
         pid_dir(),
@@ -315,7 +315,7 @@ class smf_config {
     register_nrf                = false;
     discover_upf                = false;
   };
-  ~smf_config();
+  ~flexcn_config();
   void lock() { m_rw_lock.lock(); };
   void unlock() { m_rw_lock.unlock(); };
   int load(const std::string& config_file);

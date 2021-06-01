@@ -23,7 +23,7 @@
 #include "Helpers.h"
 #include "smf_config.hpp"
 
-extern smf::smf_config flexcn_cfg;
+extern smf::flexcn_config flexcn_cfg;
 
 namespace oai {
 namespace smf_server {

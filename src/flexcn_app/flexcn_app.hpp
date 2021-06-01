@@ -57,12 +57,12 @@
 
 namespace smf {
 
-#define TASK_SMF_APP_TRIGGER_T3591 (0)
-#define TASK_SMF_APP_TIMEOUT_T3591 (1)
-#define TASK_SMF_APP_TRIGGER_T3592 (2)
-#define TASK_SMF_APP_TIMEOUT_T3592 (3)
-#define TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT (4)
-#define TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION (5)
+#define TASK_FLEXCN_APP_TRIGGER_T3591 (0)
+#define TASK_FLEXCN_APP_TIMEOUT_T3591 (1)
+#define TASK_FLEXCN_APP_TRIGGER_T3592 (2)
+#define TASK_FLEXCN_APP_TIMEOUT_T3592 (3)
+#define TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT (4)
+#define TASK_FLEXCN_APP_TIMEOUT_NRF_DEREGISTRATION (5)
 
 // Table 10.3.2 @3GPP TS 24.501 V16.1.0 (2019-06)
 #define T3591_TIMER_VALUE_SEC 16
@@ -76,7 +76,7 @@ typedef enum {
   PDU_SESSION_RELEASE       = 3
 } pdu_session_procedure_t;
 
-class smf_config;
+class flexcn_config;
 
 class smf_context_ref {
  public:
@@ -165,10 +165,10 @@ class flexcn_app {
                 std::vector<nlohmann::json>> m_database;
   /*
    * Apply the config from the configuration file for DNN pools
-   * @param [const smf_config &cfg] cfg
+   * @param [const flexcn_config &cfg] cfg
    * @return
    */
-  int apply_config(const smf_config& cfg);
+  int apply_config(const flexcn_config& cfg);
 
 
  public:

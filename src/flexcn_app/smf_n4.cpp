@@ -43,7 +43,7 @@ using namespace smf;
 using namespace std;
 
 extern itti_mw* itti_inst;
-extern smf_config flexcn_cfg;
+extern flexcn_config flexcn_cfg;
 extern smf_n4* smf_n4_inst;
 
 void smf_n4_task(void*);

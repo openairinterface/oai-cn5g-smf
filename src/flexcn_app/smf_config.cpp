@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config.cpp
+/*! \file flexcn_config.cpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -55,10 +55,10 @@ using namespace std;
 using namespace libconfig;
 using namespace smf;
 
-extern smf_config flexcn_cfg;
+extern flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
-int smf_config::finalize() {
+int flexcn_config::finalize() {
   Logger::flexcn_app().info("Finalize config...");
 
   for (int i = 0; i < num_ue_pool; i++) {
@@ -80,7 +80,7 @@ int smf_config::finalize() {
 }
 
 //------------------------------------------------------------------------------
-int smf_config::load_thread_sched_params(
+int flexcn_config::load_thread_sched_params(
     const Setting& thread_sched_params_cfg, util::thread_sched_params& cfg) {
   try {
     thread_sched_params_cfg.lookupValue(
@@ -132,7 +132,7 @@ int smf_config::load_thread_sched_params(
   return RETURNok;
 }
 //------------------------------------------------------------------------------
-int smf_config::load_itti(const Setting& itti_cfg, itti_cfg_t& cfg) {
+int flexcn_config::load_itti(const Setting& itti_cfg, itti_cfg_t& cfg) {
   try {
     const Setting& itti_timer_sched_params_cfg =
         itti_cfg[SMF_CONFIG_STRING_ITTI_TIMER_SCHED_PARAMS];
@@ -204,7 +204,7 @@ std::string dnn_label(const std::string& dnn) {
 }
 
 //------------------------------------------------------------------------------
-int smf_config::load_interface(const Setting& if_cfg, interface_cfg_t& cfg) {
+int flexcn_config::load_interface(const Setting& if_cfg, interface_cfg_t& cfg) {
   if_cfg.lookupValue(SMF_CONFIG_STRING_INTERFACE_NAME, cfg.if_name);
   util::trim(cfg.if_name);
   if (not boost::iequals(cfg.if_name, "none")) {
@@ -257,7 +257,7 @@ int smf_config::load_interface(const Setting& if_cfg, interface_cfg_t& cfg) {
 }
 
 //------------------------------------------------------------------------------
-int smf_config::load(const string& config_file) {
+int flexcn_config::load(const string& config_file) {
   Config cfg;
   unsigned char buf_in6_addr[sizeof(struct in6_addr)];
 
@@ -792,7 +792,7 @@ int smf_config::load(const string& config_file) {
 }
 
 //------------------------------------------------------------------------------
-void smf_config::display() {
+void flexcn_config::display() {
   Logger::flexcn_app().info(
       "==== EURECOM %s v%s ====", PACKAGE_NAME, PACKAGE_VERSION);
   Logger::flexcn_app().info("Configuration FLEXCN:");
@@ -821,7 +821,7 @@ void smf_config::display() {
 }
 
 //------------------------------------------------------------------------------
-int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
+int flexcn_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
   node_id = {};
   if (n4.addr4.s_addr) {
     node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
@@ -837,7 +837,7 @@ int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
   return RETURNerror;
 }
 //------------------------------------------------------------------------------
-int smf_config::get_pfcp_fseid(pfcp::fseid_t& fseid) {
+int flexcn_config::get_pfcp_fseid(pfcp::fseid_t& fseid) {
   int rc = RETURNerror;
   fseid  = {};
   if (n4.addr4.s_addr) {
@@ -855,10 +855,10 @@ int smf_config::get_pfcp_fseid(pfcp::fseid_t& fseid) {
 }
 
 //------------------------------------------------------------------------------
-smf_config::~smf_config() {}
+flexcn_config::~flexcn_config() {}
 
 //------------------------------------------------------------------------------
-bool smf_config::is_dotted_dnn_handled(
+bool flexcn_config::is_dotted_dnn_handled(
     const std::string& dnn, const pdu_session_type_t& pdn_session_type) {
   Logger::flexcn_app().debug("Requested DNN: %s", dnn.c_str());
   for (int i = 0; i < flexcn_cfg.num_dnn; i++) {
@@ -881,7 +881,7 @@ bool smf_config::is_dotted_dnn_handled(
 }
 
 //------------------------------------------------------------------------------
-std::string smf_config::get_default_dnn() {
+std::string flexcn_config::get_default_dnn() {
   Logger::flexcn_app().debug("Default DNN: %s", flexcn_cfg.dnn[0].dnn.c_str());
   return flexcn_cfg.dnn[0].dnn;
 }

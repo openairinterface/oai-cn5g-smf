@@ -43,7 +43,7 @@ using namespace oai::smf_server::api;
 itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
 flexcn_app* flexcn_app_inst                 = nullptr;
-smf_config flexcn_cfg;
+flexcn_config flexcn_cfg;
 FLEXCNApiServer* flexcn_api_server_1     = nullptr;
 smf_http2_server* flexcn_api_server_2 = nullptr;
 

@@ -71,7 +71,7 @@ using namespace smf;
 
 extern util::async_shell_cmd* async_shell_cmd_inst;
 extern flexcn_app* flexcn_app_inst;
-extern smf_config flexcn_cfg;
+extern flexcn_config flexcn_cfg;
 smf_n4* smf_n4_inst   = nullptr;
 smf_sbi* smf_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
@@ -102,7 +102,7 @@ nlohmann::json flexcn_app::get_summarization_in_json_format() {
 };
 
 //------------------------------------------------------------------------------
-int flexcn_app::apply_config(const smf_config& cfg) {
+int flexcn_app::apply_config(const flexcn_config& cfg) {
   Logger::flexcn_app().info("Apply config...");
 
   paa_t paa = {};
@@ -364,14 +364,14 @@ void flexcn_app_task(void*) {
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::flexcn_app().info("TIME-OUT event timer id %d", to->timer_id);
           switch (to->arg1_user) {
-            case TASK_SMF_APP_TRIGGER_T3591:
+            case TASK_FLEXN_APP_TRIGGER_T3591:
               flexcn_app_inst->timer_t3591_timeout(to->timer_id, to->arg2_user);
               break;
-            case TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT:
+            case TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT:
               flexcn_app_inst->timer_nrf_heartbeat_timeout(
                   to->timer_id, to->arg2_user);
               break;
-            case TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION:
+            case TASK_FLEXCN_APP_TIMEOUT_NRF_DEREGISTRATION:
               flexcn_app_inst->timer_nrf_deregistration(
                   to->timer_id, to->arg2_user);
               break;
@@ -710,7 +710,7 @@ void flexcn_app::timer_nrf_heartbeat_timeout(
         nf_instance_profile.get_nf_heartBeat_timer());
     timer_nrf_heartbeat = itti_inst->timer_setup(
         nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_FLEXCN_APP,
-        TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
+        TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT,
         0);  // TODO arg2_user
   }
 }

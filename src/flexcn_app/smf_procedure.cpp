@@ -54,7 +54,7 @@ using namespace std;
 
 extern itti_mw* itti_inst;
 extern smf::flexcn_app* flexcn_app_inst;
-extern smf::smf_config flexcn_cfg;
+extern smf::flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
 int n4_session_restore_procedure::run() {

@@ -56,7 +56,7 @@ using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
-extern smf_config flexcn_cfg;
+extern flexcn_config flexcn_cfg;
 void smf_sbi_task(void*);
 
 // To read content of the response from AMF
