@@ -51,12 +51,12 @@ using namespace oai::smf_server::model;
 EventNotifyApiImpl::EventNotifyApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
     std::string address)
-    : EventNotifyApi(rtr), m_smf_app(flexcn_app_inst), m_address(address) {}
+    : EventNotifyApi(rtr), m_flexcn_app(flexcn_app_inst), m_address(address) {}
 
 void EventNotifyApiImpl::receive_status_notification(
     const std::string& eventExposureNotification,
     Pistache::Http::ResponseWriter& response) {
-    m_smf_app->add_data_event(eventExposureNotification);
+    m_flexcn_app->add_data_event(eventExposureNotification);
     response.send(Pistache::Http::Code(200));
 }
 

@@ -340,7 +340,7 @@ void smf_http2_server::create_sm_contexts_handler(
   // Generate ID for this promise (to be used in SMF-APP)
   uint32_t promise_id = generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_smf_app->add_promise(promise_id, p);
+  m_flexcn_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
@@ -404,7 +404,7 @@ void smf_http2_server::update_sm_context_handler(
   // Generate ID for this promise (to be used in SMF-APP)
   uint32_t promise_id = generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_smf_app->add_promise(promise_id, p);
+  m_flexcn_app->add_promise(promise_id, p);
 
   // Handle the itti_n11_update_sm_context_request message in flexcn_app
   std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
@@ -412,7 +412,7 @@ void smf_http2_server::update_sm_context_handler(
           TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
-  m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
+  m_flexcn_app->handle_pdu_session_update_sm_context_request(itti_msg);
 
   // Wait for the result from APP and send reply to AMF
   smf::pdu_session_update_sm_context_response sm_context_response = f.get();
@@ -486,7 +486,7 @@ void smf_http2_server::release_sm_context_handler(
   // Generate ID for this promise (to be used in SMF-APP)
   uint32_t promise_id = generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_smf_app->add_promise(promise_id, p);
+  m_flexcn_app->add_promise(promise_id, p);
 
   // handle Nsmf_PDUSession_UpdateSMContext Request
   Logger::smf_api_server().info(
@@ -498,7 +498,7 @@ void smf_http2_server::release_sm_context_handler(
   itti_msg->req          = sm_context_req_msg;
   itti_msg->scid         = smf_ref;
   itti_msg->http_version = 2;
-  m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
+  m_flexcn_app->handle_pdu_session_release_sm_context_request(itti_msg);
 
   // wait for the result from APP and send reply to AMF
   smf::pdu_session_release_sm_context_response sm_context_response = f.get();

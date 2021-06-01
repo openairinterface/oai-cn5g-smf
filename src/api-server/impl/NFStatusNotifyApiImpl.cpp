@@ -51,7 +51,7 @@ using namespace oai::smf_server::model;
 NFStatusNotifyApiImpl::NFStatusNotifyApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
     std::string address)
-    : NFStatusNotifyApi(rtr), m_smf_app(flexcn_app_inst), m_address(address) {}
+    : NFStatusNotifyApi(rtr), m_flexcn_app(flexcn_app_inst), m_address(address) {}
 
 void NFStatusNotifyApiImpl::receive_nf_status_notification(
     const NotificationData& notificationData,
@@ -72,7 +72,7 @@ void NFStatusNotifyApiImpl::receive_nf_status_notification(
   ProblemDetails problem_details = {};
   uint8_t http_code              = 0;
 
-  if (m_smf_app->handle_nf_status_notification(
+  if (m_flexcn_app->handle_nf_status_notification(
           itti_msg, problem_details, http_code)) {
     response.send(Pistache::Http::Code(204));
   } else {

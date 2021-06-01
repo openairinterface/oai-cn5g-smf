@@ -76,7 +76,7 @@ smf_n4* smf_n4_inst   = nullptr;
 smf_sbi* smf_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
 
-void smf_app_task(void*);
+void flexcn_app_task(void*);
 
 nlohmann::json flexcn_app::get_summarization_in_json_format() {
 
@@ -276,7 +276,7 @@ void flexcn_app::restore_n4_sessions(const seid_t& seid) const {
 }
 
 //------------------------------------------------------------------------------
-void smf_app_task(void*) {
+void flexcn_app_task(void*) {
   const task_id_t task_id = TASK_FLEXCN_APP;
   itti_inst->notify_task_ready(task_id);
 
@@ -425,7 +425,7 @@ flexcn_app::flexcn_app(const std::string& config_file)
 
   apply_config(flexcn_cfg);
 
-  if (itti_inst->create_task(TASK_FLEXCN_APP, smf_app_task, nullptr)) {
+  if (itti_inst->create_task(TASK_FLEXCN_APP, flexcn_app_task, nullptr)) {
     Logger::flexcn_app().error("Cannot create task TASK_FLEXCN_APP");
     throw std::runtime_error("Cannot create task TASK_FLEXCN_APP");
   }

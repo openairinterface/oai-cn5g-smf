@@ -70,7 +70,7 @@ class FlexCNStatImpl : public oai::smf_server::api::FlexCNStat {
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::flexcn_app* m_smf_app;
+  smf::flexcn_app* m_flexcn_app;
   std::string m_address;
 };
 

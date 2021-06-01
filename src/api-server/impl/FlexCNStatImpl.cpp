@@ -51,7 +51,7 @@ using namespace oai::smf_server::model;
 FlexCNStatImpl::FlexCNStatImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::flexcn_app* flexcn_app_inst,
     std::string address)
-    : FlexCNStat(rtr), m_smf_app(flexcn_app_inst), m_address(address) {}
+    : FlexCNStat(rtr), m_flexcn_app(flexcn_app_inst), m_address(address) {}
 
 void FlexCNStatImpl::receive_stat_request(
     Pistache::Http::ResponseWriter& response) {
@@ -67,7 +67,7 @@ void FlexCNStatImpl::receive_stat_request(
   // ProblemDetails problem_details = {};
   uint8_t http_code              = 0;
 
-  // if (m_smf_app->handle_nf_status_notification(
+  // if (m_flexcn_app->handle_nf_status_notification(
   //         itti_msg, problem_details, http_code)) {
   //   response.send(Pistache::Http::Code(204));
   // } else {
@@ -83,7 +83,7 @@ void FlexCNStatImpl::receive_stat_request(
   response.headers().add<Pistache::Http::Header::ContentType>(
         Pistache::Http::Mime::MediaType("application/problem+json"));
     response.send(Pistache::Http::Code(http_code), 
-      m_smf_app->get_summarization_in_json_format().dump(4).c_str());
+      m_flexcn_app->get_summarization_in_json_format().dump(4).c_str());
 }
 
 }  // namespace api

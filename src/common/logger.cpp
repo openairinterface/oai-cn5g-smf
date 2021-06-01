@@ -55,7 +55,7 @@ void Logger::_init(
 
   m_async_cmd      = new _Logger("async_c", m_sinks, ss.str().c_str());
   m_itti           = new _Logger("itti   ", m_sinks, ss.str().c_str());
-  m_smf_app        = new _Logger("flexcn_app", m_sinks, ss.str().c_str());
+  m_flexcn_app        = new _Logger("flexcn_app", m_sinks, ss.str().c_str());
   m_system         = new _Logger("system ", m_sinks, ss.str().c_str());
   m_udp            = new _Logger("udp    ", m_sinks, ss.str().c_str());
   m_pfcp           = new _Logger("pfcp   ", m_sinks, ss.str().c_str());
