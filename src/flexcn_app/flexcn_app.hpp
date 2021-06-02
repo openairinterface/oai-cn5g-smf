@@ -138,7 +138,7 @@ class flexcn_app {
    * @param [const flexcn_config &cfg] cfg
    * @return
    */
-  int apply_config(const flexcn_config& cfg);
+  //int apply_config(const flexcn_config& cfg);
 
 
  public:

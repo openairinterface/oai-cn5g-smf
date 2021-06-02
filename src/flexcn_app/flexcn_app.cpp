@@ -101,6 +101,7 @@ nlohmann::json flexcn_app::get_summarization_in_json_format() {
   return j;
 };
 
+/*
 //------------------------------------------------------------------------------
 int flexcn_app::apply_config(const flexcn_config& cfg) {
   Logger::flexcn_app().info("Apply config...");
@@ -133,6 +134,7 @@ int flexcn_app::apply_config(const flexcn_config& cfg) {
   Logger::flexcn_app().info("Applied config");
   return RETURNok;
 }
+*/
 
 // ----------------------------------------------------------
 void flexcn_app::add_data_event(const std::string &data_event){
@@ -350,7 +352,7 @@ flexcn_app::flexcn_app(const std::string& config_file)
   set_seid_n4       = {};
   seid_n4_generator = 0;
 
-  apply_config(flexcn_cfg);
+  //apply_config(flexcn_cfg);
 
   if (itti_inst->create_task(TASK_FLEXCN_APP, flexcn_app_task, nullptr)) {
     Logger::flexcn_app().error("Cannot create task TASK_FLEXCN_APP");
