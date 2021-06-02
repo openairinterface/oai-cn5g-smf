@@ -249,23 +249,6 @@ class flexcn_app {
    * @return void
    */
   void restore_n4_sessions(const seid_t& seid) const;
-  
-  /*
-   * Handle PDUSession_UpdateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&] Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_update_sm_context_request(
-      std::shared_ptr<itti_n11_update_sm_context_request> smreq);
-  /*
-   * Handle PDUSession_ReleaseSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_release_sm_context_request>&] Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_release_sm_context_request(
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq);
 
   /*
    * Handle Event Exposure Msg from AMF
@@ -302,82 +285,6 @@ class flexcn_app {
       const pfcp::qfi_t& qfi, const uint8_t& http_version);
 
   /*
-   * Verify if SM Context is existed for this Supi
-   * @param [supi_t] supi
-   * @return True if existed, otherwise false
-   */
-  bool is_supi_2_smf_context(const supi64_t& supi) const;
-
-  /*
-   * Create/Update SMF context with the corresponding supi
-   * @param [const supi_t&] supi
-   * @param [std::shared_ptr<smf_context>] sc Shared_ptr Pointer to an SMF
-   * context
-   * @return True if existed, otherwise false
-   */
-  void set_supi_2_smf_context(
-      const supi64_t& supi, std::shared_ptr<smf_context> sc);
-
-  /*
-   * Get SM Context
-   * @param [supi_t] Supi
-   * @return Shared pointer to SM context
-   */
-  std::shared_ptr<smf_context> supi_2_smf_context(const supi64_t& supi) const;
-
-  /*
-   * Check whether SMF uses local configuration instead of retrieving Session
-   * Management Data from UDM
-   * @param [const std::string&] dnn_selection_mode
-   * @return True if SMF uses the local configuration to check the validity of
-   * the UE request, False otherwise
-   */
-  bool use_local_configuration_subscription_data(
-      const std::string& dnn_selection_mode);
-
-  /*
-   * Verify whether the Session Management Data is existed
-   * @param [const supi_t&] SUPI
-   * @param [const std::string&] DNN
-   * @param [const snssai_t&] S-NSSAI
-   * @return True if SMF uses the local configuration to check the validity of
-   * the UE request, False otherwise
-   */
-  bool is_supi_dnn_snssai_subscription_data(
-      const supi_t& supi, const std::string& dnn, const snssai_t& snssai) const;
-
-  /*
-   * Get the Session Management Subscription data from local configuration
-   * @param [const supi_t &] SUPI
-   * @param [const std::string &] DNN
-   * @param [const snssai_t &] S-NSSAI
-   * @param [std::shared_ptr<session_management_subscription>] subscription:
-   * store subscription data if exist
-   * @return True if local configuration for this session management
-   * subscription exists, False otherwise
-   */
-  bool get_session_management_subscription_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-      std::shared_ptr<session_management_subscription> subscription);
-
-  /*
-   * Verify whether the UE request is valid according to the user subscription
-   * and with local policies
-   * @param [..]
-   * @return True if the request is valid, otherwise False
-   */
-  bool is_create_sm_context_request_valid() const;
-
-  /*
-   * Convert a string to hex representing this string
-   * @param [const std::string&] input_str Input string
-   * @param [std::string&] output_str String represents string in hex format
-   * @return void
-   */
-  void convert_string_2_hex(
-      const std::string& input_str, std::string& output_str);
-
-  /*
    * Update PDU session status
    * @param [const scid_t &] id SM Context ID
    * @param [const pdu_session_status_e &] status PDU Session Status
@@ -385,31 +292,6 @@ class flexcn_app {
    */
   void update_pdu_session_status(
       const scid_t& id, const pdu_session_status_e& status);
-
-  /*
-   * Convert N2 Info type representing by a string to  n2_sm_info_type_e
-   * @param [const std::string] n2_info_type
-   * @return representing of N2 info type in a form of emum
-   */
-  n2_sm_info_type_e n2_sm_info_type_str2e(
-      const std::string& n2_info_type) const;
-
-  /*
-   * Update PDU session UpCnxState
-   * @param [const scid_t] id SM Context ID
-   * @param [const upCnx_state_e] status PDU Session UpCnxState
-   * @return void
-   */
-  void update_pdu_session_upCnx_state(
-      const scid_t& scid, const upCnx_state_e& state);
-
-  /*
-   * will be executed when timer T3591 expires
-   * @param [timer_id_t] timer_id
-   * @param [uint64_t] arg2_user
-   * @return void
-   */
-  void timer_t3591_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
   /*
    * will be executed when NRF Heartbeat timer expires
@@ -464,56 +346,6 @@ class flexcn_app {
           boost::promise<pdu_session_release_sm_context_response>>& p);
 
   /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const uint32_t &] http_code: Status code of HTTP response
-   * @param [const uint8_t&] cause: Error cause
-   * @param [const std::string &] n1_sm_msg: N1 SM message
-   * @param [uint32_t &] promise_id: Promise Id
-   * @return void
-   */
-  void trigger_create_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause,
-      const std::string& n1_sm_msg, uint32_t& promise_id);
-
-  /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const uint32_t &] http_code: Status code of HTTP response
-   * @param [const uint8_t &] cause: Error cause
-   * @param [uint32_t &] promise_id: Promise Id
-   * @param [uint8_t] msg_type: Type of HTTP message (Update/Release)
-   * @return void
-   */
-  void trigger_update_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id);
-
-  /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const uint32_t &] http_code: Status code of HTTP response
-   * @param [const uint8_t &] cause: cause
-   * @param [const std::string &] n1_sm_msg: N1 SM message
-   * @param [uint32_t &] promise_id: Promise Id
-   * @param [uint8_t] msg_type: Type of HTTP message (Update/Release)
-   * @return void
-   */
-  void trigger_update_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause,
-      const std::string& n1_sm_msg, uint32_t& promise_id);
-
-  /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const uint32_t &] http_code: Status code of HTTP response
-   * @param [uint32_t &] promise_id: Promise Id
-   * @param [uint8_t] msg_type: Type of HTTP message (Create/Update/Release)
-   * @return void
-   */
-  void trigger_http_response(
-      const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type);
-
-  /*
    * Trigger NF instance registration to NRF
    * @param [void]
    * @return void
@@ -548,12 +380,6 @@ class flexcn_app {
    */
   void trigger_nf_deregistration();
 
-  /*
-   * Send request to N11 task to trigger NFSubscribeStatus to NRF
-   * @param [void]
-   * @return void
-   */
-  void trigger_upf_status_notification_subscribe();
   //FlexCN
   void trigger_pdu_session_status_notification_subscribe();
 };

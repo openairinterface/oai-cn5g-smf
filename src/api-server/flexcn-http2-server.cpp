@@ -380,86 +380,6 @@ void flexcn_http2_server::update_sm_context_handler(
     const std::string& smf_ref,
     const SmContextUpdateMessage& smContextUpdateMessage,
     const response& response) {
-  Logger::smf_api_server().info(
-      "Handle PDU Session Update SM Context Request.");
-
-  // Get the SmContextUpdateData from this message and process in flexcn_app
-  Logger::smf_api_server().info(
-      "Received a PDUSession_UpdateSMContext Request from AMF.");
-
-  flexcn::pdu_session_update_sm_context_request sm_context_req_msg = {};
-
-  // Convert from SmContextUpdateMessage to
-  // pdu_session_update_sm_context_request
-  xgpp_conv::sm_context_update_from_openapi(
-      smContextUpdateMessage, sm_context_req_msg);
-
-  boost::shared_ptr<
-      boost::promise<flexcn::pdu_session_update_sm_context_response> >
-      p = boost::make_shared<
-          boost::promise<flexcn::pdu_session_update_sm_context_response> >();
-  boost::shared_future<flexcn::pdu_session_update_sm_context_response> f;
-  f = p->get_future();
-
-  // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_flexcn_app->add_promise(promise_id, p);
-
-  // Handle the itti_n11_update_sm_context_request message in flexcn_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
-          TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id, smf_ref);
-  itti_msg->req          = sm_context_req_msg;
-  itti_msg->http_version = 2;
-  m_flexcn_app->handle_pdu_session_update_sm_context_request(itti_msg);
-
-  // Wait for the result from APP and send reply to AMF
-  flexcn::pdu_session_update_sm_context_response sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
-
-  nlohmann::json json_data = {};
-  mime_parser parser       = {};
-  std::string body         = {};
-  header_map h             = {};
-  std::string json_format  = {};
-
-  sm_context_response.get_json_format(json_format);
-  sm_context_response.get_json_data(json_data);
-  Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
-
-  if (sm_context_response.n1_sm_msg_is_set() and
-      sm_context_response.n2_sm_info_is_set()) {
-    parser.create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n1_sm_message(),
-        sm_context_response.get_n2_sm_information(), json_format);
-    h.emplace(
-        "content-type", header_value{"multipart/related; boundary=" +
-                                     std::string(CURL_MIME_BOUNDARY)});
-  } else if (sm_context_response.n1_sm_msg_is_set()) {
-    parser.create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n1_sm_message(),
-        multipart_related_content_part_e::NAS, json_format);
-    h.emplace(
-        "content-type", header_value{"multipart/related; boundary=" +
-                                     std::string(CURL_MIME_BOUNDARY)});
-  } else if (sm_context_response.n2_sm_info_is_set()) {
-    parser.create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n2_sm_information(),
-        multipart_related_content_part_e::NGAP, json_format);
-    h.emplace(
-        "content-type", header_value{"multipart/related; boundary=" +
-                                     std::string(CURL_MIME_BOUNDARY)});
-  } else {
-    h.emplace("content-type", header_value{json_format});
-    body = json_data.dump().c_str();
-  }
-
-  response.write_head(sm_context_response.get_http_code(), h);
-  response.end(body);
 }
 
 //------------------------------------------------------------------------------
@@ -467,45 +387,6 @@ void flexcn_http2_server::release_sm_context_handler(
     const std::string& smf_ref,
     const SmContextReleaseMessage& smContextReleaseMessage,
     const response& response) {
-  Logger::smf_api_server().info(
-      "Handle PDU Session Release SM Context Request.");
-
-  flexcn::pdu_session_release_sm_context_request sm_context_req_msg = {};
-  // Convert from SmContextReleaseMessage to
-  // pdu_session_release_sm_context_request
-  xgpp_conv::sm_context_release_from_openapi(
-      smContextReleaseMessage, sm_context_req_msg);
-
-  boost::shared_ptr<
-      boost::promise<flexcn::pdu_session_release_sm_context_response> >
-      p = boost::make_shared<
-          boost::promise<flexcn::pdu_session_release_sm_context_response> >();
-  boost::shared_future<flexcn::pdu_session_release_sm_context_response> f;
-  f = p->get_future();
-
-  // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_flexcn_app->add_promise(promise_id, p);
-
-  // handle Nsmf_PDUSession_UpdateSMContext Request
-  Logger::smf_api_server().info(
-      "Received a PDUSession_ReleaseSMContext Request: PDU Session Release "
-      "request from AMF.");
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
-          TASK_SMF_SBI, TASK_FLEXCN_APP, promise_id, smf_ref);
-  itti_msg->req          = sm_context_req_msg;
-  itti_msg->scid         = smf_ref;
-  itti_msg->http_version = 2;
-  m_flexcn_app->handle_pdu_session_release_sm_context_request(itti_msg);
-
-  // wait for the result from APP and send reply to AMF
-  flexcn::pdu_session_release_sm_context_response sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
-
-  response.write_head(sm_context_response.get_http_code());
-  response.end();
 }
 
 //------------------------------------------------------------------------------

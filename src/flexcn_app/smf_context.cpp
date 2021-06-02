@@ -427,65 +427,6 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
   return true;
 }
 
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_service_request(
-    std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-    std::shared_ptr<smf_pdu_session>& sp) {
-  std::string n2_sm_info, n2_sm_info_hex;
-
-  // Update upCnxState
-  sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
-
-  // get QFIs associated with PDU session ID
-  sm_context_resp.get()->session_procedure_type =
-      session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP1;
-
-  flexcn_app_inst->convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-  sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
-
-  // fill the content of SmContextUpdatedData
-  nlohmann::json json_data                           = {};
-  json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
-  json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
-      sm_context_resp.get()->res.get_pdu_session_id();
-  json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
-           ["contentId"] = N2_SM_CONTENT_ID;
-  json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
-      "PDU_RES_SETUP_REQ";  // NGAP message
-  json_data["upCnxState"] = "ACTIVATING";
-  sm_context_resp.get()->res.set_json_data(json_data);
-
-  // Update upCnxState to ACTIVATING
-  sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
-
-  // TODO: If new UPF is used, need to send N4 Session Modification
-  // Request/Response to new/old UPF
-
-  // Accept the activation of UP connection and continue to using the current
-  // UPF
-  // TODO: Accept the activation of UP connection and select a new UPF
-  // Reject the activation of UP connection
-  // SMF fails to find a suitable I-UPF: i) trigger re-establishment of PDU
-  // Session;  or ii) keep PDU session but reject the activation of UP
-  // connection;  or iii) release PDU session
-
-  return true;
-}
-
-//-------------------------------------------------------------------------------------
-void smf_context::handle_pdu_session_update_sm_context_request(
-    std::shared_ptr<itti_n11_update_sm_context_request> smreq) {
-
-}
-
-//-------------------------------------------------------------------------------------
-void smf_context::handle_pdu_session_release_sm_context_request(
-    std::shared_ptr<itti_n11_release_sm_context_request> smreq) {
-  
-}
-
 //------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_modification_network_requested(
     std::shared_ptr<itti_nx_trigger_pdu_session_modification> itti_msg) {

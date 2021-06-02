@@ -487,24 +487,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void handle_itti_msg(std::shared_ptr<itti_n4_session_report_request>&);
 
   /*
-   * Handle messages from AMF (e.g., PDU_SESSION_UpdateSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request] smreq Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_update_sm_context_request(
-      std::shared_ptr<itti_n11_update_sm_context_request> smreq);
-
-  /*
-   * Handle messages from AMF (e.g., PDU_SESSION_ReleaseSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_release_sm_context_request] smreq Request
-   * message
-   * @return void
-   */
-  void handle_pdu_session_release_sm_context_request(
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq);
-
-  /*
    * Handle network-requested session modification (SMF, AN, AMF -requested)
    * @param [std::shared_ptr<itti_nx_trigger_pdu_session_modification] msg:
    * Request message
@@ -512,22 +494,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    */
   void handle_pdu_session_modification_network_requested(
       std::shared_ptr<itti_nx_trigger_pdu_session_modification> msg);
-
-  /*
-   * Handle Service Request
-   * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
-   * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
-   * sm_context_resp: Response message
-   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
-   * @return True if handle successful, otherwise return false
-   */
-  bool handle_service_request(
-      std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
-      std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Resource Setup Response Transfer

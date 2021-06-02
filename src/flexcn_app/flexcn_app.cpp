@@ -293,7 +293,6 @@ void flexcn_app_task(void*) {
           Logger::flexcn_app().info("TIME-OUT event timer id %d", to->timer_id);
           switch (to->arg1_user) {
             case TASK_FLEXCN_APP_TRIGGER_T3591:
-              flexcn_app_inst->timer_t3591_timeout(to->timer_id, to->arg2_user);
               break;
             case TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT:
               flexcn_app_inst->timer_nrf_heartbeat_timeout(
@@ -370,12 +369,6 @@ flexcn_app::flexcn_app(const std::string& config_file)
   // Trigger SMFEventExpose subscription / to be noticed when a PDU session status changes
   trigger_pdu_session_status_notification_subscribe();
 
-  if (flexcn_cfg.discover_upf) {
-    // Trigger NFStatusNotify subscription to be noticed when a new UPF becomes
-    // available (if this option is enabled)
-    trigger_upf_status_notification_subscribe();
-  }
-
   // Register to NRF (if this option is enabled)
   if (flexcn_cfg.register_nrf) {
     unsigned int microsecond = 10000;  // 10ms
@@ -448,17 +441,6 @@ void flexcn_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
 }
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_pdu_session_update_sm_context_request(
-    std::shared_ptr<itti_n11_update_sm_context_request> smreq) {
-  
-}
-//------------------------------------------------------------------------------
-void flexcn_app::handle_pdu_session_release_sm_context_request(
-    std::shared_ptr<itti_n11_release_sm_context_request> smreq) {
-  
-}
-
-//------------------------------------------------------------------------------
 void flexcn_app::trigger_pdu_session_modification(
     const supi_t& supi, const std::string& dnn,
     const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
@@ -480,89 +462,10 @@ bool flexcn_app::handle_nf_status_notification(
   return true;
 }
 
-//------------------------------------------------------------------------------
-bool flexcn_app::is_supi_2_smf_context(const supi64_t& supi) const {
-  std::shared_lock lock(m_supi2smf_context);
-  return bool{supi2smf_context.count(supi) > 0};
-}
-
-//------------------------------------------------------------------------------
-std::shared_ptr<smf_context> flexcn_app::supi_2_smf_context(
-    const supi64_t& supi) const {
-  std::shared_lock lock(m_supi2smf_context);
-  return supi2smf_context.at(supi);
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::set_supi_2_smf_context(
-    const supi64_t& supi, std::shared_ptr<smf_context> sc) {
-  std::unique_lock lock(m_supi2smf_context);
-  supi2smf_context[supi] = sc;
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::use_local_configuration_subscription_data(
-    const std::string& dnn_selection_mode) {
-  // TODO: should be implemented
-  return flexcn_cfg.use_local_subscription_info;
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::is_supi_dnn_snssai_subscription_data(
-    const supi_t& supi, const std::string& dnn, const snssai_t& snssai) const {
-  // TODO: should be implemented
-  return false;  // Session Management Subscription from UDM isn't available
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::is_create_sm_context_request_valid() const {
-  // TODO: should be implemented
-  return true;
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::convert_string_2_hex(
-    const std::string& input_str, std::string& output_str) {
-  Logger::flexcn_app().debug("Convert string to Hex");
-  unsigned char* data = (unsigned char*) malloc(input_str.length() + 1);
-  memset(data, 0, input_str.length() + 1);
-  memcpy((void*) data, (void*) input_str.c_str(), input_str.length());
-
-#if DEBUG_IS_ON
-  Logger::flexcn_app().debug("Input: ");
-  for (int i = 0; i < input_str.length(); i++) {
-    printf("%02x ", data[i]);
-  }
-  printf("\n");
-#endif
-  char* datahex = (char*) malloc(input_str.length() * 2 + 1);
-  memset(datahex, 0, input_str.length() * 2 + 1);
-
-  for (int i = 0; i < input_str.length(); i++)
-    sprintf(datahex + i * 2, "%02x", data[i]);
-
-  output_str = reinterpret_cast<char*>(datahex);
-  Logger::flexcn_app().debug("Output: \n %s ", output_str.c_str());
-
-  // free memory
-  free_wrapper((void**) &data);
-  free_wrapper((void**) &datahex);
-}
-
 //---------------------------------------------------------------------------------------------
 void flexcn_app::update_pdu_session_status(
     const scid_t& scid, const pdu_session_status_e& status) {
 
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::update_pdu_session_upCnx_state(
-    const scid_t& scid, const upCnx_state_e& state) {
-  
-}
-//---------------------------------------------------------------------------------------------
-void flexcn_app::timer_t3591_timeout(timer_id_t timer_id, uint64_t arg2_user) {
-  // TODO: send session modification request again...
 }
 
 //---------------------------------------------------------------------------------------------
@@ -607,24 +510,6 @@ void flexcn_app::timer_nrf_deregistration(
 }
 
 //---------------------------------------------------------------------------------------------
-n2_sm_info_type_e flexcn_app::n2_sm_info_type_str2e(
-    const std::string& n2_info_type) const {
-  std::size_t number_of_types = n2_sm_info_type_e2str.size();
-  for (auto i = 0; i < number_of_types; ++i) {
-    if (n2_info_type.compare(n2_sm_info_type_e2str.at(i)) == 0) {
-      return static_cast<n2_sm_info_type_e>(i);
-    }
-  }
-}
-
-//---------------------------------------------------------------------------------------------
-bool flexcn_app::get_session_management_subscription_data(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-    std::shared_ptr<session_management_subscription> subscription) {
-  return true;
-}
-
-//---------------------------------------------------------------------------------------------
 void flexcn_app::add_promise(
     uint32_t id,
     boost::shared_ptr<boost::promise<pdu_session_create_sm_context_response>>&
@@ -649,31 +534,6 @@ void flexcn_app::add_promise(
         p) {
   std::unique_lock lock(m_sm_context_release_promises);
   sm_context_release_promises.emplace(id, p);
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::trigger_create_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause,
-    const std::string& n1_sm_msg, uint32_t& promise_id) {
-  
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::trigger_update_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id) {
-  
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::trigger_update_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause,
-    const std::string& n1_sm_msg, uint32_t& promise_id) {
-  
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::trigger_http_response(
-    const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type) {
 }
 
 //---------------------------------------------------------------------------------------------
@@ -795,11 +655,6 @@ void flexcn_app::trigger_nf_deregistration() {
         "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
         itti_msg->get_msg_name());
   }
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::trigger_upf_status_notification_subscribe() {
-  
 }
 
 //------------------------------------------------------------------------------
