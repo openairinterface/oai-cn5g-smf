@@ -348,57 +348,6 @@ class session_management_subscription {
   mutable std::shared_mutex m_mutex;
 };
 
-/*
- * Manage the DNN context
- */
-class dnn_context {
- public:
-  dnn_context() : m_context(), in_use(false), pdu_sessions(), nssai() {}
-
-  dnn_context(std::string dnn)
-      : m_context(), in_use(false), pdu_sessions(), nssai(), dnn_in_use(dnn) {}
-  dnn_context(dnn_context& b) = delete;
-
-  /*
-   * Find a PDU Session by its ID
-   * @param [const uint32_t] pdu_session_id
-   * @param [std::shared_ptr<smf_pdu_session> &] pdu_session
-   * @return bool: return true if pdu session is found, otherwise, return false
-   */
-  bool find_pdu_session(
-      const uint32_t pdu_session_id,
-      std::shared_ptr<smf_pdu_session>& pdu_session);
-
-  /*
-   * Insert a PDU Session into the DNN context
-   * @param [std::shared_ptr<smf_pdu_session> &] sp: shared pointer to a PDU
-   * Session
-   * @return void
-   */
-  void insert_pdu_session(std::shared_ptr<smf_pdu_session>& sp);
-
-  /*
-   * Get number of pdu sessions associated with this context (dnn and Nssai)
-   * @param void
-   * @return size_t: number of PDU sessions
-   */
-  size_t get_number_pdu_sessions() const;
-
-  /*
-   * Represent DNN Context as a string object
-   * @param void
-   * @return void
-   */
-  std::string toString() const;
-
-  bool in_use;
-  std::string dnn_in_use;  // The DNN currently used, as received from the AMF
-  snssai_t nssai;
-  std::vector<std::shared_ptr<smf_pdu_session>>
-      pdu_sessions;  // Store all PDU Sessions associated with this DNN context
-  mutable std::shared_mutex m_context;
-};
-
 class smf_context;
 
 class smf_context : public std::enable_shared_from_this<smf_context> {
@@ -411,14 +360,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
         event_sub(),
         plmn() {
     supi_prefix = {};
-    // Subscribe to sm context status change
-    sm_context_status_connection =
-        event_sub.subscribe_sm_context_status(boost::bind(
-            &smf_context::handle_sm_context_status_change, this, _1, _2, _3));
-    // Subscribe to pdu session release (event exposure)
-    ee_pdu_session_release_connection =
-        event_sub.subscribe_ee_pdu_session_release(boost::bind(
-            &smf_context::handle_ee_pdu_session_release, this, _1, _2, _3));
+    
   }
 
   smf_context(smf_context& b) = delete;
@@ -487,87 +429,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void handle_itti_msg(std::shared_ptr<itti_n4_session_report_request>&);
 
   /*
-   * Handle network-requested session modification (SMF, AN, AMF -requested)
-   * @param [std::shared_ptr<itti_nx_trigger_pdu_session_modification] msg:
-   * Request message
-   * @return void
-   */
-  void handle_pdu_session_modification_network_requested(
-      std::shared_ptr<itti_nx_trigger_pdu_session_modification> msg);
-
-  /*
-   * Handle PDU Session Resource Setup Response Transfer
-   * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
-   * sm_context_request: Request message
-   * @return True if handle successful, otherwise return false
-   */
-  bool handle_pdu_session_resource_setup_response_transfer(
-      std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
-
-  /*
-   * Handle PDU Session Resource Setup Unsuccessful Transfer
-   * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
-   * sm_context_request: Request message
-   * @return True if handle successful, otherwise return false
-   */
-  bool handle_pdu_session_resource_setup_unsuccessful_transfer(
-      std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
-
-  /*
-   * Handle PDU Session Resource Modify Response Transfer
-   * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
-   * sm_context_request: Request message
-   * @return True if handle successful, otherwise return false
-   */
-  bool handle_pdu_session_resource_modify_response_transfer(
-      std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
-
-  /*
-   * Handle PDU Session Resource Release Response Transfer
-   * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
-   * sm_context_request: Request message
-   * @return True if handle successful, otherwise return false
-   */
-  bool handle_pdu_session_resource_release_response_transfer(
-      std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
-
-  /*
-   * Find DNN context with name
-   * @param [const std::string&] dnn
-   * @param [std::shared_ptr<dnn_context>&] dnn_context dnn context to be found
-   * @return void
-   */
-  bool find_dnn_context(
-      const snssai_t& nssai, const std::string& dnn,
-      std::shared_ptr<dnn_context>& dnn_context);
-
-  /*
-   * Insert a DNN context into SMF context
-   * @param [std::shared_ptr<dnn_context>&] sd Shared_ptr pointer to a DNN
-   * context
-   * @return void
-   */
-  void insert_dnn(std::shared_ptr<dnn_context>& sd);
-
-  /*
-   * Check the validity of the request according to user subscription and local
-   * policies
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request>] smreq
-   * @return true if the request is valid, otherwise return false
-   *
-   */
-  bool verify_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
-
-  /*
    * Insert a session management subscription into the SMF context
    * @param [const snssai_t&] snssai
    * @param [std::shared_ptr<session_management_subscription>&] ss: pointer to
@@ -588,27 +449,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    */
   void insert_dnn_subscription(
       const snssai_t& snssai, const std::string& dnn,
-      std::shared_ptr<session_management_subscription>& ss);
-
-  /*
-   * Verify whether a subscription data exist with a given dnn and snssai
-   * @param [const std::string &] dnn: DNN
-   * @param [const snssai_t&] snssai: single NSSAI
-   *@return bool: Return true if a subscription data corresponding with dnn and
-   *snssai exist, otherwise return false
-   */
-  bool is_dnn_snssai_subscription_data(
-      const std::string& dnn, const snssai_t& snssai);
-
-  /*
-   * Find a session management subscription from a SMF context
-   * @param [const snssai_t&] snssai
-   * @param [std::shared_ptr<session_management_subscription>&] ss: pointer to
-   * the subscription
-   * @return void
-   */
-  bool find_dnn_subscription(
-      const snssai_t& snssai,
       std::shared_ptr<session_management_subscription>& ss);
 
   /*
@@ -643,13 +483,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   supi_t get_supi() const;
 
   /*
-   * Get the number of dnn contexts
-   * @param
-   * @return std::size_t: the number of contexts
-   */
-  std::size_t get_number_dnn_contexts() const;
-
-  /*
    * Set SM Context ID
    * @param [const scid_t &] id: SM Context Id
    * @return void
@@ -678,38 +511,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void set_supi_prefix(std::string const& value);
 
   /*
-   * Find the PDU Session, QFI associated with a given PDR_ID
-   * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
-   * @param [pfcp::qfi_t &] qfi: QFI
-   * @param [std::shared_ptr<dnn_context> &] sd: pointer to the DNN context
-   * @param [std::shared_ptr<smf_pdu_session> &] sp: pointer to the PDU session
-   * @return bool: return true if found, otherwise return false
-   */
-  bool find_pdu_session(
-      const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi,
-      std::shared_ptr<dnn_context>& sd, std::shared_ptr<smf_pdu_session>& sp);
-
-  /*
-   * Handle SM Context Status Change (Send notification AMF)
-   * @param [scid_t] scid: SMF Context ID
-   * @param [uint32_t] status: Updated status
-   * @param [uint8_t] http_version: HTTP version
-   * @return void
-   */
-  void handle_sm_context_status_change(
-      scid_t scid, const std::string& status, uint8_t http_version);
-
-  /*
-   * Handle SM Context Status Change (Send notification AMF)
-   * @param [scid_t] scid: SMF Context ID
-   * @param [uint32_t] status: Updated status
-   * @param [uint8_t] http_version: HTTP version
-   * @return void
-   */
-  void handle_ee_pdu_session_release(
-      supi64_t supi, pdu_session_id_t pdu_session_id, uint8_t http_version);
-
-  /*
    * Set AMF Addr of the serving AMF
    * @param [const std::string&] addr: AMF Addr in string representation
    * @return void
@@ -727,7 +528,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void get_plmn(plmn_t& plmn) const;
 
  private:
-  std::vector<std::shared_ptr<dnn_context>> dnns;
   std::vector<std::shared_ptr<smf_procedure>> pending_procedures;
   // snssai-sst <-> session management subscription
   std::map<uint8_t, std::shared_ptr<session_management_subscription>>

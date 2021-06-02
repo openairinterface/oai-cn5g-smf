@@ -386,9 +386,6 @@ std::string smf_context::toString() const {
   s.append("\tSUPI:\t\t\t\t")
       .append(smf_supi_to_string(supi).c_str())
       .append("\n");
-  for (auto it : dnns) {
-    s.append(it->toString());
-  }
   return s;
 }
 
@@ -396,40 +393,6 @@ std::string smf_context::toString() const {
 void smf_context::get_default_qos(
     const snssai_t& snssai, const std::string& dnn,
     subscribed_default_qos_t& default_qos) {
-  
-}
-
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_resource_setup_response_transfer(
-    std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
-  return true;
-}
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
-    std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
-  return true;
-}
-
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_resource_modify_response_transfer(
-    std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
-  
-  return true;
-}
-
-//-------------------------------------------------------------------------------------
-bool smf_context::handle_pdu_session_resource_release_response_transfer(
-    std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
-  return true;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::handle_pdu_session_modification_network_requested(
-    std::shared_ptr<itti_nx_trigger_pdu_session_modification> itti_msg) {
   
 }
 
@@ -451,69 +414,6 @@ void smf_context::insert_dnn_subscription(
   
 }
 
-//------------------------------------------------------------------------------
-bool smf_context::is_dnn_snssai_subscription_data(
-    const std::string& dnn, const snssai_t& snssai) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  if (dnn_subscriptions.count((uint8_t) snssai.sST) > 0) {
-    std::shared_ptr<session_management_subscription> ss =
-        dnn_subscriptions.at((uint8_t) snssai.sST);
-    if (ss.get()->dnn_configuration(dnn))
-      return true;
-    else
-      return false;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_context::find_dnn_subscription(
-    const snssai_t& snssai,
-    std::shared_ptr<session_management_subscription>& ss) {
-  Logger::flexcn_app().info(
-      "Find a DNN Subscription with key: %d, map size %d", (uint8_t) snssai.sST,
-      dnn_subscriptions.size());
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  if (dnn_subscriptions.count((uint8_t) snssai.sST) > 0) {
-    ss = dnn_subscriptions.at((uint8_t) snssai.sST);
-    return true;
-  }
-
-  Logger::flexcn_app().info(
-      "DNN subscription (SNSSAI %d) not found", (uint8_t) snssai.sST);
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_context::find_dnn_context(
-    const snssai_t& nssai, const std::string& dnn,
-    std::shared_ptr<dnn_context>& dnn_context) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  for (auto it : dnns) {
-    if ((0 == dnn.compare(it->dnn_in_use)) and
-        ((uint8_t) nssai.sST) == (uint8_t)(it->nssai.sST)) {
-      dnn_context = it;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::insert_dnn(std::shared_ptr<dnn_context>& sd) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  dnns.push_back(sd);
-}
-
-//------------------------------------------------------------------------------
-bool smf_context::verify_sm_context_request(
-    std::shared_ptr<itti_n11_create_sm_context_request> smreq) {
-  // check the validity of the UE request according to the user subscription or
-  // local policies
-  // TODO: need to be implemented
-  return true;
-}
-
 //-----------------------------------------------------------------------------
 supi_t smf_context::get_supi() const {
   return supi;
@@ -522,11 +422,6 @@ supi_t smf_context::get_supi() const {
 //-----------------------------------------------------------------------------
 void smf_context::set_supi(const supi_t& s) {
   supi = s;
-}
-
-//-----------------------------------------------------------------------------
-std::size_t smf_context::get_number_dnn_contexts() const {
-  return dnns.size();
 }
 
 //-----------------------------------------------------------------------------
@@ -549,25 +444,6 @@ void smf_context::set_supi_prefix(std::string const& prefix) {
   supi_prefix = prefix;
 }
 
-//-----------------------------------------------------------------------------
-bool smf_context::find_pdu_session(
-    const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi,
-    std::shared_ptr<dnn_context>& sd, std::shared_ptr<smf_pdu_session>& sp) {
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::handle_sm_context_status_change(
-    scid_t scid, const std::string& status, uint8_t http_version) {
-  
-}
-
-//------------------------------------------------------------------------------
-void smf_context::handle_ee_pdu_session_release(
-    supi64_t supi, pdu_session_id_t pdu_session_id, uint8_t http_version) {
-  
-}
-
 //------------------------------------------------------------------------------
 void smf_context::set_amf_addr(const std::string& addr) {
   amf_addr = addr;
@@ -586,43 +462,4 @@ void smf_context::set_plmn(const plmn_t& plmn) {
 //------------------------------------------------------------------------------
 void smf_context::get_plmn(plmn_t& plmn) const {
   plmn = this->plmn;
-}
-
-//------------------------------------------------------------------------------
-bool dnn_context::find_pdu_session(
-    const uint32_t pdu_session_id,
-    std::shared_ptr<smf_pdu_session>& pdu_session) {
-  pdu_session = {};
-  std::shared_lock lock(m_context);
-  for (auto it : pdu_sessions) {
-    if (pdu_session_id == it->pdu_session_id) {
-      pdu_session = it;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void dnn_context::insert_pdu_session(std::shared_ptr<smf_pdu_session>& sp) {
-  std::unique_lock lock(m_context);
-  pdu_sessions.push_back(sp);
-}
-
-//------------------------------------------------------------------------------
-size_t dnn_context::get_number_pdu_sessions() const {
-  std::shared_lock lock(m_context);
-  return pdu_sessions.size();
-}
-
-//------------------------------------------------------------------------------
-std::string dnn_context::toString() const {
-  std::string s = {};
-  s.append("DNN CONTEXT:\n");
-  s.append("\tIn use:\t\t\t\t").append(std::to_string(in_use)).append("\n");
-  s.append("\tDNN:\t\t\t\t").append(dnn_in_use).append("\n");
-  for (auto it : pdu_sessions) {
-    s.append(it->toString());
-  }
-  return s;
 }
