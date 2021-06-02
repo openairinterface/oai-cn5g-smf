@@ -190,19 +190,6 @@ class flexcn_app {
    */
   void handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf);
 
-  /*
-   * Handle ITTI message from N11 (NFRegiser Response)
-   * @param [itti_n11_register_nf_instance_response&] r
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_register_nf_instance_response& r);
-
-  /*
-   * Handle ITTI message from N11 (NFUpdate Response)
-   * @param [itti_n11_update_nf_instance_response&] u
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_update_nf_instance_response& u);
 
   /*
    * Restore a N4 Session
@@ -231,15 +218,6 @@ class flexcn_app {
   // for further analysis.
   // void print_record();
 
-  /*
-   * will be executed when NRF Heartbeat timer expires
-   * @param [timer_id_t] timer_id
-   * @param [uint64_t] arg2_user
-   * @return void
-   */
-  void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
-
-  void timer_nrf_deregistration(timer_id_t timer_id, uint64_t arg2_user);
 
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
@@ -282,41 +260,6 @@ class flexcn_app {
       uint32_t id,
       boost::shared_ptr<
           boost::promise<pdu_session_release_sm_context_response>>& p);
-
-  /*
-   * Trigger NF instance registration to NRF
-   * @param [void]
-   * @return void
-   */
-  void register_to_nrf();
-
-  /*
-   * Generate a random UUID for SMF instance
-   * @param [void]
-   * @return void
-   */
-  void generate_uuid();
-
-  /*
-   * Generate a SMF profile for this instance
-   * @param [void]
-   * @return void
-   */
-  void generate_smf_profile();
-
-  /*
-   * Send request to N11 task to trigger NF instance registration to NRF
-   * @param [void]
-   * @return void
-   */
-  void trigger_nf_registration_request();
-
-  /*
-   * Send request to N11 task to trigger NF instance deregistration to NRF
-   * @param [void]
-   * @return void
-   */
-  void trigger_nf_deregistration();
 
   // FlexCN
   void trigger_pdu_session_status_notification_subscribe();

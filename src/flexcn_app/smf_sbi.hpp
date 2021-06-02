@@ -70,33 +70,6 @@ class smf_sbi {
       std::shared_ptr<itti_n11_notify_subscribed_event> msg);
 
   /*
-   * Send NF instance registration to NRF
-   * @param [std::shared_ptr<itti_n11_register_nf_instance_request>] msg:
-   * Content of message to be sent
-   * @return void
-   */
-  void register_nf_instance(
-      std::shared_ptr<itti_n11_register_nf_instance_request> msg);
-
-  /*
-   * Send NF instance update to NRF
-   * @param [std::shared_ptr<itti_n11_update_nf_instance_request>] msg: Content
-   * of message to be sent
-   * @return void
-   */
-  void update_nf_instance(
-      std::shared_ptr<itti_n11_update_nf_instance_request> msg);
-
-  /*
-   * Send NF deregister to NRF
-   * @param [std::shared_ptr<itti_n11_deregister_nf_instance>] msg: Content
-   * of message to be sent
-   * @return void
-   */
-  void deregister_nf_instance(
-      std::shared_ptr<itti_n11_deregister_nf_instance> msg);
-
-  /*
    * Send a NFStatusSubscribe to NRF (to be notified when a new UPF becomes
    * available)
    * @param [std::shared_ptr<itti_n11_subscribe_upf_status_notify>] msg: Content

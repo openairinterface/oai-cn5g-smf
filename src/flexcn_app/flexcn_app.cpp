@@ -58,7 +58,6 @@
 #include "smf_event.hpp"           //smf_app
 #include "smf_sbi.hpp"
 #include "smf_n4.hpp"
-//#include "smf_paa_dynamic.hpp"
 #include "string.hpp"  //
 
 #include "EventNotification.h"
@@ -97,41 +96,6 @@ nlohmann::json flexcn_app::get_summarization_in_json_format() {
 
   return j;
 };
-
-/*
-//------------------------------------------------------------------------------
-int flexcn_app::apply_config(const flexcn_config& cfg) {
-  Logger::flexcn_app().info("Apply config...");
-
-  paa_t paa = {};
-  for (int ia = 0; ia < cfg.num_dnn; ia++) {
-    if (cfg.dnn[ia].pool_id_iv4 >= 0) {
-      int pool_id = cfg.dnn[ia].pool_id_iv4;
-      int range   = be32toh(cfg.ue_pool_range_high[pool_id].s_addr) -
-                  be32toh(cfg.ue_pool_range_low[pool_id].s_addr);
-      paa_dynamic::get_instance().add_pool(
-          cfg.dnn[ia].dnn, pool_id, cfg.ue_pool_range_low[pool_id], range);
-      // TODO: check with dnn_label
-      //Logger::smf_app().info("Applied config %s", cfg.dnn[ia].dnn.c_str());
-      paa.ipv4_address = cfg.ue_pool_range_low[pool_id];
-    }
-    if (cfg.dnn[ia].pool_id_iv6 >= 0) {
-      int pool_id = cfg.dnn[ia].pool_id_iv6;
-      paa_dynamic::get_instance().add_pool(
-          cfg.dnn[ia].dnn, pool_id, cfg.paa_pool6_prefix[pool_id],
-          cfg.paa_pool6_prefix_len[pool_id]);
-      paa.ipv6_address = cfg.paa_pool6_prefix[pool_id];
-
-      // TODO: check with dnn_label
-    //  Logger::smf_app().info(
-    //      "Applied config for IPv6 %s", cfg.dnn[ia].dnn.c_str());
-    }
-  }
-
-  Logger::flexcn_app().info("Applied config");
-  return RETURNok;
-}
-*/
 
 // ----------------------------------------------------------
 void flexcn_app::add_data_event(const std::string& data_event) {
@@ -234,33 +198,11 @@ void flexcn_app_task(void*) {
             std::static_pointer_cast<itti_n4_node_failure>(shared_msg));
         break;
 
-      case N11_REGISTER_NF_INSTANCE_RESPONSE:
-        if (itti_n11_register_nf_instance_response* m =
-                dynamic_cast<itti_n11_register_nf_instance_response*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
-      case N11_UPDATE_NF_INSTANCE_RESPONSE:
-        if (itti_n11_update_nf_instance_response* m =
-                dynamic_cast<itti_n11_update_nf_instance_response*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::flexcn_app().info("TIME-OUT event timer id %d", to->timer_id);
           switch (to->arg1_user) {
             case TASK_FLEXCN_APP_TRIGGER_T3591:
-              break;
-            case TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT:
-              flexcn_app_inst->timer_nrf_heartbeat_timeout(
-                  to->timer_id, to->arg2_user);
-              break;
-            case TASK_FLEXCN_APP_TIMEOUT_NRF_DEREGISTRATION:
-              flexcn_app_inst->timer_nrf_deregistration(
-                  to->timer_id, to->arg2_user);
               break;
             default:;
           }
@@ -331,13 +273,6 @@ flexcn_app::flexcn_app(const std::string& config_file)
   // status changes
   trigger_pdu_session_status_notification_subscribe();
 
-  // Register to NRF (if this option is enabled)
-  if (flexcn_cfg.register_nrf) {
-    unsigned int microsecond = 10000;  // 10ms
-    // usleep(microsecond);
-    // register_to_nrf();
-  }
-
   Logger::flexcn_app().startup("Started");
 }
 
@@ -356,12 +291,6 @@ void flexcn_app::handle_itti_msg(
 void flexcn_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {}
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {}
-
-//------------------------------------------------------------------------------
 evsub_id_t flexcn_app::handle_event_exposure_subscription(
     std::shared_ptr<itti_sbi_event_exposure_request> msg) {}
 
@@ -371,48 +300,6 @@ bool flexcn_app::handle_nf_status_notification(
     oai::flexcn_server::model::ProblemDetails& problem_details,
     uint8_t& http_code) {
   return true;
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::timer_nrf_heartbeat_timeout(
-    timer_id_t timer_id, uint64_t arg2_user) {
-  Logger::flexcn_app().debug(
-      "Send ITTI msg to N11 task to trigger NRF Heartbeat");
-
-  std::shared_ptr<itti_n11_update_nf_instance_request> itti_msg =
-      std::make_shared<itti_n11_update_nf_instance_request>(
-          TASK_FLEXCN_APP, TASK_SMF_SBI);
-
-  oai::flexcn_server::model::PatchItem patch_item = {};
-  //{"op":"replace","path":"/nfStatus", "value": "REGISTERED"}
-  patch_item.setOp("replace");
-  patch_item.setPath("/nfStatus");
-  patch_item.setValue("REGISTERED");
-  itti_msg->patch_items.push_back(patch_item);
-  itti_msg->smf_instance_id = smf_instance_id;
-
-  int ret = itti_inst->send_msg(itti_msg);
-  if (RETURNok != ret) {
-    Logger::flexcn_app().error(
-        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
-        itti_msg->get_msg_name());
-  } else {
-    Logger::flexcn_app().debug(
-        "Set a timer to the next Heart-beat (%d)",
-        nf_instance_profile.get_nf_heartBeat_timer());
-    timer_nrf_heartbeat = itti_inst->timer_setup(
-        nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_FLEXCN_APP,
-        TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT,
-        0);  // TODO arg2_user
-  }
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::timer_nrf_deregistration(
-    timer_id_t timer_id, uint64_t arg2_user) {
-  Logger::flexcn_app().debug(
-      "Send ITTI msg to N11 task to trigger NRF Deregistratino");
-  trigger_nf_deregistration();
 }
 
 //---------------------------------------------------------------------------------------------
@@ -442,126 +329,6 @@ void flexcn_app::add_promise(
   sm_context_release_promises.emplace(id, p);
 }
 
-//---------------------------------------------------------------------------------------------
-void flexcn_app::generate_smf_profile() {
-  // TODO: remove hardcoded values
-  // generate UUID
-  generate_uuid();
-  nf_instance_profile.set_nf_instance_id(smf_instance_id);
-  nf_instance_profile.set_nf_instance_name("OAI-FLEXCN");
-  nf_instance_profile.set_nf_type("FLEXCN");
-  nf_instance_profile.set_nf_status("REGISTERED");
-  nf_instance_profile.set_nf_heartBeat_timer(50);
-  nf_instance_profile.set_nf_priority(1);
-  nf_instance_profile.set_nf_capacity(100);
-  nf_instance_profile.add_nf_ipv4_addresses(flexcn_cfg.sbi.addr4);
-
-  // NF services
-  nf_service_t nf_service = {};
-  // HUNG-TODO: change the name of service to nflexcn
-  nf_service.service_instance_id = "nsmf-pdusession";
-  nf_service.service_name        = "nsmf-pdusession";
-  nf_service_version_t version   = {};
-  version.api_version_in_uri     = "v1";
-  version.api_full_version       = "1.0.0";  // TODO: to be updated
-  nf_service.versions.push_back(version);
-  nf_service.scheme            = "http";
-  nf_service.nf_service_status = "REGISTERED";
-  // IP Endpoint
-  ip_endpoint_t endpoint = {};
-  std::vector<struct in_addr> addrs;
-  nf_instance_profile.get_nf_ipv4_addresses(addrs);
-  endpoint.ipv4_address = addrs[0];  // TODO: use first IP ADDR for now
-  endpoint.transport    = "TCP";
-  endpoint.port         = flexcn_cfg.sbi.port;
-  nf_service.ip_endpoints.push_back(endpoint);
-
-  nf_instance_profile.add_nf_service(nf_service);
-
-  // TODO: custom info
-
-  int i = 0;
-  for (auto sms : flexcn_cfg.session_management_subscription) {
-    if (i < flexcn_cfg.num_session_management_subscription)
-      i++;
-    else
-      break;
-
-    // SNSSAIS
-    snssai_t snssai = {};
-    snssai.sD       = sms.single_nssai.sD;
-    snssai.sST      = sms.single_nssai.sST;
-    // Verify if this SNSSAI exist
-    std::vector<snssai_t> ss = {};
-    nf_instance_profile.get_nf_snssais(ss);
-    bool found = false;
-    for (auto it : ss) {
-      if ((it.sD == snssai.sD) and (it.sST == snssai.sST)) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) nf_instance_profile.add_snssai(snssai);
-
-    // SMF info
-    dnn_smf_info_item_t dnn_item         = {.dnn = sms.dnn};
-    snssai_smf_info_item_t smf_info_item = {};
-    smf_info_item.dnn_smf_info_list.push_back(dnn_item);
-    smf_info_item.snssai.sD  = sms.single_nssai.sD;
-    smf_info_item.snssai.sST = sms.single_nssai.sST;
-    nf_instance_profile.add_smf_info_item(smf_info_item);
-  }
-
-  // Display the profile
-  nf_instance_profile.display();
-}
-
-//---------------------------------------------------------------------------------------------
-void flexcn_app::register_to_nrf() {
-  // Create a NF profile to this instance
-  generate_smf_profile();
-  // Send request to N11 to send NF registration to NRF
-  trigger_nf_registration_request();
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::generate_uuid() {
-  smf_instance_id = to_string(boost::uuids::random_generator()());
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::trigger_nf_registration_request() {
-  Logger::flexcn_app().debug(
-      "Send ITTI msg to N11 task to trigger the registration request to NRF");
-
-  std::shared_ptr<itti_n11_register_nf_instance_request> itti_msg =
-      std::make_shared<itti_n11_register_nf_instance_request>(
-          TASK_FLEXCN_APP, TASK_SMF_SBI);
-  itti_msg->profile = nf_instance_profile;
-  int ret           = itti_inst->send_msg(itti_msg);
-  if (RETURNok != ret) {
-    Logger::flexcn_app().error(
-        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
-        itti_msg->get_msg_name());
-  }
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::trigger_nf_deregistration() {
-  Logger::flexcn_app().debug(
-      "Send ITTI msg to N11 task to trigger the deregistration request to NRF");
-
-  std::shared_ptr<itti_n11_deregister_nf_instance> itti_msg =
-      std::make_shared<itti_n11_deregister_nf_instance>(
-          TASK_FLEXCN_APP, TASK_SMF_SBI);
-  itti_msg->smf_instance_id = smf_instance_id;
-  int ret                   = itti_inst->send_msg(itti_msg);
-  if (RETURNok != ret) {
-    Logger::flexcn_app().error(
-        "Could not send ITTI message %s to task TASK_FLEXCN_SBI",
-        itti_msg->get_msg_name());
-  }
-}
 
 //------------------------------------------------------------------------------
 void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
