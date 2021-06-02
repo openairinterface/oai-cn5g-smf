@@ -734,7 +734,3 @@ void smf_sbi::subscribe_pdu_session_status_notify(
   curl_global_cleanup();
 }
 
-//------------------------------------------------------------------------------
-void smf_sbi::subscribe_sm_data() {
-  // TODO:
-}
