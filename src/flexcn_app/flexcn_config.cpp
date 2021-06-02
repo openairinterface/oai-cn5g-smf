@@ -325,8 +325,6 @@ int flexcn_config::load(const string& config_file) {
   try {
     string astring;
 
-    const Setting& pool_cfg = flexcn_cfg[FLEXCN_CONFIG_STRING_IP_ADDRESS_POOL];
-    
     flexcn_cfg.lookupValue(FLEXCN_CONFIG_STRING_DEFAULT_DNS_IPV4_ADDRESS, astring);
     IPV4_STR_ADDR_TO_INADDR(
         util::trim(astring).c_str(), default_dnsv4,
@@ -365,9 +363,7 @@ int flexcn_config::load(const string& config_file) {
           "in " FLEXCN_CONFIG_STRING_DEFAULT_DNS_SEC_IPV6_ADDRESS " %s",
           astring.c_str());
     }
-
-    flexcn_cfg.lookupValue(FLEXCN_CONFIG_STRING_UE_MTU, ue_mtu);
-
+    
     // Support features
     try {
       const Setting& support_features =
