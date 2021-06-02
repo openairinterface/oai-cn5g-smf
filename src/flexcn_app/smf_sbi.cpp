@@ -76,11 +76,6 @@ void smf_sbi_task(void* args_p) {
     std::shared_ptr<itti_msg> shared_msg = itti_inst->receive_msg(task_id);
     auto* msg                            = shared_msg.get();
     switch (msg->msg_type) {
-      case N11_SESSION_REPORT_RESPONSE:
-        smf_sbi_inst->send_n1n2_message_transfer_request(
-            std::static_pointer_cast<itti_n11_session_report_request>(
-                shared_msg));
-        break;
 
       case N11_SESSION_NOTIFY_SM_CONTEXT_STATUS:
         smf_sbi_inst->send_sm_context_status_notification(
@@ -151,118 +146,7 @@ smf_sbi::smf_sbi() {
   }
   Logger::smf_sbi().startup("Started");
 }
-//------------------------------------------------------------------------------
-void smf_sbi::send_n1n2_message_transfer_request(
-    std::shared_ptr<itti_n11_session_report_request> report_msg) {
-  Logger::smf_sbi().debug(
-      "Send Communication_N1N2MessageTransfer to AMF (Network-initiated "
-      "Service Request)");
 
-  mime_parser parser       = {};
-  std::string n2_message   = report_msg->res.get_n2_sm_information();
-  nlohmann::json json_data = {};
-  std::string body;
-  report_msg->res.get_json_data(json_data);
-  std::string json_part = json_data.dump();
-
-  // add N1 content if available
-  auto n1_sm_found = json_data.count("n1MessageContainer");
-  if (n1_sm_found > 0) {
-    std::string n1_message = report_msg->res.get_n1_sm_message();
-    // prepare the body content for Curl
-    parser.create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n1_message, n2_message);
-  } else {
-    parser.create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n2_message,
-        multipart_related_content_part_e::NGAP);
-  }
-
-  uint32_t str_len = body.length();
-  char* data       = (char*) malloc(str_len + 1);
-  memset(data, 0, str_len + 1);
-  memcpy((void*) data, (void*) body.c_str(), str_len);
-
-  curl_global_init(CURL_GLOBAL_ALL);
-  CURL* curl = curl_easy_init();
-
-  if (curl) {
-    CURLcode res               = {};
-    struct curl_slist* headers = nullptr;
-    // headers = curl_slist_append(headers, "charsets: utf-8");
-    std::string content_type = "content-type: multipart/related; boundary=" +
-                               std::string(CURL_MIME_BOUNDARY);
-    headers = curl_slist_append(headers, content_type.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_URL, report_msg->res.get_amf_url().c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, AMF_CURL_TIMEOUT_MS);
-    curl_easy_setopt(curl, CURLOPT_INTERFACE, flexcn_cfg.sbi.if_name.c_str());
-
-    if (report_msg->http_version == 2) {
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-      // we use a self-signed test server, skip verification during debugging
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-      curl_easy_setopt(
-          curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-    }
-
-    // Response information.
-    long httpCode = {0};
-    std::unique_ptr<std::string> httpData(new std::string());
-
-    // Hook up data handling function
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, httpData.get());
-
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.length());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-
-    res = curl_easy_perform(curl);
-
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-
-    // get cause from the response
-    json response_data = {};
-    try {
-      response_data = json::parse(*httpData.get());
-    } catch (json::exception& e) {
-      Logger::smf_sbi().warn("Could not get the cause from the response");
-      // Set the default Cause
-      response_data["cause"] = "504 Gateway Timeout";
-    }
-    Logger::smf_sbi().debug(
-        "Response from AMF, Http Code: %d, cause %s", httpCode,
-        response_data["cause"].dump().c_str());
-
-    // send response to APP to process
-    itti_n11_n1n2_message_transfer_response_status* itti_msg =
-        new itti_n11_n1n2_message_transfer_response_status(
-            TASK_SMF_SBI, TASK_FLEXCN_APP);
-    itti_msg->set_response_code(httpCode);
-    itti_msg->set_procedure_type(session_management_procedures_type_e::
-                                     SERVICE_REQUEST_NETWORK_TRIGGERED);
-    itti_msg->set_cause(response_data["cause"]);
-    itti_msg->set_seid(report_msg->res.get_seid());
-    itti_msg->set_trxn_id(report_msg->res.get_trxn_id());
-
-    std::shared_ptr<itti_n11_n1n2_message_transfer_response_status> i =
-        std::shared_ptr<itti_n11_n1n2_message_transfer_response_status>(
-            itti_msg);
-    int ret = itti_inst->send_msg(i);
-    if (RETURNok != ret) {
-      Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_FLEXCN_APP",
-          i->get_msg_name());
-    }
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-  }
-  curl_global_cleanup();
-  free_wrapper((void**) &data);
-}
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_sm_context_status_notification(

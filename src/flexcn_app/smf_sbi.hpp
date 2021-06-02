@@ -52,15 +52,6 @@ class smf_sbi {
   void operator=(smf_sbi const&) = delete;
 
   /*
-   * Send N1N2 Message Transfer Request to AMF
-   * @param [std::shared_ptr<itti_n11_session_report_request>] n11_msg: Content
-   * of message to be sent
-   * @return void
-   */
-  void send_n1n2_message_transfer_request(
-      std::shared_ptr<itti_n11_session_report_request> report_msg);
-
-  /*
    * Send SM Context Status Notification to AMF
    * @param [std::shared_ptr<itti_n11_notify_sm_context_status>]
    * sm_context_status: Content of message to be sent
@@ -126,13 +117,6 @@ class smf_sbi {
    */
   CURL* curl_create_handle(event_notification& ev_notif, std::string* data);
 
-  /*
-   * Subscribe to be notify from UDM
-   * @param []
-   * @return void
-   *
-   */
-  void subscribe_sm_data();
 };
 }  // namespace flexcn
 #endif /* FILE_SMF_SBI_HPP_SEEN */
