@@ -42,7 +42,7 @@
 #include "flexcn_config.hpp"
 #include "smf_event.hpp"
 #include "smf_sbi.hpp"
-#include "smf_paa_dynamic.hpp"
+//#include "smf_paa_dynamic.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "3gpp_conversions.hpp"

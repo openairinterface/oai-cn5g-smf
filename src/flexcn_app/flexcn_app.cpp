@@ -58,7 +58,7 @@
 #include "smf_event.hpp"           //smf_app
 #include "smf_sbi.hpp"
 #include "smf_n4.hpp"
-#include "smf_paa_dynamic.hpp"
+//#include "smf_paa_dynamic.hpp"
 #include "string.hpp"  //
 
 #include "EventNotification.h"
