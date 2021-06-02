@@ -60,21 +60,6 @@ extern flexcn_config flexcn_cfg;
 //------------------------------------------------------------------------------
 int flexcn_config::finalize() {
   Logger::flexcn_app().info("Finalize config...");
-
-  for (int i = 0; i < num_ue_pool; i++) {
-    uint32_t range_low_hbo  = ntohl(ue_pool_range_low[i].s_addr);
-    uint32_t range_high_hbo = ntohl(ue_pool_range_high[i].s_addr);
-    uint32_t tmp_hbo        = range_low_hbo ^ range_high_hbo;
-    uint8_t nbits           = 32;
-    while (tmp_hbo) {
-      tmp_hbo = tmp_hbo >> 1;
-      nbits -= 1;
-    }
-    uint32_t network_hbo      = range_high_hbo & (UINT32_MAX << (32 - nbits));
-    uint32_t netmask_hbo      = 0xFFFFFFFF << (32 - nbits);
-    ue_pool_network[i].s_addr = htonl(network_hbo);
-    ue_pool_netmask[i].s_addr = htonl(netmask_hbo);
-  }
   Logger::flexcn_app().info("Finalized config");
   return 0;
 }
@@ -341,196 +326,7 @@ int flexcn_config::load(const string& config_file) {
     string astring;
 
     const Setting& pool_cfg = flexcn_cfg[FLEXCN_CONFIG_STRING_IP_ADDRESS_POOL];
-
-    const Setting& ipv4_pool_cfg =
-        pool_cfg[FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST];
-    int count = ipv4_pool_cfg.getLength();
-    for (int i = 0; i < count; i++) {
-      const Setting& ipv4_cfg = ipv4_pool_cfg[i];
-      string ipv4_range;
-      unsigned char buf_in_addr[sizeof(struct in_addr)];
-
-      ipv4_cfg.lookupValue(FLEXCN_CONFIG_STRING_RANGE, ipv4_range);
-      std::vector<std::string> ips;
-      boost::split(
-          ips, ipv4_range,
-          boost::is_any_of(FLEXCN_CONFIG_STRING_IPV4_ADDRESS_RANGE_DELIMITER),
-          boost::token_compress_on);
-      if (ips.size() != 2) {
-        Logger::flexcn_app().error(
-            "Bad value %s : %s in config file %s",
-            FLEXCN_CONFIG_STRING_IPV4_ADDRESS_RANGE_DELIMITER, ipv4_range.c_str(),
-            config_file.c_str());
-        throw(
-            "Bad value %s : %s in config file %s",
-            FLEXCN_CONFIG_STRING_IPV4_ADDRESS_RANGE_DELIMITER, ipv4_range.c_str(),
-            config_file.c_str());
-      }
-
-      memset(buf_in_addr, 0, sizeof(buf_in_addr));
-      if (inet_pton(AF_INET, util::trim(ips.at(0)).c_str(), buf_in_addr) == 1) {
-        memcpy(
-            &ue_pool_range_low[num_ue_pool], buf_in_addr,
-            sizeof(struct in_addr));
-      } else {
-        Logger::flexcn_app().error(
-            "CONFIG POOL ADDR IPV4: BAD LOWER ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST " pool %d",
-            i);
-        throw(
-            "CONFIG POOL ADDR IPV4: BAD ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST);
-      }
-
-      memset(buf_in_addr, 0, sizeof(buf_in_addr));
-      if (inet_pton(AF_INET, util::trim(ips.at(1)).c_str(), buf_in_addr) == 1) {
-        memcpy(
-            &ue_pool_range_high[num_ue_pool], buf_in_addr,
-            sizeof(struct in_addr));
-      } else {
-        Logger::flexcn_app().error(
-            "CONFIG POOL ADDR IPV4: BAD HIGHER ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST " pool %d",
-            i);
-        throw(
-            "CONFIG POOL ADDR IPV4: BAD ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST);
-      }
-      if (htonl(ue_pool_range_low[num_ue_pool].s_addr) >=
-          htonl(ue_pool_range_high[num_ue_pool].s_addr)) {
-        Logger::flexcn_app().error(
-            "CONFIG POOL ADDR IPV4: BAD RANGE "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST " pool %d",
-            i);
-        throw(
-            "CONFIG POOL ADDR IPV4: BAD RANGE "
-            "in " FLEXCN_CONFIG_STRING_IPV4_ADDRESS_LIST);
-      }
-      num_ue_pool += 1;
-    }
-
-    const Setting& ipv6_pool_cfg =
-        pool_cfg[FLEXCN_CONFIG_STRING_IPV6_ADDRESS_LIST];
-    int count6 = ipv6_pool_cfg.getLength();
-    for (int i = 0; i < count6; i++) {
-      const Setting& ipv6_cfg = ipv6_pool_cfg[i];
-      string ipv6_prefix;
-      ipv6_cfg.lookupValue(FLEXCN_CONFIG_STRING_PREFIX, ipv6_prefix);
-      std::vector<std::string> ips6;
-      boost::split(
-          ips6, ipv6_prefix,
-          boost::is_any_of(FLEXCN_CONFIG_STRING_IPV6_ADDRESS_PREFIX_DELIMITER),
-          boost::token_compress_on);
-      if (ips6.size() != 2) {
-        Logger::flexcn_app().error(
-            "Bad value %s : %s in config file %s", FLEXCN_CONFIG_STRING_PREFIX,
-            ipv6_prefix.c_str(), config_file.c_str());
-        throw(
-            "Bad value %s : %s in config file %s", FLEXCN_CONFIG_STRING_PREFIX,
-            ipv6_prefix.c_str(), config_file.c_str());
-      }
-
-      std::string addr = ips6.at(0);
-      util::trim(addr);
-      if (inet_pton(AF_INET6, addr.c_str(), buf_in6_addr) == 1) {
-        memcpy(
-            &paa_pool6_prefix[num_paa6_pool], buf_in6_addr,
-            sizeof(struct in6_addr));
-      } else {
-        Logger::flexcn_app().error(
-            "CONFIG POOL ADDR IPV6: BAD ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV6_ADDRESS_LIST " pool %d",
-            i);
-        throw(
-            "CONFIG POOL ADDR IPV6: BAD ADDRESS "
-            "in " FLEXCN_CONFIG_STRING_IPV6_ADDRESS_LIST);
-      }
-
-      std::string prefix = ips6.at(1);
-      util::trim(prefix);
-      paa_pool6_prefix_len[num_paa6_pool] = std::stoi(prefix);
-      num_paa6_pool += 1;
-    }
-
-    const Setting& dnn_list_cfg = flexcn_cfg[FLEXCN_CONFIG_STRING_DNN_LIST];
-    count                       = dnn_list_cfg.getLength();
-    int dnn_idx                 = 0;
-    num_dnn                     = 0;
-    for (int i = 0; i < count; i++) {
-      const Setting& dnn_cfg = dnn_list_cfg[i];
-      dnn_cfg.lookupValue(FLEXCN_CONFIG_STRING_DNN_NI, astring);
-      dnn[dnn_idx].dnn       = astring;
-      dnn[dnn_idx].dnn_label = dnn_label(astring);
-      dnn_cfg.lookupValue(FLEXCN_CONFIG_STRING_PDU_SESSION_TYPE, astring);
-      if (boost::iequals(astring, "IPv4")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_IPV4;
-      } else if (boost::iequals(astring, "IPv6")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_IPV6;
-      } else if (boost::iequals(astring, "IPv4v6")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_IPV4V6;
-      } else if (boost::iequals(astring, "Unstructured")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_UNSTRUCTURED;
-      } else if (boost::iequals(astring, "Ethernet")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_ETHERNET;
-      } else if (boost::iequals(astring, "Reserved")) {
-        dnn[dnn_idx].pdu_session_type.pdu_session_type =
-            PDU_SESSION_TYPE_E_RESERVED;
-      } else {
-        Logger::flexcn_app().error(
-            " " FLEXCN_CONFIG_STRING_PDU_SESSION_TYPE " in %d'th DNN :%s", i + 1,
-            astring.c_str());
-        throw("Error PDU_SESSION_TYPE in config file");
-      }
-      dnn_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_IPV4_POOL, dnn[dnn_idx].pool_id_iv4);
-      dnn_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_IPV6_POOL, dnn[dnn_idx].pool_id_iv6);
-
-      if ((0 <= dnn[dnn_idx].pool_id_iv4) &&
-          (dnn[dnn_idx].pdu_session_type.pdu_session_type ==
-           PDU_SESSION_TYPE_E_IPV6)) {
-        Logger::flexcn_app().error(
-            "PDU_SESSION_TYPE versus pool identifier %d 'th DNN in config file",
-            i + 1);
-        throw("PDU_SESSION_TYPE versus pool identifier DNN");
-      }
-      if ((0 <= dnn[dnn_idx].pool_id_iv6) &&
-          (dnn[dnn_idx].pdu_session_type.pdu_session_type ==
-           PDU_SESSION_TYPE_E_IPV4)) {
-        Logger::flexcn_app().error(
-            "PDU_SESSION_TYPE versus pool identifier %d 'th DNN in config file",
-            i + 1);
-        throw("PDU_SESSION_TYPE versus pool identifier DNN");
-      }
-
-      if (((0 <= dnn[dnn_idx].pool_id_iv4) ||
-           (0 <= dnn[dnn_idx].pool_id_iv6)) &&
-          (not boost::iequals(dnn[dnn_idx].dnn, "none"))) {
-        bool doublon = false;
-        for (int j = 0; j < dnn_idx; j++) {
-          if (boost::iequals(dnn[j].dnn, dnn[dnn_idx].dnn)) {
-            doublon = true;
-            Logger::flexcn_app().info(
-                "%d'th dnn %s already found in config file (%d 'th DNN %s), "
-                "bypassing",
-                i + 1, dnn[dnn_idx].dnn.c_str(), j + 1, dnn[j].dnn.c_str());
-          }
-        }
-        if (not doublon) {
-          dnn_idx++;
-          num_dnn++;
-        }
-      } else {
-        Logger::flexcn_app().error(
-            "Bypass %d'th DNN %s in config file", i + 1,
-            dnn[dnn_idx].dnn.c_str());
-      }
-    }
+    
     flexcn_cfg.lookupValue(FLEXCN_CONFIG_STRING_DEFAULT_DNS_IPV4_ADDRESS, astring);
     IPV4_STR_ADDR_TO_INADDR(
         util::trim(astring).c_str(), default_dnsv4,
@@ -592,21 +388,7 @@ int flexcn_config::load(const string& config_file) {
       } else {
         discover_upf = false;
       }
-
-      support_features.lookupValue(
-          FLEXCN_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_SUBSCRIPTION_INFO, opt);
-      if (boost::iequals(opt, "yes")) {
-        use_local_subscription_info = true;
-      } else {
-        use_local_subscription_info = false;
-      }
-
-      support_features.lookupValue(FLEXCN_CONFIG_STRING_NAS_FORCE_PUSH_PCO, opt);
-      if (boost::iequals(opt, "yes")) {
-        force_push_pco = true;
-      } else {
-        force_push_pco = false;
-      }
+      
 
     } catch (const SettingNotFoundException& nfex) {
       Logger::flexcn_app().error(
@@ -663,7 +445,7 @@ int flexcn_config::load(const string& config_file) {
     // UPF list
     unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
     const Setting& upf_list_cfg = flexcn_cfg[FLEXCN_CONFIG_STRING_UPF_LIST];
-    count                       = upf_list_cfg.getLength();
+    int count                       = upf_list_cfg.getLength();
     for (int i = 0; i < count; i++) {
       const Setting& upf_cfg = upf_list_cfg[i];
 
@@ -711,78 +493,6 @@ int flexcn_config::load(const string& config_file) {
       throw(FLEXCN_CONFIG_STRING_API_VERSION "failed");
     }
     nrf_addr.api_version = nrf_api_version;
-
-    // Local configuration
-    num_session_management_subscription = 0;
-    const Setting& local_cfg = flexcn_cfg[FLEXCN_CONFIG_STRING_LOCAL_CONFIGURATION];
-
-    const Setting& session_management_subscription_list_cfg =
-        local_cfg[FLEXCN_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST];
-    count = session_management_subscription_list_cfg.getLength();
-    for (int i = 0; i < count; i++) {
-      const Setting& session_management_subscription_cfg =
-          session_management_subscription_list_cfg[i];
-
-      unsigned int nssai_sst                      = 0;
-      string nssai_sd                             = {};
-      string dnn                                  = {};
-      string default_session_type                 = {};
-      unsigned int default_ssc_mode               = 0;
-      unsigned int qos_profile_5qi                = 0;
-      unsigned int qos_profile_priority_level     = 0;
-      unsigned int qos_profile_arp_priority_level = 0;
-      string qos_profile_arp_preemptcap           = {};
-      string qos_profile_arp_preemptvuln          = {};
-      string session_ambr_ul                      = {};
-      string session_ambr_dl                      = {};
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_NSSAI_SST, nssai_sst);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_NSSAI_SD, nssai_sd);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_DNN, dnn);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_DEFAULT_SESSION_TYPE, default_session_type);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_DEFAULT_SSC_MODE, default_ssc_mode);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_QOS_PROFILE_5QI, qos_profile_5qi);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_QOS_PROFILE_PRIORITY_LEVEL,
-          qos_profile_priority_level);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_QOS_PROFILE_ARP_PRIORITY_LEVEL,
-          qos_profile_arp_priority_level);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTCAP,
-          qos_profile_arp_preemptcap);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTVULN,
-          qos_profile_arp_preemptvuln);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_SESSION_AMBR_UL, session_ambr_ul);
-      session_management_subscription_cfg.lookupValue(
-          FLEXCN_CONFIG_STRING_SESSION_AMBR_DL, session_ambr_dl);
-
-      session_management_subscription[i].single_nssai.sST = nssai_sst;
-      session_management_subscription[i].single_nssai.sD  = nssai_sd;
-      session_management_subscription[i].session_type = default_session_type;
-      session_management_subscription[i].dnn          = dnn;
-      session_management_subscription[i].ssc_mode     = default_ssc_mode;
-      session_management_subscription[i].default_qos._5qi = qos_profile_5qi;
-      session_management_subscription[i].default_qos.priority_level =
-          qos_profile_priority_level;
-      session_management_subscription[i].default_qos.arp.priority_level =
-          qos_profile_arp_priority_level;
-      session_management_subscription[i].default_qos.arp.preempt_cap =
-          qos_profile_arp_preemptcap;
-      session_management_subscription[i].default_qos.arp.preempt_vuln =
-          qos_profile_arp_preemptvuln;
-      session_management_subscription[i].session_ambr.downlink =
-          session_ambr_dl;
-      session_management_subscription[i].session_ambr.uplink = session_ambr_ul;
-      num_session_management_subscription++;
-    }
 
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().error("%s : %s", nfex.what(), nfex.getPath());
@@ -856,32 +566,3 @@ int flexcn_config::get_pfcp_fseid(pfcp::fseid_t& fseid) {
 
 //------------------------------------------------------------------------------
 flexcn_config::~flexcn_config() {}
-
-//------------------------------------------------------------------------------
-bool flexcn_config::is_dotted_dnn_handled(
-    const std::string& dnn, const pdu_session_type_t& pdn_session_type) {
-  Logger::flexcn_app().debug("Requested DNN: %s", dnn.c_str());
-  for (int i = 0; i < flexcn_cfg.num_dnn; i++) {
-    Logger::flexcn_app().debug(
-        "DNN label: %s, dnn: %s", flexcn_cfg.dnn[i].dnn_label.c_str(),
-        flexcn_cfg.dnn[i].dnn.c_str());
-    // if (0 == dnn.compare(flexcn_cfg.dnn[i].dnn_label)) {
-    if (0 == dnn.compare(flexcn_cfg.dnn[i].dnn)) {
-      Logger::flexcn_app().debug("DNN matched!");
-      Logger::flexcn_app().debug(
-          "PDU Session Type %d, PDN Type %d", pdn_session_type.pdu_session_type,
-          flexcn_cfg.dnn[i].pdu_session_type.pdu_session_type);
-      if (pdn_session_type.pdu_session_type ==
-          flexcn_cfg.dnn[i].pdu_session_type.pdu_session_type) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-std::string flexcn_config::get_default_dnn() {
-  Logger::flexcn_app().debug("Default DNN: %s", flexcn_cfg.dnn[0].dnn.c_str());
-  return flexcn_cfg.dnn[0].dnn;
-}
