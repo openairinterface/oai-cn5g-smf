@@ -134,18 +134,6 @@ int flexcn_app::apply_config(const flexcn_config& cfg) {
   return RETURNok;
 }
 
-//------------------------------------------------------------------------------
-uint64_t flexcn_app::generate_seid() {
-  std::unique_lock<std::mutex> ls(m_seid_n4_generator);
-  uint64_t seid = ++seid_n4_generator;
-  while ((is_seid_n4_exist(seid)) || (seid == UNASSIGNED_SEID)) {
-    seid = ++seid_n4_generator;
-  }
-  set_seid_n4.insert(seid);
-  ls.unlock();
-  return seid;
-}
-
 // ----------------------------------------------------------
 void flexcn_app::add_data_event(const std::string &data_event){
   Logger::flexcn_app().info("Add/Merge the following record to database : ");
@@ -207,66 +195,6 @@ void flexcn_app::add_data_event(const std::string &data_event){
   //     new_context = new ue_context()     
   // how far should we update these items.
   // done the process. 
-}
-
-
-//------------------------------------------------------------------------------
-void flexcn_app::generate_smf_context_ref(std::string& smf_ref) {
-  smf_ref = std::to_string(sm_context_ref_generator.get_uid());
-}
-
-//------------------------------------------------------------------------------
-scid_t flexcn_app::generate_smf_context_ref() {
-  return sm_context_ref_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::generate_ev_subscription_id(std::string& sub_id) {
-  sub_id = std::to_string(evsub_id_generator.get_uid());
-}
-
-//------------------------------------------------------------------------------
-evsub_id_t flexcn_app::generate_ev_subscription_id() {
-  return evsub_id_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::is_seid_n4_exist(const uint64_t& seid) const {
-  return bool{set_seid_n4.count(seid) > 0};
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::free_seid_n4(const uint64_t& seid) {
-  std::unique_lock<std::mutex> ls(m_seid_n4_generator);
-  set_seid_n4.erase(seid);
-  ls.unlock();
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::set_seid_2_smf_context(
-    const seid_t& seid, std::shared_ptr<smf_context>& pc) {
-  std::unique_lock lock(m_seid2smf_context);
-  seid2smf_context[seid] = pc;
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::seid_2_smf_context(
-    const seid_t& seid, std::shared_ptr<smf_context>& pc) const {
-  std::shared_lock lock(m_seid2smf_context);
-  std::map<seid_t, std::shared_ptr<smf_context>>::const_iterator it =
-      seid2smf_context.find(seid);
-  if (it != seid2smf_context.end()) {
-    pc = it->second;
-    return true;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::delete_smf_context(std::shared_ptr<smf_context> spc) {
-  supi64_t supi64 = smf_supi_to_u64(spc.get()->get_supi());
-  std::unique_lock lock(m_supi2smf_context);
-  supi2smf_context.erase(supi64);
 }
 
 //------------------------------------------------------------------------------
@@ -364,7 +292,7 @@ void flexcn_app_task(void*) {
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::flexcn_app().info("TIME-OUT event timer id %d", to->timer_id);
           switch (to->arg1_user) {
-            case TASK_FLEXN_APP_TRIGGER_T3591:
+            case TASK_FLEXCN_APP_TRIGGER_T3591:
               flexcn_app_inst->timer_t3591_timeout(to->timer_id, to->arg2_user);
               break;
             case TASK_FLEXCN_APP_TIMEOUT_NRF_HEARTBEAT:
@@ -570,51 +498,6 @@ void flexcn_app::set_supi_2_smf_context(
     const supi64_t& supi, std::shared_ptr<smf_context> sc) {
   std::unique_lock lock(m_supi2smf_context);
   supi2smf_context[supi] = sc;
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::set_scid_2_smf_context(
-    const scid_t& id, std::shared_ptr<smf_context_ref> scf) {
-  std::unique_lock lock(m_scid2smf_context);
-  scid2smf_context[id] = scf;
-}
-
-//------------------------------------------------------------------------------
-std::shared_ptr<smf_context_ref> flexcn_app::scid_2_smf_context(
-    const scid_t& scid) const {
-  std::shared_lock lock(m_scid2smf_context);
-  return scid2smf_context.at(scid);
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::is_scid_2_smf_context(const scid_t& scid) const {
-  std::shared_lock lock(m_scid2smf_context);
-  return bool{scid2smf_context.count(scid) > 0};
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::is_scid_2_smf_context(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-    const pdu_session_id_t& pid) const {
-  std::shared_lock lock(m_scid2smf_context);
-  for (auto it : scid2smf_context) {
-    supi64_t supi64 = smf_supi_to_u64(it.second->supi);
-    if ((supi64 == supi) and (it.second->dnn.compare(dnn) == 0) and
-        (it.second->nssai == snssai) and (it.second->pdu_session_id == pid))
-      return true;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool flexcn_app::scid_2_smf_context(
-    const scid_t& scid, std::shared_ptr<smf_context_ref>& scf) const {
-  std::shared_lock lock(m_scid2smf_context);
-  if (scid2smf_context.count(scid) > 0) {
-    scf = scid2smf_context.at(scid);
-    return true;
-  }
-  return false;
 }
 
 //------------------------------------------------------------------------------

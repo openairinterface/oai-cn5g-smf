@@ -62,7 +62,7 @@ class SnssaiUpfInfoItem {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SnssaiUpfInfoItem_H_ */

@@ -123,7 +123,7 @@ class ReleaseData {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* ReleaseData_H_ */

@@ -45,7 +45,7 @@ class TriggerCategory {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* TriggerCategory_H_ */

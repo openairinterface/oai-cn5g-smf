@@ -61,7 +61,7 @@ class UpSecurity {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* UpSecurity_H_ */

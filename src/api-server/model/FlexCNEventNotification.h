@@ -54,7 +54,7 @@
 // typedef std::string DddStatus; // only 3 values: - BUFFERED - TRANSMITTED - DISCARDED 
 
 namespace oai {
-namespace smf_server {
+namespace flexcn_server {
 namespace model {
 
 struct fteid {
@@ -443,7 +443,7 @@ class CNRecord {
 
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* FILE_FLEXCN_APP_HPP_SEEN */

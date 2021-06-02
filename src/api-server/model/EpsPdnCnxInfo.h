@@ -63,7 +63,7 @@ class EpsPdnCnxInfo {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* EpsPdnCnxInfo_H_ */

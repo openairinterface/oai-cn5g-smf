@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const ReflectiveQoSAttribute& o) {
 void from_json(const nlohmann::json& j, ReflectiveQoSAttribute& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

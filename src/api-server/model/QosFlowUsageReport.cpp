@@ -80,5 +80,5 @@ void QosFlowUsageReport::setUplinkVolume(int64_t const value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

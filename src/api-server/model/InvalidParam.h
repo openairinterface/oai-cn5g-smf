@@ -63,7 +63,7 @@ class InvalidParam {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* InvalidParam_H_ */

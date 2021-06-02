@@ -45,7 +45,7 @@ class ReflectiveQoSAttribute {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* ReflectiveQoSAttribute_H_ */

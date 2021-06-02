@@ -45,7 +45,7 @@ class EpsInterworkingIndication {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* EpsInterworkingIndication_H_ */

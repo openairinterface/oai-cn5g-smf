@@ -171,7 +171,7 @@ class VsmfUpdatedData {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* VsmfUpdatedData_H_ */

@@ -54,7 +54,7 @@ class SmContextStatusNotification {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SmContextStatusNotification_H_ */

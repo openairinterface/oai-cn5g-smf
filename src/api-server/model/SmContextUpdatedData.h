@@ -149,7 +149,7 @@ class SmContextUpdatedData {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SmContextUpdatedData_H_ */

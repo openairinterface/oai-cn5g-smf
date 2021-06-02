@@ -51,7 +51,7 @@ using namespace oai::flexcn_server::model;
 extern flexcn::flexcn_config flexcn_cfg;
 
 //------------------------------------------------------------------------------
-void smf_http2_server::start() {
+void flexcn_http2_server::start() {
   boost::system::error_code ec;
 
   Logger::smf_api_server().info("HTTP2 server started");
@@ -304,7 +304,7 @@ void smf_http2_server::start() {
 }
 
 //------------------------------------------------------------------------------
-void smf_http2_server::create_sm_contexts_handler(
+void flexcn_http2_server::create_sm_contexts_handler(
     const SmContextMessage& smContextMessage, const response& response) {
   Logger::smf_api_server().info(
       "Handle PDU Session Create SM Context Request.");
@@ -376,7 +376,7 @@ void smf_http2_server::create_sm_contexts_handler(
 }
 
 //------------------------------------------------------------------------------
-void smf_http2_server::update_sm_context_handler(
+void flexcn_http2_server::update_sm_context_handler(
     const std::string& smf_ref,
     const SmContextUpdateMessage& smContextUpdateMessage,
     const response& response) {
@@ -463,7 +463,7 @@ void smf_http2_server::update_sm_context_handler(
 }
 
 //------------------------------------------------------------------------------
-void smf_http2_server::release_sm_context_handler(
+void flexcn_http2_server::release_sm_context_handler(
     const std::string& smf_ref,
     const SmContextReleaseMessage& smContextReleaseMessage,
     const response& response) {
@@ -509,6 +509,6 @@ void smf_http2_server::release_sm_context_handler(
 }
 
 //------------------------------------------------------------------------------
-void smf_http2_server::stop() {
+void flexcn_http2_server::stop() {
   server.stop();
 }

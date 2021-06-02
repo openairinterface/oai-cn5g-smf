@@ -45,7 +45,7 @@ class UpCnxState {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* UpCnxState_H_ */

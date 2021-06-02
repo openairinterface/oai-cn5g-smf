@@ -45,7 +45,7 @@ class MaReleaseIndication {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* MaReleaseIndication_H_ */

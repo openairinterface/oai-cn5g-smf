@@ -46,7 +46,7 @@ class Ipv6Prefix {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Ipv6Prefix_H_ */

@@ -142,5 +142,5 @@ void HsmfUpdateError::unsetRecoveryTime() {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

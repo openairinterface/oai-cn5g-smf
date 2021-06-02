@@ -47,7 +47,7 @@ typedef std::string Ipv6Addr;
 // };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Ipv6Addr_H_ */

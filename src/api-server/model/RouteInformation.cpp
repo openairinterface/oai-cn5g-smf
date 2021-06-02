@@ -84,5 +84,5 @@ void RouteInformation::setPortNumber(int32_t const value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

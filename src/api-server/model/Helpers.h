@@ -70,7 +70,7 @@ bool fromStringValue(
 }
 
 }  // namespace helpers
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif  // Helpers_H_

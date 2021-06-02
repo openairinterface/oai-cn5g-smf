@@ -55,7 +55,7 @@ class MmeCapabilities {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* MmeCapabilities_H_ */

@@ -129,7 +129,7 @@ class VsmfUpdateError {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* VsmfUpdateError_H_ */

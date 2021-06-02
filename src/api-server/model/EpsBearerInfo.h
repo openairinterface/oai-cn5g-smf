@@ -67,7 +67,7 @@ class EpsBearerInfo {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* EpsBearerInfo_H_ */

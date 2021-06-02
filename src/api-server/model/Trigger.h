@@ -98,7 +98,7 @@ class Trigger {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Trigger_H_ */

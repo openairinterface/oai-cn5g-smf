@@ -45,7 +45,7 @@ class ResourceStatus {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* ResourceStatus_H_ */

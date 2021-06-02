@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const EpsInterworkingIndication& o) {
 void from_json(const nlohmann::json& j, EpsInterworkingIndication& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

@@ -47,7 +47,7 @@ class MaxIntegrityProtectedDataRate {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* MaxIntegrityProtectedDataRate_H_ */

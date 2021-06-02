@@ -61,7 +61,7 @@ class Guami {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Guami_H_ */

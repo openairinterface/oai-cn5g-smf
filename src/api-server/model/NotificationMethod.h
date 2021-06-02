@@ -45,7 +45,7 @@ class NotificationMethod {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* NotificationMethod_H_ */

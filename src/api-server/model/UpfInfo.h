@@ -113,7 +113,7 @@ class UpfInfo {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* UpfInfo_H_ */

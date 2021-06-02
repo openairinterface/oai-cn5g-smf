@@ -29,7 +29,7 @@
 
 #include "smf_event.hpp"
 #include "itti.hpp"
-#include "flexxcn_app.hpp"
+#include "flexcn_app.hpp"
 #include "smf_subscription.hpp"
 
 using namespace flexcn;

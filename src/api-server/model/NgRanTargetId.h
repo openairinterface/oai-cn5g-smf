@@ -61,7 +61,7 @@ class NgRanTargetId {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* NgRanTargetId_H_ */

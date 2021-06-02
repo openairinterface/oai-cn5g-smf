@@ -32,5 +32,5 @@ void to_json(nlohmann::json& j, const N2SmInfoType& o) {
 void from_json(const nlohmann::json& j, N2SmInfoType& o) {}
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

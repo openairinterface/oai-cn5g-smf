@@ -121,7 +121,7 @@ class ProblemDetails {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* ProblemDetails_H_ */

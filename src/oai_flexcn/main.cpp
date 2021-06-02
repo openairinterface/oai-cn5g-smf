@@ -45,7 +45,7 @@ async_shell_cmd* async_shell_cmd_inst = nullptr;
 flexcn_app* flexcn_app_inst                 = nullptr;
 flexcn_config flexcn_cfg;
 FLEXCNApiServer* flexcn_api_server_1     = nullptr;
-smf_http2_server* flexcn_api_server_2 = nullptr;
+flexcn_http2_server* flexcn_api_server_2 = nullptr;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
   async_shell_cmd_inst =
       new async_shell_cmd(flexcn_cfg.itti.async_cmd_sched_params);
 
-  // SMF application layer
+  // flexcn application layer
   flexcn_app_inst = new flexcn_app(Options::getlibconfigConfig());
 
   // PID file
@@ -133,22 +133,22 @@ int main(int argc, char** argv) {
     exit(-EDEADLK);
   }
 
-  // SMF Pistache API server (HTTP1)
+  // FLEXCN Pistache API server (HTTP1)
   Pistache::Address addr(
       std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.sbi.addr4))),
       Pistache::Port(flexcn_cfg.sbi.port));
   flexcn_api_server_1 = new FLEXCNApiServer(addr, flexcn_app_inst);
   flexcn_api_server_1->init(2);
   // flexcn_api_server_1->start();
-  std::thread smf_http1_manager(&FLEXCNApiServer::start, flexcn_api_server_1);
-  // SMF NGHTTP API server (HTTP2)
-  flexcn_api_server_2 = new smf_http2_server(
+  std::thread flexcn_http1_manager(&FLEXCNApiServer::start, flexcn_api_server_1);
+  // FLEXCN NGHTTP API server (HTTP2)
+  flexcn_api_server_2 = new flexcn_http2_server(
       conv::toString(flexcn_cfg.sbi.addr4), flexcn_cfg.sbi_http2_port, flexcn_app_inst);
   // flexcn_api_server_2->start();
-  std::thread smf_http2_manager(&smf_http2_server::start, flexcn_api_server_2);
+  std::thread flexcn_http2_manager(&flexcn_http2_server::start, flexcn_api_server_2);
 
-  smf_http1_manager.join();
-  smf_http2_manager.join();
+  flexcn_http1_manager.join();
+  flexcn_http2_manager.join();
 
   FILE* fp             = NULL;
   std::string filename = fmt::format("/tmp/flexcn_{}.status", getpid());

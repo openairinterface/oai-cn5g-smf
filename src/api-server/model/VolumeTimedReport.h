@@ -74,7 +74,7 @@ class VolumeTimedReport {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* VolumeTimedReport_H_ */

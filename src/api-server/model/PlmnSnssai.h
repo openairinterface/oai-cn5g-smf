@@ -62,7 +62,7 @@ class PlmnSnssai {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* PlmnSnssai_H_ */

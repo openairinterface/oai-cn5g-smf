@@ -78,32 +78,6 @@ typedef enum {
 
 class flexcn_config;
 
-class smf_context_ref {
- public:
-  smf_context_ref() { clear(); }
-
-  void clear() {
-    supi           = {};
-    nssai          = {};
-    dnn            = "";
-    pdu_session_id = 0;
-    amf_status_uri = "";
-    amf_addr       = "";
-    upf_node_id    = {};
-  }
-
-  supi_t supi;
-  std::string dnn;
-  pdu_session_id_t pdu_session_id;
-  snssai_t nssai;
-  std::string amf_status_uri;
-  std::string amf_addr;
-  pfcp::node_id_t upf_node_id;
-};
-
-// map (ueid, UEinfo)
-// typedef std::map<std::string, > UERecord 
-
 class flexcn_app {
  private:
 
@@ -129,10 +103,6 @@ class flexcn_app {
   std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
-  util::uint_generator<uint32_t> sm_context_ref_generator;
-  std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
-
-  util::uint_generator<uint32_t> evsub_id_generator;
   std::map<
       std::pair<evsub_id_t, smf_event_t>, std::shared_ptr<smf_subscription>>
       smf_event_subscriptions;
@@ -182,77 +152,9 @@ class flexcn_app {
 
   void operator=(flexcn_app const&) = delete;
 
-  /*
-   * Set the association between Seid and SM Context
-   * @param [const seid_t &] seid: SessionID
-   * @param [std::shared_ptr<smf_context> &] pc : Shared_ptr to a SMF context
-   * @return
-   */
-  void set_seid_2_smf_context(
-      const seid_t& seid, std::shared_ptr<smf_context>& pc);
-
-
   void add_data_event(const std::string &dataEvent);
   void summarize();
   nlohmann::json get_summarization_in_json_format();
-
-  /*
-   * Find SMF context associated with a Session ID
-   * @param [const seid_t &] seid: SessionID
-   * @param [std::shared_ptr<smf_context> &] pc : Shared_ptr to a SMF context
-   * @return bool: True if SMF context found, otherwise return false
-   */
-  bool seid_2_smf_context(
-      const seid_t& seid, std::shared_ptr<smf_context>& pc) const;
-
-  /*
-   * Delete the SMF Context
-   * @param [std::shared_ptr<smf_context> &] pc : Shared_ptr to the SMF context
-   * to be deleted
-   * @return void
-   */
-  void delete_smf_context(std::shared_ptr<smf_context> spc);
-
-  /*
-   * static_paa_get_free_paa
-   * @param [const std::string &] dnn
-   * @param [paa_t &] paa
-   * @return void
-   */
-  int static_paa_get_free_paa(const std::string& dnn, paa_t& paa);
-
-  /*
-   * static_paa_get_free_paa
-   * @param [const std::string &] dnn
-   * @param [struct in_addr &] addr
-   * @return void
-   */
-  int static_paa_release_address(const std::string& dnn, struct in_addr& addr);
-
-  /*
-   * static_paa_get_num_ipv4_pool
-   * @param void
-   * @return void
-   */
-  int static_paa_get_num_ipv4_pool(void);
-
-  /*
-   * Get paa pool
-   * @param
-   * @return pool index
-   */
-  int static_paa_get_ipv4_pool(
-      const int pool_id, struct in_addr* const range_low,
-      struct in_addr* const range_high, struct in_addr* const netaddr,
-      struct in_addr* const netmask,
-      std::vector<struct in_addr>::iterator& it_out_of_nw);
-
-  /*
-   * Get pool ID corresponding to an address
-   * @param [const struct in_addr &] ue_addr
-   * @return pool index
-   */
-  int static_paa_get_pool_id(const struct in_addr& ue_addr);
 
   /*
    * Handle ITTI message (N4 Session Modification Response)
@@ -347,103 +249,7 @@ class flexcn_app {
    * @return void
    */
   void restore_n4_sessions(const seid_t& seid) const;
-
-  /*
-   * Generate a Session ID
-   * @param [void]
-   * @return uint64_t: Return Seid generated
-   */
-  uint64_t generate_seid();
-
-  /*
-   * Verify whether a session with a given ID exist
-   * @param [const uint64_t &] s: Seid ID
-   * @return bool: True if exist, otherwise false
-   */
-  bool is_seid_n4_exist(const uint64_t& s) const;
-
-  /*
-   * Free a Seid by its ID
-   * @param [const uint64_t &] s: Seid ID
-   * @return void
-   */
-  void free_seid_n4(const uint64_t& seid);
-
-  /*
-   * Generate a SMF Context Reference in a form of string
-   * @param [std::string &] smf_ref: Store the generated reference
-   * @return void
-   */
-  void generate_smf_context_ref(std::string& smf_ref);
-
-  /*
-   * Generate a SMF Context Reference
-   * @param [void]
-   * @return the generated reference
-   */
-  scid_t generate_smf_context_ref();
-
-  /*
-   * Generate an Event Exposure Subscription ID in a form of string
-   * @param [std::string &] sub_id: Store the generated reference
-   * @return void
-   */
-  void generate_ev_subscription_id(std::string& sub_id);
-
-  /*
-   * Generate an Event Exposure Subscription ID
-   * @param [void]
-   * @return the generated reference
-   */
-  evsub_id_t generate_ev_subscription_id();
-
-  /*
-   * Set the association betwen a SMF Context Reference and a SMF Context
-   * @param [const scid_t &] id: SMF Context Reference Id
-   * @param [std::shared_ptr<smf_context_ref>] scf: SMF Context
-   * @return the generated reference
-   */
-  void set_scid_2_smf_context(
-      const scid_t& id, std::shared_ptr<smf_context_ref> scf);
-
-  /*
-   * Find SMF Context Reference by its ID
-   * @param [const scid_t &] scid: SM Context Reference ID
-   * @return Shared_ptr to a SMF Context Reference if found, otherwise return
-   * false
-   */
-  std::shared_ptr<smf_context_ref> scid_2_smf_context(const scid_t& scid) const;
-
-  /*
-   * Verify whether a SMF Context Reference with a given ID exist
-   * @param [const scid_t &] scid: SM Context Reference ID
-   * @return bool: True if a SMF Context Reference exist, otherwise return false
-   */
-  bool is_scid_2_smf_context(const scid_t& scid) const;
-
-  /*
-   * Verify whether a SMF Context Reference with a given ID exist
-   * @param [const supi64_t &] supi64: Supi64
-   * @param [const std::string &] dnn: DNN
-   * @param [const snssai_t &] snssai: S-NSSAI
-   * @param [const pdu_session_id_t &] pid: PDU Session ID
-   *
-   * @return bool: True if a SMF Context Reference exist, otherwise return false
-   */
-  bool is_scid_2_smf_context(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-      const pdu_session_id_t& pid) const;
-
-  /*
-   * Find SMF Context Reference by its ID
-   * @param [const scid_t &] scid: SM Context Reference ID
-   * @param [std::shared_ptr<smf_context_ref> &] scf : Shared_ptr to a SMF
-   * Context Reference
-   * @return bool: True if SMF Context Reference found, otherwise return false
-   */
-  bool scid_2_smf_context(
-      const scid_t& scid, std::shared_ptr<smf_context_ref>& scf) const;
-
+  
   /*
    * Handle PDUSession_UpdateSMContextRequest from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&] Request

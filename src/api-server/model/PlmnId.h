@@ -60,7 +60,7 @@ class PlmnId {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* PlmnId_H_ */

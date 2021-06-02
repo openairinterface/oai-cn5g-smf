@@ -76,7 +76,7 @@ class UserLocation {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* UserLocation_H_ */

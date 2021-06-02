@@ -73,7 +73,7 @@ class ExemptionInd {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* ExemptionInd_H_ */

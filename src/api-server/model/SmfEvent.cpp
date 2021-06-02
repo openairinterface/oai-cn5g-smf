@@ -35,5 +35,5 @@ void from_json(const nlohmann::json& j, SmfEvent& o) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

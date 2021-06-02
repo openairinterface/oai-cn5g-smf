@@ -73,7 +73,7 @@ class RouteToLocation {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* RouteToLocation_H_ */

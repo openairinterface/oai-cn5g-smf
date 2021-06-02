@@ -73,7 +73,7 @@ class NonDynamic5Qi {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* NonDynamic5Qi_H_ */

@@ -45,7 +45,7 @@ class TraceDepth {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* TraceDepth_H_ */

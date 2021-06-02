@@ -225,7 +225,7 @@ class NsmfEventExposure {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* NsmfEventExposure_H_ */

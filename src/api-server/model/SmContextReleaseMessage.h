@@ -65,7 +65,7 @@ class SmContextReleaseMessage {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Sm_Context_Release_Message_H_ */

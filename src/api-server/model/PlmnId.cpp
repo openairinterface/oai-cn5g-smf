@@ -53,5 +53,5 @@ void PlmnId::setMnc(std::string const& value) {
 }
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

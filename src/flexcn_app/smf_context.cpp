@@ -171,9 +171,6 @@ void smf_pdu_session::get_paa(paa_t& paa) {
   paa.pdu_session_type.pdu_session_type = pdu_session_type.pdu_session_type;
 }
 
-//------------------------------------------------------------------------------
-void smf_pdu_session::generate_seid() {}
-
 void smf_pdu_session::set_seid(const uint64_t& s) {
   seid = s;
 }

@@ -45,7 +45,7 @@ class SmContextType {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SmContextType_H_ */

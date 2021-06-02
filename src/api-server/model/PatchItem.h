@@ -79,7 +79,7 @@ class PatchItem {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* PatchItem_H_ */

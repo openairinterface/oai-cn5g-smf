@@ -49,7 +49,7 @@ class RequestIndication {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* RequestIndication_H_ */

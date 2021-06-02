@@ -42,9 +42,9 @@ using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::flexcn_server::model;
 
-class smf_http2_server {
+class flexcn_http2_server {
  public:
-  smf_http2_server(std::string addr, uint32_t port, flexcn::flexcn_app* flexcn_app_inst)
+  flexcn_http2_server(std::string addr, uint32_t port, flexcn::flexcn_app* flexcn_app_inst)
       : m_address(addr), m_port(port), server(), m_flexcn_app(flexcn_app_inst) {}
   void start();
   void init(size_t thr) {}

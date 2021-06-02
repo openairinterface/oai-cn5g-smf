@@ -93,7 +93,7 @@ class InterfaceUpfInfoItem {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* InterfaceUpfInfoItem_H_ */

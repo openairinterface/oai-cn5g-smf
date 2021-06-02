@@ -109,7 +109,7 @@ class EutraLocation {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* EutraLocation_H_ */

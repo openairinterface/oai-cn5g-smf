@@ -61,7 +61,7 @@ class Tai {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Tai_H_ */

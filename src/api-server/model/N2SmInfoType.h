@@ -57,7 +57,7 @@ class N2SmInfoType {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* N2SmInfoType_H_ */

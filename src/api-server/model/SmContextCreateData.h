@@ -458,7 +458,7 @@ class SmContextCreateData {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SmContextCreateData_H_ */

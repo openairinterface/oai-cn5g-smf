@@ -89,5 +89,5 @@ bool fromStringValue(const std::string& inStr, double& value) {
 }
 
 }  // namespace helpers
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai

@@ -69,7 +69,7 @@ class Snssai {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* Snssai_H_ */

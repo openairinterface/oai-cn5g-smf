@@ -50,7 +50,7 @@ class SmfEvent {
 };
 
 }  // namespace model
-}  // namespace smf_server
+}  // namespace flexcn_server
 }  // namespace oai
 
 #endif /* SmfEvent_H_ */
