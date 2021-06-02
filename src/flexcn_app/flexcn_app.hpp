@@ -80,14 +80,12 @@ class flexcn_config;
 
 class flexcn_app {
  private:
-
-  // list of events 
+  // list of events
   // std::vector<CNRecords> cn_table;
   // merge CNrecords to one
 
-  // Hung_TODO: change the flexcn name to flexcn 
-  // keep the old name for compiling purpose.  
-
+  // Hung_TODO: change the flexcn name to flexcn
+  // keep the old name for compiling purpose.
 
   std::thread::id thread_id;
   std::thread thread;
@@ -131,15 +129,16 @@ class flexcn_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
-  std::map<std::string, // ueid
-                std::vector<nlohmann::json>> m_database;
+  std::map<
+      std::string,  // ueid
+      std::vector<nlohmann::json>>
+      m_database;
   /*
    * Apply the config from the configuration file for DNN pools
    * @param [const flexcn_config &cfg] cfg
    * @return
    */
-  //int apply_config(const flexcn_config& cfg);
-
+  // int apply_config(const flexcn_config& cfg);
 
  public:
   explicit flexcn_app(const std::string& config_file);
@@ -152,7 +151,7 @@ class flexcn_app {
 
   void operator=(flexcn_app const&) = delete;
 
-  void add_data_event(const std::string &dataEvent);
+  void add_data_event(const std::string& dataEvent);
   void summarize();
   nlohmann::json get_summarization_in_json_format();
 
@@ -192,44 +191,6 @@ class flexcn_app {
   void handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf);
 
   /*
-   * Handle ITTI message from N11 to update PDU session status
-   * @param [itti_n11_update_pdu_session_status&] snu
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_update_pdu_session_status& snu);
-
-  /*
-   * Handle ITTI message N11 Create SM Context Response to trigger the response
-   * to AMF
-   * @param [itti_n11_create_sm_context_response&] snc
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_create_sm_context_response& snc);
-
-  /*
-   * Handle ITTI message N11 Update SM Context Response to trigger the response
-   * to AMF
-   * @param [itti_n11_update_sm_context_response&] m
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_update_sm_context_response& m);
-
-  /*
-   * Handle ITTI message N11 Release SM Context Response to trigger the response
-   * to AMF
-   * @param [itti_n11_release_sm_context_response&] m
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_release_sm_context_response& m);
-
-  /*
-   * Handle ITTI message from N11 (N1N2MessageTransfer Response)
-   * @param [itti_n11_n1n2_message_transfer_response_status&] snm
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_n1n2_message_transfer_response_status& snm);
-
-  /*
    * Handle ITTI message from N11 (NFRegiser Response)
    * @param [itti_n11_register_nf_instance_response&] r
    * @return void
@@ -267,31 +228,8 @@ class flexcn_app {
   // void add_cn_record(CNRecord &cn_record);
 
   // dump this table to a file or print these records into screen
-  // for further analysis. 
+  // for further analysis.
   // void print_record();
-
-  /*
-   * Trigger pdu session modification
-   * @param [const supi_t &] supi
-   * @param [const std::string &] dnn
-   * @param [const pdu_session_id_t] pdu_session_id
-   * @param [const snssai_t &] snssai
-   * @param [const pfcp::qfi_t &] qfi
-   * @return void
-   */
-  void trigger_pdu_session_modification(
-      const supi_t& supi, const std::string& dnn,
-      const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
-      const pfcp::qfi_t& qfi, const uint8_t& http_version);
-
-  /*
-   * Update PDU session status
-   * @param [const scid_t &] id SM Context ID
-   * @param [const pdu_session_status_e &] status PDU Session Status
-   * @return void
-   */
-  void update_pdu_session_status(
-      const scid_t& id, const pdu_session_status_e& status);
 
   /*
    * will be executed when NRF Heartbeat timer expires
@@ -302,7 +240,7 @@ class flexcn_app {
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
   void timer_nrf_deregistration(timer_id_t timer_id, uint64_t arg2_user);
-  
+
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
    * triggered when the result is ready
@@ -380,7 +318,7 @@ class flexcn_app {
    */
   void trigger_nf_deregistration();
 
-  //FlexCN
+  // FlexCN
   void trigger_pdu_session_status_notification_subscribe();
 };
 }  // namespace flexcn

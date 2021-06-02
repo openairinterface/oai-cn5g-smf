@@ -53,25 +53,6 @@ class smf_sbi {
 
   /*
    * Send N1N2 Message Transfer Request to AMF
-   * @param [std::shared_ptr<itti_n11_create_sm_context_response>]
-   * sm_context_res: Content of message to be sent
-   * @return void
-   */
-  void send_n1n2_message_transfer_request(
-      std::shared_ptr<itti_n11_create_sm_context_response> sm_context_res);
-
-  /*
-   * Send N1N2 Message Transfer Request to AMF
-   * @param [std::shared_ptr<itti_nx_trigger_pdu_session_modification>]
-   * sm_session_modification: Content of message to be sent
-   * @return void
-   */
-  void send_n1n2_message_transfer_request(
-      std::shared_ptr<itti_nx_trigger_pdu_session_modification>
-          sm_session_modification);
-
-  /*
-   * Send N1N2 Message Transfer Request to AMF
    * @param [std::shared_ptr<itti_n11_session_report_request>] n11_msg: Content
    * of message to be sent
    * @return void
@@ -134,7 +115,7 @@ class smf_sbi {
   void subscribe_upf_status_notify(
       std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg);
 
-  //FLEXCN
+  // FLEXCN
   void subscribe_pdu_session_status_notify(
       std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> msg);
   /*

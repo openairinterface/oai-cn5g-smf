@@ -43,23 +43,23 @@
 #include "3gpp_conversions.hpp"
 #include "ProblemDetails.h"
 #include "RefToBinaryData.h"
-#include "SmContextCreateError.h" //
-#include "SmContextCreatedData.h" //
-#include "SmContextMessage.h" //
-#include "SmContextUpdateError.h" //
-#include "async_shell_cmd.hpp" //
-#include "common_defs.h" //
-#include "conversions.hpp" //
-#include "itti.hpp" //
-#include "itti_msg_nx.hpp" //
-#include "logger.hpp" // common
-#include "pfcp.hpp" // pfcp
-#include "smf.h" // common
-#include "smf_event.hpp" //smf_app
+#include "SmContextCreateError.h"  //
+#include "SmContextCreatedData.h"  //
+#include "SmContextMessage.h"      //
+#include "SmContextUpdateError.h"  //
+#include "async_shell_cmd.hpp"     //
+#include "common_defs.h"           //
+#include "conversions.hpp"         //
+#include "itti.hpp"                //
+#include "itti_msg_nx.hpp"         //
+#include "logger.hpp"              // common
+#include "pfcp.hpp"                // pfcp
+#include "smf.h"                   // common
+#include "smf_event.hpp"           //smf_app
 #include "smf_sbi.hpp"
 #include "smf_n4.hpp"
 #include "smf_paa_dynamic.hpp"
-#include "string.hpp" // 
+#include "string.hpp"  //
 
 #include "EventNotification.h"
 
@@ -79,22 +79,19 @@ extern itti_mw* itti_inst;
 void flexcn_app_task(void*);
 
 nlohmann::json flexcn_app::get_summarization_in_json_format() {
-
-  
   nlohmann::json j = {};
-  j["num_ue"] = int(m_database.size());
-  try{
-    
+  j["num_ue"]      = int(m_database.size());
+  try {
     j["supi_list"] = nlohmann::json::array();
-    j["ue_data"] = nlohmann::json::array();
+    j["ue_data"]   = nlohmann::json::array();
 
-    for (const auto& [supi, data] : m_database){
-        j["supi_list"].push_back(supi); // .c_str()
-        nlohmann::json t = data;
-        j["ue_data"].push_back(t);  
+    for (const auto& [supi, data] : m_database) {
+      j["supi_list"].push_back(supi);  // .c_str()
+      nlohmann::json t = data;
+      j["ue_data"].push_back(t);
     }
   } catch (nlohmann::detail::exception& e) {
-      Logger::smf_api_server().info("Parsing this event failed");
+    Logger::smf_api_server().info("Parsing this event failed");
     Logger::smf_api_server().info(e.what());
   }
 
@@ -137,66 +134,64 @@ int flexcn_app::apply_config(const flexcn_config& cfg) {
 */
 
 // ----------------------------------------------------------
-void flexcn_app::add_data_event(const std::string &data_event){
+void flexcn_app::add_data_event(const std::string& data_event) {
   Logger::flexcn_app().info("Add/Merge the following record to database : ");
   Logger::flexcn_app().info(data_event.c_str());
 
-  //parse string to json
+  // parse string to json
 
-  //TODO: valid the source of data
-  // store the list of valid sources inside the flexcn-app and verify? 
+  // TODO: valid the source of data
+  // store the list of valid sources inside the flexcn-app and verify?
   nlohmann::json json_data;
-  try
-  {
-      json_data = nlohmann::json::parse(data_event.c_str());
+  try {
+    json_data = nlohmann::json::parse(data_event.c_str());
+  } catch (nlohmann::json::parse_error& ex) {
+    Logger::flexcn_app().error("Invalid json format:");
+    Logger::flexcn_app().error(data_event.c_str());
+    Logger::flexcn_app().error(
+        "Invalid json format: parse error at byte %i !", ex.byte);
   }
-  catch (nlohmann::json::parse_error& ex)
-  {
-      Logger::flexcn_app().error("Invalid json format:");
-      Logger::flexcn_app().error(data_event.c_str());
-      Logger::flexcn_app().error("Invalid json format: parse error at byte %i !", ex.byte);
-  }
-  
-  if (!json_data.contains("eventNotifs")){
-      Logger::flexcn_app().error("Message don't contains eventNotifs key!");
-      Logger::flexcn_app().error(data_event.c_str());
-      return;
+
+  if (!json_data.contains("eventNotifs")) {
+    Logger::flexcn_app().error("Message don't contains eventNotifs key!");
+    Logger::flexcn_app().error(data_event.c_str());
+    return;
   }
   if (!json_data["eventNotifs"].is_array()) {
     Logger::flexcn_app().error("Event Notifs field is not an array");
     Logger::flexcn_app().error(data_event.c_str());
-    return; 
+    return;
   }
 
-  //TODO: must check of json object of eventNotifs is array
-  for (auto field : json_data["eventNotifs"]){
-    if (!field.contains("supi")){
-       Logger::flexcn_app().info("Event doesn't contains supi");
-       Logger::flexcn_app().info(field.dump().c_str());
+  // TODO: must check of json object of eventNotifs is array
+  for (auto field : json_data["eventNotifs"]) {
+    if (!field.contains("supi")) {
+      Logger::flexcn_app().info("Event doesn't contains supi");
+      Logger::flexcn_app().info(field.dump().c_str());
     }
     // adding this to database
     // CNRecord t;
     // field.get_to(t);
     m_database[field["supi"]].push_back(field);
     // todo: field fusion
-  } 
+  }
   // get UE ID from data_event
   // std::string supi = data_event.getSupi();
 
   // get the item from the list of app that has the same ueid
-  // data structure: ueid as key, 
-  // m_database[supi].merge(data_event);  
+  // data structure: ueid as key,
+  // m_database[supi].merge(data_event);
 
   // update the data related to this ue with the new data fields.
-  // if event == event_0: 
+  // if event == event_0:
   //     update these field of data that related to this ueid address
   // if ueid in m_datase:
   //     current_ue_context = m_database.get(ueid)
   //     current_ue_context.update(data_event)
   // else:
-  //     new_context = new ue_context()     
+  //     new_context = new ue_context()
   // how far should we update these items.
-  // done the process. 
+  // done the process.
 }
 
 //------------------------------------------------------------------------------
@@ -214,7 +209,6 @@ void flexcn_app_task(void*) {
     std::shared_ptr<itti_msg> shared_msg = itti_inst->receive_msg(task_id);
     auto* msg                            = shared_msg.get();
     switch (msg->msg_type) {
-
       case N4_SESSION_MODIFICATION_RESPONSE:
         if (itti_n4_session_modification_response* m =
                 dynamic_cast<itti_n4_session_modification_response*>(msg)) {
@@ -238,42 +232,6 @@ void flexcn_app_task(void*) {
       case N4_NODE_FAILURE:
         flexcn_app_inst->handle_itti_msg(
             std::static_pointer_cast<itti_n4_node_failure>(shared_msg));
-        break;
-
-      case N11_SESSION_N1N2_MESSAGE_TRANSFER_RESPONSE_STATUS:
-        if (itti_n11_n1n2_message_transfer_response_status* m =
-                dynamic_cast<itti_n11_n1n2_message_transfer_response_status*>(
-                    msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
-      case N11_SESSION_UPDATE_PDU_SESSION_STATUS:
-        if (itti_n11_update_pdu_session_status* m =
-                dynamic_cast<itti_n11_update_pdu_session_status*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
-      case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_create_sm_context_response* m =
-                dynamic_cast<itti_n11_create_sm_context_response*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
-      case N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_update_sm_context_response* m =
-                dynamic_cast<itti_n11_update_sm_context_response*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
-      case N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_release_sm_context_response* m =
-                dynamic_cast<itti_n11_release_sm_context_response*>(msg)) {
-          flexcn_app_inst->handle_itti_msg(std::ref(*m));
-        }
         break;
 
       case N11_REGISTER_NF_INSTANCE_RESPONSE:
@@ -327,15 +285,16 @@ void flexcn_app_task(void*) {
   } while (true);
 }
 
-void flexcn_app::summarize(){
+void flexcn_app::summarize() {
   Logger::flexcn_app().info("Number of ue: %d", m_database.size());
-    Logger::flexcn_app().info("List of ue's supi:");
-    for (const auto& [supi, data] : m_database){
-        Logger::flexcn_app().info("   %s", supi.c_str());
-        if (data.size() > 0){
-            Logger::flexcn_app().info("The first event of this ue: \n %s", data[0].dump(4).c_str());
-        } 
+  Logger::flexcn_app().info("List of ue's supi:");
+  for (const auto& [supi, data] : m_database) {
+    Logger::flexcn_app().info("   %s", supi.c_str());
+    if (data.size() > 0) {
+      Logger::flexcn_app().info(
+          "The first event of this ue: \n %s", data[0].dump(4).c_str());
     }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -352,7 +311,7 @@ flexcn_app::flexcn_app(const std::string& config_file)
   set_seid_n4       = {};
   seid_n4_generator = 0;
 
-  //apply_config(flexcn_cfg);
+  // apply_config(flexcn_cfg);
 
   if (itti_inst->create_task(TASK_FLEXCN_APP, flexcn_app_task, nullptr)) {
     Logger::flexcn_app().error("Cannot create task TASK_FLEXCN_APP");
@@ -360,101 +319,51 @@ flexcn_app::flexcn_app(const std::string& config_file)
   }
 
   try {
-    //smf_n4_inst  = new smf_n4();
+    // smf_n4_inst  = new smf_n4();
     smf_sbi_inst = new smf_sbi();
   } catch (std::exception& e) {
     Logger::flexcn_app().error("Cannot create FLEXCN_APP: %s", e.what());
     throw;
   }
 
-  //FLEXCN
-  // Trigger SMFEventExpose subscription / to be noticed when a PDU session status changes
+  // FLEXCN
+  // Trigger SMFEventExpose subscription / to be noticed when a PDU session
+  // status changes
   trigger_pdu_session_status_notification_subscribe();
 
   // Register to NRF (if this option is enabled)
   if (flexcn_cfg.register_nrf) {
     unsigned int microsecond = 10000;  // 10ms
-    //usleep(microsecond);
-    //register_to_nrf();
+    // usleep(microsecond);
+    // register_to_nrf();
   }
 
   Logger::flexcn_app().startup("Started");
 }
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n4_session_modification_response& smresp) {
-
-}
+void flexcn_app::handle_itti_msg(
+    itti_n4_session_modification_response& smresp) {}
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n4_session_deletion_response& smresp) {
-  
-}
+void flexcn_app::handle_itti_msg(itti_n4_session_deletion_response& smresp) {}
 
 //------------------------------------------------------------------------------
 void flexcn_app::handle_itti_msg(
-    std::shared_ptr<itti_n4_session_report_request> snr) {
-  
-}
+    std::shared_ptr<itti_n4_session_report_request> snr) {}
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {
-  
-}
+void flexcn_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {}
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(
-    itti_n11_n1n2_message_transfer_response_status& m) {
-
-}
+void flexcn_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {}
 
 //------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_update_pdu_session_status& m) {
-  Logger::flexcn_app().info(
-      "Set PDU Session Status to %s",
-      pdu_session_status_e2str.at(static_cast<int>(m.pdu_session_status))
-          .c_str());
-  update_pdu_session_status(m.scid, m.pdu_session_status);
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
-
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_update_sm_context_response& m) {
-
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
-  
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
-  
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
-  
-}
-
-//------------------------------------------------------------------------------
-void flexcn_app::trigger_pdu_session_modification(
-    const supi_t& supi, const std::string& dnn,
-    const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
-    const pfcp::qfi_t& qfi, const uint8_t& http_version) {
-  
-}
+void flexcn_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {}
 
 //------------------------------------------------------------------------------
 evsub_id_t flexcn_app::handle_event_exposure_subscription(
-    std::shared_ptr<itti_sbi_event_exposure_request> msg) {
-  
-}
+    std::shared_ptr<itti_sbi_event_exposure_request> msg) {}
 
 //------------------------------------------------------------------------------
 bool flexcn_app::handle_nf_status_notification(
@@ -465,15 +374,10 @@ bool flexcn_app::handle_nf_status_notification(
 }
 
 //---------------------------------------------------------------------------------------------
-void flexcn_app::update_pdu_session_status(
-    const scid_t& scid, const pdu_session_status_e& status) {
-
-}
-
-//---------------------------------------------------------------------------------------------
 void flexcn_app::timer_nrf_heartbeat_timeout(
     timer_id_t timer_id, uint64_t arg2_user) {
-  Logger::flexcn_app().debug("Send ITTI msg to N11 task to trigger NRF Heartbeat");
+  Logger::flexcn_app().debug(
+      "Send ITTI msg to N11 task to trigger NRF Heartbeat");
 
   std::shared_ptr<itti_n11_update_nf_instance_request> itti_msg =
       std::make_shared<itti_n11_update_nf_instance_request>(
@@ -553,8 +457,8 @@ void flexcn_app::generate_smf_profile() {
   nf_instance_profile.add_nf_ipv4_addresses(flexcn_cfg.sbi.addr4);
 
   // NF services
-  nf_service_t nf_service        = {};
-  // HUNG-TODO: change the name of service to nflexcn 
+  nf_service_t nf_service = {};
+  // HUNG-TODO: change the name of service to nflexcn
   nf_service.service_instance_id = "nsmf-pdusession";
   nf_service.service_name        = "nsmf-pdusession";
   nf_service_version_t version   = {};
@@ -662,7 +566,8 @@ void flexcn_app::trigger_nf_deregistration() {
 //------------------------------------------------------------------------------
 void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
   Logger::flexcn_app().debug(
-      "Send ITTI msg to SBI task to subscribe to PDU Session Status notification "
+      "Send ITTI msg to SBI task to subscribe to PDU Session Status "
+      "notification "
       "from FLEXCN");
 
   std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> itti_msg =
@@ -672,26 +577,27 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
   nlohmann::json json_data = {};
   json_data["notifUri"] =
       std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.sbi.addr4))) + ":" +
-      std::to_string(flexcn_cfg.sbi.port) + "/flexcn-status-notify/v1/notifid01";
+      std::to_string(flexcn_cfg.sbi.port) +
+      "/flexcn-status-notify/v1/notifid01";
 
-  json_data["notifId"]                     = "notifid01";
+  json_data["notifId"] = "notifid01";
 
-  json_data["supi"] = "208950000000031";
-  json_data["eventSubs"]  = nlohmann::json::array();
-  nlohmann::json  tmp ={};
-  tmp["event"] = "PDU_SES_REL";
+  json_data["supi"]      = "208950000000031";
+  json_data["eventSubs"] = nlohmann::json::array();
+  nlohmann::json tmp     = {};
+  tmp["event"]           = "PDU_SES_REL";
 
-  nlohmann::json  tmp2 ={};
-  tmp2["event"] = "UE_IP_CH";
-  
-  nlohmann::json  tmp3 ={};
-  tmp3["event"] = "DDDS";
-  
-  nlohmann::json  tmp4 ={};
-  tmp4["event"] = "PLMN_CH";
+  nlohmann::json tmp2 = {};
+  tmp2["event"]       = "UE_IP_CH";
 
-  nlohmann::json  tmp5 ={};
-  tmp5["event"] = "FLEXCN";
+  nlohmann::json tmp3 = {};
+  tmp3["event"]       = "DDDS";
+
+  nlohmann::json tmp4 = {};
+  tmp4["event"]       = "PLMN_CH";
+
+  nlohmann::json tmp5 = {};
+  tmp5["event"]       = "FLEXCN";
 
   json_data["eventSubs"].push_back(tmp);
   json_data["eventSubs"].push_back(tmp2);
@@ -699,14 +605,15 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
   json_data["eventSubs"].push_back(tmp4);
   json_data["eventSubs"].push_back(tmp5);
 
-  std::string url =
-      std::string(inet_ntoa(*((struct in_addr*) &flexcn_cfg.nrf_addr.ipv4_addr))) +
-      ":" + std::to_string(flexcn_cfg.nrf_addr.port) + "/nsmf_event-exposure/v1/subscriptions";
+  std::string url = std::string(inet_ntoa(
+                        *((struct in_addr*) &flexcn_cfg.nrf_addr.ipv4_addr))) +
+                    ":" + std::to_string(flexcn_cfg.nrf_addr.port) +
+                    "/nsmf_event-exposure/v1/subscriptions";
 
   itti_msg->url       = url;
   itti_msg->json_data = json_data;
   Logger::flexcn_app().info(json_data.dump().c_str());
-  int ret             = itti_inst->send_msg(itti_msg);
+  int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::flexcn_app().error(
         "Could not send ITTI message %s to task TASK_FLEXCN_SBI",

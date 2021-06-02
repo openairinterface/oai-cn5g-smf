@@ -62,46 +62,16 @@ int n4_session_restore_procedure::run() {
 }
 
 //------------------------------------------------------------------------------
-int session_create_sm_context_procedure::run(
-    std::shared_ptr<itti_n11_create_sm_context_request> sm_context_req,
-    std::shared_ptr<itti_n11_create_sm_context_response> sm_context_resp,
-    std::shared_ptr<flexcn::smf_context> sc) {
-  return RETURNok;
-}
-
-//------------------------------------------------------------------------------
 void session_create_sm_context_procedure::handle_itti_msg(
     itti_n4_session_establishment_response& resp,
-    std::shared_ptr<flexcn::smf_context> sc) {
-
-}
-
-//------------------------------------------------------------------------------
-int session_update_sm_context_procedure::run(
-    std::shared_ptr<itti_n11_update_sm_context_request> sm_context_req,
-    std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp,
-    std::shared_ptr<flexcn::smf_context> sc) {
-    return RETURNok;
-}
+    std::shared_ptr<flexcn::smf_context> sc) {}
 
 //------------------------------------------------------------------------------
 void session_update_sm_context_procedure::handle_itti_msg(
     itti_n4_session_modification_response& resp,
-    std::shared_ptr<flexcn::smf_context> sc) {
-
-}
-
-//------------------------------------------------------------------------------
-int session_release_sm_context_procedure::run(
-    std::shared_ptr<itti_n11_release_sm_context_request> sm_context_req,
-    std::shared_ptr<itti_n11_release_sm_context_response> sm_context_res,
-    std::shared_ptr<flexcn::smf_context> sc) {
-  return RETURNok;
-}
+    std::shared_ptr<flexcn::smf_context> sc) {}
 
 //------------------------------------------------------------------------------
 void session_release_sm_context_procedure::handle_itti_msg(
     itti_n4_session_deletion_response& resp,
-    std::shared_ptr<flexcn::smf_context> sc) {
-  
-}
+    std::shared_ptr<flexcn::smf_context> sc) {}

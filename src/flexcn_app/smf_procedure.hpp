@@ -105,18 +105,6 @@ class session_create_sm_context_procedure : public smf_procedure {
         n11_trigger() {}
 
   /*
-   * Execute N11 Create SM Context Request procedure
-   * @param [itti_n11_create_sm_context_request] req
-   * @param [itti_n11_create_sm_context_response] resp
-   * @param [std::shared_ptr<flexcn::smf_context>] sc: flexcn context
-   * @return
-   */
-  int run(
-      std::shared_ptr<itti_n11_create_sm_context_request> req,
-      std::shared_ptr<itti_n11_create_sm_context_response> resp,
-      std::shared_ptr<flexcn::smf_context> sc);
-
-  /*
    * Handle N4 Session Establishment Response from UPF
    * @param [itti_n4_session_establishment_response] resp
    * @param [std::shared_ptr<flexcn::smf_context>] sc flexcn context
@@ -144,18 +132,6 @@ class session_update_sm_context_procedure : public smf_procedure {
         n11_triggered_pending(),
         n11_trigger(),
         session_procedure_type() {}
-
-  /*
-   * Execute N11 Update SM Context Request procedure
-   * @param [itti_n11_update_sm_context_request] req
-   * @param [itti_n11_update_sm_context_response] resp
-   * @param [std::shared_ptr<flexcn::smf_context>] sc: flexcn context
-   * @return
-   */
-  int run(
-      std::shared_ptr<itti_n11_update_sm_context_request> req,
-      std::shared_ptr<itti_n11_update_sm_context_response> resp,
-      std::shared_ptr<flexcn::smf_context> sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
