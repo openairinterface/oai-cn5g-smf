@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_pfcp_association.cpp
+/*! \file flexcn_pfcp_association.cpp
  \brief
  \author  Lionel GAUTHIER
  \date 2019
@@ -37,7 +37,7 @@ using namespace flexcn;
 using namespace std;
 
 extern itti_mw* itti_inst;
-extern smf_n4* smf_n4_inst;
+extern flexcn_n4* flexcn_n4_inst;
 
 //------------------------------------------------------------------------------
 void pfcp_association::notify_add_session(const pfcp::fseid_t& cp_fseid) {
@@ -304,8 +304,8 @@ void pfcp_associations::restore_n4_sessions(const pfcp::node_id_t& node_id) {
 void pfcp_associations::trigger_heartbeat_request_procedure(
     std::shared_ptr<pfcp_association>& s) {
   s->timer_heartbeat = itti_inst->timer_setup(
-      PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC, 0, TASK_SMF_N4,
-      TASK_SMF_N4_TRIGGER_HEARTBEAT_REQUEST, s->hash_node_id);
+      PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC, 0, TASK_FLEXCN_N4,
+      TASK_FLEXCN_N4_TRIGGER_HEARTBEAT_REQUEST, s->hash_node_id);
 }
 
 //------------------------------------------------------------------------------
@@ -316,10 +316,10 @@ void pfcp_associations::initiate_heartbeat_request(
   if (pit == associations.end())
     return;
   else {
-    Logger::smf_n4().info(
+    Logger::flexcn_n4().info(
         "PFCP HEARTBEAT PROCEDURE hash %u starting", hash_node_id);
     pit->second->num_retries_timer_heartbeat = 0;
-    smf_n4_inst->send_heartbeat_request(pit->second);
+    flexcn_n4_inst->send_heartbeat_request(pit->second);
   }
 }
 
@@ -333,25 +333,25 @@ void pfcp_associations::timeout_heartbeat_request(
   else {
     if (pit->second->num_retries_timer_heartbeat <
         PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES) {
-      Logger::smf_n4().info(
+      Logger::flexcn_n4().info(
           "PFCP HEARTBEAT PROCEDURE hash %u TIMED OUT (retrie %d)",
           hash_node_id, pit->second->num_retries_timer_heartbeat);
       pit->second->num_retries_timer_heartbeat++;
-      smf_n4_inst->send_heartbeat_request(pit->second);
+      flexcn_n4_inst->send_heartbeat_request(pit->second);
     } else {
-      Logger::smf_n4().warn(
+      Logger::flexcn_n4().warn(
           "PFCP HEARTBEAT PROCEDURE FAILED after %d retries, remove the "
           "association with this UPF",
           PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES);
       // Related session contexts and PFCP associations become invalid and may
-      // be deleted-> Send request to SMF App to remove all associated sessions
+      // be deleted-> Send request to FLEXCN App to remove all associated sessions
       // and notify AMF accordingly
       std::shared_ptr<itti_n4_node_failure> itti_msg =
-          std::make_shared<itti_n4_node_failure>(TASK_SMF_N4, TASK_FLEXCN_APP);
+          std::make_shared<itti_n4_node_failure>(TASK_FLEXCN_N4, TASK_FLEXCN_APP);
       itti_msg->node_id = pit->second->node_id;
       int ret           = itti_inst->send_msg(itti_msg);
       if (RETURNok != ret) {
-        Logger::smf_n4().error(
+        Logger::flexcn_n4().error(
             "Could not send ITTI message %s to task TASK_FLEXCN_APP",
             itti_msg->get_msg_name());
       }
@@ -370,8 +370,8 @@ void pfcp_associations::timeout_release_request(
   if (pit == associations.end())
     return;
   else {
-    Logger::smf_n4().info("PFCP RELEASE REQUEST hash %u", hash_node_id);
-    smf_n4_inst->send_release_request(pit->second);
+    Logger::flexcn_n4().info("PFCP RELEASE REQUEST hash %u", hash_node_id);
+    flexcn_n4_inst->send_release_request(pit->second);
   }
 }
 

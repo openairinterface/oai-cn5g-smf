@@ -29,7 +29,7 @@
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
-#include "smf.h"
+#include "flexcn.h"
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
@@ -38,7 +38,7 @@
 #include "3gpp_29.571.h"
 #include "NgRanTargetId.h" //api server model
 #include "pistache/http.h"
-#include "smf_profile.hpp"
+#include "flexcn_profile.hpp"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -653,9 +653,7 @@ class data_notification_msg {
   std::string notification_event_type;
   std::string nf_instance_uri;
   std::shared_ptr<nf_profile> profile;
-  // bool m_NfProfileIsSet;
-  // std::vector<ChangeItem> m_ProfileChanges;
-  // bool m_ProfileChangesIsSet;
+  
 };
 }  // namespace flexcn
 

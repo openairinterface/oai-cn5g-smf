@@ -33,25 +33,25 @@
 #include <boost/signals2.hpp>
 namespace bs2 = boost::signals2;
 
-#include "smf.h"
+#include "flexcn.h"
 #include "flexcn_event_sig.hpp"
 
 namespace flexcn {
-class smf_event {
+class flexcn_event {
  public:
-  smf_event(){};
-  smf_event(smf_event const&) = delete;
-  void operator=(smf_event const&) = delete;
+  flexcn_event(){};
+  flexcn_event(flexcn_event const&) = delete;
+  void operator=(flexcn_event const&) = delete;
 
-  static smf_event& get_instance() {
-    static smf_event instance;
+  static flexcn_event& get_instance() {
+    static flexcn_event instance;
     return instance;
   }
 
   // class register/handle event
   friend class flexcn_app;
   friend class smf_context;
-  friend class smf_profile;
+  friend class flexcn_profile;
 
   /*
    * Subscribe to SM Context Status Notification signal

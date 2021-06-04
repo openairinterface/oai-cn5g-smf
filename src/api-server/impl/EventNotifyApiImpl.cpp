@@ -1,5 +1,5 @@
 /**
- * Nsmf_EventExposure
+ * Nflexcn_EventExposure
  * Session Management Event Exposure Service. © 2019, 3GPP Organizational
  * Partners (ARIB, ATIS, CCSA, ETSI, TSDSI, TTA, TTC). All rights reserved.
  *

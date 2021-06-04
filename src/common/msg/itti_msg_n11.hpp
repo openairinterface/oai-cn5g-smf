@@ -33,7 +33,7 @@
 #include "itti_msg.hpp"
 #include "flexcn_msg.hpp"
 #include "pistache/http.h"
-#include "smf_profile.hpp"
+#include "flexcn_profile.hpp"
 #include "PatchItem.h"
 
 class itti_n11_msg : public itti_msg {
@@ -414,7 +414,7 @@ class itti_n11_register_nf_instance_request : public itti_n11_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_REGISTER_NF_INSTANCE_REQUEST"; };
 
-  flexcn::smf_profile profile;
+  flexcn::flexcn_profile profile;
   uint8_t http_version;
 };
 
@@ -427,7 +427,7 @@ class itti_n11_register_nf_instance_response : public itti_n11_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_REGISTER_NF_INSTANCE_RESPONSE"; };
 
-  flexcn::smf_profile profile;
+  flexcn::flexcn_profile profile;
   uint8_t http_version;
   uint8_t http_response_code;
 };
@@ -443,7 +443,7 @@ class itti_n11_update_nf_instance_request : public itti_n11_msg {
 
   std::vector<oai::flexcn_server::model::PatchItem> patch_items;
   uint8_t http_version;
-  std::string smf_instance_id;
+  std::string flexcn_instance_id;
 };
 
 //-----------------------------------------------------------------------------
@@ -456,7 +456,7 @@ class itti_n11_update_nf_instance_response : public itti_n11_msg {
   const char* get_msg_name() { return "N11_UPDATE_NF_INSTANCE_RESPONSE"; };
 
   uint8_t http_version;
-  std::string smf_instance_id;
+  std::string flexcn_instance_id;
   uint8_t http_response_code;
 };
 
@@ -468,7 +468,7 @@ class itti_n11_deregister_nf_instance : public itti_n11_msg {
   const char* get_msg_name() { return "N11_DEREGISTER_NF_INSTANCE"; };
 
   uint8_t http_version;
-  std::string smf_instance_id;
+  std::string flexcn_instance_id;
 };
 
 //-----------------------------------------------------------------------------

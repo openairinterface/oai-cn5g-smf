@@ -40,9 +40,9 @@
 
 #include "3gpp_29.244.h" // common
 #include "pfcp.hpp" //pfcp
-#include "smf.h"
+#include "flexcn.h"
 
-#define FLEXCN_CONFIG_STRING_SMF_CONFIG "FLEXCN"
+#define FLEXCN_CONFIG_STRING_FLEXCN_CONFIG "FLEXCN"
 #define FLEXCN_CONFIG_STRING_PID_DIRECTORY "PID_DIRECTORY"
 #define FLEXCN_CONFIG_STRING_INSTANCE "INSTANCE"
 #define FLEXCN_CONFIG_STRING_INTERFACES "INTERFACES"
@@ -107,7 +107,7 @@ typedef struct interface_cfg_s {
 typedef struct itti_cfg_s {
   util::thread_sched_params itti_timer_sched_params;
   util::thread_sched_params n4_sched_params;
-  util::thread_sched_params smf_app_sched_params;
+  util::thread_sched_params flexcn_app_sched_params;
   util::thread_sched_params async_cmd_sched_params;
 } itti_cfg_t;
 
@@ -168,7 +168,7 @@ class flexcn_config {
     std::string api_version;
   } nrf_addr;
 
-#define SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 5
+#define FLEXCN_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 5
   struct {
     snssai_t single_nssai;
     std::string session_type;
@@ -176,7 +176,7 @@ class flexcn_config {
     subscribed_default_qos_t default_qos;
     session_ambr_t session_ambr;
   } session_management_subscription
-      [SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX];
+      [FLEXCN_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX];
   uint8_t num_session_management_subscription;
 
   flexcn_config()
@@ -196,7 +196,7 @@ class flexcn_config {
 
     itti.itti_timer_sched_params.sched_priority = 85;
     itti.n4_sched_params.sched_priority         = 84;
-    itti.smf_app_sched_params.sched_priority    = 84;
+    itti.flexcn_app_sched_params.sched_priority    = 84;
     itti.async_cmd_sched_params.sched_priority  = 84;
 
     n4.thread_rd_sched_params.sched_priority = 90;
@@ -218,7 +218,7 @@ class flexcn_config {
 
     num_session_management_subscription = 0;
 
-    for (int i = 0; i < SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX; i++) {
+    for (int i = 0; i < FLEXCN_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX; i++) {
       session_management_subscription[i] = {};
     }
     sbi_http2_port  = 8080;
@@ -241,4 +241,4 @@ class flexcn_config {
 
 }  // namespace flexcn
 
-#endif /* FILE_SMF_CONFIG_HPP_SEEN */
+#endif /* FILE_FLEXCN_CONFIG_HPP_SEEN */

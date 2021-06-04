@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event.cpp
+/*! \file flexcn_event.cpp
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -30,20 +30,19 @@
 #include "flexcn_event.hpp"
 #include "itti.hpp"
 #include "flexcn_app.hpp"
-#include "smf_subscription.hpp"
 
 using namespace flexcn;
 extern flexcn::flexcn_app* flexcn_app_inst;
 extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------
-bs2::connection smf_event::subscribe_sm_context_status(
+bs2::connection flexcn_event::subscribe_sm_context_status(
     const sm_context_status_sig_t::slot_type& sig) {
   return sm_context_status.connect(sig);
 }
 
 //------------------------------------------------------------------------------
-bs2::connection smf_event::subscribe_ee_pdu_session_release(
+bs2::connection flexcn_event::subscribe_ee_pdu_session_release(
     const ee_pdu_session_release_sig_t::slot_type& sig) {
   return ee_pdu_session_release.connect(sig);
 }

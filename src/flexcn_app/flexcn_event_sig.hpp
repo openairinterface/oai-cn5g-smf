@@ -27,8 +27,8 @@
  \email: tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_EVENT_SIG_HPP_SEEN
-#define FILE_SMF_EVENT_SIG_HPP_SEEN
+#ifndef FILE_FLEXCN_EVENT_SIG_HPP_SEEN
+#define FILE_FLEXCN_EVENT_SIG_HPP_SEEN
 
 #include <boost/signals2.hpp>
 #include <string>
@@ -58,4 +58,4 @@ typedef bs2::signal_type<
 // TODO: Downlink data delivery status
 
 }  // namespace flexcn
-#endif /* FILE_SMF_EVENT_SIG_HPP_SEEN */
+#endif /* FILE_FLEXCN_EVENT_SIG_HPP_SEEN */

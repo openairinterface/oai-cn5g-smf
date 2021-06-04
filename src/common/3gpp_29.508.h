@@ -22,7 +22,7 @@
 #ifndef FILE_3GPP_29_508_SMF_SEEN
 #define FILE_3GPP_29_508_SMF_SEEN
 
-#include "smf.h"
+#include "flexcn.h"
 
 typedef enum smf_event_e {
   SMF_EVENT_AC_TY_CH    = 1,

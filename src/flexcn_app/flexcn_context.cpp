@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_context.cpp
+/*! \file flexcn_context.cpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -41,7 +41,7 @@
 #include "flexcn_app.hpp"
 #include "flexcn_config.hpp"
 #include "flexcn_event.hpp"
-#include "smf_sbi.hpp"
+#include "flexcn_sbi.hpp"
 #include "flexcn_pfcp_association.hpp"
 #include "flexcn_procedure.hpp"
 #include "3gpp_conversions.hpp"
@@ -357,7 +357,7 @@ std::string smf_context::toString() const {
   s.append("\n");
   s.append("FLEXCN CONTEXT:\n");
   s.append("\tSUPI:\t\t\t\t")
-      .append(smf_supi_to_string(supi).c_str())
+      .append(flexcn_supi_to_string(supi).c_str())
       .append("\n");
   return s;
 }

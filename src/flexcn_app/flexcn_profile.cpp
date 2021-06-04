@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_profile.cpp
+/*! \file flexcn_profile.cpp
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -31,7 +31,7 @@
 #include <boost/algorithm/string/split.hpp>
 
 #include "logger.hpp"
-#include "smf_profile.hpp"
+#include "flexcn_profile.hpp"
 #include "string.hpp"
 
 using namespace std;
@@ -278,47 +278,47 @@ void nf_profile::from_json(const nlohmann::json& data) {
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::set_nf_services(const std::vector<nf_service_t>& n) {
+void flexcn_profile::set_nf_services(const std::vector<nf_service_t>& n) {
   nf_services = n;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::add_nf_service(const nf_service_t& n) {
+void flexcn_profile::add_nf_service(const nf_service_t& n) {
   nf_services.push_back(n);
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::get_nf_services(std::vector<nf_service_t>& n) const {
+void flexcn_profile::get_nf_services(std::vector<nf_service_t>& n) const {
   n = nf_services;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::set_custom_info(const nlohmann::json& c) {
+void flexcn_profile::set_custom_info(const nlohmann::json& c) {
   custom_info = c;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::get_custom_info(nlohmann::json& c) const {
+void flexcn_profile::get_custom_info(nlohmann::json& c) const {
   c = custom_info;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::set_smf_info(const smf_info_t& s) {
+void flexcn_profile::set_smf_info(const smf_info_t& s) {
   smf_info = s;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::add_smf_info_item(const snssai_smf_info_item_t& s) {
+void flexcn_profile::add_smf_info_item(const snssai_smf_info_item_t& s) {
   smf_info.snssai_smf_info_list.push_back(s);
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::get_smf_info(smf_info_t& s) const {
+void flexcn_profile::get_smf_info(smf_info_t& s) const {
   s = smf_info;
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::display() const {
+void flexcn_profile::display() const {
   // display NF part
   nf_profile::display();
 
@@ -349,7 +349,7 @@ void smf_profile::display() const {
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::to_json(nlohmann::json& data) const {
+void flexcn_profile::to_json(nlohmann::json& data) const {
   nf_profile::to_json(data);
 
   // NF services
@@ -402,7 +402,7 @@ void smf_profile::to_json(nlohmann::json& data) const {
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::from_json(const nlohmann::json& data) {
+void flexcn_profile::from_json(const nlohmann::json& data) {
   nf_profile::from_json(data);
 
   // TODO: custom_info;
@@ -442,7 +442,7 @@ void smf_profile::from_json(const nlohmann::json& data) {
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::handle_heartbeart_timeout(uint64_t ms) {
+void flexcn_profile::handle_heartbeart_timeout(uint64_t ms) {
   Logger::flexcn_app().info(
       "Handle heartbeart timeout profile %s, time %d", nf_instance_id.c_str(),
       ms);

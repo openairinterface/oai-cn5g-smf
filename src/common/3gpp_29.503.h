@@ -22,7 +22,7 @@
 #ifndef FILE_3GPP_29_503_SMF_SEEN
 #define FILE_3GPP_29_503_SMF_SEEN
 
-#include "smf.h"
+#include "flexcn.h"
 #include "3gpp_29.571.h"
 
 enum ssc_mode_e {

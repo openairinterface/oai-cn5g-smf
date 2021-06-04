@@ -38,15 +38,14 @@ include_directories(${SRC_TOP_DIR}/api-server/)
 add_library (FLEXCN STATIC
   flexcn_app.cpp
   flexcn_config.cpp
-  smf_context.cpp
-  smf_pfcp_association.cpp
-  smf_procedure.cpp
-  smf_n4.cpp
-  smf_sbi.cpp
-  smf_event.cpp
-  smf_profile.cpp
-  smf_subscription.cpp
-  smf_msg.cpp
+  flexcn_context.cpp
+  flexcn_pfcp_association.cpp
+  flexcn_procedure.cpp
+  flexcn_n4.cpp
+  flexcn_profile.cpp
+  flexcn_sbi.cpp
+  flexcn_event.cpp
+  flexcn_msg.cpp
 )
 
 

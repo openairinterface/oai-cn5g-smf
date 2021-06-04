@@ -60,9 +60,9 @@ void EventNotifyApi::notify_status_handler(
   // CNRecord eventExposureNotification = {};
 	NsmfEventExposureNotification eventExposureNotification = {};
 
-   Logger::smf_api_server().debug(
+   Logger::flexcn_api_server().debug(
 	 "Received a notification from SMF.");
-	  Logger::smf_api_server().debug("body: %s\n", request.body().c_str());
+	  Logger::flexcn_api_server().debug("body: %s\n", request.body().c_str());
 
 
 
@@ -71,25 +71,25 @@ void EventNotifyApi::notify_status_handler(
     this->receive_status_notification(request.body(), response);
     nlohmann::json j = eventExposureNotification;
 
-    Logger::smf_api_server().info("Parsing this event success!!");
-    Logger::smf_api_server().info("After parsing: ");
-    Logger::smf_api_server().info(j.dump(4).c_str());
+    Logger::flexcn_api_server().info("Parsing this event success!!");
+    Logger::flexcn_api_server().info("After parsing: ");
+    Logger::flexcn_api_server().info(j.dump(4).c_str());
     
   } catch (nlohmann::detail::exception& e) {
     // send a 400 error
     response.send(Pistache::Http::Code::Bad_Request, e.what());
-    Logger::smf_api_server().info("Parsing this event failed");
-    Logger::smf_api_server().info(e.what());
+    Logger::flexcn_api_server().info("Parsing this event failed");
+    Logger::flexcn_api_server().info(e.what());
     return;
   } catch (Pistache::Http::HttpError& e) {
     response.send(static_cast<Pistache::Http::Code>(e.code()), e.what());
-        Logger::smf_api_server().info("Parsing this event failed");
+        Logger::flexcn_api_server().info("Parsing this event failed");
 
     return;
   } catch (std::exception& e) {
     // send a 500 error
     response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
-        Logger::smf_api_server().info("Parsing this event failed");
+        Logger::flexcn_api_server().info("Parsing this event failed");
 
     return;
   }

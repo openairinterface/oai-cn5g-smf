@@ -39,7 +39,7 @@
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
 #include "msg_pfcp.hpp"
-#include "flexcn_msg.h"
+#include "flexcn_msg.hpp"
 #include "uint_generator.hpp"
 
 namespace flexcn {

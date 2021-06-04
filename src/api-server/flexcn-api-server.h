@@ -31,8 +31,8 @@
  *      contact@openairinterface.org
  */
 
-#ifndef FILE_SMF_API_SERVER_SEEN
-#define FILE_SMF_API_SERVER_SEEN
+#ifndef FILE_FLEXCN_API_SERVER_SEEN
+#define FILE_FLEXCN_API_SERVER_SEEN
 
 #include "pistache/endpoint.h"
 #include "pistache/http.h"
@@ -43,7 +43,6 @@
 #include <unistd.h>
 #endif
 
-#include "NFStatusNotifyApiImpl.h"
 #include "EventNotifyApiImpl.h"
 #include "FlexCNStatImpl.h"
 
@@ -56,8 +55,6 @@ class FLEXCNApiServer {
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();
-    m_nfStatusNotifyApiImpl = std::make_shared<NFStatusNotifyApiImpl>(
-        m_router, flexcn_app_inst, m_address);
     m_eventNotifyApiImpl = std::make_shared<EventNotifyApiImpl>(
         m_router, flexcn_app_inst, m_address);
     m_flexCNStatImpl = std::make_shared<FlexCNStatImpl>(
@@ -70,7 +67,6 @@ class FLEXCNApiServer {
  private:
   std::shared_ptr<Pistache::Http::Endpoint> m_httpEndpoint;
   std::shared_ptr<Pistache::Rest::Router> m_router;
-  std::shared_ptr<NFStatusNotifyApiImpl> m_nfStatusNotifyApiImpl;
   std::shared_ptr<EventNotifyApiImpl> m_eventNotifyApiImpl;
   std::shared_ptr<FlexCNStatImpl> m_flexCNStatImpl;
   std::string m_address;

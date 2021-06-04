@@ -19,37 +19,37 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_sbi.hpp
+/*! \file flexcn_sbi.hpp
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
  \date 2019
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_SBI_HPP_SEEN
-#define FILE_SMF_SBI_HPP_SEEN
+#ifndef FILE_FLEXCN_SBI_HPP_SEEN
+#define FILE_FLEXCN_SBI_HPP_SEEN
 
 #include <map>
 #include <thread>
 
 #include <curl/curl.h>
 #include "3gpp_29.503.h"
-#include "smf.h"
+#include "flexcn.h"
 #include "flexcn_context.hpp"
 
 namespace flexcn {
 
-#define TASK_SMF_SBI_TIMEOUT_NRF_HEARTBEAT_REQUEST 1
+#define TASK_FLEXCN_SBI_TIMEOUT_NRF_HEARTBEAT_REQUEST 1
 
-class smf_sbi {
+class flexcn_sbi {
  private:
   std::thread::id thread_id;
   std::thread thread;
 
  public:
-  smf_sbi();
-  smf_sbi(smf_sbi const&) = delete;
-  void operator=(smf_sbi const&) = delete;
+  flexcn_sbi();
+  flexcn_sbi(flexcn_sbi const&) = delete;
+  void operator=(flexcn_sbi const&) = delete;
 
   /*
    * Send SM Context Status Notification to AMF
@@ -92,4 +92,4 @@ class smf_sbi {
 
 };
 }  // namespace flexcn
-#endif /* FILE_SMF_SBI_HPP_SEEN */
+#endif /* FILE_FLEXCN_SBI_HPP_SEEN */

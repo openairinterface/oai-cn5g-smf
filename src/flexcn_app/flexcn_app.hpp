@@ -46,11 +46,9 @@
 #include "pistache/endpoint.h"
 #include "pistache/http.h"
 #include "pistache/router.h"
-#include "smf.h"
+#include "flexcn.h"
 #include "flexcn_context.hpp"
 #include "flexcn_msg.hpp"
-#include "smf_profile.hpp"
-#include "smf_subscription.hpp"
 #include "ProblemDetails.h"
 #include "EventNotification.h"
 #include "ueinfo_smf_record.hpp"
@@ -101,12 +99,8 @@ class flexcn_app {
   std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
-  std::map<
-      std::pair<evsub_id_t, smf_event_t>, std::shared_ptr<smf_subscription>>
-      smf_event_subscriptions;
-
   mutable std::shared_mutex m_scid2smf_context;
-  mutable std::shared_mutex m_smf_event_subscriptions;
+
   // Store promise IDs for Create/Update session
   mutable std::shared_mutex m_sm_context_create_promises;
   mutable std::shared_mutex m_sm_context_update_promises;
@@ -125,8 +119,8 @@ class flexcn_app {
                     boost::promise<pdu_session_release_sm_context_response>>>
       sm_context_release_promises;
 
-  smf_profile nf_instance_profile;  // SMF profile
-  std::string smf_instance_id;      // SMF instance id
+  flexcn_profile nf_instance_profile;  // SMF profile
+  std::string flexcn_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
   std::map<

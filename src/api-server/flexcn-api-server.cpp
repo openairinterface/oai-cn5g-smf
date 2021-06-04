@@ -76,12 +76,11 @@ void FLEXCNApiServer::init(size_t thr) {
   opts.flags(Pistache::Tcp::Options::ReuseAddr);
   opts.maxRequestSize(PISTACHE_SERVER_MAX_PAYLOAD);
   m_httpEndpoint->init(opts);
-  m_nfStatusNotifyApiImpl->init();
   m_eventNotifyApiImpl->init();
   m_flexCNStatImpl->init();
 }
 void FLEXCNApiServer::start() {
-  Logger::smf_api_server().info("HTTP1 server started");
+  Logger::flexcn_api_server().info("HTTP1 server started");
   m_httpEndpoint->setHandler(m_router->handler());
   m_httpEndpoint->serve();
 }

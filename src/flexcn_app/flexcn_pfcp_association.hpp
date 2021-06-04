@@ -25,8 +25,8 @@
  \email: lionel.gauthier@eurecom.fr
  */
 
-#ifndef FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
-#define FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
+#ifndef FILE_FLEXCN_PFCP_ASSOCIATION_HPP_SEEN
+#define FILE_FLEXCN_PFCP_ASSOCIATION_HPP_SEEN
 
 #include <folly/AtomicHashMap.h>
 #include <folly/AtomicLinkedList.h>
@@ -35,7 +35,7 @@
 
 #include "3gpp_29.244.h"
 #include "itti.hpp"
-#include "smf_profile.hpp"
+#include "flexcn_profile.hpp"
 
 namespace flexcn {
 
@@ -229,4 +229,4 @@ class pfcp_associations {
 };
 }  // namespace flexcn
 
-#endif /* FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN */
+#endif /* FILE_FLEXCN_PFCP_ASSOCIATION_HPP_SEEN */

@@ -121,7 +121,7 @@ void xgpp_conv::sm_context_create_from_openapi(
     std::size_t pos         = context_data.getSupi().find("-");
     std::string supi_str    = context_data.getSupi().substr(pos + 1);
     std::string supi_prefix = context_data.getSupi().substr(0, pos);
-    smf_string_to_supi(&supi, supi_str.c_str());
+    flexcn_string_to_supi(&supi, supi_str.c_str());
     pcr.set_supi(supi);
     pcr.set_supi_prefix(supi_prefix);
     Logger::flexcn_app().debug(
@@ -337,29 +337,6 @@ void xgpp_conv::sm_context_release_from_openapi(
 }
 
 //------------------------------------------------------------------------------
-void xgpp_conv::data_notification_from_openapi(
-    const oai::flexcn_server::model::NotificationData& nd,
-    flexcn::data_notification_msg& dn_msg) {
-  Logger::flexcn_app().debug(
-      "Convert NotificationData (OpenAPI) to "
-      "Data Notification Msg");
-
-  dn_msg.set_notification_event_type(nd.getEvent());
-  dn_msg.set_nf_instance_uri(nd.getNfInstanceUri());
-
-  std::shared_ptr<flexcn::nf_profile> p = {};
-
-  // Only support UPF for now
-  if (nd.getNfProfile().getNfType() == "UPF")
-    p = std::make_shared<flexcn::upf_profile>();
-
-  nlohmann::json pj = {};
-  to_json(pj, nd.getNfProfile());
-  p.get()->from_json(pj);
-  dn_msg.set_profile(p);
-}
-
-//------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
     const oai::flexcn_server::model::NsmfEventExposure& nee,
     flexcn::event_exposure_msg& eem) {
@@ -373,18 +350,18 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
     std::size_t pos         = nee.getSupi().find("-");
     std::string supi_str    = nee.getSupi().substr(pos + 1);
     std::string supi_prefix = nee.getSupi().substr(0, pos);
-    smf_string_to_supi(&supi, supi_str.c_str());
+    flexcn_string_to_supi(&supi, supi_str.c_str());
 
     eem.set_supi(supi);
     eem.set_supi_prefix(supi_prefix);
-    Logger::smf_api_server().debug(
+    Logger::flexcn_api_server().debug(
         "SUPI %s, SUPI Prefix %s, IMSI %s", nee.getSupi().c_str(),
         supi_prefix.c_str(), supi_str.c_str());
   }
 
   // PDU session ID
   if (nee.pduSeIdIsSet()) {
-    Logger::smf_api_server().debug("PDU Session ID %d", nee.getPduSeId());
+    Logger::flexcn_api_server().debug("PDU Session ID %d", nee.getPduSeId());
     eem.set_pdu_session_id(nee.getPduSeId());
   }
 
@@ -404,38 +381,4 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
   // getDnaiChgType
   // event_subscriptions.push_back(event_subscription);
   //}
-}
-
-//------------------------------------------------------------------------------
-void xgpp_conv::create_sm_context_response_from_ct_request(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
-    std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
-  ctx_response->http_version = ctx_request->http_version;
-  ctx_response->res.set_http_code(http_status_code_e::HTTP_STATUS_CODE_200_OK);
-  ctx_response->res.set_supi(ctx_request->req.get_supi());
-  ctx_response->res.set_supi_prefix(ctx_request->req.get_supi_prefix());
-  ctx_response->res.set_cause(
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-  ctx_response->res.set_pdu_session_id(ctx_request->req.get_pdu_session_id());
-  ctx_response->res.set_snssai(ctx_request->req.get_snssai());
-  ctx_response->res.set_dnn(ctx_request->req.get_dnn());
-  ctx_response->res.set_pdu_session_type(
-      ctx_request->req.get_pdu_session_type());
-  ctx_response->res.set_pti(ctx_request->req.get_pti());
-  ctx_response->set_scid(ctx_request->scid);
-}
-
-//------------------------------------------------------------------------------
-void xgpp_conv::update_sm_context_response_from_ct_request(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
-  ct_response->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);  // default status code
-  ct_response->res.set_supi(ct_request->req.get_supi());
-  ct_response->res.set_supi_prefix(ct_request->req.get_supi_prefix());
-  ct_response->res.set_cause(
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-  ct_response->res.set_pdu_session_id(ct_request->req.get_pdu_session_id());
-  ct_response->res.set_snssai(ct_request->req.get_snssai());
-  ct_response->res.set_dnn(ct_request->req.get_dnn());
 }

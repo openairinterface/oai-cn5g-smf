@@ -55,12 +55,12 @@ FlexCNStatImpl::FlexCNStatImpl(
 
 void FlexCNStatImpl::receive_stat_request(
     Pistache::Http::ResponseWriter& response) {
-  Logger::smf_api_server().info(
+  Logger::flexcn_api_server().info(
       "FlexCNStatImpl, received a stat request...");
 
   // // Handle the message in flexcn_app
   // std::shared_ptr<itti_sbi_notification_data> itti_msg =
-  //     std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_FLEXCN_APP);
+  //     std::make_shared<itti_sbi_notification_data>(TASK_FLEXCN_SBI, TASK_FLEXCN_APP);
   // itti_msg->notification_msg = notification_msg;
   // itti_msg->http_version     = 1;
 

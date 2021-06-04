@@ -138,10 +138,10 @@ int flexcn_config::load_itti(const Setting& itti_cfg, itti_cfg_t& cfg) {
   }
 
   try {
-    const Setting& smf_app_sched_params_cfg =
+    const Setting& flexcn_app_sched_params_cfg =
         itti_cfg[FLEXCN_CONFIG_STRING_FLEXCN_APP_SCHED_PARAMS];
     load_thread_sched_params(
-        smf_app_sched_params_cfg, cfg.smf_app_sched_params);
+        flexcn_app_sched_params_cfg, cfg.flexcn_app_sched_params);
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().info(
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
@@ -264,13 +264,13 @@ int flexcn_config::load(const string& config_file) {
   const Setting& root = cfg.getRoot();
 
   try {
-    const Setting& flexcn_cfg = root[FLEXCN_CONFIG_STRING_SMF_CONFIG];
+    const Setting& flexcn_cfg = root[FLEXCN_CONFIG_STRING_FLEXCN_CONFIG];
   } catch (const SettingNotFoundException& nfex) {
     Logger::flexcn_app().error("%s : %s", nfex.what(), nfex.getPath());
     return RETURNerror;
   }
 
-  const Setting& flexcn_cfg = root[FLEXCN_CONFIG_STRING_SMF_CONFIG];
+  const Setting& flexcn_cfg = root[FLEXCN_CONFIG_STRING_FLEXCN_CONFIG];
 
   try {
     flexcn_cfg.lookupValue(FLEXCN_CONFIG_STRING_INSTANCE, instance);

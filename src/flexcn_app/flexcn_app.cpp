@@ -54,9 +54,9 @@
 #include "itti_msg_nx.hpp"         //
 #include "logger.hpp"              // common
 #include "pfcp.hpp"                // pfcp
-#include "smf.h"                   // common
-#include "flexcn_event.hpp"           //smf_app
-#include "smf_sbi.hpp"
+#include "flexcn.h"                   // common
+#include "flexcn_event.hpp"           //flexcn_app
+#include "flexcn_sbi.hpp"
 #include "flexcn_n4.hpp"
 #include "string.hpp"  //
 
@@ -71,8 +71,8 @@ using namespace flexcn;
 extern util::async_shell_cmd* async_shell_cmd_inst;
 extern flexcn_app* flexcn_app_inst;
 extern flexcn_config flexcn_cfg;
-smf_n4* smf_n4_inst   = nullptr;
-smf_sbi* smf_sbi_inst = nullptr;
+flexcn_n4* flexcn_n4_inst   = nullptr;
+flexcn_sbi* flexcn_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
 
 void flexcn_app_task(void*);
@@ -90,8 +90,8 @@ nlohmann::json flexcn_app::get_summarization_in_json_format() {
       j["ue_data"].push_back(t);
     }
   } catch (nlohmann::detail::exception& e) {
-    Logger::smf_api_server().info("Parsing this event failed");
-    Logger::smf_api_server().info(e.what());
+    Logger::flexcn_api_server().info("Parsing this event failed");
+    Logger::flexcn_api_server().info(e.what());
   }
 
   return j;
@@ -261,8 +261,8 @@ flexcn_app::flexcn_app(const std::string& config_file)
   }
 
   try {
-    // smf_n4_inst  = new smf_n4();
-    smf_sbi_inst = new smf_sbi();
+    // flexcn_n4_inst  = new flexcn_n4();
+    flexcn_sbi_inst = new flexcn_sbi();
   } catch (std::exception& e) {
     Logger::flexcn_app().error("Cannot create FLEXCN_APP: %s", e.what());
     throw;
@@ -340,7 +340,7 @@ void flexcn_app::trigger_pdu_session_status_notification_subscribe() {
 
   std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> itti_msg =
       std::make_shared<itti_n11_subscribe_pdu_session_status_notify>(
-          TASK_FLEXCN_APP, TASK_SMF_SBI);
+          TASK_FLEXCN_APP, TASK_FLEXCN_SBI);
 
   nlohmann::json json_data = {};
   json_data["notifUri"] =

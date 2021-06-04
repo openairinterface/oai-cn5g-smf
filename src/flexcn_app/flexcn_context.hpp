@@ -27,8 +27,8 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_CONTEXT_HPP_SEEN
-#define FILE_SMF_CONTEXT_HPP_SEEN
+#ifndef FILE_FLEXCN_CONTEXT_HPP_SEEN
+#define FILE_FLEXCN_CONTEXT_HPP_SEEN
 
 #include <map>
 #include <memory>
@@ -487,7 +487,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   mutable std::recursive_mutex m_context;
 
   // for Event Handling
-  smf_event event_sub;
+  flexcn_event event_sub;
   bs2::connection sm_context_status_connection;
   bs2::connection ee_pdu_session_release_connection;
 };

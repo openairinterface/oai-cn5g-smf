@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_sbi.cpp
+/*! \file flexcn_sbi.cpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,7 +27,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_sbi.hpp"
+#include "flexcn_sbi.hpp"
 
 #include <stdexcept>
 
@@ -40,7 +40,7 @@
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "smf.h"
+#include "flexcn.h"
 #include "flexcn_app.hpp"
 #include "flexcn_config.hpp"
 
@@ -55,9 +55,9 @@ using namespace flexcn;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
-extern smf_sbi* smf_sbi_inst;
+extern flexcn_sbi* flexcn_sbi_inst;
 extern flexcn_config flexcn_cfg;
-void smf_sbi_task(void*);
+void flexcn_sbi_task(void*);
 
 // To read content of the response from AMF
 static std::size_t callback(
@@ -68,8 +68,8 @@ static std::size_t callback(
 }
 
 //------------------------------------------------------------------------------
-void smf_sbi_task(void* args_p) {
-  const task_id_t task_id = TASK_SMF_SBI;
+void flexcn_sbi_task(void* args_p) {
+  const task_id_t task_id = TASK_FLEXCN_SBI;
   itti_inst->notify_task_ready(task_id);
 
   do {
@@ -78,26 +78,26 @@ void smf_sbi_task(void* args_p) {
     switch (msg->msg_type) {
 
       case N11_SESSION_NOTIFY_SM_CONTEXT_STATUS:
-        smf_sbi_inst->send_sm_context_status_notification(
+        flexcn_sbi_inst->send_sm_context_status_notification(
             std::static_pointer_cast<itti_n11_notify_sm_context_status>(
                 shared_msg));
         break;
 
       case N11_NOTIFY_SUBSCRIBED_EVENT:
-        smf_sbi_inst->notify_subscribed_event(
+        flexcn_sbi_inst->notify_subscribed_event(
             std::static_pointer_cast<itti_n11_notify_subscribed_event>(
                 shared_msg));
         break;
 
 
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY:
-        smf_sbi_inst->subscribe_upf_status_notify(
+        flexcn_sbi_inst->subscribe_upf_status_notify(
             std::static_pointer_cast<itti_n11_subscribe_upf_status_notify>(
                 shared_msg));
         break;
 
       case N11_SUBSCRIBE_PDU_SESSION_STATUS_NOTIFY:
-        smf_sbi_inst->subscribe_pdu_session_status_notify(
+        flexcn_sbi_inst->subscribe_pdu_session_status_notify(
             std::static_pointer_cast<
                 itti_n11_subscribe_pdu_session_status_notify>(shared_msg));
         break;
@@ -108,36 +108,36 @@ void smf_sbi_task(void* args_p) {
       case TERMINATE:
         if (itti_msg_terminate* terminate =
                 dynamic_cast<itti_msg_terminate*>(msg)) {
-          Logger::smf_sbi().info("Received terminate message");
+          Logger::flexcn_sbi().info("Received terminate message");
           return;
         }
         break;
 
       default:
-        Logger::smf_sbi().info("no handler for msg type %d", msg->msg_type);
+        Logger::flexcn_sbi().info("no handler for msg type %d", msg->msg_type);
     }
 
   } while (true);
 }
 
 //------------------------------------------------------------------------------
-smf_sbi::smf_sbi() {
-  Logger::smf_sbi().startup("Starting...");
-  if (itti_inst->create_task(TASK_SMF_SBI, smf_sbi_task, nullptr)) {
-    Logger::smf_sbi().error("Cannot create task TASK_FLEXCN_SBI");
+flexcn_sbi::flexcn_sbi() {
+  Logger::flexcn_sbi().startup("Starting...");
+  if (itti_inst->create_task(TASK_FLEXCN_SBI, flexcn_sbi_task, nullptr)) {
+    Logger::flexcn_sbi().error("Cannot create task TASK_FLEXCN_SBI");
     throw std::runtime_error("Cannot create task TASK_FLEXCN_SBI");
   }
-  Logger::smf_sbi().startup("Started");
+  Logger::flexcn_sbi().startup("Started");
 }
 
 
 //------------------------------------------------------------------------------
-void smf_sbi::send_sm_context_status_notification(
+void flexcn_sbi::send_sm_context_status_notification(
     std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status) {
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send SM Context Status Notification to AMF(HTTP version %d)",
       sm_context_status->http_version);
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "AMF URI: %s", sm_context_status->amf_status_uri.c_str());
 
   nlohmann::json json_data = {};
@@ -180,7 +180,7 @@ void smf_sbi::send_sm_context_status_notification(
     res = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
-    Logger::smf_sbi().debug("Response from AMF, Http Code: %d", httpCode);
+    Logger::flexcn_sbi().debug("Response from AMF, Http Code: %d", httpCode);
     // TODO: in case of "307 temporary redirect"
 
     curl_easy_cleanup(curl);
@@ -189,9 +189,9 @@ void smf_sbi::send_sm_context_status_notification(
 }
 
 //-----------------------------------------------------------------------------------------------------
-void smf_sbi::notify_subscribed_event(
+void flexcn_sbi::notify_subscribed_event(
     std::shared_ptr<itti_n11_notify_subscribed_event> msg) {
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send notification for the subscribed event to the subscription");
 
   int still_running = 0, numfds = 0, res = 0;
@@ -239,7 +239,7 @@ void smf_sbi::notify_subscribed_event(
     CURL* curl = curl_easy_init();
     if (curl) {
       std::string url = i.get_notif_uri();
-      Logger::smf_sbi().debug(
+      Logger::flexcn_sbi().debug(
           "Send notification to NF with URI: %s", url.c_str());
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
       curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -262,7 +262,7 @@ void smf_sbi::notify_subscribed_event(
   do {
     res = curl_multi_wait(m_curl_multi, NULL, 0, 1000, &numfds);
     if (res != CURLM_OK) {
-      Logger::smf_sbi().debug("curl_multi_wait() returned %d!", res);
+      Logger::flexcn_sbi().debug("curl_multi_wait() returned %d!", res);
     }
     curl_multi_perform(m_curl_multi, &still_running);
   } while (still_running);
@@ -276,25 +276,25 @@ void smf_sbi::notify_subscribed_event(
       res         = curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
 
       if (return_code != CURLE_OK) {
-        Logger::smf_sbi().debug("CURL error code  %d!", curl_msg->data.result);
+        Logger::flexcn_sbi().debug("CURL error code  %d!", curl_msg->data.result);
         continue;
       }
       // Get HTTP status code
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_status_code);
-      Logger::smf_sbi().debug("HTTP status code  %d!", http_status_code);
+      Logger::flexcn_sbi().debug("HTTP status code  %d!", http_status_code);
 
       // remove this handle from the multi session and end this handle
       curl_multi_remove_handle(m_curl_multi, curl);
       curl_easy_cleanup(curl);
     } else {
-      Logger::smf_sbi().debug(
+      Logger::flexcn_sbi().debug(
           "Error after curl_multi_info_read(), CURLMsg %s", curl_msg->msg);
     }
   }
 }
 
 //-----------------------------------------------------------------------------------------------------
-CURL* smf_sbi::curl_create_handle(
+CURL* flexcn_sbi::curl_create_handle(
     event_notification& ev_notif, std::string* httpData) {
   // create handle for a curl request
   struct curl_slist* headers = NULL;
@@ -306,7 +306,7 @@ CURL* smf_sbi::curl_create_handle(
 
   if (curl) {
     std::string url = ev_notif.get_notif_uri();
-    Logger::smf_sbi().debug("Send notification to NF with URI: %s", url);
+    Logger::flexcn_sbi().debug("Send notification to NF with URI: %s", url);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     // curl_easy_setopt(curl, CURLOPT_PRIVATE, str);
@@ -322,18 +322,18 @@ CURL* smf_sbi::curl_create_handle(
 }
 
 //-----------------------------------------------------------------------------------------------------
-void smf_sbi::subscribe_upf_status_notify(
+void flexcn_sbi::subscribe_upf_status_notify(
     std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg) {
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send NFSubscribeNotify to NRF to be notified when a new UPF becomes "
       "available (HTTP version %d)",
       msg->http_version);
 
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send NFStatusNotify to NRF, NRF URL %s", msg->url.c_str());
 
   std::string body = msg->json_data.dump();
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send NFStatusNotify to NRF, msg body: %s", body.c_str());
 
   curl_global_init(CURL_GLOBAL_ALL);
@@ -369,18 +369,18 @@ void smf_sbi::subscribe_upf_status_notify(
     res = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
-    Logger::smf_sbi().debug(
+    Logger::flexcn_sbi().debug(
         "NFSubscribeNotify, response from NRF, HTTP Code: %d", httpCode);
 
     if ((static_cast<http_response_codes_e>(httpCode) ==
          http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
         (static_cast<http_response_codes_e>(httpCode) ==
          http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
-      Logger::smf_sbi().debug(
+      Logger::flexcn_sbi().debug(
           "NFSubscribeNotify, got successful response from NRF");
 
     } else {
-      Logger::smf_sbi().warn(
+      Logger::flexcn_sbi().warn(
           "NFSubscribeNotify, could not get response from NRF");
     }
 
@@ -392,18 +392,18 @@ void smf_sbi::subscribe_upf_status_notify(
 
 //-----------------------------------------------------------------------------------------------------
 // For FLEXCN
-void smf_sbi::subscribe_pdu_session_status_notify(
+void flexcn_sbi::subscribe_pdu_session_status_notify(
     std::shared_ptr<itti_n11_subscribe_pdu_session_status_notify> msg) {
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send PDUSessionStatusSubscribeNotify to SMF to be notified when a new "
       "PDU Session status changes");
 
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send PDUSessionStatusSubscribeNotify to SMF, SMF URL %s",
       msg->url.c_str());
 
   std::string body = msg->json_data.dump();
-  Logger::smf_sbi().debug(
+  Logger::flexcn_sbi().debug(
       "Send PDUSessionStatusSubscribeNotify to SMF, msg body: %s",
       body.c_str());
 
@@ -440,7 +440,7 @@ void smf_sbi::subscribe_pdu_session_status_notify(
     res = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
-    Logger::smf_sbi().debug(
+    Logger::flexcn_sbi().debug(
         "PDUSessionStatusSubscribeNotify, response from SMF, HTTP Code: %d",
         httpCode);
 
@@ -448,11 +448,11 @@ void smf_sbi::subscribe_pdu_session_status_notify(
          http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
         (static_cast<http_response_codes_e>(httpCode) ==
          http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
-      Logger::smf_sbi().debug(
+      Logger::flexcn_sbi().debug(
           "PDUSessionStatusSubscribeNotify, got successful response from SMF");
 
     } else {
-      Logger::smf_sbi().warn(
+      Logger::flexcn_sbi().warn(
           "PDUSessionStatusSubscribeNotify, could not get response from SMF");
     }
 

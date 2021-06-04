@@ -83,11 +83,11 @@ class Logger {
   static _Logger& pfcp() { return *singleton().m_pfcp; }
   static _Logger& pfcp_switch() { return *singleton().m_pfcp_switch; }
 
-  static _Logger& smf_n1() { return *singleton().m_smf_n1; }
-  static _Logger& smf_n2() { return *singleton().m_smf_n2; }
-  static _Logger& smf_n4() { return *singleton().m_smf_n4; }
-  static _Logger& smf_sbi() { return *singleton().m_smf_sbi; }
-  static _Logger& smf_api_server() { return *singleton().m_smf_api_server; }
+  static _Logger& flexcn_n1() { return *singleton().m_flexcn_n1; }
+  static _Logger& flexcn_n2() { return *singleton().m_flexcn_n2; }
+  static _Logger& flexcn_n4() { return *singleton().m_flexcn_n4; }
+  static _Logger& flexcn_sbi() { return *singleton().m_flexcn_sbi; }
+  static _Logger& flexcn_api_server() { return *singleton().m_flexcn_api_server; }
 
  private:
   static Logger* m_singleton;
@@ -112,11 +112,11 @@ class Logger {
   _Logger* m_udp;
   _Logger* m_pfcp;
   _Logger* m_pfcp_switch;
-  _Logger* m_smf_n1;
-  _Logger* m_smf_n2;
-  _Logger* m_smf_n4;
-  _Logger* m_smf_sbi;
-  _Logger* m_smf_api_server;
+  _Logger* m_flexcn_n1;
+  _Logger* m_flexcn_n2;
+  _Logger* m_flexcn_n4;
+  _Logger* m_flexcn_sbi;
+  _Logger* m_flexcn_api_server;
 };
 
 #endif  // __LOGGER_H

@@ -37,11 +37,11 @@
 
 namespace flexcn {
 
-#define TASK_SMF_N4_TRIGGER_HEARTBEAT_REQUEST (0)
-#define TASK_SMF_N4_TIMEOUT_HEARTBEAT_REQUEST (1)
-#define TASK_SMF_N4_TIMEOUT_ASSOCIATION_REQUEST (2)
-#define TASK_SMF_N4_TIMEOUT_GRACEFUL_RELEASE_PERIOD (3)
-class smf_n4 : public pfcp::pfcp_l4_stack {
+#define TASK_FLEXCN_N4_TRIGGER_HEARTBEAT_REQUEST (0)
+#define TASK_FLEXCN_N4_TIMEOUT_HEARTBEAT_REQUEST (1)
+#define TASK_FLEXCN_N4_TIMEOUT_ASSOCIATION_REQUEST (2)
+#define TASK_FLEXCN_N4_TIMEOUT_GRACEFUL_RELEASE_PERIOD (3)
+class flexcn_n4 : public pfcp::pfcp_l4_stack {
  private:
   std::thread::id thread_id;
   std::thread thread;
@@ -51,9 +51,9 @@ class smf_n4 : public pfcp::pfcp_l4_stack {
   pfcp::cp_function_features_t cp_function_features;
 
  public:
-  smf_n4();
-  smf_n4(smf_n4 const&) = delete;
-  void operator=(smf_n4 const&) = delete;
+  flexcn_n4();
+  flexcn_n4(flexcn_n4 const&) = delete;
+  void operator=(flexcn_n4 const&) = delete;
 
   void handle_itti_msg(itti_n4_heartbeat_request& s){};
   void handle_itti_msg(itti_n4_heartbeat_response& s){};

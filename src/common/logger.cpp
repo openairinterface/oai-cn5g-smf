@@ -60,11 +60,11 @@ void Logger::_init(
   m_udp            = new _Logger("udp    ", m_sinks, ss.str().c_str());
   m_pfcp           = new _Logger("pfcp   ", m_sinks, ss.str().c_str());
   m_pfcp_switch    = new _Logger("pfcp_sw ", m_sinks, ss.str().c_str());
-  m_smf_n1         = new _Logger("smf_n1 ", m_sinks, ss.str().c_str());
-  m_smf_n2         = new _Logger("smf_n2 ", m_sinks, ss.str().c_str());
-  m_smf_n4         = new _Logger("smf_n4 ", m_sinks, ss.str().c_str());
-  m_smf_sbi        = new _Logger("flexcn_sbi", m_sinks, ss.str().c_str());
-  m_smf_api_server = new _Logger("sbi_srv", m_sinks, ss.str().c_str());
+  m_flexcn_n1         = new _Logger("flexcn_n1 ", m_sinks, ss.str().c_str());
+  m_flexcn_n2         = new _Logger("flexcn_n2 ", m_sinks, ss.str().c_str());
+  m_flexcn_n4         = new _Logger("flexcn_n4 ", m_sinks, ss.str().c_str());
+  m_flexcn_sbi        = new _Logger("flexcn_sbi", m_sinks, ss.str().c_str());
+  m_flexcn_api_server = new _Logger("sbi_srv", m_sinks, ss.str().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

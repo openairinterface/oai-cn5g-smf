@@ -39,7 +39,6 @@
 #include "NotificationData.h"
 #include "NsmfEventExposure.h"
 #include "flexcn_msg.hpp"
-#include "itti_msg_n11.hpp"
 
 namespace xgpp_conv {
 
@@ -105,17 +104,6 @@ void sm_context_release_from_openapi(
     flexcn::pdu_session_release_sm_context_request& prr);
 
 /*
- * Convert Data Notification from OpenAPI into Data Notification Msg
- * @param [const oai::smf_server::model::NotificationData&] nd: Data
- * Notification in OpenAPI
- * @param [flexcn::data_notification_msg&] dn_msg: Data Notification msg
- * @return void
- */
-void data_notification_from_openapi(
-    const oai::flexcn_server::model::NotificationData& nd,
-    flexcn::data_notification_msg& dn_msg);
-
-/*
  * Convert NsmfEventExposure from OpenAPI into Event Exposure Msg
  * @param [const oai::smf_server::model::NsmfEventExposure&] nee:
  * NsmfEventExposure in OpenAPI
@@ -125,14 +113,6 @@ void data_notification_from_openapi(
 void smf_event_exposure_notification_from_openapi(
     const oai::flexcn_server::model::NsmfEventExposure& nee,
     flexcn::event_exposure_msg& eem);
-
-void create_sm_context_response_from_ct_request(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_create_sm_context_response>& ct_response);
-
-void update_sm_context_response_from_ct_request(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& ct_response);
 
 }  // namespace xgpp_conv
 

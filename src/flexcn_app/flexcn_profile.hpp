@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_profile.hpp
+/*! \file flexcn_profile.hpp
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,8 +27,8 @@
  \email: Tien-Thinh.Nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_PROFILE_HPP_SEEN
-#define FILE_SMF_PROFILE_HPP_SEEN
+#ifndef FILE_FLEXCN_PROFILE_HPP_SEEN
+#define FILE_FLEXCN_PROFILE_HPP_SEEN
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -40,7 +40,7 @@
 #include <vector>
 
 #include "logger.hpp"
-#include "smf.h"
+#include "flexcn.h"
 
 namespace flexcn {
 
@@ -279,7 +279,7 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
   virtual void to_json(nlohmann::json& data) const;
 
   /*
-   * Covert from a json represetation to SMF profile
+   * Covert from a json represetation to Flexcn profile
    * @param [nlohmann::json &] data: Json data
    * @return void
    */
@@ -298,13 +298,13 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
   uint16_t capacity;
 };
 
-class smf_profile : public nf_profile {
+class flexcn_profile : public nf_profile {
  public:
-  smf_profile() : nf_profile() { custom_info = {}; }
+  flexcn_profile() : nf_profile() { custom_info = {}; }
 
-  smf_profile(const std::string& id) : nf_profile(id) { custom_info = {}; }
+  flexcn_profile(const std::string& id) : nf_profile(id) { custom_info = {}; }
 
-  smf_profile& operator=(const smf_profile& s) {
+  flexcn_profile& operator=(const flexcn_profile& s) {
     nf_instance_id   = s.nf_instance_id;
     heartBeat_timer  = s.heartBeat_timer;
     snssais          = s.snssais;
@@ -318,9 +318,9 @@ class smf_profile : public nf_profile {
     smf_info         = s.smf_info;
     nf_services      = s.nf_services;
   }
-  // smf_profile(smf_profile &b) = delete;
+  // flexcn_profile(flexcn_profile &b) = delete;
 
-  virtual ~smf_profile() {
+  virtual ~flexcn_profile() {
     Logger::flexcn_app().debug("Delete FLEXCN Profile instance...");
   }
 

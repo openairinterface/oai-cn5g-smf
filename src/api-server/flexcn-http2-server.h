@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_http2-server.h
+/*! \file flexcn-http2-server.h
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,8 +27,8 @@
  \email: tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_HTTP2_SERVER_SEEN
-#define FILE_SMF_HTTP2_SERVER_SEEN
+#ifndef FILE_FLEXCN_HTTP2_SERVER_SEEN
+#define FILE_FLEXCN_HTTP2_SERVER_SEEN
 
 #include "flexcn_app.hpp"
 #include <nghttp2/asio_http2_server.h>
@@ -36,7 +36,7 @@
 #include "SmContextMessage.h"
 #include "SmContextReleaseMessage.h"
 #include "uint_generator.hpp"
-#include "smf.h"
+#include "flexcn.h"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -51,12 +51,12 @@ class flexcn_http2_server {
   void create_sm_contexts_handler(
       const SmContextMessage& smContextMessage, const response& response);
   void update_sm_context_handler(
-      const std::string& smf_ref,
+      const std::string& flexcn_ref,
       const SmContextUpdateMessage& smContextUpdateMessage,
       const response& response);
 
   void release_sm_context_handler(
-      const std::string& smf_ref,
+      const std::string& flexcn_ref,
       const SmContextReleaseMessage& smContextReleaseMessage,
       const response& response);
   void stop();

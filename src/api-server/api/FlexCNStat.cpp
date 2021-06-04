@@ -48,8 +48,8 @@ void FlexCNStat::setupRoutes() {
       *router, base + flexcn_cfg.sbi_api_version + "/stats",
       Routes::bind(&FlexCNStat::stat_request_handler, this));
 
-  Logger::smf_api_server().info( "Full path to query FlexCN is: ");
-  Logger::smf_api_server().info((base + flexcn_cfg.sbi_api_version + "/stats").c_str());
+  Logger::flexcn_api_server().info( "Full path to query FlexCN is: ");
+  Logger::flexcn_api_server().info((base + flexcn_cfg.sbi_api_version + "/stats").c_str());
 
   // Default handler, called when a route is not found
   router->addCustomHandler(

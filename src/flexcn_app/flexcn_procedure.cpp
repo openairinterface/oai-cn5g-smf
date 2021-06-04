@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.cpp
+/*! \file flexcn_procedure.cpp
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
  \date 2019
@@ -43,7 +43,7 @@
 #include "flexcn_app.hpp"
 #include "flexcn_config.hpp"
 #include "flexcn_context.hpp"
-#include "smf_sbi.hpp"
+#include "flexcn_sbi.hpp"
 #include "flexcn_pfcp_association.hpp"
 #include "ProblemDetails.h"
 #include "3gpp_24.501.h"
