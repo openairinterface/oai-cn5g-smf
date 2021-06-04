@@ -31,7 +31,7 @@
 
 #include <nlohmann/json.hpp>
 #include "itti_msg.hpp"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 #include "pistache/http.h"
 #include "smf_profile.hpp"
 #include "PatchItem.h"

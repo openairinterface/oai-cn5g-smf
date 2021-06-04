@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event.hpp
+/*! \file flexcn_event.hpp
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -34,7 +34,7 @@
 namespace bs2 = boost::signals2;
 
 #include "smf.h"
-#include "smf_event_sig.hpp"
+#include "flexcn_event_sig.hpp"
 
 namespace flexcn {
 class smf_event {

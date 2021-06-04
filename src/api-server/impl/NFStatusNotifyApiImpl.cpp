@@ -35,7 +35,7 @@
 #include "NFStatusNotifyApiImpl.h"
 
 #include "logger.hpp"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 #include "itti_msg_sbi.hpp"
 #include "flexcn_config.hpp"
 #include "3gpp_conversions.hpp"

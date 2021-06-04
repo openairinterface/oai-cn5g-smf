@@ -19,21 +19,21 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n4.hpp
+/*! \file flexcn_n4.hpp
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
  \date 2019
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_N4_HPP_SEEN
-#define FILE_SMF_N4_HPP_SEEN
+#ifndef FILE_FLEXCN_N4_HPP_SEEN
+#define FILE_FLEXCN_N4_HPP_SEEN
 
 #include <thread>
 
 #include "itti_msg_n4.hpp"
 #include "pfcp.hpp"
-#include "smf_pfcp_association.hpp"
+#include "flexcn_pfcp_association.hpp"
 
 namespace flexcn {
 
@@ -123,4 +123,4 @@ class smf_n4 : public pfcp::pfcp_l4_stack {
   void time_out_itti_event(const uint32_t timer_id);
 };
 }  // namespace flexcn
-#endif /* FILE_SMF_N4_HPP_SEEN */
+#endif /* FILE_FLEXCN_N4_HPP_SEEN */

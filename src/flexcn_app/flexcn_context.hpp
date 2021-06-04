@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_context.hpp
+/*! \file flexcn_context.hpp
  \brief
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
@@ -46,8 +46,8 @@
 #include "pistache/endpoint.h"
 #include "pistache/http.h"
 #include "pistache/router.h"
-#include "smf_event.hpp"
-#include "smf_procedure.hpp"
+#include "flexcn_event.hpp"
+#include "flexcn_procedure.hpp"
 #include "uint_generator.hpp" // common
 
 namespace flexcn {
@@ -374,28 +374,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       ee_pdu_session_release_connection.disconnect();
   }
 
-  /*
-   * Insert a procedure to be processed
-   * @param [std::shared_ptr<smf_procedure> &] sproc: procedure to be processed
-   * @return void
-   */
-  void insert_procedure(std::shared_ptr<smf_procedure>& sproc);
-
-  /*
-   * Find a with its transaction ID
-   * @param [const uint64_t &] trxn_id: Transaction ID
-   * @param [std::shared_ptr<smf_procedure> &] proc: Stored procedure if found
-   * @return void
-   */
-  bool find_procedure(
-      const uint64_t& trxn_id, std::shared_ptr<smf_procedure>& proc);
-
-  /*
-   * Remove a procedure from the list
-   * @param [smf_procedure *] sproc: procedure to be removed
-   * @return void
-   */
-  void remove_procedure(smf_procedure* proc);
 
 #define IS_FIND_PDN_WITH_LOCAL_TEID true
 #define IS_FIND_PDN_WITH_PEER_TEID false
@@ -429,44 +407,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void handle_itti_msg(std::shared_ptr<itti_n4_session_report_request>&);
 
   /*
-   * Insert a session management subscription into the SMF context
-   * @param [const snssai_t&] snssai
-   * @param [std::shared_ptr<session_management_subscription>&] ss: pointer to
-   * the subscription
-   * @return void
-   */
-  void insert_dnn_subscription(
-      const snssai_t& snssai,
-      std::shared_ptr<session_management_subscription>& ss);
-
-  /*
-   * Insert a session management subscription into the SMF context
-   * @param [const snssai_t&] snssai
-   * @param [const dnn&] dnn
-   * @param [std::shared_ptr<session_management_subscription>&] ss: pointer to
-   * the subscription
-   * @return void
-   */
-  void insert_dnn_subscription(
-      const snssai_t& snssai, const std::string& dnn,
-      std::shared_ptr<session_management_subscription>& ss);
-
-  /*
    * Convert all members of this class to string for logging
    * @return std::string
    */
   std::string toString() const;
-
-  /*
-   * Get the default QoS from the subscription
-   * @param [const snssai_t&] snssai
-   * @param [const std::string&] dnn
-   * @param [subscribed_default_qos_t] default_qos
-   * @return void
-   */
-  void get_default_qos(
-      const snssai_t& snssai, const std::string& dnn,
-      subscribed_default_qos_t& default_qos);
 
   /*
    * Set the value for Supi

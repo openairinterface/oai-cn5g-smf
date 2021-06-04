@@ -26,7 +26,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_procedure.hpp"
+#include "flexcn_procedure.hpp"
 
 #include <algorithm>  // std::search
 
@@ -42,9 +42,9 @@
 #include "logger.hpp"
 #include "flexcn_app.hpp"
 #include "flexcn_config.hpp"
-#include "smf_context.hpp"
+#include "flexcn_context.hpp"
 #include "smf_sbi.hpp"
-#include "smf_pfcp_association.hpp"
+#include "flexcn_pfcp_association.hpp"
 #include "ProblemDetails.h"
 #include "3gpp_24.501.h"
 

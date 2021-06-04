@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_msg.hpp
+/*! \file flexcn_msg.h
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom

@@ -27,7 +27,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_context.hpp"
+#include "flexcn_context.hpp"
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
@@ -40,10 +40,10 @@
 #include "logger.hpp"
 #include "flexcn_app.hpp"
 #include "flexcn_config.hpp"
-#include "smf_event.hpp"
+#include "flexcn_event.hpp"
 #include "smf_sbi.hpp"
-#include "smf_pfcp_association.hpp"
-#include "smf_procedure.hpp"
+#include "flexcn_pfcp_association.hpp"
+#include "flexcn_procedure.hpp"
 #include "3gpp_conversions.hpp"
 #include "string.hpp"
 
@@ -331,32 +331,6 @@ bool session_management_subscription::dnn_configuration(
 }
 
 //------------------------------------------------------------------------------
-void smf_context::insert_procedure(std::shared_ptr<smf_procedure>& sproc) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  pending_procedures.push_back(sproc);
-}
-
-//------------------------------------------------------------------------------
-bool smf_context::find_procedure(
-    const uint64_t& trxn_id, std::shared_ptr<smf_procedure>& proc) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-  auto found = std::find_if(
-      pending_procedures.begin(), pending_procedures.end(),
-      [trxn_id](const std::shared_ptr<smf_procedure>& i) -> bool {
-        return i->trxn_id == trxn_id;
-      });
-  if (found != pending_procedures.end()) {
-    proc = *found;
-    return true;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::remove_procedure(smf_procedure* proc) {
-}
-
-//------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     itti_n4_session_establishment_response& seresp) {
 }
@@ -386,31 +360,6 @@ std::string smf_context::toString() const {
       .append(smf_supi_to_string(supi).c_str())
       .append("\n");
   return s;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_default_qos(
-    const snssai_t& snssai, const std::string& dnn,
-    subscribed_default_qos_t& default_qos) {
-  
-}
-
-//------------------------------------------------------------------------------
-void smf_context::insert_dnn_subscription(
-    const snssai_t& snssai,
-    std::shared_ptr<session_management_subscription>& ss) {
-  std::unique_lock<std::recursive_mutex> lock(m_context);
-
-  dnn_subscriptions[(uint8_t) snssai.sST] = ss;
-  Logger::flexcn_app().info(
-      "Inserted DNN Subscription, key: %d", (uint8_t) snssai.sST);
-}
-
-//------------------------------------------------------------------------------
-void smf_context::insert_dnn_subscription(
-    const snssai_t& snssai, const std::string& dnn,
-    std::shared_ptr<session_management_subscription>& ss) {
-  
 }
 
 //-----------------------------------------------------------------------------

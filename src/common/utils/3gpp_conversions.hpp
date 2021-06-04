@@ -38,7 +38,7 @@
 #include "SmContextReleaseMessage.h"
 #include "NotificationData.h"
 #include "NsmfEventExposure.h"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 #include "itti_msg_n11.hpp"
 
 namespace xgpp_conv {

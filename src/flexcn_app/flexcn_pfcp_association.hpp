@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_pfcp_association.hpp
+/*! \file flexcn_pfcp_association.hpp
  \author  Lionel GAUTHIER
  \date 2019
  \email: lionel.gauthier@eurecom.fr

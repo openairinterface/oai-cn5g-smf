@@ -26,7 +26,7 @@
  \date 2019
  \email: tien-thinh.nguyen@eurecom.fr
  */
-#include "smf_msg.hpp"
+#include "flexcn_msg.h"
 
 using namespace flexcn;
 

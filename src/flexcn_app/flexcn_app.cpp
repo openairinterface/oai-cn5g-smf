@@ -55,9 +55,9 @@
 #include "logger.hpp"              // common
 #include "pfcp.hpp"                // pfcp
 #include "smf.h"                   // common
-#include "smf_event.hpp"           //smf_app
+#include "flexcn_event.hpp"           //smf_app
 #include "smf_sbi.hpp"
-#include "smf_n4.hpp"
+#include "flexcn_n4.hpp"
 #include "string.hpp"  //
 
 #include "EventNotification.h"

@@ -31,7 +31,7 @@
 
 #include "itti_msg.hpp"
 #include "pistache/http.h"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 
 class itti_sbi_msg : public itti_msg {
  public:

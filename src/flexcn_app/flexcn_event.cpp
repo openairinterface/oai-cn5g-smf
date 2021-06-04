@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event_sig.hpp
+/*! \file smf_event.cpp
  \brief
  \author  Tien-Thinh NGUYEN
  \company Eurecom
@@ -27,35 +27,23 @@
  \email: tien-thinh.nguyen@eurecom.fr
  */
 
-#ifndef FILE_SMF_EVENT_SIG_HPP_SEEN
-#define FILE_SMF_EVENT_SIG_HPP_SEEN
+#include "flexcn_event.hpp"
+#include "itti.hpp"
+#include "flexcn_app.hpp"
+#include "smf_subscription.hpp"
 
-#include <boost/signals2.hpp>
-#include <string>
-#include "3gpp_24.007.h" //common/nas
+using namespace flexcn;
+extern flexcn::flexcn_app* flexcn_app_inst;
+extern itti_mw* itti_inst;
 
-namespace bs2 = boost::signals2;
+//------------------------------------------------------------------------------
+bs2::connection smf_event::subscribe_sm_context_status(
+    const sm_context_status_sig_t::slot_type& sig) {
+  return sm_context_status.connect(sig);
+}
 
-namespace flexcn {
-
-// Signal for PDU session status
-// SCID, PDU Session Status, HTTP version
-typedef bs2::signal_type<
-    void(scid_t, const std::string&, uint8_t),
-    bs2::keywords::mutex_type<bs2::dummy_mutex>>::type sm_context_status_sig_t;
-
-// Signal for Event exposure
-// PDU session Release, SUPI, PDU SessionID, HTTP version
-typedef bs2::signal_type<
-    void(supi64_t, pdu_session_id_t, uint8_t),
-    bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
-    ee_pdu_session_release_sig_t;
-
-// TODO: ee_ue_ip_address_change_sig_t; //UI IP Address, UE ID
-// TODO: Access Type Change
-// TODO: UP Path Change
-// TODO: PLMN Change
-// TODO: Downlink data delivery status
-
-}  // namespace flexcn
-#endif /* FILE_SMF_EVENT_SIG_HPP_SEEN */
+//------------------------------------------------------------------------------
+bs2::connection smf_event::subscribe_ee_pdu_session_release(
+    const ee_pdu_session_release_sig_t::slot_type& sig) {
+  return ee_pdu_session_release.connect(sig);
+}

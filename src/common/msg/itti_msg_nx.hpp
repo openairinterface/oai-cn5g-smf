@@ -30,7 +30,7 @@
 #define ITTI_MSG_NX_HPP_INCLUDED_
 
 #include "itti_msg.hpp"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 #include "pistache/http.h"
 
 class itti_nx_msg : public itti_msg {

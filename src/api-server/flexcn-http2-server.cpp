@@ -35,7 +35,7 @@
 #include <nlohmann/json.hpp>
 
 #include "logger.hpp"
-#include "smf_msg.hpp"
+#include "flexcn_msg.hpp"
 #include "itti_msg_n11.hpp"
 #include "3gpp_29.502.h"
 #include "mime_parser.hpp"

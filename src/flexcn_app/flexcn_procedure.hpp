@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.hpp
+/*! \file flexcn_procedure.hpp
  \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
  \company Eurecom
  \date 2019
@@ -39,7 +39,7 @@
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
 #include "msg_pfcp.hpp"
-#include "smf_msg.hpp"
+#include "flexcn_msg.h"
 #include "uint_generator.hpp"
 
 namespace flexcn {
@@ -192,6 +192,6 @@ class session_release_sm_context_procedure : public smf_procedure {
 };
 
 }  // namespace flexcn
-#include "../flexcn_app/smf_context.hpp"
+#include "../flexcn_app/flexcn_context.hpp"
 
 #endif

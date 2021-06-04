@@ -35,7 +35,7 @@
 #include <curl/curl.h>
 #include "3gpp_29.503.h"
 #include "smf.h"
-#include "smf_context.hpp"
+#include "flexcn_context.hpp"
 
 namespace flexcn {
 

@@ -27,7 +27,7 @@
  \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
  */
 
-#include "smf_n4.hpp"
+#include "flexcn_n4.hpp"
 
 #include <chrono>
 #include <ctime>
