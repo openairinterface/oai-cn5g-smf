@@ -684,6 +684,45 @@ int smf_config::load(const string& config_file) {
     }
     nrf_addr.api_version = nrf_api_version;
 
+   // Network Instance
+    num_upf_network_instance_list = 0;
+    const Setting& nwi_cfg = smf_cfg[SMF_CONFIG_STRING_NETWORK_INSTANCE];
+    string network_instance_str = {};
+
+    nwi_cfg.lookupValue(
+        SMF_CONFIG_STRING_USE_NETWORK_INSTANCE, network_instance_str);
+    if (boost::iequals(network_instance_str, "yes")) {
+      network_instance_configuration = true;
+    } else {
+      network_instance_configuration = false;
+    }
+    const Setting& upf_network_instance_list_cfg =
+        nwi_cfg[SMF_CONFIG_STRING_UPF_NETWORK_INSTANCE_LIST];
+    count = upf_network_instance_list_cfg.getLength();
+    for (int i = 0; i < count; i++) {
+      const Setting& upf_network_instance_cfg =
+          upf_network_instance_list_cfg[i]; {
+
+      unsigned int upf_id                      = 0;
+      string domain_access                     = {};
+      string domain_core                       = {};
+      string domain_sgi_lan                    = {};
+      upf_network_instance_cfg.lookupValue(
+          SMF_CONFIG_STRING_UPF_ID, upf_id);
+      upf_network_instance_cfg.lookupValue(
+          SMF_CONFIG_STRING_DOMAIN_ACCESS, domain_access);
+      upf_network_instance_cfg.lookupValue(
+          SMF_CONFIG_STRING_DOMAIN_CORE, domain_core);
+      upf_network_instance_cfg.lookupValue(
+          SMF_CONFIG_STRING_DOMAIN_SGI_LAN, domain_sgi_lan);
+          
+      upf_nwi_list[i].upf_id         = upf_id;
+      upf_nwi_list[i].domain_access  = domain_access;
+      upf_nwi_list[i].domain_core    = domain_core;
+      upf_nwi_list[i].domain_sgi_lan = domain_sgi_lan;
+      }
+    }
+
     // Local configuration
     num_session_management_subscription = 0;
     const Setting& local_cfg = smf_cfg[SMF_CONFIG_STRING_LOCAL_CONFIGURATION];

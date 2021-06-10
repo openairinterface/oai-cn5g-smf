@@ -110,6 +110,14 @@
 #define SMF_CONFIG_STRING_NRF_IPV4_ADDRESS "IPV4_ADDRESS"
 #define SMF_CONFIG_STRING_NRF_PORT "PORT"
 
+#define SMF_CONFIG_STRING_UPF_ID "UPF_ID"
+#define SMF_CONFIG_STRING_NETWORK_INSTANCE "NETWORK_INSTANCE"
+#define SMF_CONFIG_STRING_USE_NETWORK_INSTANCE "USE_NETWORK_INSTANCE"
+#define SMF_CONFIG_STRING_UPF_NETWORK_INSTANCE_LIST "UPF_NETWORK_INSTANCE_LIST"
+#define SMF_CONFIG_STRING_DOMAIN_ACCESS "DOMAIN_ACCESS"
+#define SMF_CONFIG_STRING_DOMAIN_CORE "DOMAIN_CORE"
+#define SMF_CONFIG_STRING_DOMAIN_SGI_LAN "DOMAIN_SGI_LAN"
+
 #define SMF_CONFIG_STRING_LOCAL_CONFIGURATION "LOCAL_CONFIGURATION"
 #define SMF_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST                 \
   "SESSION_MANAGEMENT_SUBSCRIPTION_LIST"
@@ -238,7 +246,21 @@ class smf_config {
     std::string api_version;
   } nrf_addr;
 
-#define SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 10
+  // Network instance
+  bool network_instance_configuration;
+#define SMF_NUM_NETWORK_INSTANCE_MAX 10
+  struct {
+      unsigned int upf_id;
+      std::string domain_access;
+      std::string domain_core;
+      std::string domain_sgi_lan;
+  } upf_nwi_list
+      [SMF_NUM_NETWORK_INSTANCE_MAX];
+  uint8_t num_upf_network_instance_list;
+
+  // Local configuration
+  bool local_configuration;
+#define SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 5
   struct {
     snssai_t single_nssai;
     std::string session_type;

@@ -172,11 +172,22 @@ int session_create_sm_context_procedure::run(
   apply_action.forw = 1;  // forward the packets
 
   destination_interface.interface_value =
-      pfcp::INTERFACE_VALUE_CORE;  // ACCESS is for downlink, CORE for uplink
+     pfcp::INTERFACE_VALUE_CORE;  // ACCESS is for downlink, CORE for uplink
   forwarding_parameters.set(destination_interface);
-  // TODO: Network Instance
+
+  if(smf_cfg.network_instance_configuration){
+  pfcp::network_instance_t       network_instance = {};  // mandatory for travelping
+  network_instance.network_instance = smf_cfg.upf_nwi_list[0].domain_sgi_lan;
+  forwarding_parameters.set(network_instance);
+
+  destination_interface.interface_value =
+      pfcp::INTERFACE_VALUE_SGI_LAN_N6_LAN;  // ACCESS is for downlink, SGi-LAN for uplink
+  forwarding_parameters.set(destination_interface);
+  }
+
   // TODO: Redirect Information
   // TODO: Outer Header Creation (e.g., in case of N9)
+  
 
   create_far.set(far_id);
   create_far.set(apply_action);
@@ -221,6 +232,12 @@ int session_create_sm_context_procedure::run(
   // Session Establishment Request, 3GPP TS 29.244 V16.0.0)  source interface
   source_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
   pdi.set(source_interface);
+
+  if(smf_cfg.network_instance_configuration){
+  pfcp::network_instance_t       network_instance = {};  // mandatory for travelping
+  network_instance.network_instance = smf_cfg.upf_nwi_list[0].domain_access;
+  pdi.set(network_instance);
+  }
   // CN tunnel info
   local_fteid.ch =
       1;  // SMF requests the UPF to assign a local F-TEID to the PDR
@@ -678,6 +695,11 @@ int session_update_sm_context_procedure::run(
           destination_interface.interface_value =
               pfcp::INTERFACE_VALUE_ACCESS;  // ACCESS is for downlink, CORE for
                                              // uplink
+          if(smf_cfg.network_instance_configuration){
+          pfcp::network_instance_t       network_instance = {};  // mandatory for travelping
+          network_instance.network_instance = smf_cfg.upf_nwi_list[0].domain_access;
+          forwarding_parameters.set(network_instance);
+          }
           forwarding_parameters.set(destination_interface);
           outer_header_creation.outer_header_creation_description =
               OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
@@ -730,7 +752,14 @@ int session_update_sm_context_procedure::run(
           // pfcp::framed_routing_t           framed_routing = {};
           // pfcp::framed_ipv6_route_t        framed_ipv6_route = {};
           source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
+          if(smf_cfg.network_instance_configuration){
+          pfcp::network_instance_t       network_instance = {};  // mandatory for travelping
+          network_instance.network_instance = smf_cfg.upf_nwi_list[0].domain_sgi_lan;
+          pdi.set(network_instance);
 
+          source_interface.interface_value =
+              pfcp::INTERFACE_VALUE_SGI_LAN_N6_LAN;  // ACCESS is for downlink, SGi-LAN for uplink
+          }
           // local_fteid.from_core_fteid(qos_flow.qos_flow.dl_fteid);
           if (sps->ipv4) {
             ue_ip_address.v4 = 1;
@@ -812,6 +841,16 @@ int session_update_sm_context_procedure::run(
           precedence.precedence = flow.precedence.precedence;
 
           source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
+          
+          if(smf_cfg.network_instance_configuration){
+          pfcp::network_instance_t       network_instance = {};  // mandatory for travelping
+          network_instance.network_instance = smf_cfg.upf_nwi_list[0].domain_sgi_lan;
+          pdi.set(network_instance);
+
+          source_interface.interface_value =
+              pfcp::INTERFACE_VALUE_SGI_LAN_N6_LAN;  // ACCESS is for downlink, SGi-LAN for uplink
+          }
+          
           pdi.set(source_interface);
           pdi.set(ue_ip_address);
 
