@@ -4,9 +4,18 @@ info:
   description: |
     This API allows xApps to communicate with FlexCN.
   version: 1.0.0
+
+servers:
+  - url: '{apiRoot}/nxapp/v1'
+    variables:
+      apiRoot:
+        default: https://example.com
+        description:  The Northbound API of this service.
+
+
 paths:
   # Whole stats
-  /v1/stats:
+  /stats:
     get:
       summary: return every stats that FlexCN has. 
       description: Retrieves all stats that FlexCN received from 5G core components without processing.
@@ -17,10 +26,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/stats"
+                $ref: "#/components/schemas/networkStats"
 
   # stats per each ue
-  /v1/stats/{ueid}:
+  /stats/{ueid}:
     parameters:
       - $ref: "#/components/parameters/ueid"
     get:
@@ -34,7 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/mark"
+                $ref: "#/components/schemas/statPerUE"
         "400":
           description: The provided parameters are incorrect
           content:
@@ -50,12 +59,14 @@ components:
       in: path
       required: true
       schema:
-        $ref: "#/components/schemas/ueid"
+        $ref: "#/components/schemas/ueid"      
   schemas:
     networkStats:
       type: array
       minItems: 0
       description: An array of information.
+      items:
+        $ref: "#/components/schemas/event"
     errorMessage:
       type: string
       maxLength: 256
@@ -64,38 +75,27 @@ components:
       type: string
       description: a short form unique determine id of ue and 4g/5g services it is using.
       example: "imsi-11111111111"
-    mark:
-      type: string
-      enum: [".", "X", "O"]
-      description: Possible values for a board square. `.` means empty square.
-      example: "."
-    board:
-      type: array
-      maxItems: 3
-      minItems: 3
-      items:
-        type: array
-        maxItems: 3
-        minItems: 3
-        items:
-          $ref: "#/components/schemas/mark"
-    status:
-      type: object
-      properties:
-        winner:
-          $ref: "#/components/schemas/winner"
-        board:
-          $ref: "#/components/schemas/board"
     smfEvent:
       type: object
       properties:
-        winner:
-          $ref: "#/components/schemas/winner"
-        board:
-          $ref: "#/components/schemas/board"
+        ueid:
+          $ref: "#/components/schemas/ueid"
+        event:
+          $ref: "#/components/schemas/eventDetails"
+    # TODO: AMF Events, UDM events, 
+    eventDetails:
+      type: string
+      maxLength: 256
+      description: A text message describing an error
+    event:
+      type: object
+      description: A text message describing an error
+      oneOf:
+        - $ref: "#/components/schemas/smfEvent"
     statPerUE:
       type: object
       properties:
         id:
           $ref: "#/components/schemas/ueid"
-        
+        event:
+          $ref: "#/components/schemas/event"
