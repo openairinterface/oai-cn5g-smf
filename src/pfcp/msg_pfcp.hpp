@@ -2660,6 +2660,7 @@ class event_information : public pfcp::pfcp_ies_container {
 
 //------------------------------------------------------------------------------
 // Table 7.5.2.4-1: Create URR IE within PFCP Session Establishment Request
+// Section 7.5.4.17: Create URR IE within PFCP Session Modification Request
 class create_urr : public pfcp::pfcp_ies_container {
  public:
   std::pair<bool, pfcp::urr_id_t> urr_id;

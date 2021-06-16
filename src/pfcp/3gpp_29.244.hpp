@@ -3550,51 +3550,61 @@ class pfcp_node_id_ie : public pfcp_ie {
 //  }
 //};
 ////-------------------------------------
-//// IE MEASUREMENT_METHOD
-// class pfcp_measurement_method_ie : public pfcp_ie {
-// public:
-//  uint8_t todo;
-//
-//  //--------
-//  pfcp_measurement_method_ie(const pfcp::measurement_method_t& b) :
-//  pfcp_ie(PFCP_IE_MEASUREMENT_METHOD){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_measurement_method_ie() : pfcp_ie(PFCP_IE_MEASUREMENT_METHOD){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_measurement_method_ie(const pfcp_tlv& t) : pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::measurement_method_t& b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::measurement_method_t measurement_method = {};
-//      to_core_type(measurement_method);
-//      s.set(measurement_method);
-//  }
-//};
+// IE MEASUREMENT_METHOD
+class pfcp_measurement_method_ie : public pfcp_ie {
+ public:
+  union {
+    struct {
+      uint8_t durat : 1;
+      uint8_t volum : 1;
+      uint8_t event : 1;
+      uint8_t spare : 5;
+    } bf;
+    uint8_t b;
+  } u1;
+  //--------
+  pfcp_measurement_method_ie(const pfcp::measurement_method_t& b)
+      : pfcp_ie(PFCP_IE_MEASUREMENT_METHOD) {
+    u1.b        = 0;
+    u1.bf.durat = b.durat;
+    u1.bf.volum = b.volum;
+    u1.bf.event = b.event;
+    tlv.set_length(1);
+  }
+  //--------
+  pfcp_measurement_method_ie() : pfcp_ie(PFCP_IE_MEASUREMENT_METHOD) {
+    u1.b = 0;
+    tlv.set_length(1);
+  }
+  //--------
+  pfcp_measurement_method_ie(const pfcp_tlv& t) : pfcp_ie(t) { u1.b = 0; };
+  //--------
+  void to_core_type(pfcp::measurement_method_t& b) {
+    b.durat = u1.bf.durat;
+    b.volum = u1.bf.volum;
+    b.event = u1.bf.event;
+  }
+  //--------
+  void dump_to(std::ostream& os) {
+    tlv.dump_to(os);
+    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
+  }
+  //--------
+  void load_from(std::istream& is) {
+    // tlv.load_from(is);
+    if (tlv.get_length() != 1) {
+      throw pfcp_tlv_bad_length_exception(
+          tlv.type, tlv.get_length(), __FILE__, __LINE__);
+    }
+    is.read(reinterpret_cast<char*>(&u1.b), sizeof(u1.b));
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::measurement_method_t measurement_method = {};
+    to_core_type(measurement_method);
+    s.set(measurement_method);
+  }
+};
 ////-------------------------------------
 //// IE USAGE_REPORT_TRIGGER
 // class pfcp_usage_report_trigger_ie : public pfcp_ie {
@@ -4465,7 +4475,7 @@ class pfcp_urr_id_ie : public pfcp_ie {
   void dump_to(std::ostream& os) {
     tlv.dump_to(os);
     auto be_urr_id = htobe32(urr_id);
-    os.write(reinterpret_cast<const char*>(&urr_id), sizeof(urr_id));
+    os.write(reinterpret_cast<const char*>(&be_urr_id), sizeof(be_urr_id));
   }
   //--------
   void load_from(std::istream& is) {
@@ -8781,10 +8791,23 @@ class pfcp_create_urr_ie : public pfcp_grouped_ie {
   explicit pfcp_create_urr_ie(const pfcp::create_urr& b)
       : pfcp_grouped_ie(PFCP_IE_CREATE_URR) {
     tlv.set_length(0);
+    if (b.urr_id.first) {
+      std::shared_ptr<pfcp_urr_id_ie> sie(new pfcp_urr_id_ie(b.urr_id.second));
+      add_ie(sie);
+    }
+    if (b.urr_id.first) {
+      std::shared_ptr<pfcp_measurement_method_ie> sie(
+          new pfcp_measurement_method_ie(b.measurement_method.second));
+      add_ie(sie);
+    }
+    if (b.urr_id.first) {
+      std::shared_ptr<pfcp_reporting_triggers_ie> sie(
+          new pfcp_reporting_triggers_ie(b.reporting_triggers.second));
+      add_ie(sie);
+    }
+    //ToDo: Optional IEs
   }
-  //--------
   pfcp_create_urr_ie() : pfcp_grouped_ie(PFCP_IE_CREATE_URR) {}
-  //--------
   explicit pfcp_create_urr_ie(const pfcp_tlv& t) : pfcp_grouped_ie(t) {}
   //--------
   void to_core_type(pfcp::duplicating_parameters& c) {
