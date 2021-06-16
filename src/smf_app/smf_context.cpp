@@ -332,6 +332,18 @@ void smf_pdu_session::set_seid(const uint64_t& s) {
 }
 
 //------------------------------------------------------------------------------
+// TODO check if urr_id should be uniq in the UPF or in the context of a pdn
+// connection
+void smf_pdu_session::generate_urr_id(pfcp::urr_id_t& urr_id) {
+  urr_id.urr_id = urr_id_generator.get_uid();
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::release_urr_id(const pfcp::urr_id_t& urr_id) {
+  urr_id_generator.free_uid(urr_id.urr_id);
+}
+
+//------------------------------------------------------------------------------
 // TODO check if far_id should be uniq in the UPF or in the context of a pdn
 // connection
 void smf_pdu_session::generate_far_id(pfcp::far_id_t& far_id) {

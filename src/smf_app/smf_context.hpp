@@ -296,7 +296,19 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return void
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
+  /*
+   * Generate a URR ID
+   * @param [pfcp::urr_id_t &]: far_id: URR ID generated
+   * @return void
+   */
+  void generate_urr_id(pfcp::urr_id_t& urr_id);
 
+  /*
+   * Release a URR ID
+   * @param [const pfcp::urr_id_t &]: far_id: URR ID to be released
+   * @return void
+   */
+  void release_urr_id(const pfcp::urr_id_t& urr_id);
   /*
    * Generate a FAR ID
    * @param [pfcp::far_id_t &]: far_id: FAR ID generated
@@ -420,6 +432,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   //
   util::uint_generator<uint16_t> pdr_id_generator;
   util::uint_generator<uint32_t> far_id_generator;
+  util::uint_generator<uint32_t> urr_id_generator;
 
   uint32_t pdu_session_id;
   std::string amf_id;
