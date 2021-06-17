@@ -203,6 +203,7 @@ int session_create_sm_context_procedure::run(
   pfcp::pdr_id_t pdr_id         = {};  // rule ID?
   pfcp::precedence_t precedence = {};
   pfcp::pdi pdi                 = {};  // packet detection information
+  pfcp::urr_id_t urr_id         = {};
   pfcp::outer_header_removal_t outer_header_removal = {};
   // pdi IEs
   pfcp::source_interface_t source_interface          = {};
@@ -271,13 +272,28 @@ int session_create_sm_context_procedure::run(
   outer_header_removal.outer_header_removal_description =
       OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
 
+  sps->generate_urr_id(urr_id);
+
   create_pdr.set(pdr_id);
   create_pdr.set(precedence);
   create_pdr.set(pdi);
+  create_pdr.set(urr_id);
   create_pdr.set(outer_header_removal);
 
   create_pdr.set(far_id);
-  // TODO: list of Usage reporting Rule IDs
+  //-------------------
+  // IE create_urr ( Usage Reporting Rules)
+  //-------------------
+  pfcp::create_urr create_urr   = {}; 
+  pfcp::measurement_method_t measurement_method = {};
+  pfcp::reporting_triggers_t reporting_triggers = {};
+  measurement_method.event = 0;
+  measurement_method.volum = 1;
+  measurement_method.durat = 0;
+  create_urr.set(urr_id);
+  create_urr.set(measurement_method);
+  create_urr.set(reporting_triggers);
+
   // TODO: list of QoS Enforcement Rule IDs
 
   //-------------------
@@ -285,6 +301,7 @@ int session_create_sm_context_procedure::run(
   //-------------------
   n4_ser->pfcp_ies.set(create_pdr);
   n4_ser->pfcp_ies.set(create_far);
+  n4_ser->pfcp_ies.set(create_urr);
 
   // TODO: verify whether N4 SessionID should be included in PDR and FAR
   // (Section 5.8.2.11@3GPP TS 23.501)
