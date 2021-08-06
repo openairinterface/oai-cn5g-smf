@@ -23,6 +23,10 @@
 #include "logger.hpp"
 #include "conversions.hpp"
 
+extern "C" {
+#include "dynamic_memory_check.h"
+}
+
 bool mime_parser::parse(const std::string& str) {
   std::string CRLF = "\r\n";
   Logger::smf_app().debug("Parsing the message with Simple Parser");
@@ -127,6 +131,10 @@ void mime_parser::create_multipart_related_content(
   body.append(CRLF);
   body.append(std::string((char*) n2_msg_hex, n2_message.length() / 2) + CRLF);
   body.append("--" + boundary + "--" + CRLF);
+
+  // free memory
+  free_wrapper((void**) &n1_msg_hex);
+  free_wrapper((void**) &n2_msg_hex);
 }
 
 //------------------------------------------------------------------------------
@@ -158,4 +166,7 @@ void mime_parser::create_multipart_related_content(
   body.append(CRLF);
   body.append(std::string((char*) msg_hex, message.length() / 2) + CRLF);
   body.append("--" + boundary + "--" + CRLF);
+
+  // free memory
+  free_wrapper((void**) &msg_hex);
 }

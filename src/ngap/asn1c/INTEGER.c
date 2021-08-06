@@ -1288,6 +1288,34 @@ int asn_INTEGER2ulong(const INTEGER_t* iptr, unsigned long* l) {
   }
 }
 
+int asn_INTEGER2longlong(const INTEGER_t* iptr, long long* l) {
+  intmax_t v;
+  if (asn_INTEGER2imax(iptr, &v) == 0) {
+    if (v < LLONG_MIN || v > LLONG_MAX) {
+      errno = ERANGE;
+      return -1;
+    }
+    *l = v;
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
+int asn_INTEGER2ulonglong(const INTEGER_t* iptr, unsigned long long* l) {
+  uintmax_t v;
+  if (asn_INTEGER2umax(iptr, &v) == 0) {
+    if (v > ULLONG_MAX) {
+      errno = ERANGE;
+      return -1;
+    }
+    *l = v;
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
 int asn_long2INTEGER(INTEGER_t* st, long value) {
   return asn_imax2INTEGER(st, value);
 }

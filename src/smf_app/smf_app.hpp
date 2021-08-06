@@ -81,11 +81,12 @@ class smf_context_ref {
   void clear() {
     supi           = {};
     nssai          = {};
-    dnn            = "";
+    dnn            = {};
     pdu_session_id = 0;
-    amf_status_uri = "";
-    amf_addr       = "";
+    amf_status_uri = {};
+    amf_addr       = {};
     upf_node_id    = {};
+    target_amf     = "";
   }
 
   supi_t supi;
@@ -94,6 +95,7 @@ class smf_context_ref {
   snssai_t nssai;
   std::string amf_status_uri;
   std::string amf_addr;
+  std::string target_amf;  // targetServingNfId
   pfcp::node_id_t upf_node_id;
 };
 
@@ -206,14 +208,11 @@ class smf_app {
  public:
   explicit smf_app(const std::string& config_file);
   smf_app(smf_app const&) = delete;
-
-  virtual ~smf_app() {
-    Logger::smf_app().debug("Delete SMF_APP instance...");
-    // TODO: Unregister NRF
-  }
+  virtual ~smf_app();
 
   void operator=(smf_app const&) = delete;
 
+  void test_dns();
   /*
    * Set the association between Seid and SM Context
    * @param [const seid_t &] seid: SessionID
@@ -334,13 +333,6 @@ class smf_app {
    * @return void
    */
   void handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf);
-
-  /*
-   * Handle ITTI message from N11 to update PDU session status
-   * @param [itti_n11_update_pdu_session_status&] snu
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_update_pdu_session_status& snu);
 
   /*
    * Handle ITTI message N11 Create SM Context Response to trigger the response
@@ -652,7 +644,14 @@ class smf_app {
    */
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
+  /*
+   * will be executed when NRF Deregistration timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
   void timer_nrf_deregistration(timer_id_t timer_id, uint64_t arg2_user);
+
   /*
    * To start an association with a UPF (SMF-initiated association)
    * @param [const pfcp::node_id_t] node_id: UPF Node ID
@@ -667,6 +666,13 @@ class smf_app {
    */
   void start_upf_association(
       const pfcp::node_id_t& node_id, const upf_profile& profile);
+
+  /*
+   * To start NF registration with NRF and subscribe to UPF event notification
+   * @param void
+   * @return void
+   */
+  void start_nf_registration_discovery();
 
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be

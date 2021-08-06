@@ -4,6 +4,14 @@ set -euo pipefail
 
 CONFIG_DIR="/openair-smf/etc"
 
+# Default values
+if [[ ${USE_FQDN_DNS} == "yes" ]];then
+    AMF_IPV4_ADDRESS=${AMF_IPV4_ADDRESS:-0.0.0.0}
+    NRF_IPV4_ADDRESS=${NRF_IPV4_ADDRESS:-0.0.0.0}
+    UPF_IPV4_ADDRESS=${UPF_IPV4_ADDRESS:-0.0.0.0}
+    UDM_IPV4_ADDRESS=${UDM_IPV4_ADDRESS:-0.0.0.0}
+fi
+
 for c in ${CONFIG_DIR}/*.conf; do
     # grep variable names (format: ${VAR}) from template to be rendered
     VARS=$(grep -oP '@[a-zA-Z0-9_]+@' ${c} | sort | uniq | xargs)

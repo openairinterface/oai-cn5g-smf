@@ -32,7 +32,7 @@ int decode_registration_request(
     uint32_t len) {
   uint32_t decoded   = 0;
   int decoded_result = 0;
-  printf("decode_registration_request len:%d\n", len);
+  printf("decode_registration_request len:%u\n", len);
 
   if ((decoded_result = decode__5gs_registration_type(
            &registration_request->_5gsregistrationtype, 0, buffer + decoded,

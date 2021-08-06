@@ -61,6 +61,7 @@
 #include "smf_n4.hpp"
 #include "smf_paa_dynamic.hpp"
 #include "string.hpp"
+#include "fqdn.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -232,13 +233,6 @@ void smf_app_task(void*) {
         }
         break;
 
-      case N11_SESSION_UPDATE_PDU_SESSION_STATUS:
-        if (itti_n11_update_pdu_session_status* m =
-                dynamic_cast<itti_n11_update_pdu_session_status*>(msg)) {
-          smf_app_inst->handle_itti_msg(std::ref(*m));
-        }
-        break;
-
       case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
         if (itti_n11_create_sm_context_response* m =
                 dynamic_cast<itti_n11_create_sm_context_response*>(msg)) {
@@ -340,17 +334,28 @@ smf_app::smf_app(const std::string& config_file)
     throw;
   }
 
-  // TODO: should be done when SMF select UPF for a particular UE (should be
-  // verified)
-  for (std::vector<pfcp::node_id_t>::const_iterator it = smf_cfg.upfs.begin();
-       it != smf_cfg.upfs.end(); ++it) {
-    start_upf_association(*it);
-  }
+  Logger::smf_app().startup("Started");
+}
 
+//------------------------------------------------------------------------------
+smf_app::~smf_app() {
+  Logger::smf_app().debug("Delete SMF_APP instance...");
+  // TODO: Unregister NRF
+  if (smf_n4_inst) delete smf_n4_inst;
+  if (smf_sbi_inst) delete smf_sbi_inst;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::start_nf_registration_discovery() {
   if (smf_cfg.discover_upf) {
-    // Trigger NFStatusNotify subscription to be noticed when a new UPF becomes
-    // available (if this option is enabled)
     trigger_upf_status_notification_subscribe();
+  } else {
+    // TODO: should be done when SMF select UPF for a particular UE (should be
+    // verified)
+    for (std::vector<pfcp::node_id_t>::const_iterator it = smf_cfg.upfs.begin();
+         it != smf_cfg.upfs.end(); ++it) {
+      start_upf_association(*it);
+    }
   }
 
   // Register to NRF (if this option is enabled)
@@ -359,8 +364,6 @@ smf_app::smf_app(const std::string& config_file)
     usleep(microsecond);
     register_to_nrf();
   }
-
-  Logger::smf_app().startup("Started");
 }
 
 //------------------------------------------------------------------------------
@@ -434,8 +437,17 @@ void smf_app::start_upf_association(
             "Could not send ITTI message %s to task TASK_SMF_N4",
             n4_asc.get()->get_msg_name());
       }
+    } else if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
+      n4_asc->r_endpoint =
+          endpoint(node_id.u1.ipv4_address, pfcp::default_port);
+      int ret = itti_inst->send_msg(n4_asc);
+      if (RETURNok != ret) {
+        Logger::smf_app().error(
+            "Could not send ITTI message %s to task TASK_SMF_N4",
+            n4_asc.get()->get_msg_name());
+      }
     } else {
-      Logger::smf_app().warn("Start_association() node_id IPV6, FQDN!");
+      Logger::smf_app().warn("Start_association() node_id IPV6!");
     }
   }
 }
@@ -605,15 +617,6 @@ void smf_app::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_update_pdu_session_status& m) {
-  Logger::smf_app().info(
-      "Set PDU Session Status to %s",
-      pdu_session_status_e2str.at(static_cast<int>(m.pdu_session_status))
-          .c_str());
-  update_pdu_session_status(m.scid, m.pdu_session_status);
-}
-
-//------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
   Logger::smf_app().debug(
       "PDU Session Create SM Context: Set promise with ID %d to ready", m.pid);
@@ -731,7 +734,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   xgpp_conv::sm_context_request_from_nas(decoded_nas_msg, smreq->req);
 
   pdu_session_type.pdu_session_type = smreq->req.get_pdu_session_type();
-  // TODO: Support IPv4 only for now
+  // Support IPv4/IPv4v6 for now
   if (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
     cause_n1 = cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
   } else if (
@@ -779,7 +782,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
        PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED) ||
       (pti.procedure_transaction_id > PROCEDURE_TRANSACTION_IDENTITY_LAST)) {
     Logger::smf_app().warn(
-        "Invalid PTI value (pti = %d)", pti.procedure_transaction_id);
+        "Invalid PTI value (PTI = %d)", pti.procedure_transaction_id);
     // PDU Session Establishment Reject including cause "#81 Invalid PTI value"
     // (section 7.3.1 @3GPP TS 24.501)
     if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
@@ -817,7 +820,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
   if (message_type != PDU_SESSION_ESTABLISHMENT_REQUEST) {
     Logger::smf_app().warn(
-        "Invalid message type (message type = %d)", message_type);
+        "Invalid Message Type (Message Type = %d)", message_type);
     // PDU Session Establishment Reject
     //(24.501 (section 7.4)) implementation dependent->do similar to UE:
     // response with a 5GSM STATUS message including cause "#98 message type not
@@ -844,7 +847,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   std::string request_type = smreq->req.get_request_type();
   if (request_type.compare("INITIAL_REQUEST") != 0) {
     Logger::smf_app().warn(
-        "Invalid request type (request type = %s)", request_type.c_str());
+        "Invalid Request Type (Request Type = %s)", request_type.c_str());
     //"Existing PDU Session", AMF should use PDUSession_UpdateSMContext instead
     //(see step 3, section 4.3.2.2.1 @ 3GPP TS 23.502 v16.0.0) ignore the
     // message
@@ -944,7 +947,6 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   if (not sc.get()->is_dnn_snssai_subscription_data(dnn, snssai)) {
     Logger::smf_app().debug(
         "The Session Management Subscription data is not available");
-
     session_management_subscription* s =
         new session_management_subscription(snssai);
     std::shared_ptr<session_management_subscription> subscription =
@@ -1084,7 +1086,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     return;
   }
 
-  // Get dnn context
+  // Step 4. get dnn context
   std::shared_ptr<dnn_context> sd = {};
 
   if (!sc.get()->find_dnn_context(scf.get()->nssai, scf.get()->dnn, sd)) {
@@ -1100,10 +1102,24 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     }
   }
 
-  // Step 4. Verify AMF??
+  // Step 5. Verify AMF??
 
-  // Step 5. handle the message in smf_context
-  sc.get()->handle_pdu_session_update_sm_context_request(smreq);
+  // Step 6. Update targetServingNfId if available (for N2 Handover with AMF
+  // change)
+  if (smreq.get()->req.target_serving_nf_id_is_set()) {
+    scf.get()->target_amf = smreq.get()->req.get_target_serving_nf_id();
+  }
+
+  // Step 7. handle the message in smf_context
+  if (!sc.get()->handle_pdu_session_update_sm_context_request(smreq)) {
+    Logger::smf_app().warn(
+        "Received PDU Session Update SM Context Request, couldn't process!");
+    // trigger to send reply to AMF
+    trigger_update_context_error_response(
+        http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
+        PDU_SESSION_APPLICATION_ERROR_NETWORK_FAILURE, smreq->pid);
+  }
+  return;
 }
 //------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_release_sm_context_request(
@@ -1289,39 +1305,86 @@ bool smf_app::handle_nf_status_notification(
             upf_info);
         // Verify if the UPF is already exist
         // if not, add to the DB and send Association request
-        // UPF N4 ipv4 address
+        // UPF N4 ipv4 address/FQDN
+        std::string upf_fqdn = profile.get()->get_fqdn();
+
         std::vector<struct in_addr> ipv4_addrs = {};
         profile.get()->get_nf_ipv4_addresses(ipv4_addrs);
 
-        if (ipv4_addrs.size() < 1) {
-          Logger::smf_app().debug("No IP Addr found");
-          return false;
-        }
-
-        bool found = false;
-        for (auto node : smf_cfg.upfs) {
-          if (node.u1.ipv4_address.s_addr == ipv4_addrs[0].s_addr) {
-            found = false;
-            break;
+        // Use IPv4 addr first if available
+        if (ipv4_addrs.size() >= 1) {
+          bool found = false;
+          for (auto node : smf_cfg.upfs) {
+            if (node.u1.ipv4_address.s_addr == ipv4_addrs[0].s_addr) {
+              found = true;
+              break;
+            }
           }
-        }
-        if (!found) {
-          // Add a new UPF node
-          Logger::smf_app().debug(
-              "Add a new UPF node, Ipv4 Addr %s", inet_ntoa(ipv4_addrs[0]));
-          pfcp::node_id_t n        = {};
-          n.node_id_type           = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
-          n.u1.ipv4_address.s_addr = ipv4_addrs[0].s_addr;
-          // memcpy(&n.u1.ipv4_address, &ipv4_addrs[0], sizeof(struct in_addr));
-          smf_cfg.upfs.push_back(n);
-          upf_profile* upf_node_profile =
-              dynamic_cast<upf_profile*>(profile.get());
-          start_upf_association(n, std::ref(*upf_node_profile));
-          // start_upf_association(n,
-          // std::static_pointer_cast<upf_profile>(profile));
+          if (!found) {
+            // Add a new UPF node
+            Logger::smf_app().debug(
+                "Add a new UPF node, Ipv4 Addr %s", inet_ntoa(ipv4_addrs[0]));
+            pfcp::node_id_t n        = {};
+            n.node_id_type           = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
+            n.u1.ipv4_address.s_addr = ipv4_addrs[0].s_addr;
+            smf_cfg.upfs.push_back(n);
+            upf_profile* upf_node_profile =
+                dynamic_cast<upf_profile*>(profile.get());
+            start_upf_association(n, std::ref(*upf_node_profile));
+          } else {
+            Logger::smf_app().debug(
+                "UPF node already exist (%s)", inet_ntoa(ipv4_addrs[0]));
+          }
+
+        } else if (!upf_fqdn.empty()) {  // use FQDN
+          uint8_t addr_type            = {0};
+          std::string address          = {};
+          uint32_t upf_port            = {0};
+          struct in_addr upf_ipv4_addr = {};
+
+          fqdn::resolve(upf_fqdn, address, upf_port, addr_type);
+          if (addr_type != 0) {  // IPv6
+            // TODO:
+            Logger::smf_app().debug("Do not support IPv6 addr for UPF");
+            return false;
+          } else {  // IPv4
+
+            if (inet_aton(util::trim(address).c_str(), &upf_ipv4_addr) == 0) {
+              Logger::smf_app().debug("Bad IPv4 Addr format for UPF");
+              return false;
+            }
+          }
+          bool found = false;
+          for (auto node : smf_cfg.upfs) {
+            if ((node.u1.ipv4_address.s_addr == upf_ipv4_addr.s_addr) or
+                (upf_fqdn.compare(node.fqdn) == 0)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // Add a new UPF node
+            Logger::smf_app().debug(
+                "Add a new UPF node, FQDN %s", upf_fqdn.c_str());
+            pfcp::node_id_t n = {};
+            n.node_id_type    = pfcp::NODE_ID_TYPE_FQDN;
+            n.fqdn            = upf_fqdn;
+            n.u1.ipv4_address.s_addr =
+                upf_ipv4_addr
+                    .s_addr;  // Normally we should not do that, but ok since we
+                              // keep both fqdn and IPv4 at the same time
+
+            smf_cfg.upfs.push_back(n);
+            upf_profile* upf_node_profile =
+                dynamic_cast<upf_profile*>(profile.get());
+            start_upf_association(n, std::ref(*upf_node_profile));
+          } else {
+            Logger::smf_app().debug(
+                "UPF node already exist (%s)", address.c_str());
+          }
         } else {
-          Logger::smf_app().debug(
-              "UPF node already exist (%s)", inet_ntoa(ipv4_addrs[0]));
+          Logger::smf_app().debug("No IP Addr/FQDN found");
+          return false;
         }
       }
     } else {

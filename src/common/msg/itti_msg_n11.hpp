@@ -183,35 +183,6 @@ class itti_n11_update_sm_context_response : public itti_n11_msg {
 };
 
 //-----------------------------------------------------------------------------
-class itti_n11_update_pdu_session_status : public itti_n11_msg {
- public:
-  itti_n11_update_pdu_session_status(const task_id_t orig, const task_id_t dest)
-      : itti_n11_msg(N11_SESSION_UPDATE_PDU_SESSION_STATUS, orig, dest),
-        scid(0),
-        pdu_session_status(pdu_session_status_e::PDU_SESSION_INACTIVE) {}
-  itti_n11_update_pdu_session_status(
-      const itti_n11_update_pdu_session_status& i)
-      : itti_n11_msg(i),
-        scid(i.scid),
-        pdu_session_status(i.pdu_session_status) {}
-  itti_n11_update_pdu_session_status(
-      const itti_n11_update_pdu_session_status& i, const task_id_t orig,
-      const task_id_t dest)
-      : itti_n11_msg(i, orig, dest),
-        scid(i.scid),
-        pdu_session_status(i.pdu_session_status) {}
-  const char* get_msg_name() {
-    return "N11_SESSION_UPDATE_PDU_SESSION_STATUS";
-  };
-  void set_scid(scid_t id) { scid = id; };
-  scid_t scid;  // SM Context ID
-  pdu_session_status_e pdu_session_status;
-  void set_pdu_session_status(pdu_session_status_e status) {
-    pdu_session_status = status;
-  };
-};
-
-//-----------------------------------------------------------------------------
 class itti_n11_n1n2_message_transfer_response_status : public itti_n11_msg {
  public:
   itti_n11_n1n2_message_transfer_response_status(

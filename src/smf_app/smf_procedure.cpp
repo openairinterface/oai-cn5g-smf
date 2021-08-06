@@ -478,7 +478,7 @@ void session_create_sm_context_procedure::handle_itti_msg(
       // std::string(inet_ntoa(*((struct in_addr*)
       // &smf_cfg.amf_addr.ipv4_addr))) +
       //":" + std::to_string(smf_cfg.amf_addr.port) + NAMF_COMMUNICATION_BASE +
-      sps.get()->get_amf_addr() + NAMF_COMMUNICATION_BASE +
+      "http://" + sps.get()->get_amf_addr() + NAMF_COMMUNICATION_BASE +
       smf_cfg.amf_addr.api_version +
       fmt::format(
           NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
@@ -573,6 +573,8 @@ int session_update_sm_context_procedure::run(
     // TODO:
   }
 
+  // TODO: UPF insertion in case of Handover
+
   /*  if (not pfcp_associations::get_instance().select_up_node(
             up_node_id, NODE_SELECTION_CRITERIA_MIN_PFCP_SESSIONS)) {
       sm_context_resp->res.set_cause(
@@ -620,7 +622,9 @@ int session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_AN_REQUESTED:
     case session_management_procedures_type_e::
-        PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
+        PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2:
+    case session_management_procedures_type_e::HO_PATH_SWITCH_REQ:
+    case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
       pfcp::fteid_t dl_fteid = {};
       sm_context_req_msg.get_dl_fteid(dl_fteid);  // eNB's fteid
 
@@ -1027,7 +1031,9 @@ void session_update_sm_context_procedure::handle_itti_msg(
     case session_management_procedures_type_e::
         SERVICE_REQUEST_UE_TRIGGERED_STEP2:
     case session_management_procedures_type_e::
-        PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
+        PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2:
+    case session_management_procedures_type_e::HO_PATH_SWITCH_REQ:
+    case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
       pfcp::fteid_t dl_fteid = {};
       n11_trigger->req.get_dl_fteid(dl_fteid);
 
@@ -1161,20 +1167,6 @@ void session_update_sm_context_procedure::handle_itti_msg(
   // (Nudm_UECM_Registration)  see TS29503_Nudm_UECM.yaml (
   // /{ueId}/registrations/smf-registrations/{pduSessionId}:)
 
-  // Prepare response to send to AMF (N1N2MessageTransfer or
-  // PDUSession_UpdateSMContextResponse)
-  nlohmann::json sm_context_updated_data = {};
-  sm_context_updated_data["n1MessageContainer"]["n1MessageClass"] =
-      N1N2_MESSAGE_CLASS;
-  sm_context_updated_data["n1MessageContainer"]["n1MessageContent"]
-                         ["contentId"] = N1_SM_CONTENT_ID;
-  sm_context_updated_data["n2InfoContainer"]["n2InformationClass"] =
-      N1N2_MESSAGE_CLASS;
-  sm_context_updated_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
-      n11_triggered_pending->res.get_pdu_session_id();
-  sm_context_updated_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
-                         ["ngapData"]["contentId"] = N2_SM_CONTENT_ID;
-
   switch (session_procedure_type) {
       // PDU Session Establishment UE-Requested
     case session_management_procedures_type_e::
@@ -1280,7 +1272,19 @@ void session_update_sm_context_procedure::handle_itti_msg(
         conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
         n11_triggered_pending->res.set_n2_sm_information(n2_sm_info_hex);
 
-        // fill the content of SmContextUpdatedData
+        // Prepare response to send to AMF (N1N2MessageTransfer or
+        // PDUSession_UpdateSMContextResponse)
+        nlohmann::json sm_context_updated_data = {};
+        sm_context_updated_data["n1MessageContainer"]["n1MessageClass"] =
+            N1N2_MESSAGE_CLASS;
+        sm_context_updated_data["n1MessageContainer"]["n1MessageContent"]
+                               ["contentId"] = N1_SM_CONTENT_ID;
+        sm_context_updated_data["n2InfoContainer"]["n2InformationClass"] =
+            N1N2_MESSAGE_CLASS;
+        sm_context_updated_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+            n11_triggered_pending->res.get_pdu_session_id();
+        sm_context_updated_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
+                               ["ngapData"]["contentId"] = N2_SM_CONTENT_ID;
         sm_context_updated_data["n2SmInfoType"] =
             //["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
             "PDU_RES_REL_CMD";  // NGAP message
@@ -1327,6 +1331,57 @@ void session_update_sm_context_procedure::handle_itti_msg(
       // No need to create N1/N2 Container
       Logger::smf_app().info("PDU Session Release UE-initiated (Step 3)");
       // TODO: To be completed
+    } break;
+    case session_management_procedures_type_e::HO_PATH_SWITCH_REQ: {
+      // Create N2 SM Information: Path Switch Request Acknowledge Transfer IE
+
+      // N2 SM Information
+      smf_n2::get_instance().create_n2_path_switch_request_ack(
+          n11_triggered_pending->res, n2_sm_info_type_e::PATH_SWITCH_REQ_ACK,
+          n2_sm_info);
+
+      conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
+      n11_triggered_pending->res.set_n2_sm_information(n2_sm_info_hex);
+
+      // fill the content of SmContextUpdatedData
+      nlohmann::json json_data                           = {};
+      json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+      json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+          n11_triggered_pending->res.get_pdu_session_id();
+      json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
+               ["contentId"] = N2_SM_CONTENT_ID;
+      json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
+          "PATH_SWITCH_REQ_ACK";
+      // NGAP message json_data["upCnxState"] ="ACTIVATING";
+      n11_triggered_pending->res.set_json_data(json_data);
+
+    } break;
+
+    case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
+      // Create N2 SM Information: Handover Command Transfer IE
+
+      // N2 SM Information
+      smf_n2::get_instance().create_n2_handover_command_transfer(
+          n11_triggered_pending->res, n2_sm_info_type_e::HANDOVER_CMD,
+          n2_sm_info);
+
+      conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
+      n11_triggered_pending->res.set_n2_sm_information(n2_sm_info_hex);
+
+      // fill the content of SmContextUpdatedData
+      nlohmann::json json_data                           = {};
+      json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+      json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+          n11_triggered_pending->res.get_pdu_session_id();
+      json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
+               ["contentId"] = N2_SM_CONTENT_ID;
+      json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
+          "HANDOVER_CMD";
+      json_data["hoState"] = "PREPARED";
+      n11_triggered_pending->res.set_json_data(json_data);
+
+      // Set HO State to prepared
+      sps->set_ho_state(ho_state_e::HO_STATE_PREPARED);
     } break;
 
     default: {

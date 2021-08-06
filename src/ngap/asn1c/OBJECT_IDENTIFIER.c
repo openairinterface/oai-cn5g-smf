@@ -207,7 +207,10 @@ static enum xer_pbd_rval OBJECT_IDENTIFIER__xer_body_decode(
     if (!arcs) return XPBD_SYSTEM_FAILURE;
     ret = OBJECT_IDENTIFIER_parse_arcs(
         (const char*) chunk_buf, chunk_size, arcs, num_arcs, &endptr);
-    if (ret != num_arcs) return XPBD_SYSTEM_FAILURE; /* assert?.. */
+    if (ret != num_arcs) {
+      FREEMEM(arcs);
+      return XPBD_SYSTEM_FAILURE; /* assert?.. */
+    }
   }
 
   /*

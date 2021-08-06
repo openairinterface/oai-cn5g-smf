@@ -55,6 +55,6 @@ Based on document **3GPP TS 23.501 v16.0.0 (Section 6.2.2)**.
 | 12     | Determine SSC mode of a session​                                     | :heavy_check_mark: | Only support SSC mode 1​                     |
 | 13     | Initiator of AN specific SM information, sent via AMF over N2 to AN | :heavy_check_mark: |                                             |
 | 14     | Support for Control Plane CIoT 5GS Optimisation                     | :x:                |                                             |
-| 15     | Support of header compression. ​                                     | :x:                |                                             |
+| 15     | Support of header compression  ​                                     | :x:                |                                             |
 | 16     | Act as I-SMF in deployments                                         | :x:                |                                             |
 | 17     | Provisioning of external parameters                                 | :x:                |                                             |

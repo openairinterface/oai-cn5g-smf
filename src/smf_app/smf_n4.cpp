@@ -366,7 +366,14 @@ void smf_n4::handle_receive_association_setup_request(
       return;
     }
     bool restore_n4_sessions = false;
-    if (msg_ies_container.up_function_features.first) {
+    if (msg_ies_container.user_plane_ip_resource_information.first) {
+      // Should be detected by lower layers
+      pfcp_associations::get_instance().add_association(
+          msg_ies_container.node_id.second,
+          msg_ies_container.recovery_time_stamp.second,
+          msg_ies_container.up_function_features.second, 
+          msg_ies_container.user_plane_ip_resource_information.second, restore_n4_sessions);
+    } else if (msg_ies_container.up_function_features.first) {
       // Should be detected by lower layers
       pfcp_associations::get_instance().add_association(
           msg_ies_container.node_id.second,

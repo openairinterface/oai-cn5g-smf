@@ -54,6 +54,9 @@ extern "C" {
 #include "Ngap_QosFlowAddOrModifyResponseList.h"
 #include "Ngap_QosFlowSetupRequestItem.h"
 #include "Ngap_UL-NGU-UP-TNLModifyItem.h"
+#include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
+#include "Ngap_HandoverCommandTransfer.h"
+#include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
 #include "dynamic_memory_check.h"
 }
 
@@ -1021,6 +1024,264 @@ bool smf_n2::create_n2_pdu_session_resource_modify_response_transfer(
   return result;
 }
 
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_path_switch_request_ack(
+    pdu_session_update_sm_context_response& sm_context_res,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  // Path Switch Request Acknowledge Transfer IE
+  Logger::smf_n2().debug(
+      "Create N2 SM Information: Path Switch Request Acknowledge Transfer IE");
+  bool result = false;
+
+  Ngap_PathSwitchRequestAcknowledgeTransfer_t* path_switch_req_ack = nullptr;
+  path_switch_req_ack = (Ngap_PathSwitchRequestAcknowledgeTransfer_t*) calloc(
+      1, sizeof(Ngap_PathSwitchRequestAcknowledgeTransfer_t));
+
+  // TODO:
+  pfcp::fteid_t ul_fteid            = {};
+  qos_flow_context_updated qos_flow = {};
+
+  // get default QoS value
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
+  for (std::map<uint8_t, qos_flow_context_updated>::iterator it =
+           qos_flows.begin();
+       it != qos_flows.end(); ++it)
+    Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
+
+  if (qos_flows.empty()) {
+    free_wrapper((void**) &path_switch_req_ack);
+    return false;
+  }
+  // TODO: support only 1 qos flow
+  qos_flow = qos_flows.begin()->second;
+  ul_fteid = qos_flow.ul_fteid;
+
+  path_switch_req_ack->uL_NGU_UP_TNLInformation =
+      (Ngap_UPTransportLayerInformation*) calloc(
+          1, sizeof(Ngap_UPTransportLayerInformation));
+
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->present =
+      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel =
+      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
+
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.size = sizeof(struct in_addr);
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.buf =
+      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
+  memcpy(
+      path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+          ->transportLayerAddress.buf,
+      &ul_fteid.ipv4_address, sizeof(struct in_addr));
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.bits_unused = 0;
+
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
+      .size = TEID_GRE_KEY_LENGTH;
+  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
+      .buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
+  memcpy(
+      path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
+          .buf,
+      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
+
+  // TODO: Ngap_SecurityIndication (Optional)
+
+  // encode
+  size_t buffer_size = BUF_LEN;
+  char* buffer       = (char*) calloc(1, buffer_size);
+
+  ssize_t encoded_size = aper_encode_to_new_buffer(
+      &asn_DEF_Ngap_PathSwitchRequestAcknowledgeTransfer, nullptr,
+      path_switch_req_ack, (void**) &buffer);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        " Ngap_PathSwitchRequestAcknowledgeTransfer encode failed "
+        "(encoded size %d)",
+        encoded_size);
+    result = false;
+  } else {
+#if DEBUG_IS_ON
+    Logger::smf_n2().debug("N2 SM buffer data: ");
+    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+#endif
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+
+  // free memory
+  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
+                   .gTPTunnel->transportLayerAddress.buf);
+  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
+                   .gTPTunnel->gTP_TEID.buf);
+  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
+                   .gTPTunnel);
+  free_wrapper((void**) &buffer);
+
+  return result;
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_handover_command_transfer(
+    pdu_session_update_sm_context_response& sm_context_res,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  // Handover Command Transfer IE
+  Logger::smf_n2().debug(
+      "Create N2 SM Information: Handover Command Transfer IE");
+  bool result = false;
+
+  Ngap_HandoverCommandTransfer_t* ho_command_transfer = nullptr;
+  ho_command_transfer = (Ngap_HandoverCommandTransfer_t*) calloc(
+      1, sizeof(Ngap_HandoverCommandTransfer_t));
+
+  // TODO:
+  pfcp::fteid_t ul_fteid            = {};
+  qos_flow_context_updated qos_flow = {};
+
+  // get default QoS value
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
+  for (std::map<uint8_t, qos_flow_context_updated>::iterator it =
+           qos_flows.begin();
+       it != qos_flows.end(); ++it)
+    Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
+
+  if (qos_flows.empty()) {
+    free_wrapper((void**) &ho_command_transfer);
+    return false;
+  }
+  // TODO: support only 1 qos flow
+  qos_flow = qos_flows.begin()->second;
+  ul_fteid = qos_flow.ul_fteid;
+
+  ho_command_transfer->dLForwardingUP_TNLInformation =
+      (Ngap_UPTransportLayerInformation*) calloc(
+          1, sizeof(Ngap_UPTransportLayerInformation));
+
+  ho_command_transfer->dLForwardingUP_TNLInformation->present =
+      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel =
+      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
+
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.size = sizeof(struct in_addr);
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.buf =
+      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
+  memcpy(
+      ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
+          ->transportLayerAddress.buf,
+      &ul_fteid.ipv4_address, sizeof(struct in_addr));
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
+      ->transportLayerAddress.bits_unused = 0;
+
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel->gTP_TEID
+      .size = TEID_GRE_KEY_LENGTH;
+  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel->gTP_TEID
+      .buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
+  memcpy(
+      ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
+          ->gTP_TEID.buf,
+      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
+
+  // TODO: Ngap_SecurityIndication (Optional)
+
+  // encode
+  size_t buffer_size = BUF_LEN;
+  char* buffer       = (char*) calloc(1, buffer_size);
+
+  ssize_t encoded_size = aper_encode_to_new_buffer(
+      &asn_DEF_Ngap_HandoverCommandTransfer, nullptr, ho_command_transfer,
+      (void**) &buffer);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        " Ngap_HandoverCommandTransfer encode failed "
+        "(encoded size %d)",
+        encoded_size);
+    result = false;
+  } else {
+#if DEBUG_IS_ON
+    Logger::smf_n2().debug("N2 SM buffer data: ");
+    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+#endif
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+
+  // free memory
+  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
+                   ->choice.gTPTunnel->transportLayerAddress.buf);
+  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
+                   ->choice.gTPTunnel->gTP_TEID.buf);
+  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
+                   ->choice.gTPTunnel);
+  free_wrapper((void**) &buffer);
+
+  return result;
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_handover_preparation_unsuccessful_transfer(
+    pdu_session_update_sm_context_response& sm_context_res,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  // Handover Preparation Unsuccessful Transfer IE
+  Logger::smf_n2().debug(
+      "Create N2 SM Information: Handover Preparation Unsuccessful Transfer "
+      "IE");
+  bool result = false;
+
+  Ngap_HandoverPreparationUnsuccessfulTransfer_t*
+      ho_preparation_unsuccessrul_transfer = nullptr;
+  ho_preparation_unsuccessrul_transfer =
+      (Ngap_HandoverPreparationUnsuccessfulTransfer_t*) calloc(
+          1, sizeof(Ngap_HandoverPreparationUnsuccessfulTransfer_t));
+
+  ho_preparation_unsuccessrul_transfer->cause.present =
+      Ngap_Cause_PR_radioNetwork;  // TODO
+
+  ho_preparation_unsuccessrul_transfer->cause.choice.radioNetwork =
+      Ngap_CauseRadioNetwork_ho_target_not_allowed;
+  // encode
+  size_t buffer_size = BUF_LEN;
+  char* buffer       = (char*) calloc(1, buffer_size);
+
+  ssize_t encoded_size = aper_encode_to_new_buffer(
+      &asn_DEF_Ngap_HandoverPreparationUnsuccessfulTransfer, nullptr,
+      ho_preparation_unsuccessrul_transfer, (void**) &buffer);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        " Ngap_HandoverPreparationUnsuccessfulTransfer encode failed "
+        "(encoded size %d)",
+        encoded_size);
+    result = false;
+  } else {
+#if DEBUG_IS_ON
+    Logger::smf_n2().debug("N2 SM buffer data: ");
+    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+#endif
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+
+  // free memory
+  free_wrapper((void**) &buffer);
+
+  return result;
+}
+
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
     std::shared_ptr<Ngap_PDUSessionResourceSetupResponseTransfer_t>& ngap_IE,
@@ -1134,6 +1395,159 @@ int smf_n2::decode_n2_sm_information(
       nullptr, ATS_ALIGNED_CANONICAL_PER,
       &asn_DEF_Ngap_PDUSessionResourceSetupUnsuccessfulTransfer,
       (void**) &ngap_IE, (void*) data, data_len);
+
+  // free memory
+  free_wrapper((void**) &data);
+
+  if (rc.code != RC_OK) {
+    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
+
+    return RETURNerror;
+  }
+  return RETURNok;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<Ngap_PathSwitchRequestTransfer_t>& ngap_IE,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (Ngap_PathSwitchRequestTransfer) "
+      "from N2 SM Information");
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  // Ngap_PathSwitchRequestTransfer
+  asn_dec_rval_t rc = asn_decode(
+      nullptr, ATS_ALIGNED_CANONICAL_PER,
+      &asn_DEF_Ngap_PathSwitchRequestTransfer, (void**) &ngap_IE, (void*) data,
+      data_len);
+
+  // free memory
+  free_wrapper((void**) &data);
+
+  if (rc.code != RC_OK) {
+    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
+
+    return RETURNerror;
+  }
+  return RETURNok;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<Ngap_HandoverRequiredTransfer_t>& ngap_IE,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (Ngap_HandoverRequired) "
+      "from N2 SM Information");
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  // Ngap_HandoverRequired
+  asn_dec_rval_t rc = asn_decode(
+      nullptr, ATS_ALIGNED_CANONICAL_PER,
+      &asn_DEF_Ngap_HandoverRequiredTransfer, (void**) &ngap_IE, (void*) data,
+      data_len);
+
+  // free memory
+  free_wrapper((void**) &data);
+
+  if (rc.code != RC_OK) {
+    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
+
+    return RETURNerror;
+  }
+  return RETURNok;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<Ngap_HandoverRequestAcknowledgeTransfer_t>& ngap_IE,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (Ngap_HandoverRequestAcknowledgeTransfer) "
+      "from N2 SM Information");
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  // Ngap_HandoverRequired
+  asn_dec_rval_t rc = asn_decode(
+      nullptr, ATS_ALIGNED_CANONICAL_PER,
+      &asn_DEF_Ngap_HandoverRequestAcknowledgeTransfer, (void**) &ngap_IE,
+      (void*) data, data_len);
+
+  // free memory
+  free_wrapper((void**) &data);
+
+  if (rc.code != RC_OK) {
+    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
+
+    return RETURNerror;
+  }
+  return RETURNok;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>&
+        ngap_IE,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message "
+      "(Ngap_HandoverResourceAllocationUnsuccessfulTransfer) "
+      "from N2 SM Information");
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  // Ngap_HandoverRequired
+  asn_dec_rval_t rc = asn_decode(
+      nullptr, ATS_ALIGNED_CANONICAL_PER,
+      &asn_DEF_Ngap_HandoverResourceAllocationUnsuccessfulTransfer,
+      (void**) &ngap_IE, (void*) data, data_len);
+
+  // free memory
+  free_wrapper((void**) &data);
+
+  if (rc.code != RC_OK) {
+    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
+
+    return RETURNerror;
+  }
+  return RETURNok;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t>& ngap_IE,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message "
+      "(Ngap_SecondaryRATDataUsageReportTransfer) "
+      "from N2 SM Information");
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  // Ngap_HandoverRequired
+  asn_dec_rval_t rc = asn_decode(
+      nullptr, ATS_ALIGNED_CANONICAL_PER,
+      &asn_DEF_Ngap_SecondaryRATDataUsageReportTransfer, (void**) &ngap_IE,
+      (void*) data, data_len);
 
   // free memory
   free_wrapper((void**) &data);

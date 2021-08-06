@@ -65,7 +65,7 @@ static int memb_Ngap_usageCountUL_constraint_1(
     const asn_TYPE_descriptor_t* td, const void* sptr,
     asn_app_constraint_failed_f* ctfailcb, void* app_key) {
   const INTEGER_t* st = (const INTEGER_t*) sptr;
-  long value;
+  unsigned long long value;
 
   if (!sptr) {
     ASN__CTFAIL(
@@ -74,14 +74,14 @@ static int memb_Ngap_usageCountUL_constraint_1(
     return -1;
   }
 
-  if (asn_INTEGER2long(st, &value)) {
+  if (asn_INTEGER2ulonglong(st, &value)) {
     ASN__CTFAIL(
         app_key, td, sptr, "%s: value too large (%s:%d)", td->name, __FILE__,
         __LINE__);
     return -1;
   }
 
-  if ((value >= 0 && value <= 18446744073709551615)) {
+  if ((value >= 0 && value <= ULLONG_MAX)) {
     /* Constraint check succeeded */
     return 0;
   } else {
@@ -96,7 +96,7 @@ static int memb_Ngap_usageCountDL_constraint_1(
     const asn_TYPE_descriptor_t* td, const void* sptr,
     asn_app_constraint_failed_f* ctfailcb, void* app_key) {
   const INTEGER_t* st = (const INTEGER_t*) sptr;
-  long value;
+  unsigned long long value;
 
   if (!sptr) {
     ASN__CTFAIL(
@@ -105,14 +105,14 @@ static int memb_Ngap_usageCountDL_constraint_1(
     return -1;
   }
 
-  if (asn_INTEGER2long(st, &value)) {
+  if (asn_INTEGER2ulonglong(st, &value)) {
     ASN__CTFAIL(
         app_key, td, sptr, "%s: value too large (%s:%d)", td->name, __FILE__,
         __LINE__);
     return -1;
   }
 
-  if ((value >= 0 && value <= 18446744073709551615)) {
+  if ((value >= 0 && value <= ULLONG_MAX)) {
     /* Constraint check succeeded */
     return 0;
   } else {
@@ -146,7 +146,7 @@ static asn_oer_constraints_t asn_OER_memb_Ngap_usageCountUL_constr_4
 static asn_per_constraints_t asn_PER_memb_Ngap_usageCountUL_constr_4
     CC_NOTUSED = {
         {APC_CONSTRAINED, 64, -1, 0,
-         18446744073709551615} /* (0..18446744073709551615) */,
+         ULLONG_MAX} /* (0..18446744073709551615) */,
         {APC_UNCONSTRAINED, -1, -1, 0, 0},
         0,
         0 /* No PER value map */
@@ -156,7 +156,7 @@ static asn_oer_constraints_t asn_OER_memb_Ngap_usageCountDL_constr_5
 static asn_per_constraints_t asn_PER_memb_Ngap_usageCountDL_constr_5
     CC_NOTUSED = {
         {APC_CONSTRAINED, 64, -1, 0,
-         18446744073709551615} /* (0..18446744073709551615) */,
+         ULLONG_MAX} /* (0..18446744073709551615) */,
         {APC_UNCONSTRAINED, -1, -1, 0, 0},
         0,
         0 /* No PER value map */

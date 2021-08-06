@@ -148,4 +148,15 @@ static const std::vector<std::string> upCnx_state_e2str = {
     "UPCNX_STATE_ACTIVATED", "UPCNX_STATE_DEACTIVATED",
     "UPCNX_STATE_ACTIVATING"};
 
+enum class ho_state_e {
+  HO_STATE_NONE      = 0,
+  HO_STATE_PREPARING = 1,
+  HO_STATE_PREPARED  = 2,
+  HO_STATE_COMPLETED = 3,
+  HO_STATE_CANCELLED = 4
+};
+
+static const std::vector<std::string> ho_state_e2str = {
+    "NONE", "PREPARING", "PREPARED", "COMPLETED", "CANCELLED"};
+
 #endif

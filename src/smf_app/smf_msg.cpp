@@ -530,6 +530,105 @@ void pdu_session_update_sm_context_request::set_release(bool value) {
   m_release_is_set = true;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_to_be_switched(bool value) {
+  m_to_be_switched        = value;
+  m_to_be_switched_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_to_be_switched(
+    bool& value) const {
+  value = m_to_be_switched;
+}
+
+//-----------------------------------------------------------------------------
+bool pdu_session_update_sm_context_request::get_to_be_switched() const {
+  return m_to_be_switched;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_failed_to_be_switched(
+    bool value) {
+  m_failed_to_be_switched        = value;
+  m_failed_to_be_switched_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_failed_to_be_switched(
+    bool& value) const {
+  value = m_failed_to_be_switched;
+}
+
+//-----------------------------------------------------------------------------
+bool pdu_session_update_sm_context_request::get_failed_to_be_switched() const {
+  return m_failed_to_be_switched;
+}
+
+//-----------------------------------------------------------------------------
+std::string pdu_session_update_sm_context_request::get_ho_state() const {
+  return m_ho_state;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_ho_state(
+    std::string& state) const {
+  state = m_ho_state;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_ho_state(
+    const std::string& state) {
+  m_ho_state        = state;
+  m_ho_state_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+bool pdu_session_update_sm_context_request::ho_state_is_set() const {
+  return m_ho_state_is_set;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_target_serving_nf_id(
+    std::string& nf_id) const {
+  nf_id = m_target_serving_nf_id;
+}
+
+//-----------------------------------------------------------------------------
+std::string pdu_session_update_sm_context_request::get_target_serving_nf_id()
+    const {
+  return m_target_serving_nf_id;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_target_serving_nf_id(
+    const std::string& nf_id) {
+  m_target_serving_nf_id        = nf_id;
+  m_target_serving_nf_id_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+bool pdu_session_update_sm_context_request::target_serving_nf_id_is_set()
+    const {
+  return m_target_serving_nf_id_is_set;
+}
+
+//-----------------------------------------------------------------------------
+ng_ran_target_id_t pdu_session_update_sm_context_request::get_target_id()
+    const {
+  return m_ng_ran_target_id;
+}
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_target_id(
+    ng_ran_target_id_t& value) const {
+  value = m_ng_ran_target_id;
+}
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_target_id(
+    const ng_ran_target_id_t& value) {
+  m_ng_ran_target_id = value;
+}
+
 /*
  * class: PDU Session Update SM Context Response
  */

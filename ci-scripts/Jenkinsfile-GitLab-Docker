@@ -67,7 +67,8 @@ pipeline {
       "Build RHEL8 SMF Image",
       "Static Code Analysis",
       "Code Formatting Checker",
-      "Test with DsTester"
+      "Test with DsTester on Docker environment",
+      "Test with DsTester on OC environment"
     ])
 
   }
@@ -121,7 +122,8 @@ pipeline {
         script {
           sh "git clean -x -d -f > /dev/null 2>&1"
           if ("MERGE".equals(env.gitlabActionType)) {
-            gitlabMergeRequestLink = sh "curl --silent \"https://gitlab.eurecom.fr/api/v4/projects/oai%2Fcn5g%2Foai-cn5g-smf/merge_requests/${env.gitlabMergeRequestIid}\" | jq .web_url | sed 's#\"##g'"
+            gitlabMergeRequestLink = sh returnStdout: true, script: "curl --silent 'https://gitlab.eurecom.fr/api/v4/projects/oai%2Fcn5g%2Foai-cn5g-smf/merge_requests/${env.gitlabMergeRequestIid}' | jq .web_url | sed 's#\"##g'"
+            gitlabMergeRequestLink = gitlabMergeRequestLink.trim()
             echo "========= THIS IS A MERGE REQUEST =========="
             echo "MR ID       is ${env.gitlabMergeRequestIid}"
             echo "MR LINK     is ${gitlabMergeRequestLink}"
@@ -337,32 +339,66 @@ pipeline {
         }
       }
     }
-    stage ('Testing in CN-5G-FED environment') {
-      steps {
-        script {
-          gitlabCommitStatus(name: "Test with DsTester") {
-            localStatus = build job: params.CN5G_FED_PipelineName,
-              parameters: [
-                string(name: 'SMF_TAG', value: String.valueOf(smf_tag)),
-                string(name: 'SMF_BRANCH', value: String.valueOf(smf_branch))
-              ], propagate: false
-            localResult = localStatus.getResult()
+    stage('Testing whole 5g Core Network Functions') {
+      parallel {
+        stage ('Testing in CN-5G-FED Docker environment') {
+          steps {
+            script {
+              gitlabCommitStatus(name: "Test with DsTester on Docker environment") {
+                localStatus = build job: params.CN5G_FED_PipelineName,
+                  parameters: [
+                    string(name: 'SMF_TAG', value: String.valueOf(smf_tag)),
+                    string(name: 'SMF_BRANCH', value: String.valueOf(smf_branch))
+                  ], propagate: false
+                localResult = localStatus.getResult()
 
-            if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-              echo "Federation Test Job is OK"
-            } else {
-              echo "Federation Test Job is KO"
-              sh "ci-scripts/fail.sh"
+                if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+                  echo "Docker Federation Test Job is OK"
+                } else {
+                  echo "Docker Federation Test Job is KO"
+                  sh "ci-scripts/fail.sh"
+                }
+              }
+            }
+          }
+          post {
+            always {
+              script {
+                copyArtifacts(projectName: params.CN5G_FED_PipelineName,
+                              filter: '*_results_oai_cn5g.html',
+                              selector: lastCompleted())
+              }
             }
           }
         }
-      }
-      post {
-        always {
-          script {
-            copyArtifacts(projectName: params.CN5G_FED_PipelineName,
-                          filter: '*_results_oai_cn5g.html',
-                          selector: lastCompleted())
+        stage ('Testing in CN-5G-FED OC environment') {
+          steps {
+            script {
+              gitlabCommitStatus(name: "Test with DsTester on OC environment") {
+                localStatus = build job: params.CN5G_FED_OC_PipelineName,
+                  parameters: [
+                    string(name: 'SMF_TAG', value: String.valueOf(smf_tag)),
+                    string(name: 'SMF_BRANCH', value: String.valueOf(smf_branch))
+                  ], propagate: false
+                localResult = localStatus.getResult()
+
+                if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+                  echo "OC Federation Test Job is OK"
+                } else {
+                  echo "OC Federation Test Job is KO"
+                  sh "ci-scripts/fail.sh"
+                }
+              }
+            }
+          }
+          post {
+            always {
+              script {
+                copyArtifacts(projectName: params.CN5G_FED_OC_PipelineName,
+                              filter: '*_results_oai_cn5g_oc.html',
+                              selector: lastCompleted())
+              }
+            }
           }
         }
       }
@@ -438,6 +474,10 @@ pipeline {
             sh "sed -i -e 's#TEMPLATE_MERGE_REQUEST_LINK#${gitlabMergeRequestLink}#g' *_results_oai_cn5g.html"
             sh "sed -i -e 's#TEMPLATE_MERGE_REQUEST_TEMPLATE#${env.gitlabMergeRequestTitle}#' *_results_oai_cn5g.html"
           }
+          if (fileExists('test_results_oai_cn5g_oc.html')) {
+            sh "sed -i -e 's#TEMPLATE_MERGE_REQUEST_LINK#${gitlabMergeRequestLink}#g' *_results_oai_cn5g_oc.html"
+            sh "sed -i -e 's#TEMPLATE_MERGE_REQUEST_TEMPLATE#${env.gitlabMergeRequestTitle}#' *_results_oai_cn5g_oc.html"
+          }
         } else {
           sh "python3 ci-scripts/generateHtmlReport.py --job_name=${JOB_NAME} --job_id=${BUILD_ID} --job_url=${BUILD_URL} --git_url=${GIT_URL} --git_src_branch=${GIT_BRANCH} --git_src_commit=${GIT_COMMIT}"
         }
@@ -449,6 +489,10 @@ pipeline {
         if (fileExists('test_results_oai_cn5g.html')) {
           sh "sed -i -e 's#TEMPLATE_TIME#${JOB_TIMESTAMP}#' *_results_oai_cn5g.html"
           archiveArtifacts artifacts: '*_results_oai_cn5g.html'
+        }
+        if (fileExists('test_results_oai_cn5g_oc.html')) {
+          sh "sed -i -e 's#TEMPLATE_TIME#${JOB_TIMESTAMP}#' *_results_oai_cn5g_oc.html"
+          archiveArtifacts artifacts: '*_results_oai_cn5g_oc.html'
         }
 
         // Sending email to commiter

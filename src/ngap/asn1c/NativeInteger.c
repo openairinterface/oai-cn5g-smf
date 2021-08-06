@@ -263,7 +263,7 @@ asn_dec_rval_t NativeInteger_decode_uper(
   void* tmpintptr = &tmpint;
 
   (void) opt_codec_ctx;
-  ASN_DEBUG("Decoding NativeInteger %s (UPER)", td->name);
+  if (td->name) ASN_DEBUG("Decoding NativeInteger %s (UPER)", td->name);
 
   if (!native) {
     native = (long*) (*sptr = CALLOC(1, sizeof(*native)));
@@ -298,7 +298,8 @@ asn_enc_rval_t NativeInteger_encode_uper(
 
   native = *(const long*) sptr;
 
-  ASN_DEBUG("Encoding NativeInteger %s %ld (UPER)", td->name, native);
+  if (td->name)
+    ASN_DEBUG("Encoding NativeInteger %s %ld (UPER)", td->name, native);
 
   memset(&tmpint, 0, sizeof(tmpint));
   if ((specs && specs->field_unsigned) ? asn_ulong2INTEGER(&tmpint, native) :
@@ -320,7 +321,7 @@ asn_dec_rval_t NativeInteger_decode_aper(
   void* tmpintptr = &tmpint;
 
   (void) opt_codec_ctx;
-  ASN_DEBUG("Decoding NativeInteger %s (APER)", td->name);
+  if (td->name) ASN_DEBUG("Decoding NativeInteger %s (APER)", td->name);
 
   if (!native) {
     native = (long*) (*sptr = CALLOC(1, sizeof(*native)));
@@ -355,7 +356,8 @@ asn_enc_rval_t NativeInteger_encode_aper(
 
   native = *(const long*) sptr;
 
-  ASN_DEBUG("Encoding NativeInteger %s %ld (APER)", td->name, native);
+  if (td->name)
+    ASN_DEBUG("Encoding NativeInteger %s %ld (APER)", td->name, native);
 
   memset(&tmpint, 0, sizeof(tmpint));
   if ((specs && specs->field_unsigned) ?

@@ -53,7 +53,7 @@ void SubscriptionsCollectionApi::create_individual_subcription_handler(
     Pistache::Http::ResponseWriter response) {
   // Getting the body param
 
-  NsmfEventExposure nsmfEventExposure;
+  NsmfEventExposure nsmfEventExposure = {};
 
   try {
     nlohmann::json::parse(request.body()).get_to(nsmfEventExposure);

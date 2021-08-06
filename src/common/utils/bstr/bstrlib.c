@@ -163,7 +163,8 @@ int balloc(bstring b, int olen) {
 
 #if defined(BSTRLIB_TEST_CANARY)
     if (len > b->slen + 1) {
-      memchr(b->data + b->slen + 1, 'X', len - (b->slen + 1));
+      if ((memchr(b->data + b->slen + 1, 'X', len - (b->slen + 1))) == NULL)
+        return BSTR_ERR;
     }
 #endif
   }
@@ -217,7 +218,8 @@ bstring bfromcstr(const char* str) {
   b = (bstring) bstr__alloc(sizeof(struct tagbstring));
   if (NULL == b) return NULL;
   b->slen = (int) j;
-  if (NULL == (b->data = (unsigned char*) bstr__alloc(b->mlen = i))) {
+  b->data = (unsigned char*) bstr__alloc(b->mlen = i);
+  if (b->data == NULL) {
     bstr__free(b);
     return NULL;
   }
@@ -1587,7 +1589,8 @@ int binsertblk(
   /* Aliasing case */
   if (((size_t)((unsigned char*) blk + len)) >= ((size_t) b->data) &&
       ((size_t) blk) < ((size_t)(b->data + b->mlen))) {
-    if (NULL == (aux = (unsigned char*) bstr__alloc(len))) return BSTR_ERR;
+    aux = (unsigned char*) bstr__alloc(len);
+    if (aux == NULL) return BSTR_ERR;
     bstr__memcpy(aux, blk, len);
   }
 
@@ -2475,8 +2478,10 @@ bstring bjoinblk(const struct bstrList* bl, const void* blk, int len) {
  *  NULL is returned, otherwise a bstring with the correct result is returned.
  */
 bstring bjoin(const struct bstrList* bl, const_bstring sep) {
-  if (sep == NULL) return NULL;
-  if (sep != NULL && (sep->slen < 0 || sep->data == NULL)) return NULL;
+  if (sep == NULL)
+    return NULL;
+  else if (sep->slen < 0 || sep->data == NULL)
+    return NULL;
   return bjoinblk(bl, sep->data, sep->slen);
 }
 

@@ -65,6 +65,7 @@ std::string Utility::home_network_gprs(const plmn_t& plmn) {
 
   s.append(".mnc");
   if (mnc_len == 2) s.append("0");
+  if (mnc < 10) s.append("0");
   s.append(std::to_string(mnc));
   s.append(".mcc");
   s.append(std::to_string(mcc));

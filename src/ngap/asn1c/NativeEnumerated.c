@@ -111,7 +111,7 @@ asn_dec_rval_t NativeEnumerated_decode_uper(
     if (!native) ASN__DECODE_FAILED;
   }
 
-  ASN_DEBUG("Decoding %s as NativeEnumerated", td->name);
+  if (td->name) ASN_DEBUG("Decoding %s as NativeEnumerated", td->name);
 
   if (ct->flags & APC_EXTENSIBLE) {
     int inext = per_get_few_bits(pd, 1);
@@ -171,7 +171,7 @@ asn_enc_rval_t NativeEnumerated_encode_uper(
   else
     ASN__ENCODE_FAILED; /* Mandatory! */
 
-  ASN_DEBUG("Encoding %s as NativeEnumerated", td->name);
+  if (td->name) ASN_DEBUG("Encoding %s as NativeEnumerated", td->name);
 
   er.encoded = 0;
 
@@ -307,7 +307,7 @@ asn_enc_rval_t NativeEnumerated_encode_aper(
   else
     ASN__ENCODE_FAILED; /* Mandatory! */
 
-  ASN_DEBUG("Encoding %s as NativeEnumerated", td->name);
+  if (td->name) ASN_DEBUG("Encoding %s as NativeEnumerated", td->name);
 
   er.encoded = 0;
 
