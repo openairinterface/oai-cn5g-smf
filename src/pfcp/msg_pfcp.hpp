@@ -6741,6 +6741,9 @@ class pfcp_session_modification_request : public pfcp_ies_container {
   std::vector<pfcp::create_pdr> create_pdrs;
   std::vector<pfcp::create_far> create_fars;
   std::vector<pfcp::create_urr> create_urrs;
+
+  std::vector<pfcp::query_urr> query_urrs;
+
   std::vector<pfcp::create_qer> create_qers;
   std::pair<bool, pfcp::create_bar> create_bar;
   std::pair<bool, pfcp::create_traffic_endpoint> create_traffic_endpoint;
@@ -6774,6 +6777,7 @@ class pfcp_session_modification_request : public pfcp_ies_container {
         create_fars(),
         create_urrs(),
         create_qers(),
+        query_urrs(),
         create_bar(),
         create_traffic_endpoint(),
         update_pdrs(),
@@ -6804,6 +6808,7 @@ class pfcp_session_modification_request : public pfcp_ies_container {
         create_fars(i.create_fars),
         create_urrs(i.create_urrs),
         create_qers(i.create_qers),
+        query_urrs(i.query_urrs),
         create_bar(i.create_bar),
         create_traffic_endpoint(i.create_traffic_endpoint),
         update_pdrs(i.update_pdrs),
@@ -6956,6 +6961,7 @@ class pfcp_session_modification_request : public pfcp_ies_container {
   void set(const pfcp::remove_far& v) { remove_fars.push_back(v); }
   void set(const pfcp::remove_urr& v) { remove_urrs.push_back(v); }
   void set(const pfcp::remove_qer& v) { remove_qers.push_back(v); }
+  void set(const pfcp::query_urr& v) { query_urrs.push_back(v); }
   void set(const pfcp::remove_bar& v) {
     remove_bar.first  = true;
     remove_bar.second = v;

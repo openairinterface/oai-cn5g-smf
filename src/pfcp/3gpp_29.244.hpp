@@ -1469,6 +1469,7 @@ class pfcp_transport_level_marking_ie : public pfcp_ie {
     s.set(v);
   }
 };
+
 //-------------------------------------
 // IE VOLUME_THRESHOLD
 class pfcp_volume_threshold_ie : public pfcp_ie {
@@ -4494,6 +4495,34 @@ class pfcp_urr_id_ie : public pfcp_ie {
     s.set(v);
   }
 };
+
+class pfcp_query_urr_ie : public pfcp_grouped_ie {
+ public:
+  //--------
+  explicit pfcp_query_urr_ie(const pfcp::query_urr& b)
+      : pfcp_grouped_ie(PFCP_IE_QUERY_URR) {
+    tlv.set_length(0);
+    if (b.urr_id.first) {
+      std::shared_ptr<pfcp::pfcp_urr_id_ie> sie(new pfcp::pfcp_urr_id_ie(b.urr_id.second));
+      add_ie(sie);
+    }
+  }
+  pfcp_query_urr_ie() : pfcp_grouped_ie(PFCP_IE_QUERY_URR) {}
+  explicit pfcp_query_urr_ie(const pfcp_tlv& t) : pfcp_grouped_ie(t) {}
+  //--------
+  void to_core_type(pfcp::duplicating_parameters& c) {
+    for (auto sie : ies) {
+      sie.get()->to_core_type(c);
+    }
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::query_urr i = {};
+    to_core_type(i);
+    s.set(i);
+  }
+};
+
 ////-------------------------------------
 //// IE LINKED_URR_ID
 // class pfcp_linked_urr_id_ie : public pfcp_ie {
