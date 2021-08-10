@@ -4503,7 +4503,8 @@ class pfcp_query_urr_ie : public pfcp_grouped_ie {
       : pfcp_grouped_ie(PFCP_IE_QUERY_URR) {
     tlv.set_length(0);
     if (b.urr_id.first) {
-      std::shared_ptr<pfcp::pfcp_urr_id_ie> sie(new pfcp::pfcp_urr_id_ie(b.urr_id.second));
+      std::shared_ptr<pfcp::pfcp_urr_id_ie> sie(
+          new pfcp::pfcp_urr_id_ie(b.urr_id.second));
       add_ie(sie);
     }
   }

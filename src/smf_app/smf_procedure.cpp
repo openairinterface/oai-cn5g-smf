@@ -596,13 +596,14 @@ int session_update_sm_context_procedure::run(
   n4_ser->r_endpoint = endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
   n4_triggered = std::shared_ptr<itti_n4_session_modification_request>(n4_ser);
 
-  pfcp::query_urr query_urr = {};
-  pfcp::urr_id_t query_urr_id = {};
-  query_urr_id.urr_id = 1;
+  // // this part is only active when we test all cases.
+  // pfcp::query_urr query_urr = {};
+  // pfcp::urr_id_t query_urr_id = {};
+  // query_urr_id.urr_id = 1;
   
-  // query_urr_id
-  query_urr.set(query_urr_id);
-  n4_ser->pfcp_ies.set(query_urr);
+  // // query_urr_id
+  // query_urr.set(query_urr_id);
+  // n4_ser->pfcp_ies.set(query_urr);
 
   // qos Flow to be modified
   pdu_session_update_sm_context_request sm_context_req_msg =

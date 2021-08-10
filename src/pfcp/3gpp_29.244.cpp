@@ -1278,7 +1278,6 @@ pfcp_msg::pfcp_msg(const pfcp_session_modification_request& pfcp_ies)
     add_ie(sie);
   }
 
-
   //  if (pfcp_ies.update_bar.first) {std::shared_ptr<pfcp_update_bar_ie>
   //  sie(new pfcp_update_bar_ie(pfcp_ies.update_bar.second)); add_ie(sie);} if
   //  (pfcp_ies.update_traffic_endpoint.first)
