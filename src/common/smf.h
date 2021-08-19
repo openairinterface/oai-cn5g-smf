@@ -123,11 +123,17 @@ enum class session_management_procedures_type_e {
   PDU_SESSION_RELEASE_SMF_INITIATED           = 13,
   PDU_SESSION_RELEASE_AMF_INITIATED           = 14,
   PDU_SESSION_RELEASE_AN_INITIATED            = 15,
-  PDU_SESSION_TEST                            = 16
+  HO_PATH_SWITCH_REQ                          = 16,
+  N2_HO_PREPARATION_PHASE_STEP1               = 17,
+  N2_HO_PREPARATION_PHASE_STEP2               = 18,
+  N2_HO_EXECUTION_PHASE                       = 19,
+  N2_HO_CANCELLATION_PHASE                    = 20,
+  PDU_SESSION_TEST                            = 21
 };
 
 static const std::vector<std::string> session_management_procedures_type_e2str =
-    {"PDU_SESSION_ESTABLISHMENT_UE_REQUESTED",
+    {"PROCEDURE_TYPE_UNKNOWN",
+     "PDU_SESSION_ESTABLISHMENT_UE_REQUESTED",
      "SERVICE_REQUEST_UE_TRIGGERED_STEP1",
      "SERVICE_REQUEST_UE_TRIGGERED_STEP2",
      "SERVICE_REQUEST_NETWORK_TRIGGERED",
@@ -142,6 +148,10 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
      "PDU_SESSION_RELEASE_SMF_INITIATED",
      "PDU_SESSION_RELEASE_AMF_INITIATED",
      "PDU_SESSION_RELEASE_AN_INITIATED",
+     "HO_PATH_SWITCH_REQ",
+     "N2_HO_PREPARATION_PHASE_STEP1",
+     "N2_HO_PREPARATION_PHASE_STEP2",
+     "N2_HO_EXECUTION_PHASE",
      "PDU_SESSION_TEST"
 
 };
@@ -194,17 +204,19 @@ typedef struct qos_profile_s {
 #define NNRF_NFM_BASE "/nnrf-nfm/"
 #define NNRF_NF_REGISTER_URL "/nf-instances/"
 #define NNRF_NF_STATUS_SUBSCRIBE_URL "/subscriptions"
-#define NRF_CURL_TIMEOUT_MS 100L
 
 // for CURL
-#define AMF_CURL_TIMEOUT_MS 100L
+#define NF_CURL_TIMEOUT_MS 100L
+#define MAX_WAIT_MSECS 10000  // 1 second
 #define AMF_NUMBER_RETRIES 3
-#define UDM_CURL_TIMEOUT_MS 100L
 #define UDM_NUMBER_RETRIES 3
 constexpr auto CURL_MIME_BOUNDARY = "----Boundary";
 
 // for N1N2
 #define BUF_LEN 512
+
+// FOR FUTURE PROMISE
+#define FUTURE_STATUS_TIMEOUT_MS 100
 
 // for PFCP
 constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;
@@ -233,6 +245,7 @@ typedef struct nf_service_version_s {
   nf_service_version_s& operator=(const nf_service_version_s& s) {
     api_version_in_uri = s.api_version_in_uri;
     api_full_version   = s.api_full_version;
+    return *this;
   }
 
   std::string to_string() const {
@@ -248,7 +261,7 @@ typedef struct nf_service_version_s {
 } nf_service_version_t;
 
 typedef struct ip_endpoint_s {
-  //struct in6_addr  ipv6_address;
+  // struct in6_addr  ipv6_address;
   struct in_addr ipv4_address;
   std::string transport;  // TCP
   unsigned int port;
@@ -323,8 +336,7 @@ typedef struct patch_item_s {
   }
 } patch_item_t;
 
-
-//TODO: move to 23.003
+// TODO: move to 23.003
 typedef struct guami_5g_s {
   plmn_t plmn;
   std::string amf_id;

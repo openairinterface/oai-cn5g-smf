@@ -58,7 +58,7 @@ int decode_authentication_response(
           return decoded_result;
         else {
           decoded += decoded_result;
-          printf("decoded(%d)\n", decoded);
+          printf("decoded(%u)\n", decoded);
           authentication_response->presence |=
               AUTHENTICATION_RESPONSE_AUTNENTICATION_RESPONSE_PARAMETER_PRESENT;
         }

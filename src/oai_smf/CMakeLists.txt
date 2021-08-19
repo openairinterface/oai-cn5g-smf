@@ -124,6 +124,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   add_boolean_option(LOG_OAI_MINIMAL True "Thread safe logging API, log only levels above NOTICE")
   SET(ASAN asan)
 endif()
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  SET(ASAN asan)
+endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_boolean_option(LOG_OAI True "Thread safe logging API")
   SET(ASAN asan)
@@ -317,5 +320,5 @@ IF(STATIC_LINKING)
 ENDIF(STATIC_LINKING)   
 
 target_link_libraries (smf ${ASAN} 
-    -Wl,--start-group CN_UTILS SMF UDP  PFCP 3GPP_COMMON_TYPES SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto NAS gflags glog dl double-conversion folly -Wl,--end-group pthread m rt config++ event boost_system pistache curl)
+    -Wl,--start-group CN_UTILS SMF UDP  PFCP 3GPP_COMMON_TYPES SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto NAS gflags glog dl double-conversion folly -Wl,--end-group pthread m rt config++ event boost_system boost_chrono pistache curl)
     

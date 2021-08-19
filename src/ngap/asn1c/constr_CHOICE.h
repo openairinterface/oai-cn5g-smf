@@ -2,8 +2,8 @@
  * Copyright (c) 2003-2017 Lev Walkin <vlm@lionet.info>. All rights reserved.
  * Redistribution and modifications are permitted subject to BSD license.
  */
-#ifndef	_CONSTR_CHOICE_H_
-#define	_CONSTR_CHOICE_H_
+#ifndef _CONSTR_CHOICE_H_
+#define _CONSTR_CHOICE_H_
 
 #include <asn_application.h>
 
@@ -12,28 +12,28 @@ extern "C" {
 #endif
 
 typedef struct asn_CHOICE_specifics_s {
-	/*
-	 * Target structure description.
-	 */
-	unsigned struct_size;       /* Size of the target structure. */
-	unsigned ctx_offset;        /* Offset of the asn_codec_ctx_t member */
-	unsigned pres_offset;       /* Identifier of the present member */
-	unsigned pres_size;         /* Size of the identifier (enum) */
+  /*
+   * Target structure description.
+   */
+  unsigned struct_size; /* Size of the target structure. */
+  unsigned ctx_offset;  /* Offset of the asn_codec_ctx_t member */
+  unsigned pres_offset; /* Identifier of the present member */
+  unsigned pres_size;   /* Size of the identifier (enum) */
 
-	/*
-	 * Tags to members mapping table.
-	 */
-	const asn_TYPE_tag2member_t *tag2el;
-	unsigned tag2el_count;
+  /*
+   * Tags to members mapping table.
+   */
+  const asn_TYPE_tag2member_t* tag2el;
+  unsigned tag2el_count;
 
-	/* Canonical ordering of CHOICE elements, for PER */
-	const unsigned *to_canonical_order;
-	const unsigned *from_canonical_order;
+  /* Canonical ordering of CHOICE elements, for PER */
+  const unsigned* to_canonical_order;
+  const unsigned* from_canonical_order;
 
-	/*
-	 * Extensions-related stuff.
-	 */
-	signed ext_start; /* First member of extensions, or -1 */
+  /*
+   * Extensions-related stuff.
+   */
+  signed ext_start; /* First member of extensions, or -1 */
 } asn_CHOICE_specifics_t;
 
 /*
@@ -61,8 +61,8 @@ extern asn_TYPE_operation_t asn_OP_CHOICE;
  * Return the 1-based choice variant presence index.
  * Returns 0 in case of error.
  */
-unsigned CHOICE_variant_get_presence(const asn_TYPE_descriptor_t *td,
-                                     const void *structure_ptr);
+unsigned CHOICE_variant_get_presence(
+    const asn_TYPE_descriptor_t* td, const void* structure_ptr);
 
 /*
  * Sets or resets the 1-based choice variant presence index.
@@ -70,11 +70,11 @@ unsigned CHOICE_variant_get_presence(const asn_TYPE_descriptor_t *td,
  * member is freed and zeroed-out first.
  * Returns 0 on success and -1 on error.
  */
-int CHOICE_variant_set_presence(const asn_TYPE_descriptor_t *td,
-                                void *structure_ptr, unsigned present);
+int CHOICE_variant_set_presence(
+    const asn_TYPE_descriptor_t* td, void* structure_ptr, unsigned present);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	/* _CONSTR_CHOICE_H_ */
+#endif /* _CONSTR_CHOICE_H_ */

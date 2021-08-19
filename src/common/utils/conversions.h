@@ -269,7 +269,6 @@
           pLMN.mnc_digit2 * 10 + pLMN.mnc_digit1;                              \
   } while (0)
 
-
 /*
  * TS 36.413 v10.9.0 section 9.2.1.37:
  * Macro eNB ID:

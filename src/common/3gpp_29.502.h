@@ -98,6 +98,7 @@ static const std::vector<std::string> pdu_session_application_error_e2str = {
 
 // 6.1.6.3.12 Enumeration: N2SmInfoType @3GPP TS 29.502 V16.0.0
 enum class n2_sm_info_type_e {
+  UNKNOWN_TYPE       = 0,
   PDU_RES_SETUP_REQ  = 1,   // PDU Session Resource Setup Request Transfer
   PDU_RES_SETUP_RSP  = 2,   // PDU Session Resource Setup Response Transfer
   PDU_RES_SETUP_FAIL = 3,   // PDU Session Resource Setup Unsuccessful Transfer
@@ -146,5 +147,16 @@ enum class upCnx_state_e {
 static const std::vector<std::string> upCnx_state_e2str = {
     "UPCNX_STATE_ACTIVATED", "UPCNX_STATE_DEACTIVATED",
     "UPCNX_STATE_ACTIVATING"};
+
+enum class ho_state_e {
+  HO_STATE_NONE      = 0,
+  HO_STATE_PREPARING = 1,
+  HO_STATE_PREPARED  = 2,
+  HO_STATE_COMPLETED = 3,
+  HO_STATE_CANCELLED = 4
+};
+
+static const std::vector<std::string> ho_state_e2str = {
+    "NONE", "PREPARING", "PREPARED", "COMPLETED", "CANCELLED"};
 
 #endif

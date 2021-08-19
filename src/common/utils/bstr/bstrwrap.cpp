@@ -113,7 +113,8 @@ CBString::CBString(char c, int len) {
 CBString::CBString(char c) {
   mlen = 2;
   slen = 1;
-  if (NULL == (data = (unsigned char*) bstr__alloc(mlen))) {
+  data = (unsigned char*) bstr__alloc(mlen);
+  if (data == NULL) {
     mlen = slen = 0;
     bstringThrow("Failure in (char) constructor");
   } else {
@@ -125,7 +126,8 @@ CBString::CBString(char c) {
 CBString::CBString(unsigned char c) {
   mlen = 2;
   slen = 1;
-  if (NULL == (data = (unsigned char*) bstr__alloc(mlen))) {
+  data = (unsigned char*) bstr__alloc(mlen);
+  if (data == NULL) {
     mlen = slen = 0;
     bstringThrow("Failure in (char) constructor");
   } else {
@@ -141,7 +143,8 @@ CBString::CBString(const char* s) {
       bstringThrow("Failure in (char *) constructor, string too large") slen =
           (int) sslen;
     mlen = slen + 1;
-    if (NULL != (data = (unsigned char*) bstr__alloc(mlen))) {
+    data = (unsigned char*) bstr__alloc(mlen);
+    if (data != NULL) {
       bstr__memcpy(data, s, mlen);
       return;
     }
@@ -158,7 +161,8 @@ CBString::CBString(int len, const char* s) {
           (int) sslen;
     mlen = slen + 1;
     if (mlen < len) mlen = len;
-    if (NULL != (data = (unsigned char*) bstr__alloc(mlen))) {
+    data = (unsigned char*) bstr__alloc(mlen);
+    if (data != NULL) {
       bstr__memcpy(data, s, slen + 1);
       return;
     }
@@ -1519,7 +1523,6 @@ void CBStringList::splitstr(const CBString& b, const CBString& s) {
 static int streamSplitCb(void* parm, int ofs, const_bstring entry) {
   CBStringList* r = (CBStringList*) parm;
 
-  ofs = ofs;
   r->push_back(CBString(*entry));
   return 0;
 }

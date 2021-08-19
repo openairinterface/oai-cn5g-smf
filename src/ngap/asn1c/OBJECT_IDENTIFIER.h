@@ -2,8 +2,8 @@
  * Copyright (c) 2003-2017 Lev Walkin <vlm@lionet.info>. All rights reserved.
  * Redistribution and modifications are permitted subject to BSD license.
  */
-#ifndef	_OBJECT_IDENTIFIER_H_
-#define	_OBJECT_IDENTIFIER_H_
+#ifndef _OBJECT_IDENTIFIER_H_
+#define _OBJECT_IDENTIFIER_H_
 
 #include <asn_application.h>
 #include <asn_codecs_prim.h>
@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 typedef uint32_t asn_oid_arc_t;
-#define ASN_OID_ARC_MAX (~((asn_oid_arc_t)0))
+#define ASN_OID_ARC_MAX (~((asn_oid_arc_t) 0))
 
 typedef ASN__PRIMITIVE_TYPE_t OBJECT_IDENTIFIER_t;
 
@@ -26,18 +26,18 @@ asn_constr_check_f OBJECT_IDENTIFIER_constraint;
 der_type_encoder_f OBJECT_IDENTIFIER_encode_der;
 xer_type_decoder_f OBJECT_IDENTIFIER_decode_xer;
 xer_type_encoder_f OBJECT_IDENTIFIER_encode_xer;
-asn_random_fill_f  OBJECT_IDENTIFIER_random_fill;
+asn_random_fill_f OBJECT_IDENTIFIER_random_fill;
 
-#define OBJECT_IDENTIFIER_free           ASN__PRIMITIVE_TYPE_free
-#define OBJECT_IDENTIFIER_compare        OCTET_STRING_compare
-#define OBJECT_IDENTIFIER_decode_ber     ber_decode_primitive
-#define OBJECT_IDENTIFIER_encode_der     der_encode_primitive
-#define OBJECT_IDENTIFIER_decode_oer     oer_decode_primitive
-#define OBJECT_IDENTIFIER_encode_oer     oer_encode_primitive
-#define OBJECT_IDENTIFIER_decode_uper    OCTET_STRING_decode_uper
-#define OBJECT_IDENTIFIER_encode_uper    OCTET_STRING_encode_uper
-#define OBJECT_IDENTIFIER_decode_aper    OCTET_STRING_decode_aper
-#define OBJECT_IDENTIFIER_encode_aper    OCTET_STRING_encode_aper
+#define OBJECT_IDENTIFIER_free ASN__PRIMITIVE_TYPE_free
+#define OBJECT_IDENTIFIER_compare OCTET_STRING_compare
+#define OBJECT_IDENTIFIER_decode_ber ber_decode_primitive
+#define OBJECT_IDENTIFIER_encode_der der_encode_primitive
+#define OBJECT_IDENTIFIER_decode_oer oer_decode_primitive
+#define OBJECT_IDENTIFIER_encode_oer oer_encode_primitive
+#define OBJECT_IDENTIFIER_decode_uper OCTET_STRING_decode_uper
+#define OBJECT_IDENTIFIER_encode_uper OCTET_STRING_encode_uper
+#define OBJECT_IDENTIFIER_decode_aper OCTET_STRING_decode_aper
+#define OBJECT_IDENTIFIER_encode_aper OCTET_STRING_encode_aper
 
 /**********************************
  * Some handy conversion routines *
@@ -51,9 +51,8 @@ asn_random_fill_f  OBJECT_IDENTIFIER_random_fill;
  * 	void print_arcs(OBJECT_IDENTIFIER_t *oid) {
  * 		asn_oid_arc_t fixed_arcs[10];	// Try with fixed space first
  * 		asn_oid_arc_t *arcs = fixed_arcs;
- * 		size_t arc_slots = sizeof(fixed_arcs)/sizeof(fixed_arcs[0]); // 10
- * 		ssize_t count;	// Real number of arcs.
- * 		int i;
+ * 		size_t arc_slots = sizeof(fixed_arcs)/sizeof(fixed_arcs[0]); //
+ * 10 ssize_t count;	// Real number of arcs. int i;
  *
  * 		count = OBJECT_IDENTIFIER_get_arcs(oid, arcs, arc_slots);
  * 		// If necessary, reallocate arcs array and try again.
@@ -61,8 +60,8 @@ asn_random_fill_f  OBJECT_IDENTIFIER_random_fill;
  * 			arc_slots = count;
  * 			arcs = malloc(sizeof(asn_oid_arc_t) * arc_slots);
  * 			if(!arcs) return;
- * 			count = OBJECT_IDENTIFIER_get_arcs(oid, arcs, arc_slots);
- * 			assert(count == arc_slots);
+ * 			count = OBJECT_IDENTIFIER_get_arcs(oid, arcs,
+ * arc_slots); assert(count == arc_slots);
  * 		}
  *
  * 		// Print the contents of the arcs array.
@@ -81,8 +80,8 @@ asn_random_fill_f  OBJECT_IDENTIFIER_random_fill;
  * WARNING: The function always returns the actual number of arcs,
  * even if there is no sufficient (arc_slots) provided.
  */
-ssize_t OBJECT_IDENTIFIER_get_arcs(const OBJECT_IDENTIFIER_t *oid,
-                                   asn_oid_arc_t *arcs, size_t arc_slots);
+ssize_t OBJECT_IDENTIFIER_get_arcs(
+    const OBJECT_IDENTIFIER_t* oid, asn_oid_arc_t* arcs, size_t arc_slots);
 
 /*
  * This functions initializes the OBJECT IDENTIFIER object with
@@ -94,9 +93,8 @@ ssize_t OBJECT_IDENTIFIER_get_arcs(const OBJECT_IDENTIFIER_t *oid,
  * -1/ENOMEM:	Memory allocation failed
  * 0:		The object was initialized with new arcs.
  */
-int OBJECT_IDENTIFIER_set_arcs(OBJECT_IDENTIFIER_t *oid,
-                               const asn_oid_arc_t *arcs, size_t arcs_count);
-
+int OBJECT_IDENTIFIER_set_arcs(
+    OBJECT_IDENTIFIER_t* oid, const asn_oid_arc_t* arcs, size_t arcs_count);
 
 /*
  * Parse the OBJECT IDENTIFIER textual representation ("1.3.6.1.4.1.9363").
@@ -107,22 +105,21 @@ int OBJECT_IDENTIFIER_set_arcs(OBJECT_IDENTIFIER_t *oid,
  *
  * If (oid_txt_length == -1), the strlen() will be invoked to determine the
  * size of the (oid_text) string.
- * 
+ *
  * After return, the optional (opt_oid_text_end) is set to the character after
  * the last parsed one. (opt_oid_text_end) is never less than (oid_text).
- * 
+ *
  * RETURN VALUES:
  *   -1:	Parse error.
  * >= 0:	Number of arcs contained in the OBJECT IDENTIFIER.
- * 
+ *
  * WARNING: The function always returns the real number of arcs,
  * even if there is no sufficient (arc_slots) provided.
  * This is useful for (arc_slots) value estimation.
  */
-ssize_t OBJECT_IDENTIFIER_parse_arcs(const char *oid_text,
-                                     ssize_t oid_txt_length,
-                                     asn_oid_arc_t *arcs, size_t arcs_count,
-                                     const char **opt_oid_text_end);
+ssize_t OBJECT_IDENTIFIER_parse_arcs(
+    const char* oid_text, ssize_t oid_txt_length, asn_oid_arc_t* arcs,
+    size_t arcs_count, const char** opt_oid_text_end);
 
 /*
  * Internal functions.
@@ -135,9 +132,8 @@ ssize_t OBJECT_IDENTIFIER_parse_arcs(const char *oid_text,
  *  -1: Failed to retrieve the value from the (arcbuf).
  *  >0: Number of bytes consumed from the (arcbuf), <= (arcbuf_len).
  */
-ssize_t OBJECT_IDENTIFIER_get_single_arc(const uint8_t *arcbuf,
-                                         size_t arcbuf_len,
-                                         asn_oid_arc_t *ret_value);
+ssize_t OBJECT_IDENTIFIER_get_single_arc(
+    const uint8_t* arcbuf, size_t arcbuf_len, asn_oid_arc_t* ret_value);
 
 /*
  * Write the unterminated arc value into the (arcbuf) which has the size at
@@ -146,11 +142,11 @@ ssize_t OBJECT_IDENTIFIER_get_single_arc(const uint8_t *arcbuf,
  *   -1: (arcbuf_len) size is not sufficient to write the value.
  *  <n>: Number of bytes appended to the arcbuf (<= arcbuf_len).
  */
-ssize_t OBJECT_IDENTIFIER_set_single_arc(uint8_t *arcbuf, size_t arcbuf_len,
-                                         asn_oid_arc_t arc_value);
+ssize_t OBJECT_IDENTIFIER_set_single_arc(
+    uint8_t* arcbuf, size_t arcbuf_len, asn_oid_arc_t arc_value);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	/* _OBJECT_IDENTIFIER_H_ */
+#endif /* _OBJECT_IDENTIFIER_H_ */

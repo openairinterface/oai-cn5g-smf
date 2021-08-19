@@ -77,6 +77,7 @@ ENV TZ=Europe/Paris
 RUN yum update -y && \
     yum install -y --enablerepo="ubi-8-codeready-builder" \
     psmisc \
+    procps-ng \
     net-tools \
     libevent && \
     rm -rf /var/lib/apt/lists/*
@@ -92,6 +93,9 @@ COPY --from=oai-smf-builder /usr/lib64/libdouble-conversion.so.1 /usr/lib64/
 COPY --from=oai-smf-builder /usr/lib64/libconfig++.so.9 /usr/lib64/
 COPY --from=oai-smf-builder /usr/lib64/libboost_system.so.1.66.0 /usr/lib64/
 COPY --from=oai-smf-builder /usr/lib64/libboost_thread.so.1.66.0 /usr/lib64/
+COPY --from=oai-smf-builder /usr/lib64/libboost_chrono.so.1.66.0 /usr/lib64/
+COPY --from=oai-smf-builder /usr/local/lib/libnghttp2_asio.so.1 /usr/lib64/
+COPY --from=oai-smf-builder /usr/lib64/libasan.so.5 /usr/lib64/
 COPY --from=oai-smf-builder /openair-smf/build/smf/build/nas/libNAS.so /usr/lib64/
 
 COPY --from=oai-smf-builder /openair-smf/scripts/entrypoint.sh entrypoint.sh

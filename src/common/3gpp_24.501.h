@@ -29,6 +29,8 @@
 
 #ifndef FILE_3GPP_24_501_H_SEEN
 #define FILE_3GPP_24_501_H_SEEN
+#include <netinet/in.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

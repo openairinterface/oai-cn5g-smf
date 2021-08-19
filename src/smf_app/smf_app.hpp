@@ -43,9 +43,6 @@
 #include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
-#include "pistache/endpoint.h"
-#include "pistache/http.h"
-#include "pistache/router.h"
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
@@ -84,11 +81,12 @@ class smf_context_ref {
   void clear() {
     supi           = {};
     nssai          = {};
-    dnn            = "";
+    dnn            = {};
     pdu_session_id = 0;
-    amf_status_uri = "";
-    amf_addr       = "";
+    amf_status_uri = {};
+    amf_addr       = {};
     upf_node_id    = {};
+    target_amf     = "";
   }
 
   supi_t supi;
@@ -97,6 +95,7 @@ class smf_context_ref {
   snssai_t nssai;
   std::string amf_status_uri;
   std::string amf_addr;
+  std::string target_amf;  // targetServingNfId
   pfcp::node_id_t upf_node_id;
 };
 
@@ -209,18 +208,11 @@ class smf_app {
  public:
   explicit smf_app(const std::string& config_file);
   smf_app(smf_app const&) = delete;
-
-  virtual ~smf_app() {
-    Logger::smf_app().debug("Delete SMF_APP instance...");
-    // Disconnect the boost connection
-    /*    if (pdu_session_status_connection.connected())
-            pdu_session_status_connection.disconnect();
-     */
-    // TODO: Unregister NRF
-  }
+  virtual ~smf_app();
 
   void operator=(smf_app const&) = delete;
 
+  void test_dns();
   /*
    * Set the association between Seid and SM Context
    * @param [const seid_t &] seid: SessionID
@@ -343,13 +335,6 @@ class smf_app {
   void handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf);
 
   /*
-   * Handle ITTI message from N11 to update PDU session status
-   * @param [itti_n11_update_pdu_session_status&] snu
-   * @return void
-   */
-  void handle_itti_msg(itti_n11_update_pdu_session_status& snu);
-
-  /*
    * Handle ITTI message N11 Create SM Context Response to trigger the response
    * to AMF
    * @param [itti_n11_create_sm_context_response&] snc
@@ -437,13 +422,6 @@ class smf_app {
   scid_t generate_smf_context_ref();
 
   /*
-   * Generate an Event Exposure Subscription ID in a form of string
-   * @param [std::string &] sub_id: Store the generated reference
-   * @return void
-   */
-  void generate_ev_subscription_id(std::string& sub_id);
-
-  /*
    * Generate an Event Exposure Subscription ID
    * @param [void]
    * @return the generated reference
@@ -498,6 +476,30 @@ class smf_app {
       const scid_t& scid, std::shared_ptr<smf_context_ref>& scf) const;
 
   /*
+   * Verify if SM Context is existed for this Supi
+   * @param [supi_t] supi
+   * @return True if existed, otherwise false
+   */
+  bool is_supi_2_smf_context(const supi64_t& supi) const;
+
+  /*
+   * Create/Update SMF context with the corresponding supi
+   * @param [const supi_t&] supi
+   * @param [std::shared_ptr<smf_context>] sc Shared_ptr Pointer to an SMF
+   * context
+   * @return True if existed, otherwise false
+   */
+  void set_supi_2_smf_context(
+      const supi64_t& supi, std::shared_ptr<smf_context> sc);
+
+  /*
+   * Get SM Context
+   * @param [supi_t] Supi
+   * @return Shared pointer to SM context
+   */
+  std::shared_ptr<smf_context> supi_2_smf_context(const supi64_t& supi) const;
+
+  /*
    * Handle PDUSession_CreateSMContextRequest from AMF
    * @param [std::shared_ptr<itti_n11_create_sm_context_request>&] Request
    * message
@@ -531,6 +533,13 @@ class smf_app {
   evsub_id_t handle_event_exposure_subscription(
       std::shared_ptr<itti_sbi_event_exposure_request> msg);
 
+  /*
+   * Handle NF status notification (e.g., when an UPF becomes available)
+   * @param [std::shared_ptr<itti_sbi_notification_data>& ] msg: message
+   * @param [oai::smf_server::model::ProblemDetails& ] problem_details
+   * @param [uint8_t&] http_code
+   * @return true if handle sucessfully, otherwise return false
+   */
   bool handle_nf_status_notification(
       std::shared_ptr<itti_sbi_notification_data>& msg,
       oai::smf_server::model::ProblemDetails& problem_details,
@@ -549,30 +558,6 @@ class smf_app {
       const supi_t& supi, const std::string& dnn,
       const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
       const pfcp::qfi_t& qfi, const uint8_t& http_version);
-
-  /*
-   * Verify if SM Context is existed for this Supi
-   * @param [supi_t] supi
-   * @return True if existed, otherwise false
-   */
-  bool is_supi_2_smf_context(const supi64_t& supi) const;
-
-  /*
-   * Create/Update SMF context with the corresponding supi
-   * @param [const supi_t&] supi
-   * @param [std::shared_ptr<smf_context>] sc Shared_ptr Pointer to an SMF
-   * context
-   * @return True if existed, otherwise false
-   */
-  void set_supi_2_smf_context(
-      const supi64_t& supi, std::shared_ptr<smf_context> sc);
-
-  /*
-   * Get SM Context
-   * @param [supi_t] Supi
-   * @return Shared pointer to SM context
-   */
-  std::shared_ptr<smf_context> supi_2_smf_context(const supi64_t& supi) const;
 
   /*
    * Check whether SMF uses local configuration instead of retrieving Session
@@ -618,15 +603,6 @@ class smf_app {
   bool is_create_sm_context_request_valid() const;
 
   /*
-   * Convert a string to hex representing this string
-   * @param [const std::string&] input_str Input string
-   * @param [std::string&] output_str String represents string in hex format
-   * @return void
-   */
-  void convert_string_2_hex(
-      const std::string& input_str, std::string& output_str);
-
-  /*
    * Update PDU session status
    * @param [const scid_t &] id SM Context ID
    * @param [const pdu_session_status_e &] status PDU Session Status
@@ -668,7 +644,14 @@ class smf_app {
    */
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
+  /*
+   * will be executed when NRF Deregistration timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
   void timer_nrf_deregistration(timer_id_t timer_id, uint64_t arg2_user);
+
   /*
    * To start an association with a UPF (SMF-initiated association)
    * @param [const pfcp::node_id_t] node_id: UPF Node ID
@@ -683,6 +666,13 @@ class smf_app {
    */
   void start_upf_association(
       const pfcp::node_id_t& node_id, const upf_profile& profile);
+
+  /*
+   * To start NF registration with NRF and subscribe to UPF event notification
+   * @param void
+   * @return void
+   */
+  void start_nf_registration_discovery();
 
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
@@ -745,7 +735,6 @@ class smf_app {
    * @param [const uint32_t &] http_code: Status code of HTTP response
    * @param [const uint8_t &] cause: Error cause
    * @param [uint32_t &] promise_id: Promise Id
-   * @param [uint8_t] msg_type: Type of HTTP message (Update/Release)
    * @return void
    */
   void trigger_update_context_error_response(
@@ -758,7 +747,6 @@ class smf_app {
    * @param [const uint8_t &] cause: cause
    * @param [const std::string &] n1_sm_msg: N1 SM message
    * @param [uint32_t &] promise_id: Promise Id
-   * @param [uint8_t] msg_type: Type of HTTP message (Update/Release)
    * @return void
    */
   void trigger_update_context_error_response(
@@ -775,6 +763,42 @@ class smf_app {
    */
   void trigger_http_response(
       const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type);
+
+  /*
+   * To trigger the session create sm context response by set the value of the
+   * corresponding promise to ready
+   * @param [pdu_session_create_sm_context_response&] sm_context_response:
+   * response message
+   * @param [uint32_t &] promise_id: Promise Id
+   * @return void
+   */
+  void trigger_session_create_sm_context_response(
+      pdu_session_create_sm_context_response& sm_context_response,
+      uint32_t& pid);
+
+  /*
+   * To trigger the session update sm context response by set the value of the
+   * corresponding promise to ready
+   * @param [pdu_session_update_sm_context_response&] sm_context_response:
+   * response message
+   * @param [uint32_t &] promise_id: Promise Id
+   * @return void
+   */
+  void trigger_session_update_sm_context_response(
+      pdu_session_update_sm_context_response& sm_context_response,
+      uint32_t& pid);
+
+  /*
+   * To trigger the session release sm context response by set the value of the
+   * corresponding promise to ready
+   * @param [pdu_session_release_sm_context_response&] sm_context_response:
+   * response message
+   * @param [uint32_t &] promise_id: Promise Id
+   * @return void
+   */
+  void trigger_session_release_sm_context_response(
+      pdu_session_release_sm_context_response& sm_context_response,
+      uint32_t& pid);
 
   /*
    * Add an Event Subscription to the list

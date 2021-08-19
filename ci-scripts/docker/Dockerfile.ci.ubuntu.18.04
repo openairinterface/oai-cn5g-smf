@@ -48,27 +48,35 @@ ENV TZ=Europe/Paris
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-    psmisc \
-    net-tools \
-    tzdata \
-    bc \
-    tshark \
-    libasan4 \
-    libgoogle-glog0v5 \
-    libdouble-conversion1 \
-    libconfig++9v5 \
-    libcurl4-gnutls-dev \
+      psmisc \
+      net-tools \
+      tzdata \
+      bc \
+      tshark \
+      perl \
+      openssl \
+      libasan4 \
+      libldap-2.4-2 \
+      libgoogle-glog0v5 \
+      libdouble-conversion1 \
+      libconfig++9v5 \
   && rm -rf /var/lib/apt/lists/*
 
 # Copying executable and generated libraries
 WORKDIR /openair-smf/bin
 COPY --from=oai-smf-builder /openair-smf/build/smf/build/smf oai_smf
-COPY --from=oai-smf-builder /openair-smf/scripts/entrypoint.sh entrypoint.sh
-COPY --from=oai-smf-builder /usr/local/lib/libpistache.so /usr/local/lib/
-COPY --from=oai-smf-builder /usr/local/lib/libnghttp2_asio.so.1 /usr/local/lib/
-COPY --from=oai-smf-builder /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=oai-smf-builder /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.65.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=oai-smf-builder /openair-smf/build/smf/build/nas/libNAS.so /usr/local/lib/
+COPY --from=oai-smf-builder /openair-smf/scripts/entrypoint.sh .
+
+WORKDIR /usr/local/lib/
+COPY --from=oai-smf-builder /usr/local/lib/libpistache.so .
+COPY --from=oai-smf-builder /usr/local/lib/libnghttp2_asio.so.1 .
+COPY --from=oai-smf-builder /usr/lib/libboost_system.so.1.67.0 .
+COPY --from=oai-smf-builder /usr/lib/libboost_thread.so.1.67.0 .
+COPY --from=oai-smf-builder /usr/lib/libboost_chrono.so.1.67.0 .
+COPY --from=oai-smf-builder /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4 .
+COPY --from=oai-smf-builder /usr/lib/x86_64-linux-gnu/librtmp.so.1 .
+COPY --from=oai-smf-builder /usr/lib/x86_64-linux-gnu/libpsl.so.5 .
+COPY --from=oai-smf-builder /openair-smf/build/smf/build/nas/libNAS.so .
 RUN ldconfig
 
 # Copying template configuration files
@@ -81,5 +89,4 @@ WORKDIR /openair-smf
 EXPOSE 80/tcp 9090/tcp 8805/udp
 
 ENTRYPOINT ["/bin/bash","/openair-smf/bin/entrypoint.sh"]
-
 CMD ["/openair-smf/bin/oai_smf", "-c", "/openair-smf/etc/smf.conf", "-o"]

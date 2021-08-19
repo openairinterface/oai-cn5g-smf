@@ -153,6 +153,16 @@ void nf_profile::add_snssai(const snssai_t& s) {
 }
 
 //------------------------------------------------------------------------------
+void nf_profile::set_fqdn(const std::string& fqdN) {
+  fqdn = fqdN;
+}
+
+//------------------------------------------------------------------------------
+std::string nf_profile::get_fqdn() const {
+  return fqdn;
+}
+
+//------------------------------------------------------------------------------
 void nf_profile::set_nf_ipv4_addresses(const std::vector<struct in_addr>& a) {
   ipv4_addresses = a;
 }
@@ -160,6 +170,16 @@ void nf_profile::set_nf_ipv4_addresses(const std::vector<struct in_addr>& a) {
 //------------------------------------------------------------------------------
 void nf_profile::add_nf_ipv4_addresses(const struct in_addr& a) {
   ipv4_addresses.push_back(a);
+}
+
+//------------------------------------------------------------------------------
+void nf_profile::set_nf_ipv6_addresses(const std::vector<struct in6_addr>& a) {
+  ipv6_addresses = a;
+}
+
+//------------------------------------------------------------------------------
+void nf_profile::add_nf_ipv6_addresses(const struct in6_addr& a) {
+  ipv6_addresses.push_back(a);
 }
 
 //------------------------------------------------------------------------------
@@ -185,7 +205,9 @@ void nf_profile::display() const {
   for (auto s : snssais) {
     Logger::smf_app().debug("\t\t SST, SD: %d, %s", s.sST, s.sD.c_str());
   }
-
+  if (!fqdn.empty()) {
+    Logger::smf_app().debug("\tFQDN: %s", fqdn.c_str());
+  }
   // IPv4 Addresses
   if (ipv4_addresses.size() > 0) {
     Logger::smf_app().debug("\tIPv4 Addr:");
@@ -193,6 +215,13 @@ void nf_profile::display() const {
   for (auto address : ipv4_addresses) {
     Logger::smf_app().debug("\t\t %s", inet_ntoa(address));
   }
+  // IPv6 Addresses
+  // if (ipv6_addresses.size() > 0) {
+  //   Logger::smf_app().debug("\tIPv6 Addr:");
+  // }
+  // for (auto address : ipv6_addresses) {
+  //   Logger::smf_app().debug("\t\t %s", inet_ntoa(address));
+  // }
 }
 
 //------------------------------------------------------------------------------
@@ -210,12 +239,20 @@ void nf_profile::to_json(nlohmann::json& data) const {
     tmp["sd"]          = s.sD;
     data["sNssais"].push_back(tmp);
   }
+  if (!fqdn.empty()) {
+    data["fqdn"] = fqdn;
+  }
   // ipv4_addresses
   data["ipv4Addresses"] = nlohmann::json::array();
   for (auto address : ipv4_addresses) {
     data["ipv4Addresses"].push_back(inet_ntoa(address));
   }
-
+  // // ipv6_addresses
+  // data["ipv6Addresses"] = nlohmann::json::array();
+  // for (auto address : ipv6_addresses) {
+  //   nlohmann::json tmp = inet_ntoa(address);
+  //   data["ipv6Addresses"].push_back(tmp);
+  // }
   data["priority"] = priority;
   data["capacity"] = capacity;
 }
@@ -251,6 +288,10 @@ void nf_profile::from_json(const nlohmann::json& data) {
     }
   }
 
+  if (data.find("fqdn") != data.end()) {
+    fqdn = data["fqdn"].get<std::string>();
+  }
+
   if (data.find("ipv4Addresses") != data.end()) {
     nlohmann::json addresses = data["ipv4Addresses"];
 
@@ -267,6 +308,8 @@ void nf_profile::from_json(const nlohmann::json& data) {
       add_nf_ipv4_addresses(addr4);
     }
   }
+
+  // ToDo: ipv6Addresses
 
   if (data.find("priority") != data.end()) {
     priority = data["priority"].get<int>();

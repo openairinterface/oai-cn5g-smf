@@ -51,4 +51,16 @@ enum reflective_qos_attribute_e { RQOS = 1, NO_RQOS = 2 };
 static const std::vector<std::string> reflective_qos_attribute_e2str = {
     "ERROR", "RQOS", "NO_RQOS"};
 
+typedef struct gNB_id_s {
+  uint8_t bit_length;
+  std::string gNB_value;
+} gNB_id_t;  // 22bits to 32bits
+
+typedef struct global_ran_node_id_s {
+  plmn_t plmn_id;
+  //    n3IwfId:
+  gNB_id_t gNbId;
+  //        ngeNbId:
+} global_ran_node_id_t;
+
 #endif

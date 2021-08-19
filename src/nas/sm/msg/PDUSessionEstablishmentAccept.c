@@ -215,7 +215,6 @@ int encode_pdu_session_establishment_accept(
   CHECK_PDU_POINTER_AND_LENGTH_ENCODER(
       buffer, PDU_SESSION_ESTABLISHMENT_ACCEPT_MINIMUM_LENGTH, len);
 
-
   if ((encoded_result = encode__pdu_session_type(
            pdu_session_establishment_accept->_pdusessiontype, 0,
            buffer + encoded, len - encoded)) < 0)

@@ -40,6 +40,13 @@
 #include <nghttp2/asio_http2_server.h>
 #include "smf_config.hpp"
 #include "3gpp_conversions.hpp"
+#include "mime_parser.hpp"
+#include <boost/thread.hpp>
+#include <boost/thread/future.hpp>
+#include <boost/chrono.hpp>
+#include <boost/chrono/chrono.hpp>
+#include <boost/chrono/duration.hpp>
+#include <boost/chrono/system_clocks.hpp>
 
 extern smf::smf_config smf_cfg;
 
@@ -97,25 +104,50 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   itti_msg->http_version = 1;
   m_smf_app->handle_pdu_session_create_sm_context_request(itti_msg);
 
-  // Wait for the result from APP and send reply to AMF
-  smf::pdu_session_create_sm_context_response sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
+    // Wait for the result from APP and send reply to AMF
+    smf::pdu_session_create_sm_context_response sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
-  nlohmann::json json_data = {};
+    nlohmann::json json_data = {};
+    std::string json_format  = {};
+    std::string body         = {};
 
-  response.headers().add<Pistache::Http::Header::Location>(
-      sm_context_response.get_smf_context_uri());  // Location header
-  sm_context_response.get_json_data(json_data);
-  std::string json_format;
-  sm_context_response.get_json_format(json_format);
-  if (!json_data.empty()) {
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType(json_format));
+    sm_context_response.get_json_data(json_data);
+    sm_context_response.get_json_format(json_format);
+
+    if (sm_context_response.n1_sm_msg_is_set()) {  // add N1 container if
+                                                   // available
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response.get_n1_sm_message(),
+          multipart_related_content_part_e::NAS, json_format);
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(
+              "multipart/related; boundary=" +
+              std::string(CURL_MIME_BOUNDARY)));
+    } else if (!json_data.empty()) {  // if not, include json data if available
+      response.headers().add<Pistache::Http::Header::Location>(
+          sm_context_response.get_smf_context_uri());  // Location header
+
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(json_format));
+      body = json_data.dump().c_str();
+    } else {  // otherwise, send reply without content
+      response.send(Pistache::Http::Code(sm_context_response.get_http_code()));
+      return;
+    }
+
     response.send(
-        Pistache::Http::Code(sm_context_response.get_http_code()),
-        json_data.dump().c_str());
+        Pistache::Http::Code(sm_context_response.get_http_code()), body);
   } else {
-    response.send(Pistache::Http::Code(sm_context_response.get_http_code()));
+    response.send(Pistache::Http::Code::Request_Timeout);
   }
 }
 }  // namespace api

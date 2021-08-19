@@ -52,7 +52,7 @@ pfcp_l4_stack::pfcp_l4_stack(
 
   timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  seq_num         = 0;  //(uint32_t)ts.tv_nsec & 0x7FFFFFFF;
+  seq_num         = (uint32_t) ts.tv_nsec & 0x7FFFFFFF;
   restart_counter = 0;
   udp_s_8805.start_receive(this, sched_params);
   udp_s_allocated.start_receive(this, sched_params);

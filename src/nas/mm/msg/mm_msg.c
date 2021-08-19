@@ -46,8 +46,8 @@ static int _fivegmm_msg_encode_header(
  */
 int fivegmm_msg_encode(MM_msg* msg, uint8_t* buffer, uint32_t len) {
   // OAILOG_FUNC_IN (LOG_NAS_EMM);
-  int header_result;
-  int encode_result;
+  int header_result = 0;
+  int encode_result = 0;
 
   /*
    * First encode the EMM message header

@@ -37,6 +37,7 @@ source $THIS_SCRIPT_PATH/build_helper.fb_folly
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
 install_fmt() {
+  echo "Starting to install fmt"
   if [ $1 -eq 0 ]; then
     read -p "Do you want to install open-source formatting library for C++ ? <y/N> " prompt
     OPTION=""
@@ -65,6 +66,7 @@ install_fmt() {
     cd /tmp
     rm -rf /tmp/fmt*
   fi
+  echo "fmt installation complete"
   return 0
 }
 
@@ -72,6 +74,7 @@ install_fmt() {
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
 install_spdlog_from_git() {
+  echo "Starting to install spdlog"
   if [ $1 -eq 0 ]; then
     read -p "Do you want to install spdlog ? <y/N> " prompt
     OPTION=""
@@ -104,6 +107,7 @@ install_spdlog_from_git() {
     sed -i '/#define SPDLOG_ENABLE_SYSLOG/s/^\/\///g' include/spdlog/tweakme.h
     popd
   fi
+  echo "spdlog installation complete"
   return 0
 }
 
@@ -111,6 +115,7 @@ install_spdlog_from_git() {
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
 install_pistache_from_git() {
+  echo "Starting to install pistache"
   if [ $1 -eq 0 ]; then
     read -p "Do you want to install Pistache ? <y/N> " prompt
     OPTION="-y"
@@ -153,6 +158,7 @@ install_pistache_from_git() {
     ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
     popd
   fi
+  echo "pistache installation complete"
   return 0
 }
 
@@ -160,6 +166,7 @@ install_pistache_from_git() {
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
 install_nlohmann_from_git() {
+  echo "Starting to install Nlohmann Json"
   if [ $1 -eq 0 ]; then
     read -p "Do you want to install Nlohmann Json ? <y/N> " prompt
     OPTION=""
@@ -198,6 +205,7 @@ install_nlohmann_from_git() {
     ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
     popd
   fi
+  echo "Nlohmann Json installation complete"
   return 0
 }
 
@@ -205,6 +213,7 @@ install_nlohmann_from_git() {
 #arg1 is force (0 or 1) (no interactive script)
 #arg2 is debug (0 or 1) (install debug libraries)
 install_nghttp2_from_git() {
+  echo "Starting to install nghttp2"
   if [ $1 -eq 0 ]; then
     read -p "Do you want to install nghttp2 ? <y/N> " prompt
     OPTION=""
@@ -284,8 +293,11 @@ install_nghttp2_from_git() {
     ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
     $SUDO make install
     ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
+    $SUDO ldconfig
+    ret=$?;[[ $ret -ne 0 ]] && popd && return $ret
     popd
   fi
+  echo "nghttp2 installation complete"
   return 0  
 }
 
@@ -335,6 +347,7 @@ check_install_smf_deps() {
       doxygen \
       flex \
       gdb \
+      wget \
       git"
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
     PACKAGE_LIST="\
@@ -357,12 +370,21 @@ check_install_smf_deps() {
   if [[ $OS_DISTRO == "ubuntu" ]]; then
     case "$(get_distribution_release)" in
       "ubuntu18.04")
-        specific_packages="libconfig++-dev libasio-dev libboost-all-dev"
+        # Currently Ubuntu18.04 has boost 1.65 as the latest
+        # We need at least 1.66
+        # PPA has 1.67
+        $SUDO add-apt-repository ppa:mhier/libboost-latest --yes
+        $SUDO $INSTALLER update
+        specific_packages="libconfig++-dev"        
       ;;
+      *)
+        specific_packages="libconfig++-dev libasio-dev libboost-all-dev"
+        ;;
     esac
     # removed libspdlog-dev
     PACKAGE_LIST="\
       $specific_packages \
+      libboost1.67-dev \
       guile-2.0-dev \
       libcurl4-gnutls-dev \
       libevent-dev \
@@ -382,6 +404,7 @@ check_install_smf_deps() {
       libcurl4 \
       net-tools \
       pkg-config \
+      wget \
       libasan2"
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
     PACKAGE_LIST="\
@@ -393,6 +416,7 @@ check_install_smf_deps() {
       lksctp-tools \
       lksctp-tools-devel \
       openssl-devel \
+      libnghttp2 \
       libtool \
       libxml2 \
       libxml2-devel \
@@ -409,6 +433,7 @@ check_install_smf_deps() {
   echo "Install distro libs"
   $SUDO $INSTALLER install $OPTION $PACKAGE_LIST
   ret=$?;[[ $ret -ne 0 ]] && return $ret
+  echo "distro libs installation complete"
 
   # Use fmt lib included in spdlog
   #install_fmt $1
@@ -524,6 +549,7 @@ check_install_smf_min_deps() {
   echo "Install networking tools"
   $SUDO $INSTALLER install $OPTION $PACKAGE_LIST
   ret=$?;[[ $ret -ne 0 ]] && return $ret
+  echo "networking tools installation complete"
 
   return 0
 }

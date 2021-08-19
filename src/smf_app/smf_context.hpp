@@ -43,9 +43,6 @@
 #include "common_root_types.h"
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
-#include "pistache/endpoint.h"
-#include "pistache/http.h"
-#include "pistache/router.h"
 #include "smf_event.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
@@ -128,6 +125,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     released           = false;
     default_qfi.qfi    = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
     pdu_session_status = pdu_session_status_e::PDU_SESSION_INACTIVE;
+    upCnx_state        = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
+    ho_state           = ho_state_e::HO_STATE_NONE;
     timer_T3590        = ITTI_INVALID_TIMER_ID;
     timer_T3591        = ITTI_INVALID_TIMER_ID;
     timer_T3592        = ITTI_INVALID_TIMER_ID;
@@ -261,6 +260,20 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   upCnx_state_e get_upCnx_state() const;
 
+  /*
+   * Set HOState of a PDU Session
+   * @param [ho_state_e&] state: new HO State for the PDU Session
+   * @return void
+   */
+  void set_ho_state(const ho_state_e& state);
+
+  /*
+   * Get HOState of a PDU Session
+   * @param void
+   * @return ho_state_e: current state of this PDU Session
+   */
+  ho_state_e get_ho_state() const;
+
   // deallocate_ressources is for releasing related-resources prior to the
   // deletion of objects since shared_ptr is actually heavy used for handling
   // objects, deletion of object instances cannot be always guaranteed when
@@ -302,7 +315,19 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return void
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
+  /*
+   * Generate a URR ID
+   * @param [pfcp::urr_id_t &]: far_id: URR ID generated
+   * @return void
+   */
+  void generate_urr_id(pfcp::urr_id_t& urr_id);
 
+  /*
+   * Release a URR ID
+   * @param [const pfcp::urr_id_t &]: far_id: URR ID to be released
+   * @return void
+   */
+  void release_urr_id(const pfcp::urr_id_t& urr_id);
   /*
    * Generate a FAR ID
    * @param [pfcp::far_id_t &]: far_id: FAR ID generated
@@ -426,6 +451,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   //
   util::uint_generator<uint16_t> pdr_id_generator;
   util::uint_generator<uint32_t> far_id_generator;
+  util::uint_generator<uint32_t> urr_id_generator;
 
   uint32_t pdu_session_id;
   std::string amf_id;
@@ -433,6 +459,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   pdu_session_status_e pdu_session_status;
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
+  ho_state_e ho_state;
   timer_id_t timer_T3590;
   timer_id_t timer_T3591;
   timer_id_t timer_T3592;
@@ -564,7 +591,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       : m_context(),
         pending_procedures(),
         dnn_subscriptions(),
-        scid(0),
         event_sub(),
         plmn() {
     supi_prefix = {};
@@ -681,7 +707,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * message
    * @return void
    */
-  void handle_pdu_session_update_sm_context_request(
+  bool handle_pdu_session_update_sm_context_request(
       std::shared_ptr<itti_n11_update_sm_context_request> smreq);
 
   /*
@@ -843,6 +869,96 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
 
   /*
+   * Handle Xn Handover Patch Switch Request
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_path_switch_req(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * Handle N2 Handover Preparation (Phrase 1- Preparing)
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_preparation_request(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * Handle N2 Handover Preparation (Phrase 2- Prepared)
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_preparation_request_ack(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * Handle N2 Handover Preparation failure
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_preparation_request_fail(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * Handle N2 Handover Execution
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_execution(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * Handle N2 Handover Cancellation
+   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * sm_context_request: Request message
+   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * sm_context_resp: Response message
+   * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @return True if handle successful, otherwise return false
+   */
+  bool handle_ho_cancellation(
+      std::string& n2_sm_information,
+      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
    * Find DNN context with name
    * @param [const std::string&] dnn
    * @param [std::shared_ptr<dnn_context>&] dnn_context dnn context to be found
@@ -951,20 +1067,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return std::size_t: the number of contexts
    */
   std::size_t get_number_dnn_contexts() const;
-
-  /*
-   * Set SM Context ID
-   * @param [const scid_t &] id: SM Context Id
-   * @return void
-   */
-  void set_scid(const scid_t& id);
-
-  /*
-   * Get SM Context ID
-   * @param [void
-   * @return scid_t: SM Context Id
-   */
-  scid_t get_scid() const;
 
   /*
    * Get Supi prefix
@@ -1094,8 +1196,30 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    */
   void get_amf_addr(std::string& addr) const;
 
+  /*
+   * Set PLMN
+   * @param [const plmn_t&] plmn: PLMN
+   * @return void
+   */
   void set_plmn(const plmn_t& plmn);
+
+  /*
+   * get PLMN
+   * @param [plmn_t&] plmn: store PLMN
+   * @return void
+   */
   void get_plmn(plmn_t& plmn) const;
+
+  /*
+   * Check if N2 HO for this PDU session can be accepted
+   * @param [const ng_ran_target_id_t&] ran_target_id: Target ID
+   * @param [const pdu_session_id_t&] pdu_session_id: PDU Session ID
+   * @return true if the N2 HO can be accepted, otherwise return false
+   *
+   */
+  bool check_handover_possibility(
+      const ng_ran_target_id_t& ran_target_id,
+      const pdu_session_id_t& pdu_session_id) const;
 
  private:
   std::vector<std::shared_ptr<dnn_context>> dnns;
@@ -1105,7 +1229,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       dnn_subscriptions;
   supi_t supi;
   std::string supi_prefix;
-  scid_t scid;  // SM Context ID
   plmn_t plmn;
 
   // AMF IP addr

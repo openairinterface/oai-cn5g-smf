@@ -51,7 +51,9 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
       : nf_type("NF_TYPE_UNKNOWN"),
         heartBeat_timer(0),
         snssais(),
+        fqdn(),
         ipv4_addresses(),
+        ipv6_addresses(),
         priority(0),
         capacity(0) {
     nf_instance_name = "";
@@ -62,7 +64,9 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
       : nf_instance_id(id),
         heartBeat_timer(0),
         snssais(),
+        fqdn(),
         ipv4_addresses(),
+        ipv6_addresses(),
         priority(0),
         capacity(0),
         nf_type("NF_TYPE_UNKNOWN") {
@@ -74,12 +78,15 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
     nf_instance_id   = s.nf_instance_id;
     heartBeat_timer  = s.heartBeat_timer;
     snssais          = s.snssais;
+    fqdn             = s.fqdn;
     ipv4_addresses   = s.ipv4_addresses;
+    ipv6_addresses   = s.ipv6_addresses;
     priority         = s.priority;
     capacity         = s.capacity;
     nf_type          = s.nf_type;
     nf_instance_name = s.nf_instance_name;
     nf_status        = s.nf_status;
+    return *this;
   }
   // nf_profile(nf_profile &b) = delete;
 
@@ -244,11 +251,39 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
   void get_nf_snssais(std::vector<snssai_t>& s) const;
 
   /*
+   * Get NF fqdn
+   * @param
+   * @return [std::string] nf fqdn
+   */
+  std::string get_fqdn() const;
+
+  /*
+   * Set NF fqdn
+   * @param [const fqdn_t &] fqdn: nf fqdn
+   * @return void
+   */
+  void set_fqdn(const std::string& fqdn);
+
+  /*
    * Set NF instance ipv4_addresses
    * @param [std::vector<struct in_addr> &] a: ipv4_addresses
    * @return void
    */
   void set_nf_ipv4_addresses(const std::vector<struct in_addr>& a);
+
+  /*
+   * Set NF instance ipv6_addresses
+   * @param [std::vector<struct in6_addr> &] a: ipv6_addresses
+   * @return void
+   */
+  void set_nf_ipv6_addresses(const std::vector<struct in6_addr>& a);
+
+  /*
+   * Add an IPv6 address to the list of addresses
+   * @param [const struct in_addr &] a: ipv6_address
+   * @return void
+   */
+  void add_nf_ipv6_addresses(const struct in6_addr& a);
 
   /*
    * Add an IPv4 address to the list of addresses
@@ -293,7 +328,9 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
   std::string nf_status;
   int32_t heartBeat_timer;
   std::vector<snssai_t> snssais;
+  std::string fqdn;
   std::vector<struct in_addr> ipv4_addresses;
+  std::vector<struct in6_addr> ipv6_addresses;
   uint16_t priority;
   uint16_t capacity;
 };
@@ -308,7 +345,9 @@ class smf_profile : public nf_profile {
     nf_instance_id   = s.nf_instance_id;
     heartBeat_timer  = s.heartBeat_timer;
     snssais          = s.snssais;
+    ipv6_addresses   = s.ipv6_addresses;
     ipv4_addresses   = s.ipv4_addresses;
+    fqdn             = s.fqdn;
     priority         = s.priority;
     capacity         = s.capacity;
     nf_type          = s.nf_type;
@@ -317,6 +356,7 @@ class smf_profile : public nf_profile {
     custom_info      = s.custom_info;
     smf_info         = s.smf_info;
     nf_services      = s.nf_services;
+    return *this;
   }
   // smf_profile(smf_profile &b) = delete;
 
@@ -427,7 +467,9 @@ class upf_profile : public nf_profile {
     nf_instance_id   = s.nf_instance_id;
     heartBeat_timer  = s.heartBeat_timer;
     snssais          = s.snssais;
+    ipv6_addresses   = s.ipv6_addresses;
     ipv4_addresses   = s.ipv4_addresses;
+    fqdn             = s.fqdn;
     priority         = s.priority;
     capacity         = s.capacity;
     nf_type          = s.nf_type;
@@ -435,6 +477,7 @@ class upf_profile : public nf_profile {
     nf_status        = s.nf_status;
     // custom_info = s.custom_info;
     upf_info = s.upf_info;
+    return *this;
   }
   // upf_profile(upf_profile &b) = delete;
 

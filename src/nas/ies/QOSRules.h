@@ -75,7 +75,7 @@
 typedef struct {
   uint8_t spare : 4;
   uint8_t packetfilteridentifier : 4;
-} __attribute__((__packed__)) ModifyAndDelete;
+} ModifyAndDelete;
 
 typedef struct {
   uint8_t component_type;
@@ -89,7 +89,7 @@ typedef struct {
   uint8_t lenghtofpacketfiltercontents;
   PacketFilterContents packetfiltercontents;
 
-} __attribute__((__packed__)) Create_ModifyAndAdd_ModifyAndReplace;
+} Create_ModifyAndAdd_ModifyAndReplace;
 
 typedef struct {
   uint8_t qosruleidentifer;
@@ -106,7 +106,7 @@ typedef struct {
   uint8_t spare : 1;
   uint8_t segregation : 1;
   uint8_t qosflowidentifer : 6;
-} __attribute__((__packed__)) QOSRulesIE;
+} QOSRulesIE;
 
 typedef struct {
   uint16_t lengthofqosrulesie;

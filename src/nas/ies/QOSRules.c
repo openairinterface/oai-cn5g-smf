@@ -214,8 +214,7 @@ int decode_qos_rules(
         qosrulesie->packetfilterlist.create_modifyandadd_modifyandreplace[j]
             .packetfilteridentifier = bitstream & 0x0f;
 
-        uint8_t lenghtofpacketfiltercontents =
-            *(buffer + decoded) - 1;
+        uint8_t lenghtofpacketfiltercontents = *(buffer + decoded) - 1;
         decoded++;
 
         DECODE_U8(buffer + decoded, bitstream, decoded);
@@ -306,8 +305,7 @@ int decode_qos_rules(
             .packetfilterlist.create_modifyandadd_modifyandreplace[j]
             .packetfilteridentifier = bitstream & 0x0f;
 
-        uint8_t lenghtofpacketfiltercontents =
-            *(buffer + decoded) - 1;
+        uint8_t lenghtofpacketfiltercontents = *(buffer + decoded) - 1;
         decoded++;
 
         DECODE_U8(buffer + decoded, bitstream, decoded);

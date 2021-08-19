@@ -96,9 +96,12 @@ void IndividualSMContextApi::release_sm_context_handler(
   Logger::smf_api_server().debug("Request body: %s\n", request.body().c_str());
   SmContextReleaseMessage smContextReleaseMessage = {};
 
-  // simple parser
+  // Simple parser
   mime_parser sp = {};
-  sp.parse(request.body());
+  if (!sp.parse(request.body())) {
+    response.send(Pistache::Http::Code::Bad_Request);
+    return;
+  }
 
   std::vector<mime_part> parts = {};
   sp.get_mime_parts(parts);
@@ -178,9 +181,12 @@ void IndividualSMContextApi::update_sm_context_handler(
   Logger::smf_api_server().debug("Request body: %s\n", request.body().c_str());
   SmContextUpdateMessage smContextUpdateMessage = {};
 
-  // simple parser
+  // Simple parser
   mime_parser sp = {};
-  sp.parse(request.body());
+  if (!sp.parse(request.body())) {
+    response.send(Pistache::Http::Code::Bad_Request);
+    return;
+  }
 
   std::vector<mime_part> parts = {};
   sp.get_mime_parts(parts);

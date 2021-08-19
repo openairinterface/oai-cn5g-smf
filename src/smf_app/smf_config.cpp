@@ -49,6 +49,7 @@
 #include "epc.h"
 #include "if.hpp"
 #include "logger.hpp"
+#include "fqdn.hpp"
 #include "smf_app.hpp"
 
 using namespace std;
@@ -191,7 +192,7 @@ int smf_config::load_interface(const Setting& if_cfg, interface_cfg_t& cfg) {
         return RETURNerror;
       }
     } else {
-      std::vector<std::string> words;
+      std::vector<std::string> words = {};
       boost::split(
           words, address, boost::is_any_of("/"), boost::token_compress_on);
       if (words.size() != 2) {
@@ -259,6 +260,7 @@ int smf_config::load(const string& config_file) {
 
   const Setting& smf_cfg = root[SMF_CONFIG_STRING_SMF_CONFIG];
 
+  // Instance
   try {
     smf_cfg.lookupValue(SMF_CONFIG_STRING_INSTANCE, instance);
   } catch (const SettingNotFoundException& nfex) {
@@ -266,8 +268,17 @@ int smf_config::load(const string& config_file) {
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
   }
 
+  // PID_DIR
   try {
     smf_cfg.lookupValue(SMF_CONFIG_STRING_PID_DIRECTORY, pid_dir);
+  } catch (const SettingNotFoundException& nfex) {
+    Logger::smf_app().info(
+        "%s : %s, using defaults", nfex.what(), nfex.getPath());
+  }
+
+  // FQDN
+  try {
+    smf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, fqdn);
   } catch (const SettingNotFoundException& nfex) {
     Logger::smf_app().info(
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
@@ -310,7 +321,7 @@ int smf_config::load(const string& config_file) {
   }
 
   try {
-    string astring;
+    string astring = {};
 
     const Setting& pool_cfg = smf_cfg[SMF_CONFIG_STRING_IP_ADDRESS_POOL];
 
@@ -386,9 +397,9 @@ int smf_config::load(const string& config_file) {
     int count6 = ipv6_pool_cfg.getLength();
     for (int i = 0; i < count6; i++) {
       const Setting& ipv6_cfg = ipv6_pool_cfg[i];
-      string ipv6_prefix;
+      string ipv6_prefix      = {};
       ipv6_cfg.lookupValue(SMF_CONFIG_STRING_PREFIX, ipv6_prefix);
-      std::vector<std::string> ips6;
+      std::vector<std::string> ips6 = {};
       boost::split(
           ips6, ipv6_prefix,
           boost::is_any_of(SMF_CONFIG_STRING_IPV6_ADDRESS_PREFIX_DELIMITER),
@@ -426,7 +437,7 @@ int smf_config::load(const string& config_file) {
 
     const Setting& dnn_list_cfg = smf_cfg[SMF_CONFIG_STRING_DNN_LIST];
     count                       = dnn_list_cfg.getLength();
-    int dnn_idx                 = 0;
+    int dnn_idx                 = {0};
     num_dnn                     = 0;
     for (int i = 0; i < count; i++) {
       const Setting& dnn_cfg = dnn_list_cfg[i];
@@ -580,6 +591,14 @@ int smf_config::load(const string& config_file) {
         force_push_pco = false;
       }
 
+      support_features.lookupValue(
+          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_FQDN_DNS, opt);
+      if (boost::iequals(opt, "yes")) {
+        use_fqdn_dns = true;
+      } else {
+        use_fqdn_dns = false;
+      }
+
     } catch (const SettingNotFoundException& nfex) {
       Logger::smf_app().error(
           "%s : %s, using defaults", nfex.what(), nfex.getPath());
@@ -587,175 +606,274 @@ int smf_config::load(const string& config_file) {
     }
 
     // AMF
-    const Setting& amf_cfg = smf_cfg[SMF_CONFIG_STRING_AMF];
-    struct in_addr amf_ipv4_addr;
-    unsigned int amf_port = 0;
-    std::string amf_api_version;
-    amf_cfg.lookupValue(SMF_CONFIG_STRING_AMF_IPV4_ADDRESS, astring);
-    IPV4_STR_ADDR_TO_INADDR(
-        util::trim(astring).c_str(), amf_ipv4_addr,
-        "BAD IPv4 ADDRESS FORMAT FOR AMF !");
-    amf_addr.ipv4_addr = amf_ipv4_addr;
-    if (!(amf_cfg.lookupValue(SMF_CONFIG_STRING_AMF_PORT, amf_port))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_AMF_PORT "failed");
-      throw(SMF_CONFIG_STRING_AMF_PORT "failed");
-    }
-    amf_addr.port = amf_port;
+    const Setting& amf_cfg       = smf_cfg[SMF_CONFIG_STRING_AMF];
+    struct in_addr amf_ipv4_addr = {};
+    unsigned int amf_port        = {0};
+    std::string amf_api_version  = {};
 
-    if (!(amf_cfg.lookupValue(
-            SMF_CONFIG_STRING_API_VERSION, amf_api_version))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
-      throw(SMF_CONFIG_STRING_API_VERSION "failed");
-    }
-    amf_addr.api_version = amf_api_version;
+    if (!use_fqdn_dns) {
+      amf_cfg.lookupValue(SMF_CONFIG_STRING_AMF_IPV4_ADDRESS, astring);
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(astring).c_str(), amf_ipv4_addr,
+          "BAD IPv4 ADDRESS FORMAT FOR AMF !");
+      amf_addr.ipv4_addr = amf_ipv4_addr;
+      if (!(amf_cfg.lookupValue(SMF_CONFIG_STRING_AMF_PORT, amf_port))) {
+        Logger::smf_app().error(SMF_CONFIG_STRING_AMF_PORT "failed");
+        throw(SMF_CONFIG_STRING_AMF_PORT "failed");
+      }
+      amf_addr.port = amf_port;
 
-    // UDM
-    const Setting& udm_cfg = smf_cfg[SMF_CONFIG_STRING_UDM];
-    struct in_addr udm_ipv4_addr;
-    unsigned int udm_port = 0;
-    std::string udm_api_version;
-    udm_cfg.lookupValue(SMF_CONFIG_STRING_UDM_IPV4_ADDRESS, astring);
-    IPV4_STR_ADDR_TO_INADDR(
-        util::trim(astring).c_str(), udm_ipv4_addr,
-        "BAD IPv4 ADDRESS FORMAT FOR UDM !");
-    udm_addr.ipv4_addr = udm_ipv4_addr;
-    if (!(udm_cfg.lookupValue(SMF_CONFIG_STRING_UDM_PORT, udm_port))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_UDM_PORT "failed");
-      throw(SMF_CONFIG_STRING_UDM_PORT "failed");
-    }
-    udm_addr.port = udm_port;
+      if (!(amf_cfg.lookupValue(
+              SMF_CONFIG_STRING_API_VERSION, amf_api_version))) {
+        Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
+        throw(SMF_CONFIG_STRING_API_VERSION "failed");
+      }
+      amf_addr.api_version = amf_api_version;
+    } else {
+      amf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, astring);
+      uint8_t addr_type   = {0};
+      std::string address = {};
 
-    if (!(udm_cfg.lookupValue(
-            SMF_CONFIG_STRING_API_VERSION, udm_api_version))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
-      throw(SMF_CONFIG_STRING_API_VERSION "failed");
+      fqdn::resolve(astring, address, amf_port, addr_type);
+      if (addr_type != 0) {  // IPv6
+        // TODO:
+        throw("DO NOT SUPPORT IPV6 ADDR FOR AMF!");
+      } else {  // IPv4
+        IPV4_STR_ADDR_TO_INADDR(
+            util::trim(address).c_str(), amf_ipv4_addr,
+            "BAD IPv4 ADDRESS FORMAT FOR AMF !");
+        amf_addr.ipv4_addr   = amf_ipv4_addr;
+        amf_addr.port        = amf_port;
+        amf_addr.api_version = "v1";  // TODO: to get API version from DNS
+        amf_addr.fqdn        = astring;
+      }
     }
-    udm_addr.api_version = udm_api_version;
+
+    // UDM: Get UDM information if necessary
+    if (!use_local_subscription_info) {
+      const Setting& udm_cfg       = smf_cfg[SMF_CONFIG_STRING_UDM];
+      struct in_addr udm_ipv4_addr = {};
+      unsigned int udm_port        = {0};
+      std::string udm_api_version  = {};
+
+      if (!use_fqdn_dns) {
+        udm_cfg.lookupValue(SMF_CONFIG_STRING_UDM_IPV4_ADDRESS, astring);
+        IPV4_STR_ADDR_TO_INADDR(
+            util::trim(astring).c_str(), udm_ipv4_addr,
+            "BAD IPv4 ADDRESS FORMAT FOR UDM !");
+        udm_addr.ipv4_addr = udm_ipv4_addr;
+        if (!(udm_cfg.lookupValue(SMF_CONFIG_STRING_UDM_PORT, udm_port))) {
+          Logger::smf_app().error(SMF_CONFIG_STRING_UDM_PORT "failed");
+          throw(SMF_CONFIG_STRING_UDM_PORT "failed");
+        }
+        udm_addr.port = udm_port;
+
+        if (!(udm_cfg.lookupValue(
+                SMF_CONFIG_STRING_API_VERSION, udm_api_version))) {
+          Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
+          throw(SMF_CONFIG_STRING_API_VERSION "failed");
+        }
+        udm_addr.api_version = udm_api_version;
+      } else {
+        udm_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, astring);
+        uint8_t addr_type   = {0};
+        std::string address = {};
+
+        fqdn::resolve(astring, address, udm_port, addr_type);
+        if (addr_type != 0) {  // IPv6
+          // TODO:
+          throw("DO NOT SUPPORT IPV6 ADDR FOR UDM!");
+        } else {  // IPv4
+          IPV4_STR_ADDR_TO_INADDR(
+              util::trim(address).c_str(), udm_ipv4_addr,
+              "BAD IPv4 ADDRESS FORMAT FOR UDM !");
+          udm_addr.ipv4_addr   = udm_ipv4_addr;
+          udm_addr.port        = udm_port;
+          udm_addr.api_version = "v1";  // TODO: to get API version from DNS
+        }
+      }
+    }
 
     // UPF list
-    unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
-    const Setting& upf_list_cfg = smf_cfg[SMF_CONFIG_STRING_UPF_LIST];
-    count                       = upf_list_cfg.getLength();
-    for (int i = 0; i < count; i++) {
-      const Setting& upf_cfg = upf_list_cfg[i];
+    if (!discover_upf) {
+      unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
+      const Setting& upf_list_cfg = smf_cfg[SMF_CONFIG_STRING_UPF_LIST];
+      count                       = upf_list_cfg.getLength();
+      for (int i = 0; i < count; i++) {
+        const Setting& upf_cfg = upf_list_cfg[i];
+        // TODO FQDN
+        string address = {};
+        if (!use_fqdn_dns) {
+          if (upf_cfg.lookupValue(
+                  SMF_CONFIG_STRING_UPF_IPV4_ADDRESS, address)) {
+            pfcp::node_id_t n = {};
+            n.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;  // actually
+            if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) ==
+                1) {
+              memcpy(&n.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
+            } else {
+              Logger::smf_app().error(
+                  "CONFIG: BAD IPV4 ADDRESS in " SMF_CONFIG_STRING_UPF_LIST
+                  " item %d",
+                  i);
+              throw("CONFIG: BAD ADDRESS in " SMF_CONFIG_STRING_UPF_LIST);
+            }
+            upfs.push_back(n);
+          } else {  // TODO IPV6_ADDRESS, FQDN
+            throw(
+                "Bad value in section %s : item no %d in config file %s",
+                SMF_CONFIG_STRING_UPF_LIST, i, config_file.c_str());
+          }
 
-      string address = {};
-      if (upf_cfg.lookupValue(SMF_CONFIG_STRING_UPF_IPV4_ADDRESS, address)) {
-        pfcp::node_id_t n = {};
-        n.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;  // actually
-        if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) == 1) {
-          memcpy(&n.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
         } else {
-          Logger::smf_app().error(
-              "CONFIG: BAD IPV4 ADDRESS in " SMF_CONFIG_STRING_UPF_LIST
-              " item %d",
-              i);
-          throw("CONFIG: BAD ADDRESS in " SMF_CONFIG_STRING_UPF_LIST);
+          unsigned int upf_port = {0};
+
+          upf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, astring);
+          uint8_t addr_type   = {0};
+          std::string address = {};
+          fqdn::resolve(astring, address, upf_port, addr_type, "");
+          if (addr_type != 0) {  // IPv6
+            // TODO:
+            throw("DO NOT SUPPORT IPV6 ADDR FOR NRF!");
+          } else {  // IPv4
+            pfcp::node_id_t n = {};
+            n.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;  // actually
+            n.fqdn            = astring;
+            if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) ==
+                1) {
+              memcpy(&n.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
+            } else {
+              Logger::smf_app().error(
+                  "CONFIG: BAD IPV4 ADDRESS in " SMF_CONFIG_STRING_UPF_LIST
+                  " item %d",
+                  i);
+              throw("CONFIG: BAD ADDRESS in " SMF_CONFIG_STRING_UPF_LIST);
+            }
+            upfs.push_back(n);
+          }
         }
-        upfs.push_back(n);
-      } else {
-        // TODO IPV6_ADDRESS, FQDN
-        throw(
-            "Bad value in section %s : item no %d in config file %s",
-            SMF_CONFIG_STRING_UPF_LIST, i, config_file.c_str());
       }
     }
 
     // NRF
-    const Setting& nrf_cfg = smf_cfg[SMF_CONFIG_STRING_NRF];
-    struct in_addr nrf_ipv4_addr;
-    unsigned int nrf_port = 0;
-    std::string nrf_api_version;
-    nrf_cfg.lookupValue(SMF_CONFIG_STRING_NRF_IPV4_ADDRESS, astring);
-    IPV4_STR_ADDR_TO_INADDR(
-        util::trim(astring).c_str(), nrf_ipv4_addr,
-        "BAD IPv4 ADDRESS FORMAT FOR NRF !");
-    nrf_addr.ipv4_addr = nrf_ipv4_addr;
-    if (!(nrf_cfg.lookupValue(SMF_CONFIG_STRING_NRF_PORT, nrf_port))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_NRF_PORT "failed");
-      throw(SMF_CONFIG_STRING_NRF_PORT "failed");
-    }
-    nrf_addr.port = nrf_port;
+    if (discover_upf or register_nrf) {
+      const Setting& nrf_cfg       = smf_cfg[SMF_CONFIG_STRING_NRF];
+      struct in_addr nrf_ipv4_addr = {};
+      unsigned int nrf_port        = {0};
+      std::string nrf_api_version  = {};
 
-    if (!(nrf_cfg.lookupValue(
-            SMF_CONFIG_STRING_API_VERSION, nrf_api_version))) {
-      Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
-      throw(SMF_CONFIG_STRING_API_VERSION "failed");
+      if (!use_fqdn_dns) {
+        nrf_cfg.lookupValue(SMF_CONFIG_STRING_NRF_IPV4_ADDRESS, astring);
+        IPV4_STR_ADDR_TO_INADDR(
+            util::trim(astring).c_str(), nrf_ipv4_addr,
+            "BAD IPv4 ADDRESS FORMAT FOR NRF !");
+        nrf_addr.ipv4_addr = nrf_ipv4_addr;
+        if (!(nrf_cfg.lookupValue(SMF_CONFIG_STRING_NRF_PORT, nrf_port))) {
+          Logger::smf_app().error(SMF_CONFIG_STRING_NRF_PORT "failed");
+          throw(SMF_CONFIG_STRING_NRF_PORT "failed");
+        }
+        nrf_addr.port = nrf_port;
+
+        if (!(nrf_cfg.lookupValue(
+                SMF_CONFIG_STRING_API_VERSION, nrf_api_version))) {
+          Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
+          throw(SMF_CONFIG_STRING_API_VERSION "failed");
+        }
+        nrf_addr.api_version = nrf_api_version;
+      } else {
+        nrf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, astring);
+        uint8_t addr_type   = {0};
+        std::string address = {};
+        fqdn::resolve(astring, address, nrf_port, addr_type);
+        if (addr_type != 0) {  // IPv6
+          // TODO:
+          throw("DO NOT SUPPORT IPV6 ADDR FOR NRF!");
+        } else {  // IPv4
+          IPV4_STR_ADDR_TO_INADDR(
+              util::trim(address).c_str(), nrf_ipv4_addr,
+              "BAD IPv4 ADDRESS FORMAT FOR NRF !");
+          nrf_addr.ipv4_addr   = nrf_ipv4_addr;
+          nrf_addr.port        = nrf_port;
+          nrf_addr.api_version = "v1";  // TODO: to get API version from DNS
+          nrf_addr.fqdn        = astring;
+        }
+      }
     }
-    nrf_addr.api_version = nrf_api_version;
 
     // Local configuration
-    num_session_management_subscription = 0;
-    const Setting& local_cfg = smf_cfg[SMF_CONFIG_STRING_LOCAL_CONFIGURATION];
+    if (use_local_subscription_info) {
+      num_session_management_subscription = 0;
+      const Setting& local_cfg = smf_cfg[SMF_CONFIG_STRING_LOCAL_CONFIGURATION];
 
-    const Setting& session_management_subscription_list_cfg =
-        local_cfg[SMF_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST];
-    count = session_management_subscription_list_cfg.getLength();
-    for (int i = 0; i < count; i++) {
-      const Setting& session_management_subscription_cfg =
-          session_management_subscription_list_cfg[i];
+      const Setting& session_management_subscription_list_cfg =
+          local_cfg[SMF_CONFIG_STRING_SESSION_MANAGEMENT_SUBSCRIPTION_LIST];
+      count = session_management_subscription_list_cfg.getLength();
+      for (int i = 0; i < count; i++) {
+        const Setting& session_management_subscription_cfg =
+            session_management_subscription_list_cfg[i];
 
-      unsigned int nssai_sst                      = 0;
-      string nssai_sd                             = {};
-      string dnn                                  = {};
-      string default_session_type                 = {};
-      unsigned int default_ssc_mode               = 0;
-      unsigned int qos_profile_5qi                = 0;
-      unsigned int qos_profile_priority_level     = 0;
-      unsigned int qos_profile_arp_priority_level = 0;
-      string qos_profile_arp_preemptcap           = {};
-      string qos_profile_arp_preemptvuln          = {};
-      string session_ambr_ul                      = {};
-      string session_ambr_dl                      = {};
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_NSSAI_SST, nssai_sst);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_NSSAI_SD, nssai_sd);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_DNN, dnn);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_DEFAULT_SESSION_TYPE, default_session_type);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_DEFAULT_SSC_MODE, default_ssc_mode);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_QOS_PROFILE_5QI, qos_profile_5qi);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_QOS_PROFILE_PRIORITY_LEVEL,
-          qos_profile_priority_level);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_QOS_PROFILE_ARP_PRIORITY_LEVEL,
-          qos_profile_arp_priority_level);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTCAP,
-          qos_profile_arp_preemptcap);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTVULN,
-          qos_profile_arp_preemptvuln);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_SESSION_AMBR_UL, session_ambr_ul);
-      session_management_subscription_cfg.lookupValue(
-          SMF_CONFIG_STRING_SESSION_AMBR_DL, session_ambr_dl);
+        unsigned int nssai_sst                      = 0;
+        string nssai_sd                             = {};
+        string dnn                                  = {};
+        string default_session_type                 = {};
+        unsigned int default_ssc_mode               = 0;
+        unsigned int qos_profile_5qi                = 0;
+        unsigned int qos_profile_priority_level     = 0;
+        unsigned int qos_profile_arp_priority_level = 0;
+        string qos_profile_arp_preemptcap           = {};
+        string qos_profile_arp_preemptvuln          = {};
+        string session_ambr_ul                      = {};
+        string session_ambr_dl                      = {};
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_NSSAI_SST, nssai_sst);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_NSSAI_SD, nssai_sd);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_DNN, dnn);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_DEFAULT_SESSION_TYPE, default_session_type);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_DEFAULT_SSC_MODE, default_ssc_mode);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_QOS_PROFILE_5QI, qos_profile_5qi);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_QOS_PROFILE_PRIORITY_LEVEL,
+            qos_profile_priority_level);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_QOS_PROFILE_ARP_PRIORITY_LEVEL,
+            qos_profile_arp_priority_level);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTCAP,
+            qos_profile_arp_preemptcap);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_QOS_PROFILE_ARP_PREEMPTVULN,
+            qos_profile_arp_preemptvuln);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_SESSION_AMBR_UL, session_ambr_ul);
+        session_management_subscription_cfg.lookupValue(
+            SMF_CONFIG_STRING_SESSION_AMBR_DL, session_ambr_dl);
 
-      session_management_subscription[i].single_nssai.sST = nssai_sst;
-      session_management_subscription[i].single_nssai.sD  = nssai_sd;
-      session_management_subscription[i].session_type = default_session_type;
-      session_management_subscription[i].dnn          = dnn;
-      session_management_subscription[i].ssc_mode     = default_ssc_mode;
-      session_management_subscription[i].default_qos._5qi = qos_profile_5qi;
-      session_management_subscription[i].default_qos.priority_level =
-          qos_profile_priority_level;
-      session_management_subscription[i].default_qos.arp.priority_level =
-          qos_profile_arp_priority_level;
-      session_management_subscription[i].default_qos.arp.preempt_cap =
-          qos_profile_arp_preemptcap;
-      session_management_subscription[i].default_qos.arp.preempt_vuln =
-          qos_profile_arp_preemptvuln;
-      session_management_subscription[i].session_ambr.downlink =
-          session_ambr_dl;
-      session_management_subscription[i].session_ambr.uplink = session_ambr_ul;
-      num_session_management_subscription++;
+        session_management_subscription[i].single_nssai.sST = nssai_sst;
+        session_management_subscription[i].single_nssai.sD  = nssai_sd;
+        session_management_subscription[i].session_type = default_session_type;
+        session_management_subscription[i].dnn          = dnn;
+        session_management_subscription[i].ssc_mode     = default_ssc_mode;
+        session_management_subscription[i].default_qos._5qi = qos_profile_5qi;
+        session_management_subscription[i].default_qos.priority_level =
+            qos_profile_priority_level;
+        session_management_subscription[i].default_qos.arp.priority_level =
+            qos_profile_arp_priority_level;
+        session_management_subscription[i].default_qos.arp.preempt_cap =
+            qos_profile_arp_preemptcap;
+        session_management_subscription[i].default_qos.arp.preempt_vuln =
+            qos_profile_arp_preemptvuln;
+        session_management_subscription[i].session_ambr.downlink =
+            session_ambr_dl;
+        session_management_subscription[i].session_ambr.uplink =
+            session_ambr_ul;
+        num_session_management_subscription++;
+      }
     }
-
   } catch (const SettingNotFoundException& nfex) {
     Logger::smf_app().error("%s : %s", nfex.what(), nfex.getPath());
     return RETURNerror;
@@ -884,34 +1002,6 @@ void smf_config::display() {
     }
   }
 
-  Logger::smf_app().info("- AMF:");
-  Logger::smf_app().info(
-      "    IPv4 Addr ...........: %s",
-      inet_ntoa(*((struct in_addr*) &amf_addr.ipv4_addr)));
-  Logger::smf_app().info("    Port ................: %lu  ", amf_addr.port);
-  Logger::smf_app().info(
-      "    API version .........: %s", amf_addr.api_version.c_str());
-
-  if (!use_local_subscription_info) {
-    Logger::smf_app().info("- UDM:");
-    Logger::smf_app().info(
-        "    IPv4 Addr ...........: %s",
-        inet_ntoa(*((struct in_addr*) &udm_addr.ipv4_addr)));
-    Logger::smf_app().info("    Port ................: %lu  ", udm_addr.port);
-    Logger::smf_app().info(
-        "    API version .........: %s", udm_addr.api_version.c_str());
-  }
-
-  if (register_nrf) {
-    Logger::smf_app().info("- NRF:");
-    Logger::smf_app().info(
-        "    IPv4 Addr ...........: %s",
-        inet_ntoa(*((struct in_addr*) &nrf_addr.ipv4_addr)));
-    Logger::smf_app().info("    Port ................: %lu  ", nrf_addr.port);
-    Logger::smf_app().info(
-        "    API version .........: %s", nrf_addr.api_version.c_str());
-  }
-
   Logger::smf_app().info("- Supported Features:");
   Logger::smf_app().info(
       "    Register to NRF............: %s", register_nrf ? "Yes" : "No");
@@ -922,6 +1012,57 @@ void smf_config::display() {
       use_local_subscription_info ? "Yes" : "No");
   Logger::smf_app().info(
       "    Push PCO (DNS+MTU).........: %s", force_push_pco ? "Yes" : "No");
+  Logger::smf_app().info(
+      "    Use FQDN ..................: %s", use_fqdn_dns ? "Yes" : "No");
+
+  Logger::smf_app().info("- AMF:");
+  Logger::smf_app().info(
+      "    IPv4 Addr ...........: %s",
+      inet_ntoa(*((struct in_addr*) &amf_addr.ipv4_addr)));
+  Logger::smf_app().info("    Port ................: %lu  ", amf_addr.port);
+  Logger::smf_app().info(
+      "    API version .........: %s", amf_addr.api_version.c_str());
+  if (use_fqdn_dns)
+    Logger::smf_app().info(
+        "    FQDN ................: %s", amf_addr.fqdn.c_str());
+
+  if (!use_local_subscription_info) {
+    Logger::smf_app().info("- UDM:");
+    Logger::smf_app().info(
+        "    IPv4 Addr ...........: %s",
+        inet_ntoa(*((struct in_addr*) &udm_addr.ipv4_addr)));
+    Logger::smf_app().info("    Port ................: %lu  ", udm_addr.port);
+    Logger::smf_app().info(
+        "    API version .........: %s", udm_addr.api_version.c_str());
+    if (use_fqdn_dns)
+      Logger::smf_app().info(
+          "    FQDN ................: %s", udm_addr.fqdn.c_str());
+  }
+
+  if (register_nrf or discover_upf) {
+    Logger::smf_app().info("- NRF:");
+    Logger::smf_app().info(
+        "    IPv4 Addr ...........: %s",
+        inet_ntoa(*((struct in_addr*) &nrf_addr.ipv4_addr)));
+    Logger::smf_app().info("    Port ................: %lu  ", nrf_addr.port);
+    Logger::smf_app().info(
+        "    API version .........: %s", nrf_addr.api_version.c_str());
+    if (use_fqdn_dns)
+      Logger::smf_app().info(
+          "    FQDN ................: %s", nrf_addr.fqdn.c_str());
+  }
+
+  if (!discover_upf) {
+    Logger::smf_app().info("- UPF:");
+    for (auto u : upfs) {
+      if (u.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS)
+        Logger::smf_app().info(
+            "    IPv4 Addr ...........: %s",
+            inet_ntoa(*((struct in_addr*) &u.u1.ipv4_address)));
+      if (use_fqdn_dns)
+        Logger::smf_app().info("    FQDN ................: %s", u.fqdn.c_str());
+    }
+  }
 
   if (use_local_subscription_info) {
     Logger::smf_app().info(
@@ -972,6 +1113,13 @@ void smf_config::display() {
 //------------------------------------------------------------------------------
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
   node_id = {};
+  // TODO: support QFDN
+  if (!fqdn.empty() and use_fqdn_dns) {
+    node_id.node_id_type = pfcp::NODE_ID_TYPE_FQDN;
+    node_id.fqdn         = fqdn;
+    return RETURNok;
+  }
+
   if (n4.addr4.s_addr) {
     node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
     node_id.u1.ipv4_address = n4.addr4;

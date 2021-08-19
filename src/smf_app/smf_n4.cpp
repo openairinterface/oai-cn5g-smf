@@ -372,7 +372,7 @@ void smf_n4::handle_receive_association_setup_request(
           msg_ies_container.node_id.second,
           msg_ies_container.recovery_time_stamp.second,
           msg_ies_container.up_function_features.second, restore_n4_sessions);
-    } else if (msg_ies_container.enterprise_specific.first)  {
+    } else if (msg_ies_container.enterprise_specific.first) {
       pfcp_associations::get_instance().add_association(
           msg_ies_container.node_id.second,
           msg_ies_container.recovery_time_stamp.second,
@@ -452,7 +452,7 @@ void smf_n4::handle_receive_association_setup_response(
           msg_ies_container.node_id.second,
           msg_ies_container.recovery_time_stamp.second,
           msg_ies_container.up_function_features.second, restore_n4_sessions);
-    } else if (msg_ies_container.enterprise_specific.first)  {
+    } else if (msg_ies_container.enterprise_specific.first) {
       pfcp_associations::get_instance().add_association(
           msg_ies_container.node_id.second,
           msg_ies_container.recovery_time_stamp.second,

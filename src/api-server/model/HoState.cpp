@@ -27,9 +27,12 @@ void HoState::validate() {
 
 void to_json(nlohmann::json& j, const HoState& o) {
   j = nlohmann::json();
+  j = o.state;
 }
 
-void from_json(const nlohmann::json& j, HoState& o) {}
+void from_json(const nlohmann::json& j, HoState& o) {
+  o.state = j.get<std::string>();
+}
 
 }  // namespace model
 }  // namespace smf_server

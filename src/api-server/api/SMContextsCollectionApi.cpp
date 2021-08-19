@@ -88,25 +88,28 @@ void SMContextsCollectionApi::post_sm_contexts_handler(
   SmContextMessage smContextMessage       = {};
   SmContextCreateData smContextCreateData = {};
 
-  // simple parser
+  // Simple parser
   mime_parser sp = {};
-  sp.parse(request.body());
+  if (!sp.parse(request.body())) {
+    response.send(Pistache::Http::Code::Bad_Request);
+    return;
+  }
 
   std::vector<mime_part> parts = {};
   sp.get_mime_parts(parts);
   uint8_t size = parts.size();
   Logger::smf_api_server().debug("Number of MIME parts %d", size);
-  // at least 2 parts for Json data and N1 (+ N2)
+  // At least 2 parts for Json data and N1 (+ N2)
   if (size < 2) {
     response.send(Pistache::Http::Code::Bad_Request);
     return;
   }
 
-  // step 2. process the request
+  // Step 2. process the request
   try {
     nlohmann::json::parse(parts[0].body.c_str()).get_to(smContextCreateData);
     smContextMessage.setJsonData(smContextCreateData);
-    // must include N1 NAS msg
+    // Must include N1 NAS msg
     if (parts[1].content_type.compare("application/vnd.3gpp.5gnas") == 0) {
       smContextMessage.setBinaryDataN1SmMessage(parts[1].body);
     } else {

@@ -64,7 +64,6 @@ int decode__5gs_mobile_identity(
     uint32_t len) {
   int decoded   = 0;
   uint8_t ielen = 0;
-  int decode_result;
 
   if (iei > 0) {
     CHECK_IEI_DECODER(iei, *buffer);
@@ -76,11 +75,15 @@ int decode__5gs_mobile_identity(
   ielen = (ielen << 8) + *(buffer + decoded);
   decoded++;
   CHECK_LENGTH_DECODER(len - decoded, ielen);
+  /*
+    int decode_result;
+    //TODO: to be updated
+    if ((decode_result = decode_bstring(
+             _5gsmobileidentity, ielen, buffer + decoded, len - decoded)) < 0)
+      return decode_result;
+    else
+      decoded += decode_result;
 
-  if ((decode_result = decode_bstring(
-           _5gsmobileidentity, ielen, buffer + decoded, len - decoded)) < 0)
-    return decode_result;
-  else
-    decoded += decode_result;
+   */
   return decoded;
 }

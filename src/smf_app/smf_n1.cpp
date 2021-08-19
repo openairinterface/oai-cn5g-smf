@@ -207,7 +207,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   try {
     sm_msg->pdu_session_establishment_accept.snssai.sd =
-        std::stoul(sm_context_res.get_snssai().sD, nullptr, 16);
+        std::stoul(sm_context_res.get_snssai().sD, nullptr, 10);
   } catch (const std::exception& e) {
     Logger::smf_n1().warn(
         "Error when converting from string to int for snssai.SD, error: %s",

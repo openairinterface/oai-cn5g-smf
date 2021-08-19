@@ -45,6 +45,7 @@
 #define SMF_CONFIG_STRING_SMF_CONFIG "SMF"
 #define SMF_CONFIG_STRING_PID_DIRECTORY "PID_DIRECTORY"
 #define SMF_CONFIG_STRING_INSTANCE "INSTANCE"
+#define SMF_CONFIG_STRING_FQDN_DNS "FQDN"
 #define SMF_CONFIG_STRING_INTERFACES "INTERFACES"
 #define SMF_CONFIG_STRING_INTERFACE_NAME "INTERFACE_NAME"
 #define SMF_CONFIG_STRING_IPV4_ADDRESS "IPV4_ADDRESS"
@@ -137,6 +138,7 @@
   "USE_LOCAL_SUBSCRIPTION_INFO"
 #define SMF_CONFIG_STRING_NAS_FORCE_PUSH_PCO                                   \
   "FORCE_PUSH_PROTOCOL_CONFIGURATION_OPTIONS"
+#define SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_FQDN_DNS "USE_FQDN_DNS"
 
 #define SMF_MAX_ALLOCATED_PDN_ADDRESSES 1024
 
@@ -172,6 +174,7 @@ class smf_config {
   std::mutex m_rw_lock;
   std::string pid_dir;
   unsigned int instance = 0;
+  std::string fqdn      = {};
 
   interface_cfg_t n4;
   interface_cfg_t sbi;
@@ -217,17 +220,20 @@ class smf_config {
   bool register_nrf;
   bool discover_upf;
   bool use_local_subscription_info;
+  bool use_fqdn_dns;
 
   struct {
     struct in_addr ipv4_addr;
     unsigned int port;
     std::string api_version;
+    std::string fqdn;
   } amf_addr;
 
   struct {
     struct in_addr ipv4_addr;
     unsigned int port;
     std::string api_version;
+    std::string fqdn;
   } udm_addr;
 
   std::vector<pfcp::node_id_t> upfs;
@@ -236,9 +242,10 @@ class smf_config {
     struct in_addr ipv4_addr;
     unsigned int port;
     std::string api_version;
+    std::string fqdn;
   } nrf_addr;
 
-#define SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 5
+#define SMF_NUM_SESSION_MANAGEMENT_SUBSCRIPTION_MAX 10
   struct {
     snssai_t single_nssai;
     std::string session_type;
@@ -295,13 +302,17 @@ class smf_config {
     amf_addr.ipv4_addr.s_addr = INADDR_ANY;
     amf_addr.port             = 80;
     amf_addr.api_version      = "v1";
+    amf_addr.fqdn             = {};
+
     udm_addr.ipv4_addr.s_addr = INADDR_ANY;
     udm_addr.port             = 80;
     udm_addr.api_version      = "v1";
+    udm_addr.fqdn             = {};
 
     nrf_addr.ipv4_addr.s_addr = INADDR_ANY;
     nrf_addr.port             = 80;
     nrf_addr.api_version      = "v1";
+    nrf_addr.fqdn             = {};
 
     num_session_management_subscription = 0;
 
@@ -314,6 +325,7 @@ class smf_config {
     use_local_subscription_info = false;
     register_nrf                = false;
     discover_upf                = false;
+    use_fqdn_dns                = false;
   };
   ~smf_config();
   void lock() { m_rw_lock.lock(); };

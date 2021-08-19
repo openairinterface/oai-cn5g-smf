@@ -37,6 +37,7 @@ class HoState {
 
   /////////////////////////////////////////////
   /// HoState members
+  std::string state;
 
   friend void to_json(nlohmann::json& j, const HoState& o);
   friend void from_json(const nlohmann::json& j, HoState& o);

@@ -9,8 +9,8 @@
  * will do).
  * This type may be used when integer range is limited by subtype constraints.
  */
-#ifndef	_NativeEnumerated_H_
-#define	_NativeEnumerated_H_
+#ifndef _NativeEnumerated_H_
+#define _NativeEnumerated_H_
 
 #include <NativeInteger.h>
 
@@ -29,9 +29,9 @@ per_type_encoder_f NativeEnumerated_encode_uper;
 per_type_decoder_f NativeEnumerated_decode_aper;
 per_type_encoder_f NativeEnumerated_encode_aper;
 
-#define NativeEnumerated_free       NativeInteger_free
-#define NativeEnumerated_print      NativeInteger_print
-#define NativeEnumerated_compare    NativeInteger_compare
+#define NativeEnumerated_free NativeInteger_free
+#define NativeEnumerated_print NativeInteger_print
+#define NativeEnumerated_compare NativeInteger_compare
 #define NativeEnumerated_random_fill NativeInteger_random_fill
 #define NativeEnumerated_constraint asn_generic_no_constraint
 #define NativeEnumerated_decode_ber NativeInteger_decode_ber
@@ -42,4 +42,4 @@ per_type_encoder_f NativeEnumerated_encode_aper;
 }
 #endif
 
-#endif	/* _NativeEnumerated_H_ */
+#endif /* _NativeEnumerated_H_ */

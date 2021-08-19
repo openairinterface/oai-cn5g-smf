@@ -161,11 +161,11 @@ void smf_event_exposure_notification_from_openapi(
 void sm_context_request_from_nas(
     const nas_message_t& nm, smf::pdu_session_create_sm_context_request& pcr);
 
-void create_sm_context_response_from_ct_request(
+void create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_create_sm_context_response>& ct_response);
 
-void update_sm_context_response_from_ct_request(
+void update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response);
 

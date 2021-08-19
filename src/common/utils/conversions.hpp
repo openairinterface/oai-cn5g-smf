@@ -65,5 +65,14 @@ class conv {
       const uint8_t digit1, const uint8_t digit2, const uint8_t digit3);
   static std::string mncToString(
       const uint8_t digit1, const uint8_t digit2, const uint8_t digit3);
+
+  /*
+   * Convert a string to hex representing this string
+   * @param [const std::string&] input_str Input string
+   * @param [std::string&] output_str String represents string in hex format
+   * @return void
+   */
+  static void convert_string_2_hex(
+      const std::string& input_str, std::string& output_str);
 };
 #endif /* FILE_CONVERSIONS_HPP_SEEN */

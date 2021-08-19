@@ -39,6 +39,7 @@
 #include "3gpp_29.500.h"
 #include "3gpp_24.501.h"
 #include "conversions.hpp"
+#include "NgRanTargetId.h"
 
 //------------------------------------------------------------------------------
 void xgpp_conv::paa_to_pfcp_ue_ip_address(
@@ -366,6 +367,62 @@ void xgpp_conv::sm_context_update_from_openapi(
   // Flow is released) step 7a, SM Context ID, N2 SM information, UE location
   // information Step 11, SM Context ID, N1 SM (PDU Session Modification Command
   // ACK), User location
+
+  // For Xn Handover
+  if (context_data.toBeSwitchedIsSet()) {
+    pur.set_to_be_switched(context_data.isToBeSwitched());
+  }
+  // TODO: additional N2 SM information received from the source 5G-AN
+
+  if (context_data.failedToBeSwitchedIsSet()) {
+    pur.set_failed_to_be_switched(context_data.isFailedToBeSwitched());
+  }
+
+  // For N2 Handover,
+  // HO state
+  if (context_data.hoStateIsSet()) {
+    std::string state = context_data.getHoState().state;
+    pur.set_ho_state(state);
+  }
+  // Target ID
+  if (context_data.targetIdIsSet()) {
+    oai::smf_server::model::NgRanTargetId api_target_id =
+        context_data.getTargetId();
+    ng_ran_target_id_t ran_target_id = {};
+    if (!conv::plmnFromString(
+            ran_target_id.global_ran_node_id.plmn_id,
+            api_target_id.getTai().getPlmnId().getMcc(),
+            api_target_id.getTai().getPlmnId().getMnc())) {
+      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
+    }
+    ran_target_id.global_ran_node_id.gNbId.bit_length =
+        api_target_id.getRanNodeId().getGNbId().getBitLength();
+    ran_target_id.global_ran_node_id.gNbId.gNB_value =
+        api_target_id.getRanNodeId().getGNbId().getGNBValue();
+
+    if (!conv::plmnFromString(
+            ran_target_id.tai.plmn, api_target_id.getTai().getPlmnId().getMcc(),
+            api_target_id.getTai().getPlmnId().getMnc())) {
+      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
+    }
+
+    try {
+      // string to uint16_t
+      ran_target_id.tai.tac =
+          std::stoul(api_target_id.getTai().getTac(), nullptr, 10);
+    } catch (const std::exception& e) {
+      Logger::smf_n1().warn(
+          "Error when converting from string to int for RAN target ID TAC, "
+          "error: %s",
+          e.what());
+      ran_target_id.tai.tac = 1;  // TODO: default TAC
+    }
+  }
+  // TargetServingNfId
+  if (context_data.targetServingNfIdIsSet()) {
+    std::string target_serving_nf_id = context_data.getTargetServingNfId();
+    pur.set_target_serving_nf_id(target_serving_nf_id);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -545,7 +602,7 @@ void xgpp_conv::sm_context_request_from_nas(
 }
 
 //------------------------------------------------------------------------------
-void xgpp_conv::create_sm_context_response_from_ct_request(
+void xgpp_conv::create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
     std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
   ctx_response->http_version = ctx_request->http_version;
@@ -564,7 +621,7 @@ void xgpp_conv::create_sm_context_response_from_ct_request(
 }
 
 //------------------------------------------------------------------------------
-void xgpp_conv::update_sm_context_response_from_ct_request(
+void xgpp_conv::update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
   ct_response->res.set_http_code(

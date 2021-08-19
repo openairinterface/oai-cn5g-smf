@@ -43,6 +43,7 @@ typedef struct mime_part {
 
 class mime_parser {
  public:
+  mime_parser() { mime_parts = {}; }
   /*
    * Parse the input string into different Mime parts
    * @param [const std::string &] str: input string
@@ -62,7 +63,7 @@ class mime_parser {
    * @param [const std::string&] str: input string
    * @return String represents string in hex format
    */
-  unsigned char* format_string_as_hex(const std::string& str);
+  static unsigned char* format_string_as_hex(const std::string& str);
 
   /*
    * Create HTTP body content for multipart/related message
@@ -73,7 +74,7 @@ class mime_parser {
    * @param [std::string] n2_message: N2 (NGAP) part
    * @return void
    */
-  void create_multipart_related_content(
+  void static create_multipart_related_content(
       std::string& body, const std::string& json_part,
       const std::string boundary, const std::string& n1_message,
       const std::string& n2_message,
@@ -88,7 +89,7 @@ class mime_parser {
    * @param [uint8_t] content_type: 1 for NAS content, else NGAP content
    * @return void
    */
-  void create_multipart_related_content(
+  void static create_multipart_related_content(
       std::string& body, const std::string& json_part,
       const std::string boundary, const std::string& message,
       const multipart_related_content_part_e content_type,

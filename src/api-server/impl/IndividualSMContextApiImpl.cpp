@@ -143,7 +143,6 @@ void IndividualSMContextApiImpl::update_sm_context(
   Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
   nlohmann::json json_data = {};
-  mime_parser parser       = {};
   std::string body         = {};
   std::string json_format;
 
@@ -153,7 +152,7 @@ void IndividualSMContextApiImpl::update_sm_context(
 
   if (sm_context_response.n1_sm_msg_is_set() and
       sm_context_response.n2_sm_info_is_set()) {
-    parser.create_multipart_related_content(
+    mime_parser::create_multipart_related_content(
         body, json_data.dump(), CURL_MIME_BOUNDARY,
         sm_context_response.get_n1_sm_message(),
         sm_context_response.get_n2_sm_information(), json_format);
@@ -161,7 +160,7 @@ void IndividualSMContextApiImpl::update_sm_context(
         Pistache::Http::Mime::MediaType(
             "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)));
   } else if (sm_context_response.n1_sm_msg_is_set()) {
-    parser.create_multipart_related_content(
+    mime_parser::create_multipart_related_content(
         body, json_data.dump(), CURL_MIME_BOUNDARY,
         sm_context_response.get_n1_sm_message(),
         multipart_related_content_part_e::NAS, json_format);
@@ -169,7 +168,7 @@ void IndividualSMContextApiImpl::update_sm_context(
         Pistache::Http::Mime::MediaType(
             "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)));
   } else if (sm_context_response.n2_sm_info_is_set()) {
-    parser.create_multipart_related_content(
+    mime_parser::create_multipart_related_content(
         body, json_data.dump(), CURL_MIME_BOUNDARY,
         sm_context_response.get_n2_sm_information(),
         multipart_related_content_part_e::NGAP, json_format);

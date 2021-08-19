@@ -89,7 +89,6 @@ extern "C" {
 #define min_val_Ngap_TrafficLoadReductionIndication (1)
 #define max_val_Ngap_TrafficLoadReductionIndication (99)
 
-
 #ifdef __cplusplus
 }
 #endif

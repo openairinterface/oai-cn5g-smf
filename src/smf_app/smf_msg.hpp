@@ -339,15 +339,23 @@ class pdu_session_update_sm_context_request
  public:
   pdu_session_update_sm_context_request()
       : pdu_session_sm_context_request(PDU_SESSION_UPDATE_SM_CONTEXT_REQUEST) {
-    m_5gMm_cause_value   = 0;
-    m_data_forwarding    = false;
-    m_upCnx_state_is_set = false;
-    qfis                 = {};
-    dl_fteid             = {};
-    m_release            = false;
-    m_release_is_set     = false;
-    m_an_type_is_set     = false;
-    m_rat_type_is_set    = false;
+    m_5gMm_cause_value             = 0;
+    m_data_forwarding              = false;
+    m_upCnx_state_is_set           = false;
+    qfis                           = {};
+    dl_fteid                       = {};
+    m_release                      = false;
+    m_release_is_set               = false;
+    m_to_be_switched               = false;
+    m_to_be_switched_is_set        = false;
+    m_failed_to_be_switched        = false;
+    m_is_failed_to_be_switched     = false;
+    m_failed_to_be_switched_is_set = false;
+    m_an_type_is_set               = false;
+    m_rat_type_is_set              = false;
+    m_ho_state_is_set              = false;
+    m_target_id_is_set             = false;
+    m_target_serving_nf_id_is_set  = false;
   };
 
   void add_qfi(const pfcp::qfi_t& qfi);
@@ -363,6 +371,26 @@ class pdu_session_update_sm_context_request
   bool an_type_is_set() const;
   bool release_is_set() const;
   void set_release(bool value);
+  void set_to_be_switched(bool value);
+  bool get_to_be_switched() const;
+  void get_to_be_switched(bool& value) const;
+  void set_failed_to_be_switched(bool value);
+  bool get_failed_to_be_switched() const;
+  void get_failed_to_be_switched(bool& value) const;
+
+  std::string get_ho_state() const;
+  void get_ho_state(std::string& state) const;
+  void set_ho_state(const std::string& state);
+  bool ho_state_is_set() const;
+
+  ng_ran_target_id_t get_target_id() const;
+  void get_target_id(ng_ran_target_id_t& value) const;
+  void set_target_id(const ng_ran_target_id_t& value);
+
+  void set_target_serving_nf_id(const std::string& nf_id);
+  void get_target_serving_nf_id(std::string& nf_id) const;
+  std::string get_target_serving_nf_id() const;
+  bool target_serving_nf_id_is_set() const;
 
  private:
   std::vector<pfcp::qfi_t> qfis;
@@ -374,12 +402,22 @@ class pdu_session_update_sm_context_request
   bool m_rat_type_is_set;
   std::string m_upCnx_state;
   bool m_upCnx_state_is_set;
-  std::string m_target_serving_nfId;
   std::string m_sm_context_status_uri;
   bool m_data_forwarding;
   uint8_t m_5gMm_cause_value;
   bool m_release_is_set;
   bool m_release;
+  bool m_to_be_switched;
+  bool m_to_be_switched_is_set;
+  bool m_failed_to_be_switched;
+  bool m_is_failed_to_be_switched;
+  bool m_failed_to_be_switched_is_set;
+  std::string m_ho_state;
+  bool m_ho_state_is_set;
+  ng_ran_target_id_t m_ng_ran_target_id;
+  bool m_target_id_is_set;
+  std::string m_target_serving_nf_id;
+  bool m_target_serving_nf_id_is_set;
 };
 
 //---------------------------------------------------------------------------------------

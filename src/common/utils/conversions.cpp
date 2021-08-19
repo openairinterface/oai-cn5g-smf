@@ -32,6 +32,11 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
+#include "logger.hpp"
+
+extern "C" {
+#include "dynamic_memory_check.h"
+}
 
 static const char hex_to_ascii_table[16] = {
     '0', '1', '2', '3', '4', '5', '6', '7',
@@ -203,4 +208,33 @@ std::string conv::toString(const struct in6_addr& in6addr) {
     s.append(str);
   }
   return s;
+}
+
+//---------------------------------------------------------------------------------------------
+void conv::convert_string_2_hex(
+    const std::string& input_str, std::string& output_str) {
+  Logger::smf_app().debug("Convert string to Hex");
+  unsigned char* data = (unsigned char*) malloc(input_str.length() + 1);
+  memset(data, 0, input_str.length() + 1);
+  memcpy((void*) data, (void*) input_str.c_str(), input_str.length());
+
+#if DEBUG_IS_ON
+  Logger::smf_app().debug("Input: ");
+  for (int i = 0; i < input_str.length(); i++) {
+    printf("%02x ", data[i]);
+  }
+  printf("\n");
+#endif
+  char* datahex = (char*) malloc(input_str.length() * 2 + 1);
+  memset(datahex, 0, input_str.length() * 2 + 1);
+
+  for (int i = 0; i < input_str.length(); i++)
+    sprintf(datahex + i * 2, "%02x", data[i]);
+
+  output_str = reinterpret_cast<char*>(datahex);
+  Logger::smf_app().debug("Output: \n %s ", output_str.c_str());
+
+  // free memory
+  free_wrapper((void**) &data);
+  free_wrapper((void**) &datahex);
 }
