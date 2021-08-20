@@ -709,7 +709,7 @@ int session_update_sm_context_procedure::run(
           // forwarding_parameters IEs
           pfcp::destination_interface_t destination_interface = {};
           // pfcp::network_instance_t          network_instance = {};
-          // pfcp::redirect_information_t      redirect_information = {};
+          pfcp::redirect_information_t      redirect_information = {};
           pfcp::outer_header_creation_t outer_header_creation = {};
           // pfcp::transport_level_marking_t   transport_level_marking = {};
           // pfcp::forwarding_policy_t         forwarding_policy = {};
