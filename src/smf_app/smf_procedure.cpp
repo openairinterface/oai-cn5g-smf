@@ -186,6 +186,18 @@ int session_create_sm_context_procedure::run(
   }
 
   // TODO: Redirect Information
+
+  pfcp::redirect_information_t redirect_information = {};
+
+  // example to set this value
+  redirect_information.redirect_address_type = 0; // IPV4
+  redirect_information.spare = 0;
+  redirect_information.redirect_server_address = "1.2.3.9";
+  redirect_information.redirect_server_address_length = sizeof(redirect_information.redirect_server_address);
+  redirect_information.other_redirect_server_address = "";
+  redirect_information.other_redirect_server_address_length = 0;  
+  forwarding_parameters.set(redirect_information);
+
   // TODO: Outer Header Creation (e.g., in case of N9)
   
 
@@ -737,6 +749,15 @@ int session_update_sm_context_procedure::run(
           outer_header_creation.ipv4_address.s_addr =
               dl_fteid.ipv4_address.s_addr;
           forwarding_parameters.set(outer_header_creation);
+
+          // example to set this value
+          redirect_information.redirect_address_type = 0; // IPV4
+          redirect_information.spare = 0;
+          redirect_information.redirect_server_address = "3.2.3.9";
+          redirect_information.redirect_server_address_length = sizeof(redirect_information.redirect_server_address);
+          redirect_information.other_redirect_server_address = "";
+          redirect_information.other_redirect_server_address_length = 0;  
+          forwarding_parameters.set(redirect_information);
 
           create_far.set(far_id);
           create_far.set(apply_action);
