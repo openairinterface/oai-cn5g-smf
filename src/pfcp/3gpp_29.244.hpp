@@ -950,7 +950,7 @@ public:
    other_redirect_server_address_length = b.other_redirect_server_address_length;
    
    // number of octets for fixed components: 5 = 1 + 2 + 2
-   tlv.set_length(5 + redirect_server_address_length + other_redirect_server_address_length);
+   tlv.add_length(5 + redirect_server_address_length + other_redirect_server_address_length);
  }
  //--------
  pfcp_redirect_information_ie() : pfcp_ie(PFCP_IE_REDIRECT_INFORMATION){
@@ -962,7 +962,7 @@ public:
    other_redirect_server_address_length = 0;
    other_redirect_server_address = "";
 
-   tlv.set_length(5);
+   tlv.add_length(5);
  }
 
  //--------
@@ -1001,21 +1001,19 @@ public:
  void dump_to(std::ostream& os) {
    tlv.dump_to(os);
    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
-    if (redirect_server_address_length) {
-      auto be_length_of_redirect_server_address = htobe16(redirect_server_address_length);
+   auto be_length_of_redirect_server_address = htobe16(redirect_server_address_length);
       os.write(
           reinterpret_cast<const char*>(&be_length_of_redirect_server_address),
           sizeof(be_length_of_redirect_server_address));
+    
       os << redirect_server_address;
-    }
-
-    if (other_redirect_server_address_length) {
-      auto be_length_of_other_redirect_server_address = htobe16(other_redirect_server_address_length);
+    auto be_length_of_other_redirect_server_address = htobe16(other_redirect_server_address_length);
       os.write(
           reinterpret_cast<const char*>(&be_length_of_other_redirect_server_address),
           sizeof(be_length_of_other_redirect_server_address));
+
+    
       os << other_redirect_server_address;
-    }
  }
  //--------
  void load_from(std::istream& is) {
