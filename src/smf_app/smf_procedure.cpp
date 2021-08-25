@@ -190,13 +190,13 @@ int session_create_sm_context_procedure::run(
   pfcp::redirect_information_t redirect_information = {};
 
   // example to set this value
-  redirect_information.redirect_address_type = 0; // IPV4
-  redirect_information.spare = 0;
-  redirect_information.redirect_server_address = "1.2.3.9";
-  redirect_information.redirect_server_address_length = sizeof(redirect_information.redirect_server_address);
-  redirect_information.other_redirect_server_address = "";
-  redirect_information.other_redirect_server_address_length = 0;  
-  forwarding_parameters.set(redirect_information);
+  // redirect_information.redirect_address_type = 0; // IPV4
+  // redirect_information.spare = 0;
+  // redirect_information.redirect_server_address = "1.2.3.9";
+  // redirect_information.redirect_server_address_length = sizeof(redirect_information.redirect_server_address);
+  // redirect_information.other_redirect_server_address = "";
+  // redirect_information.other_redirect_server_address_length = 0;  
+  // forwarding_parameters.set(redirect_information);
 
   // TODO: Outer Header Creation (e.g., in case of N9)
   
@@ -750,13 +750,16 @@ int session_update_sm_context_procedure::run(
               dl_fteid.ipv4_address.s_addr;
           forwarding_parameters.set(outer_header_creation);
 
-          // example to set this value
+          // example to set this value 
           redirect_information.redirect_address_type = 0; // IPV4
           redirect_information.spare = 0;
+          // confirm to set this number to 
+          // TODO: make sure / confirm this string is encoded into UTF8String
           redirect_information.redirect_server_address = "3.2.3.9";
-          redirect_information.redirect_server_address_length = sizeof(redirect_information.redirect_server_address);
+          
+          redirect_information.redirect_server_address_length = redirect_information.redirect_server_address.size();
           redirect_information.other_redirect_server_address = "";
-          redirect_information.other_redirect_server_address_length = 0;  
+          redirect_information.other_redirect_server_address_length = redirect_information.other_redirect_server_address.size();  
           forwarding_parameters.set(redirect_information);
 
           create_far.set(far_id);
