@@ -63,6 +63,7 @@
 #include "string.hpp"
 #include "fqdn.hpp"
 #include "smf_config.hpp"
+#include "DnnConfigurationMessage.h"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -1316,6 +1317,211 @@ bool smf_app::handle_nf_status_notification(
       msg->http_version);
 
   data_notification_msg notification_msg = msg.get()->notification_msg;
+  std::string event_type;
+  notification_msg.get_notification_event_type(event_type);
+  if (event_type.compare("NF_REGISTERED") == 0) {
+    std::shared_ptr<nf_profile> profile = {};
+    notification_msg.get_profile(profile);
+    if (profile.get() != nullptr) {
+      std::string nf_type = profile.get()->get_nf_type();
+      if (nf_type.compare("UPF") == 0) {  // UPF
+        upf_info_t upf_info = {};
+        std::static_pointer_cast<upf_profile>(profile).get()->get_upf_info(
+            upf_info);
+        // Verify if the UPF is already exist
+        // if not, add to the DB and send Association request
+        // UPF N4 ipv4 address/FQDN
+        std::string upf_fqdn = profile.get()->get_fqdn();
+
+        std::vector<struct in_addr> ipv4_addrs = {};
+        profile.get()->get_nf_ipv4_addresses(ipv4_addrs);
+
+        pfcp::node_id_t n = {};
+        n.node_id_type    = pfcp::NODE_ID_TYPE_UNKNOWN;
+
+        // Use FQDN if available
+        if (!upf_fqdn.empty()) {
+          uint8_t addr_type            = {0};
+          std::string address          = {};
+          uint32_t upf_port            = {0};
+          struct in_addr upf_ipv4_addr = {};
+
+          fqdn::resolve(upf_fqdn, address, upf_port, addr_type);
+          if (addr_type != 0) {  // IPv6
+            // TODO:
+            Logger::smf_app().debug("Do not support IPv6 addr for UPF");
+            return false;
+          } else {  // IPv4
+            if (inet_aton(util::trim(address).c_str(), &upf_ipv4_addr) == 0) {
+              Logger::smf_app().debug("Bad IPv4 Addr format for UPF");
+              return false;
+            }
+          }
+          bool found = false;
+          for (auto node : smf_cfg.upfs) {
+            if ((node.u1.ipv4_address.s_addr == upf_ipv4_addr.s_addr) or
+                (upf_fqdn.compare(node.fqdn) == 0)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // Add a new UPF node
+            Logger::smf_app().debug(
+                "Add a new UPF node, FQDN %s", upf_fqdn.c_str());
+            // pfcp::node_id_t n = {};
+            n.node_id_type = pfcp::NODE_ID_TYPE_FQDN;
+            n.fqdn         = upf_fqdn;
+            n.u1.ipv4_address.s_addr =
+                upf_ipv4_addr
+                    .s_addr;  // Normally we should not do that, but ok since we
+                              // keep both fqdn and IPv4 at the same time
+          } else {
+            Logger::smf_app().debug(
+                "UPF node already exist (%s)", address.c_str());
+          }
+        }
+
+        if (ipv4_addrs.size() >= 1) {  // Use IP address if it's available
+          bool found = false;
+          for (auto node : smf_cfg.upfs) {
+            if (node.u1.ipv4_address.s_addr == ipv4_addrs[0].s_addr) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // Add a new UPF node
+            Logger::smf_app().debug(
+                "Add a new UPF node, Ipv4 Addr %s", inet_ntoa(ipv4_addrs[0]));
+            // pfcp::node_id_t n        = {};
+            if (n.node_id_type == pfcp::NODE_ID_TYPE_UNKNOWN)
+              n.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
+            n.u1.ipv4_address.s_addr = ipv4_addrs[0].s_addr;
+            /*smf_cfg.upfs.push_back(n);
+            upf_profile* upf_node_profile =
+                dynamic_cast<upf_profile*>(profile.get());
+            start_upf_association(n, std::ref(*upf_node_profile));
+            */
+          } else {
+            Logger::smf_app().debug(
+                "UPF node already exist (%s)", inet_ntoa(ipv4_addrs[0]));
+          }
+        }
+
+        if (n.node_id_type != pfcp::NODE_ID_TYPE_UNKNOWN) {
+          smf_cfg.upfs.push_back(n);
+          upf_profile* upf_node_profile =
+              dynamic_cast<upf_profile*>(profile.get());
+          start_upf_association(n, std::ref(*upf_node_profile));
+        } else {
+          Logger::smf_app().debug("No IP Addr/FQDN found");
+          return false;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  if (event_type.compare("NF_DEREGISTERED") == 0) {
+    Logger::smf_app().debug(
+        "This event (%s) has not been supported yet!", event_type);
+    // TODO: Remove UPF from the list UPFs if received DE-REGISTERED Event
+    /*    std::string nf_instance_uri = {};
+        notification_msg.get_nf_instance_uri(nf_instance_uri);
+        std::vector<std::string> split_result;
+
+        boost::split(
+            split_result, nf_instance_uri, boost::is_any_of("/"));
+        if (split_result.size() > 0) {
+          std::string instance_id = split_result[split_result.size() -1];
+          pfcp_associations::get_instance().remove_association(instance_id);
+        }
+     */
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool smf_app::handle_dnn_configurations(
+    std::shared_ptr<itti_sbi_dnn_configuration>& msg,
+    oai::smf_server::model::ProblemDetails& problem_details,
+    uint8_t& http_code) {
+  Logger::smf_app().info(
+      "Handle a DNN Configuration request (HTTP version "
+      "%d)",
+      msg->http_version);
+
+  oai::smf_server::model::DnnConfigurationMessage dnn_configuration_msg =
+      msg.get()->dnn_configuration_msg;
+  std::string dnn = dnn_configuration_msg.getDnn();
+  snssai_t snssai = {};
+  snssai.sD       = dnn_configuration_msg.getSnssai().getSd();
+  snssai.sST      = dnn_configuration_msg.getSnssai().getSst();
+
+  std::string supi;
+  if (dnn_configuration_msg.supiIsSet()) {
+    supi = dnn_configuration_msg.getSupi();
+  }
+
+  if (supi.empty()) {
+    // for all UEs
+  } else {
+    // per UE
+  }
+
+  for (auto sub : smf_cfg.session_management_subscriptions) {
+    if ((0 == dnn.compare(sub.dnn)) and (snssai.sST == sub.single_nssai.sST) and
+        (0 == snssai.sD.compare(sub.single_nssai.sD))) {
+      // PDU Session Type
+      pdu_session_type_t pdu_session_type(
+          pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
+      Logger::smf_app().debug(
+          "Default session type %s", sub.session_type.c_str());
+
+      std::string session_type = sub.session_type;
+      if (boost::iequals(session_type, "IPv4")) {
+        pdu_session_type.pdu_session_type =
+            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
+      } else if (boost::iequals(session_type, "IPv6")) {
+        pdu_session_type.pdu_session_type =
+            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV6;
+      } else if (boost::iequals(session_type, "IPv4v6")) {
+        pdu_session_type.pdu_session_type =
+            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6;
+      }
+
+      dnn_configuration->pdu_session_types.default_session_type =
+          pdu_session_type;
+
+      // SSC_Mode
+      dnn_configuration->ssc_modes.default_ssc_mode.ssc_mode = sub.ssc_mode;
+
+      // 5gQosProfile
+      dnn_configuration->_5g_qos_profile._5qi = sub.default_qos._5qi;
+      dnn_configuration->_5g_qos_profile.arp.priority_level =
+          sub.default_qos.arp.priority_level;
+      dnn_configuration->_5g_qos_profile.arp.preempt_cap =
+          sub.default_qos.arp.preempt_cap;
+      dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
+          sub.default_qos.arp.preempt_vuln;
+      dnn_configuration->_5g_qos_profile.priority_level =
+          sub.default_qos.priority_level;
+
+      // Session_ambr
+      dnn_configuration->session_ambr.uplink   = sub.session_ambr.uplink;
+      dnn_configuration->session_ambr.downlink = sub.session_ambr.downlink;
+      Logger::smf_app().debug(
+          "Session AMBR Uplink %s, Downlink %s",
+          dnn_configuration->session_ambr.uplink.c_str(),
+          dnn_configuration->session_ambr.downlink.c_str());
+
+      subscription->insert_dnn_configuration(dnn, dnn_configuration);
+      return true;
+    }
+  }
+
   std::string event_type;
   notification_msg.get_notification_event_type(event_type);
   if (event_type.compare("NF_REGISTERED") == 0) {

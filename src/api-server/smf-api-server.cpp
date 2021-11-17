@@ -83,6 +83,7 @@ void SMFApiServer::init(size_t thr) {
   m_individualSubscriptionDocumentApiImpl->init();
   m_subscriptionsCollectionApiImpl->init();
   m_nfStatusNotifyApiImpl->init();
+  m_smfConfigurationApiImpl->init();
 }
 void SMFApiServer::start() {
   Logger::smf_api_server().info("HTTP1 server started");

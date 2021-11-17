@@ -32,6 +32,7 @@
 #include "itti_msg.hpp"
 #include "pistache/http.h"
 #include "smf_msg.hpp"
+#include "DnnConfigurationMessage.h"
 
 class itti_sbi_msg : public itti_msg {
  public:
@@ -87,6 +88,28 @@ class itti_sbi_notification_data : public itti_sbi_msg {
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
   smf::data_notification_msg notification_msg;
+  uint8_t http_version;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_dnn_configuration : public itti_sbi_msg {
+ public:
+  itti_sbi_dnn_configuration(const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_DNN_CONFIGURATION, orig, dest),
+        dnn_configuration_msg(),
+        http_version(1) {}
+  itti_sbi_dnn_configuration(const itti_sbi_dnn_configuration& i)
+      : itti_sbi_msg(i),
+        dnn_configuration_msg(i.dnn_configuration_msg),
+        http_version(1) {}
+  itti_sbi_dnn_configuration(
+      const itti_sbi_dnn_configuration& i, const task_id_t orig,
+      const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        dnn_configuration_msg(i.dnn_configuration_msg),
+        http_version(i.http_version) {}
+  const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
+  oai::smf_server::model::DnnConfigurationMessage dnn_configuration_msg;
   uint8_t http_version;
 };
 
