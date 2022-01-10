@@ -118,6 +118,7 @@ class ipv4_pool {
   bool alloc_address(struct in_addr& allocated) {
     int bit_pos = 0;
     if (alloc_free_bit(bit_pos)) {
+      if (bit_pos == 255) bit_pos += 1;
       allocated.s_addr = be32toh(start.s_addr) + bit_pos;  // overflow
       allocated.s_addr = htobe32(allocated.s_addr);
       return true;
