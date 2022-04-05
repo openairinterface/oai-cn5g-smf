@@ -503,6 +503,11 @@ void upf_profile::get_upf_info(upf_info_t& s) const {
 }
 
 //------------------------------------------------------------------------------
+void upf_profile::set_upf_info(const upf_info_t& s) {
+  upf_info = s;
+}
+
+//------------------------------------------------------------------------------
 void upf_profile::display() const {
   // display NF part
   nf_profile::display();
@@ -511,6 +516,10 @@ void upf_profile::display() const {
   if (upf_info.snssai_upf_info_list.size() > 0) {
     Logger::smf_app().debug("\tUPF Info:");
   }
+  if (upf_info.is_anchor_upf)
+    Logger::smf_app().debug("\t\tUPF Type: Anchor UPF");
+  if (upf_info.is_intermediate_upf)
+    Logger::smf_app().debug("\t\tUPF Type: Intermediate UPF");
   for (auto s : upf_info.snssai_upf_info_list) {
     Logger::smf_app().debug("\t\tParameters supported by the UPF:");
     Logger::smf_app().debug(

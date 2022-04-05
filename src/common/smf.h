@@ -367,10 +367,14 @@ typedef struct interface_upf_info_item_s {
 typedef struct upf_info_s {
   std::vector<interface_upf_info_item_t> interface_upf_info_list;
   std::vector<snssai_upf_info_item_t> snssai_upf_info_list;
+  bool is_anchor_upf       = false;
+  bool is_intermediate_upf = false;
 
   upf_info_s& operator=(const upf_info_s& s) {
     interface_upf_info_list = s.interface_upf_info_list;
     snssai_upf_info_list    = s.snssai_upf_info_list;
+    is_anchor_upf           = s.is_anchor_upf;
+    is_intermediate_upf     = s.is_intermediate_upf;
     return *this;
   }
 

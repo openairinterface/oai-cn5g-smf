@@ -437,7 +437,7 @@ void smf_app::start_upf_association(const pfcp::node_id_t& node_id) {
 
 //------------------------------------------------------------------------------
 void smf_app::start_upf_association(
-    const pfcp::node_id_t& node_id, const upf_profile& profile) {
+    const pfcp::node_id_t& node_id, upf_profile& profile) {
   std::time_t time_epoch = std::time(nullptr);
   uint64_t tv_ntp        = time_epoch + SECONDS_SINCE_FIRST_EPOCH;
 
@@ -1363,9 +1363,6 @@ bool smf_app::handle_nf_status_notification(
         upf_info_t upf_info = {};
         std::static_pointer_cast<upf_profile>(profile).get()->get_upf_info(
             upf_info);
-        // Verify if the UPF is already exist
-        // if not, add to the DB and send Association request
-        // UPF N4 ipv4 address/FQDN
         std::string upf_fqdn = profile.get()->get_fqdn();
 
         std::vector<struct in_addr> ipv4_addrs = {};

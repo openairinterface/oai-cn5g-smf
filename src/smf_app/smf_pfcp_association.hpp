@@ -224,9 +224,10 @@ class pfcp_associations {
       upf_info_t& upf_info);
   bool add_peer_candidate_node(const pfcp::node_id_t& node_id);
   bool add_peer_candidate_node(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+      const pfcp::node_id_t& node_id, upf_profile& profile);
   bool remove_association(const std::string& node_instance_id);
   bool remove_association(const int32_t& hash_node_id);
+  void update_upf_type(upf_profile& profile);
 };
 }  // namespace smf
 

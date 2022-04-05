@@ -32,12 +32,14 @@
 #include "logger.hpp"
 #include "smf_n4.hpp"
 #include "smf_procedure.hpp"
+#include "smf_config.hpp"
 
 using namespace smf;
 using namespace std;
 
 extern itti_mw* itti_inst;
 extern smf_n4* smf_n4_inst;
+extern smf_config smf_cfg;
 
 //------------------------------------------------------------------------------
 void pfcp_association::notify_add_session(const pfcp::fseid_t& cp_fseid) {
@@ -523,7 +525,7 @@ bool pfcp_associations::add_peer_candidate_node(
 
 //------------------------------------------------------------------------------
 bool pfcp_associations::add_peer_candidate_node(
-    const pfcp::node_id_t& node_id, const upf_profile& profile) {
+    const pfcp::node_id_t& node_id, upf_profile& profile) {
   for (std::vector<std::shared_ptr<pfcp_association>>::iterator it =
            pending_associations.begin();
        it < pending_associations.end(); ++it) {
@@ -537,6 +539,7 @@ bool pfcp_associations::add_peer_candidate_node(
 
   std::shared_ptr<pfcp_association> s =
       std::make_shared<pfcp_association>(node_id);
+  update_upf_type(profile);
   s->set_upf_node_profile(profile);
   pending_associations.push_back(s);
   return true;
@@ -557,3 +560,19 @@ bool pfcp_associations::remove_association(const int32_t& hash_node_id) {
   }
   return false;
 }
+
+//------------------------------------------------------------------------------
+void pfcp_associations::update_upf_type(upf_profile& profile) {
+  upf_info_t upf_info;
+  profile.get_upf_info(upf_info);
+  upf_info.is_intermediate_upf = false;
+  upf_info.is_anchor_upf       = false;
+  if (!smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N3").empty() &
+      !smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N9").empty())
+    upf_info.is_intermediate_upf = true;
+  if (!smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N9").empty() &
+      !smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N6").empty())
+    upf_info.is_anchor_upf = true;
+  profile.set_upf_info(upf_info);
+}
+//------------------------------------------------------------------------------

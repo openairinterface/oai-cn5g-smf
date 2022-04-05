@@ -672,7 +672,7 @@ class smf_app {
    * @return void
    */
   void start_upf_association(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+      const pfcp::node_id_t& node_id, upf_profile& profile);
 
   /*
    * To start NF registration with NRF and subscribe to UPF event notification

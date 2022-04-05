@@ -1198,10 +1198,12 @@ std::string smf_config::get_nwi(
     const std::string& int_type) {
   std::string nwi = {};
   for (auto ui : int_list) {
-    if (!ui.interface_type.compare(int_type)) nwi = ui.network_instance;
+    if (!ui.interface_type.compare(int_type)) {
+      nwi = ui.network_instance;
+      Logger::smf_app().debug(
+          "Interface Type - %s, NWI - %s", int_type.c_str(), nwi.c_str());
+    }
   }
-  Logger::smf_app().debug(
-      "Interface Type - %s, NWI - %s", int_type.c_str(), nwi.c_str());
   return nwi;
 }
 //------------------------------------------------------------------------------

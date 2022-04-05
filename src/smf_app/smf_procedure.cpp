@@ -256,6 +256,8 @@ int session_create_sm_context_procedure::run(
   source_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
   pdi.set(source_interface);
 
+  pfcp::network_instance_t network_instance = {};
+
   if (nwi_list_present) {
     pfcp::network_instance_t network_instance = {};
     if (!upf_info.interface_upf_info_list.empty()) {
