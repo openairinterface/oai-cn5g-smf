@@ -335,6 +335,10 @@ class smf_config {
   std::string get_nwi(
       const std::vector<interface_upf_info_item_t>& int_list,
       const std::string& int_type);
+  std::string get_nwi_access(
+      const std::vector<interface_upf_info_item_t>& int_list);
+  std::string get_nwi_core(
+      const std::vector<interface_upf_info_item_t>& int_list);
 };
 
 }  // namespace smf

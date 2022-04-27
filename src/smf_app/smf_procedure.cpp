@@ -201,7 +201,7 @@ int session_create_sm_context_procedure::run(
     pfcp::network_instance_t network_instance = {};
     if (!upf_info.interface_upf_info_list.empty()) {
       network_instance.network_instance =
-          smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N6");
+          smf_cfg.get_nwi_core(upf_info.interface_upf_info_list);
     } else
       network_instance.network_instance =
           smf_cfg.upf_nwi_list[nwi_list_index].domain_core;
@@ -262,7 +262,7 @@ int session_create_sm_context_procedure::run(
     pfcp::network_instance_t network_instance = {};
     if (!upf_info.interface_upf_info_list.empty()) {
       network_instance.network_instance =
-          smf_cfg.get_nwi(upf_info.interface_upf_info_list, "N3");
+          smf_cfg.get_nwi_access(upf_info.interface_upf_info_list);
     } else
       network_instance.network_instance =
           smf_cfg.upf_nwi_list[nwi_list_index].domain_access;

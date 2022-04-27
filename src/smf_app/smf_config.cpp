@@ -1206,4 +1206,23 @@ std::string smf_config::get_nwi(
   }
   return nwi;
 }
+
 //------------------------------------------------------------------------------
+std::string smf_config::get_nwi_access(
+    const std::vector<interface_upf_info_item_t>& int_list) {
+  std::string nwi = get_nwi(int_list, "N3");
+  // Check if UPF is A-UPF
+  if (!get_nwi(int_list, "N9").empty() & !get_nwi(int_list, "N6").empty())
+    nwi = get_nwi(int_list, "N9");
+  return nwi;
+}
+
+//------------------------------------------------------------------------------
+std::string smf_config::get_nwi_core(
+    const std::vector<interface_upf_info_item_t>& int_list) {
+  std::string nwi = get_nwi(int_list, "N6");
+  // Check if UPF is I-UPF
+  if (!get_nwi(int_list, "N3").empty() & !get_nwi(int_list, "N9").empty())
+    nwi = get_nwi(int_list, "N9");
+  return nwi;
+}
