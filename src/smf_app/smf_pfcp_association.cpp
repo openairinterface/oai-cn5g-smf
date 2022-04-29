@@ -463,6 +463,11 @@ bool pfcp_associations::select_up_node(
     std::vector<snssai_t> snssais = {};
 
     a->get_upf_node_profile().get_upf_info(upf_info);
+
+    if (upf_info.is_intermediate_upf || upf_info.is_anchor_upf) {
+      select_anchor_up_node(node_id, snssai, dnn, upf_info);
+      return true;
+    }
     // UPF info
     a->get_upf_node_profile().display();
 
@@ -486,6 +491,70 @@ bool pfcp_associations::select_up_node(
   return false;
 }
 
+//------------------------------------------------------------------------------
+bool pfcp_associations::select_anchor_up_node(
+    pfcp::node_id_t& node_id, const snssai_t& snssai, const std::string& dnn,
+    upf_info_t& upf_info) {
+  upf_info = {};
+  // Make sure first that we have intermediate UPF
+  if (is_i_up_node_associated()) {
+    // Select Anchor UPF based on UL CL criteria
+    folly::AtomicHashMap<int32_t, std::shared_ptr<pfcp_association>>::iterator
+        it;
+    FOR_EACH(it, associations) {
+      std::shared_ptr<pfcp_association> a = it->second;
+      a->get_upf_node_profile().get_upf_info(upf_info);
+      // get the first node id if there's no upf profile (get UPFs from conf
+      // file)
+      if (!a->upf_profile_is_set && upf_info.is_anchor_upf) {
+        node_id = it->second->node_id;
+        Logger::smf_app().info(
+            "Could not found A-UPF profile, select the first available A-UPF");
+        return true;
+      }
+      // else,
+      // UL CL criteria 1:- verify that A-UPF belongs to the same slice and
+      // supports this dnn
+      std::vector<snssai_t> snssais = {};
+      for (auto ui : upf_info.snssai_upf_info_list) {
+        if (ui.snssai == snssai) {
+          for (auto d : ui.dnn_upf_info_list) {
+            if (d.dnn.compare(dnn) == 0) {
+              node_id = it->second->node_id;
+              Logger::smf_app().info(
+                  "Select the A-UPF for the corresponding DNN %s, NSSSAI (SD: "
+                  "%s, "
+                  "SST: %d) ",
+                  d.dnn.c_str(), snssai.sD.c_str(), snssai.sST);
+              a->get_upf_node_profile().display();
+              Logger::smf_app().debug(
+                  "A-UPF info: %s", upf_info.to_string().c_str());
+              return true;
+            }
+          }
+        }
+      }
+      // ToDo: UL CL criteria 2:- verify that A-UPF based on PCC rule
+    }
+  } else {
+    Logger::smf_app().error("No I-UPF Found");
+    return false;
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
+bool pfcp_associations::is_i_up_node_associated() {
+  bool i_upf_set      = false;
+  upf_info_t upf_info = {};
+  folly::AtomicHashMap<int32_t, std::shared_ptr<pfcp_association>>::iterator it;
+  FOR_EACH(it, associations) {
+    std::shared_ptr<pfcp_association> a = it->second;
+    a->get_upf_node_profile().get_upf_info(upf_info);
+    if (upf_info.is_intermediate_upf) i_upf_set = true;
+  }
+  if (i_upf_set) return true;
+}
 //------------------------------------------------------------------------------
 void pfcp_associations::notify_add_session(
     const pfcp::node_id_t& node_id, const pfcp::fseid_t& cp_fseid) {

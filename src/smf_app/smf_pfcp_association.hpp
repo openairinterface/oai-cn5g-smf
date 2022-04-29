@@ -222,6 +222,10 @@ class pfcp_associations {
   bool select_up_node(
       pfcp::node_id_t& node_id, const snssai_t& snssai, const std::string& dnn,
       upf_info_t& upf_info);
+  bool select_anchor_up_node(
+      pfcp::node_id_t& node_id, const snssai_t& snssai, const std::string& dnn,
+      upf_info_t& upf_info);
+  bool is_i_up_node_associated();
   bool add_peer_candidate_node(const pfcp::node_id_t& node_id);
   bool add_peer_candidate_node(
       const pfcp::node_id_t& node_id, upf_profile& profile);
