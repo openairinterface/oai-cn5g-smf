@@ -229,7 +229,7 @@ class smf_config {
   struct in6_addr default_cscfv6;
 
   bool force_push_pco;
-  uint ue_mtu;
+  uint32_t ue_mtu;
 
   bool register_nrf;
   bool discover_upf;

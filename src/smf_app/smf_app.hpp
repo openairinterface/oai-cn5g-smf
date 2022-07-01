@@ -117,6 +117,7 @@ class smf_app {
   mutable std::shared_mutex m_sm_context_create_promises;
   mutable std::shared_mutex m_sm_context_update_promises;
   mutable std::shared_mutex m_sm_context_release_promises;
+  mutable std::shared_mutex m_smf_handle_response_promises;
 
   std::map<
       uint32_t,
@@ -130,6 +131,9 @@ class smf_app {
       uint32_t, boost::shared_ptr<
                     boost::promise<pdu_session_release_sm_context_response>>>
       sm_context_release_promises;
+
+  std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
+      smf_handle_response_promise;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
@@ -743,6 +747,8 @@ class smf_app {
       boost::shared_ptr<
           boost::promise<pdu_session_release_sm_context_response>>& p);
 
+  void add_promise(
+      uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
   /*
    * To trigger the response to the HTTP server by set the value of the
    * corresponding promise to ready

@@ -2039,6 +2039,13 @@ void smf_app::add_promise(
 }
 
 //---------------------------------------------------------------------------------------------
+void smf_app::add_promise(
+    uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p) {
+  std::unique_lock lock(m_smf_handle_response_promises);
+  smf_handle_response_promise.emplace(id, p);
+}
+
+//---------------------------------------------------------------------------------------------
 void smf_app::trigger_create_context_error_response(
     const uint32_t& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
