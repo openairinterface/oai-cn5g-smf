@@ -289,6 +289,18 @@ void smf_app_task(void*) {
         }
         break;
 
+      case SBI_SMF_CONFIGURATION: {
+        itti_sbi_smf_configuration* m =
+            dynamic_cast<itti_sbi_smf_configuration*>(msg);
+        smf_app_inst->handle_itti_msg(ref(*m));
+      } break;
+
+      case SBI_UPDATE_SMF_CONFIGURATION: {
+        itti_sbi_update_smf_configuration* m =
+            dynamic_cast<itti_sbi_update_smf_configuration*>(msg);
+        smf_app_inst->handle_itti_msg(ref(*m));
+      } break;
+
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::smf_app().info("TIME-OUT event timer id %d", to->timer_id);
@@ -772,6 +784,48 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
   //  timer_nrf_heartbeat = itti_inst->timer_setup(
   //      nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
   //      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0); //TODO arg2_user
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_sbi_smf_configuration& itti_msg) {
+  Logger::smf_app().info(
+      "Handle an SBISMFConfiguration from a NF (HTTP version "
+      "%d)",
+      itti_msg.http_version);
+
+  // Process the request and trigger the response from SMF API Server
+  nlohmann::json response_data = {};
+  response_data["content"]     = {};
+  if (read_smf_configuration(response_data["content"])) {
+    Logger::smf_app().debug(
+        "AMF configuration:\n %s", response_data["content"].dump().c_str());
+    response_data["httpResponseCode"] = 200;  // TODO:
+  } else {
+    response_data["httpResponseCode"]                      = 400;  // TODO:
+    oai::smf_server::model::ProblemDetails problem_details = {};
+    // TODO set problem_details
+    to_json(response_data["ProblemDetails"], problem_details);
+  }
+
+  // Notify to the result
+  if (itti_msg.promise_id > 0) {
+    // trigger_process_response(itti_msg.promise_id, response_data);
+    return;
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_sbi_update_smf_configuration& itti_msg) {}
+
+//---------------------------------------------------------------------------------------------
+bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
+  // smf_cfg.to_json(json_data);
+  return true;
+}
+
+//---------------------------------------------------------------------------------------------
+bool smf_app::update_smf_configuration(nlohmann::json& json_data) {
+  return true;
 }
 
 //------------------------------------------------------------------------------

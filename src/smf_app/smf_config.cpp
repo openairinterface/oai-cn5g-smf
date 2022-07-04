@@ -1115,6 +1115,9 @@ void smf_config::display() {
 }
 
 //------------------------------------------------------------------------------
+void smf_config::to_json(nlohmann::json& json_data) const {}
+
+//------------------------------------------------------------------------------
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
   node_id = {};
   // TODO: support QFDN

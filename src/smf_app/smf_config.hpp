@@ -329,6 +329,13 @@ class smf_config {
   void unlock() { m_rw_lock.unlock(); };
   int load(const std::string& config_file);
   void display();
+  /*
+   * Represent SMF's config as json object
+   * @param [nlohmann::json &] json_data: Json data
+   * @return void
+   */
+  void to_json(nlohmann::json& json_data) const;
+
   int get_pfcp_node_id(pfcp::node_id_t& node_id);
   int get_pfcp_fseid(pfcp::fseid_t& fseid);
   bool is_dotted_dnn_handled(

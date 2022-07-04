@@ -278,6 +278,11 @@ bool pfcp_associations::get_association(
       struct hostent* hostname = gethostbyaddr(
           &node_id.u1.ipv4_address.s_addr,
           sizeof(node_id.u1.ipv4_address.s_addr), AF_INET);
+      if (!hostname) {
+        Logger::smf_app().error("Could not get hostname from Addr");
+        return false;
+      }
+
       pfcp::node_id_t node_id_tmp = {};
       node_id_tmp.node_id_type    = pfcp::NODE_ID_TYPE_FQDN;
       node_id_tmp.fqdn            = hostname->h_name;

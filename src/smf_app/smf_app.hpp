@@ -397,6 +397,34 @@ class smf_app {
   void handle_itti_msg(itti_n11_update_nf_instance_response& u);
 
   /*
+   * Handle ITTI message from NF (Get SMF configuration)
+   * @param [itti_sbi_smf_configuration&] c
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_smf_configuration& c);
+
+  /*
+   * Handle ITTI message from NF to update SMF conf
+   * @param [itti_sbi_update_smf_configuration&] c
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_update_smf_configuration& c);
+
+  /*
+   * Get the current SMF's configuration
+   * @param [nlohmann::json&]: json_data: Store SMF configuration
+   * @return true if success, otherwise return false
+   */
+  bool read_smf_configuration(nlohmann::json& json_data);
+
+  /*
+   * Update SMF configuration
+   * @param [nlohmann::json&]: json_data: New SMF configuration
+   * @return true if success, otherwise return false
+   */
+  bool update_smf_configuration(nlohmann::json& json_data);
+
+  /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
    * @return void
