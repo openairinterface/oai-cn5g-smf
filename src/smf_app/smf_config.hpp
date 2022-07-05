@@ -37,9 +37,13 @@
 #include <mutex>
 #include <vector>
 #include "thread_sched.hpp"
+#include <boost/algorithm/string.hpp>
+#include <nlohmann/json.hpp>
 
 #include "3gpp_29.244.h"
 #include "pfcp.hpp"
+#include "if.hpp"
+#include "logger.hpp"
 #include "smf.h"
 
 #define SMF_CONFIG_STRING_SMF_CONFIG "SMF"
@@ -167,6 +171,49 @@ typedef struct interface_cfg_s {
   unsigned int mtu;
   unsigned int port;
   util::thread_sched_params thread_rd_sched_params;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = {};
+    json_data["if_name"]     = this->if_name;
+    json_data["addr4"]       = inet_ntoa(this->addr4);
+    json_data["network4"]    = inet_ntoa(this->network4);
+    char str_addr6[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &this->addr6, str_addr6, sizeof(str_addr6));
+    json_data["addr6"] = str_addr6;
+    json_data["mtu"]   = this->mtu;
+    json_data["port"]  = this->port;
+    // TODO: thread_rd_sched_params
+    return json_data;
+  }
+
+  void from_json(nlohmann::json& json_data) {
+    this->if_name         = json_data["if_name"].get<std::string>();
+    std::string addr4_str = {};
+    addr4_str             = json_data["addr4"].get<std::string>();
+
+    if (boost::iequals(addr4_str, "read")) {
+      if (get_inet_addr_infos_from_iface(
+              this->if_name, this->addr4, this->network4, this->mtu)) {
+        Logger::smf_app().error(
+            "Could not read %s network interface configuration", this->if_name);
+        return;
+      }
+    } else {
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(addr4_str).c_str(), this->addr4,
+          "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+
+      std::string network4_str = json_data["network4"].get<std::string>();
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(network4_str).c_str(), this->network4,
+          "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+      // TODO: addr6
+      this->mtu  = json_data["mtu"].get<int>();
+      this->port = json_data["port"].get<int>();
+    }
+    // TODO: thread_rd_sched_params
+  }
+
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {
@@ -188,6 +235,46 @@ typedef struct dnn_s {
   struct in6_addr paa_pool6_prefix;
   uint8_t paa_pool6_prefix_len;
   pdu_session_type_t pdu_session_type;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data        = {};
+    json_data["dnn"]                = this->dnn;
+    json_data["is_ipv4"]            = this->is_ipv4;
+    json_data["is_ipv6"]            = this->is_ipv6;
+    json_data["pool_id_iv4"]        = this->pool_id_iv4;
+    json_data["pool_id_iv6"]        = this->pool_id_iv6;
+    json_data["ue_pool_range_low"]  = inet_ntoa(this->ue_pool_range_low);
+    json_data["ue_pool_range_high"] = inet_ntoa(this->ue_pool_range_high);
+    char str_addr6[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &this->paa_pool6_prefix, str_addr6, sizeof(str_addr6));
+    json_data["paa_pool6_prefix"]     = str_addr6;
+    json_data["paa_pool6_prefix_len"] = this->paa_pool6_prefix_len;
+    json_data["pdu_session_type"]     = this->pdu_session_type.toString();
+    return json_data;
+  }
+
+  void from_json(nlohmann::json& json_data) {
+    this->dnn         = json_data["if_name"].get<std::string>();
+    this->is_ipv4     = json_data["is_ipv4"].get<bool>();
+    this->is_ipv6     = json_data["is_ipv6"].get<bool>();
+    this->pool_id_iv4 = json_data["pool_id_iv4"].get<int>();
+    this->pool_id_iv6 = json_data["pool_id_iv6"].get<int>();
+
+    std::string ue_pool_range_low_str = {};
+    ue_pool_range_low_str = json_data["ue_pool_range_low"].get<std::string>();
+    IPV4_STR_ADDR_TO_INADDR(
+        util::trim(ue_pool_range_low_str).c_str(), this->ue_pool_range_low,
+        "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+
+    std::string ue_pool_range_high_str = {};
+    ue_pool_range_high_str = json_data["ue_pool_range_high"].get<std::string>();
+    IPV4_STR_ADDR_TO_INADDR(
+        util::trim(ue_pool_range_high_str).c_str(), this->ue_pool_range_high,
+        "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+
+    // TODO: pool_id_iv6
+    pdu_session_type.from_json(json_data["pdu_session_type"]);
+  }
 } dnn_t;
 
 typedef struct session_management_subscription_s {
@@ -197,6 +284,17 @@ typedef struct session_management_subscription_s {
   uint8_t ssc_mode;
   subscribed_default_qos_t default_qos;
   session_ambr_t session_ambr;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data  = {};
+    json_data["single_nssai"] = this->single_nssai.to_json();
+    json_data["session_type"] = this->session_type;
+    json_data["dnn"]          = this->dnn;
+    json_data["ssc_mode"]     = this->ssc_mode;
+
+    return json_data;
+  }
+
 } session_management_subscription_t;
 
 class smf_config {

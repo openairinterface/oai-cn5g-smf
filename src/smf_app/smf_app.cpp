@@ -798,7 +798,7 @@ void smf_app::handle_itti_msg(itti_sbi_smf_configuration& itti_msg) {
   response_data["content"]     = {};
   if (read_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
-        "AMF configuration:\n %s", response_data["content"].dump().c_str());
+        "SMF configuration:\n %s", response_data["content"].dump().c_str());
     response_data["httpResponseCode"] = 200;  // TODO:
   } else {
     response_data["httpResponseCode"]                      = 400;  // TODO:
@@ -819,7 +819,7 @@ void smf_app::handle_itti_msg(itti_sbi_update_smf_configuration& itti_msg) {}
 
 //---------------------------------------------------------------------------------------------
 bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
-  // smf_cfg.to_json(json_data);
+  smf_cfg.to_json(json_data);
   return true;
 }
 

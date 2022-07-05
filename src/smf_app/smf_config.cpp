@@ -1115,7 +1115,75 @@ void smf_config::display() {
 }
 
 //------------------------------------------------------------------------------
-void smf_config::to_json(nlohmann::json& json_data) const {}
+void smf_config::to_json(nlohmann::json& json_data) const {
+  json_data["pid_dir"]  = pid_dir;
+  json_data["instance"] = instance;
+  json_data["fqdn"]     = fqdn;
+
+  interface_cfg_t n4;
+  interface_cfg_t sbi;
+  unsigned int sbi_http2_port;
+  std::string sbi_api_version;
+  itti_cfg_t itti;
+
+  struct in_addr default_dnsv4;
+  struct in_addr default_dns_secv4;
+  struct in_addr default_cscfv4;
+  struct in6_addr default_dnsv6;
+  struct in6_addr default_dns_secv6;
+  std::map<std::string, dnn_t> dnns;
+  struct in6_addr default_cscfv6;
+
+  bool force_push_pco;
+  uint32_t ue_mtu;
+
+  bool register_nrf;
+  bool discover_upf;
+  bool use_local_subscription_info;
+  bool use_fqdn_dns;
+  unsigned int http_version;
+  bool use_nwi;
+  bool enable_ur;
+
+  struct {
+    struct in_addr ipv4_addr;
+    unsigned int port;
+    std::string api_version;
+    std::string fqdn;
+  } amf_addr;
+
+  struct {
+    struct in_addr ipv4_addr;
+    unsigned int port;
+    std::string api_version;
+    std::string fqdn;
+  } udm_addr;
+
+  std::vector<pfcp::node_id_t> upfs;
+
+  struct {
+    struct in_addr ipv4_addr;
+    unsigned int port;
+    unsigned int http_version;
+    std::string api_version;
+    std::string fqdn;
+  } nrf_addr;
+
+  // Network instance
+  // bool network_instance_configuration;
+  struct upf_nwi_list_s {
+    pfcp::node_id_t upf_id;
+    std::string domain_access;
+    std::string domain_core;
+    //      std::string domain_sgi_lan;
+  };
+  typedef struct upf_nwi_list_s upf_nwi_list_t;
+
+  std::vector<upf_nwi_list_t> upf_nwi_list;
+
+  std::vector<session_management_subscription_t>
+      session_management_subscriptions;
+}
 
 //------------------------------------------------------------------------------
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
