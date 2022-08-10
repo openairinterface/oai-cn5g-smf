@@ -948,6 +948,14 @@ class smf_app {
    * @return void
    */
   void trigger_upf_status_notification_subscribe();
+
+  /*
+   * Set the value of the promise to make it ready
+   * @param [uint32_t] pid: promise id
+   * @param [const nlohmann::json&] json_data: JSON response data
+   * @return void
+   */
+  void trigger_process_response(uint32_t pid, const nlohmann::json& json_data);
 };
 }  // namespace smf
 #include "smf_config.hpp"
