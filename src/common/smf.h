@@ -102,6 +102,7 @@ typedef struct s_nssai  // section 28.4, TS23.003
     nlohmann::json json_data = {};
     json_data["sst"]         = this->sst;
     json_data["sd"]          = this->sd;
+    return json_data;
   }
 
   void from_json(nlohmann::json& json_data) {
