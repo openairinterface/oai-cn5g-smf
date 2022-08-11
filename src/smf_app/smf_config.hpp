@@ -291,7 +291,7 @@ typedef struct session_management_subscription_s {
     json_data["session_type"] = this->session_type;
     json_data["dnn"]          = this->dnn;
     json_data["ssc_mode"]     = this->ssc_mode;
-
+    
     return json_data;
   }
 
@@ -337,11 +337,32 @@ class smf_config {
   bool use_nwi;
   bool enable_ur;
 
+  // TODO: Could refactor amf, udm, nrf to typedef nf_addr
+
   struct {
     struct in_addr ipv4_addr;
     unsigned int port;
     std::string api_version;
     std::string fqdn;
+
+    nlohmann::json to_json() const {
+      nlohmann::json json_data = {};
+      json_data["ipv4_addr"]   = inet_ntoa(this->ipv4_addr);
+      json_data["port"]        = this->port;
+      json_data["api_version"] = this->api_version;
+      json_data["fqdn"]        = this->fqdn;
+      return json_data;
+    }
+
+    void from_json(nlohmann::json& json_data) {
+      std::string ipv4_addr_str = json_data["ipv4_addr"].get<std::string>();
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(ipv4_addr_str).c_str(), this->ipv4_addr,
+          "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+      this->port        = json_data["port"].get<int>();
+      this->api_version = json_data["api_version"].get<std::string>();
+      this->fqdn        = json_data["fqdn"].get<std::string>();
+    }
   } amf_addr;
 
   struct {
@@ -349,6 +370,25 @@ class smf_config {
     unsigned int port;
     std::string api_version;
     std::string fqdn;
+
+    nlohmann::json to_json() const {
+      nlohmann::json json_data = {};
+      json_data["ipv4_addr"]   = inet_ntoa(this->ipv4_addr);
+      json_data["port"]        = this->port;
+      json_data["api_version"] = this->api_version;
+      json_data["fqdn"]        = this->fqdn;
+      return json_data;
+    }
+
+    void from_json(nlohmann::json& json_data) {
+      std::string ipv4_addr_str = json_data["ipv4_addr"].get<std::string>();
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(ipv4_addr_str).c_str(), this->ipv4_addr,
+          "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+      this->port        = json_data["port"].get<int>();
+      this->api_version = json_data["api_version"].get<std::string>();
+      this->fqdn        = json_data["fqdn"].get<std::string>();
+    }
   } udm_addr;
 
   std::vector<pfcp::node_id_t> upfs;
@@ -359,6 +399,27 @@ class smf_config {
     unsigned int http_version;
     std::string api_version;
     std::string fqdn;
+
+    nlohmann::json to_json() const {
+      nlohmann::json json_data = {};
+      json_data["ipv4_addr"]    = inet_ntoa(this->ipv4_addr);
+      json_data["port"]         = this->port;
+      json_data["api_version"]  = this->api_version;
+      json_data["fqdn"]         = this->fqdn;
+      json_data["http_version"] = this->http_version;
+      return json_data;
+    }
+
+    void from_json(nlohmann::json& json_data) {
+      std::string ipv4_addr_str = json_data["ipv4_addr"].get<std::string>();
+      IPV4_STR_ADDR_TO_INADDR(
+          util::trim(ipv4_addr_str).c_str(), this->ipv4_addr,
+          "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
+      this->port         = json_data["port"].get<int>();
+      this->api_version  = json_data["api_version"].get<std::string>();
+      this->fqdn         = json_data["fqdn"].get<std::string>();
+      this->http_version = json_data["http_version"].get<std::uint32_t>();
+    }
   } nrf_addr;
 
   // Network instance
