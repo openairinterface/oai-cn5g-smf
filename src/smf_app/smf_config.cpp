@@ -1168,20 +1168,13 @@ void smf_config::to_json(nlohmann::json& json_data) const {
     json_data["local_configuration"]["session_management_subscription_list"].push_back(s.to_json());
   }
   
-  unsigned int sbi_http2_port;
-  std::string sbi_api_version;
-  itti_cfg_t itti;
+  json_data["http2_port"] = sbi_http2_port;
+  json_data["sbi_api_version"] = sbi_api_version;
+  json_data["itti"] = itti.to_json();
 
-  // Network instance
-  // bool network_instance_configuration;
-  typedef struct upf_nwi_list_s {
-    pfcp::node_id_t upf_id;
-    std::string domain_access;
-    std::string domain_core;
-    //      std::string domain_sgi_lan;
-  } upf_nwi_list_t;
-
-  std::vector<upf_nwi_list_t> upf_nwi_list;
+  for (auto s : upf_nwi_list) {
+    json_data["upf_nwi_list"].push_back(s.to_json());
+  }
 }
 
 //------------------------------------------------------------------------------

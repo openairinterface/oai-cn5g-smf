@@ -221,6 +221,17 @@ typedef struct itti_cfg_s {
   util::thread_sched_params n4_sched_params;
   util::thread_sched_params smf_app_sched_params;
   util::thread_sched_params async_cmd_sched_params;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data        = {};
+    json_data["itti_timer_sched_params"] = itti_timer_sched_params.to_json();
+    json_data["n4_sched_params"] = n4_sched_params.to_json();
+    json_data["smf_app_sched_params"] = smf_app_sched_params.to_json();
+    json_data["async_cmd_sched_params"] = async_cmd_sched_params.to_json();
+
+    return json_data;
+  }
+
 } itti_cfg_t;
 
 typedef struct dnn_s {
@@ -429,6 +440,15 @@ class smf_config {
     std::string domain_access;
     std::string domain_core;
     //      std::string domain_sgi_lan;
+
+    nlohmann::json to_json() const {
+      nlohmann::json json_data = {};
+      json_data["upf_id"] = upf_id.toString();
+      json_data["domain_access"] = domain_access;
+      json_data["domain_core"] = domain_core;
+
+      return json_data;
+    }
   };
   typedef struct upf_nwi_list_s upf_nwi_list_t;
 
