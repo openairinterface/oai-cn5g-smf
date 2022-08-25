@@ -22,6 +22,8 @@
 #ifndef FILE_3GPP_29_571_SEEN
 #define FILE_3GPP_29_571_SEEN
 
+#include <nlohmann/json.hpp>
+
 typedef struct session_ambr_s {
   std::string uplink;
   std::string downlink;

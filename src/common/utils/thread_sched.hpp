@@ -30,6 +30,7 @@
 
 #include <sched.h>
 #include "logger.hpp"
+#include <nlohmann/json.hpp>
 
 namespace util {
 
@@ -41,6 +42,7 @@ class thread_sched_params {
   int sched_policy;
   int sched_priority;
   void apply(const int task_id, _Logger& logger) const;
+  nlohmann::json to_json() const;
 };
 
 }  // namespace util

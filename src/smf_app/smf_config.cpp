@@ -50,6 +50,7 @@
 #include "logger.hpp"
 #include "fqdn.hpp"
 #include "smf_app.hpp"
+#include "conversions.hpp"
 
 using namespace std;
 using namespace libconfig;
@@ -1120,69 +1121,60 @@ void smf_config::to_json(nlohmann::json& json_data) const {
   json_data["instance"] = instance;
   json_data["fqdn"]     = fqdn;
 
-  interface_cfg_t n4;
-  interface_cfg_t sbi;
-  unsigned int sbi_http2_port;
-  std::string sbi_api_version;
-  itti_cfg_t itti;
+  json_data["interfaces"]["n4"] = n4.to_json();
+  json_data["interfaces"]["sbi"] = sbi.to_json();
 
-  struct in_addr default_dnsv4;
-  struct in_addr default_dns_secv4;
-  struct in_addr default_cscfv4;
-  struct in6_addr default_dnsv6;
-  struct in6_addr default_dns_secv6;
-  std::map<std::string, dnn_t> dnns;
-  struct in6_addr default_cscfv6;
+  json_data["dnn_list"] = nlohmann::json::array();
+  for (auto s : dnns) {
+    json_data["dnn_list"].push_back(s.second.to_json());
+  }
 
-  bool force_push_pco;
-  uint32_t ue_mtu;
+  json_data["default_dns_ipv4_address"] = inet_ntoa(default_dnsv4);
+  json_data["default_dns_sec_ipv4_address"] = inet_ntoa(default_dns_secv4);
+  json_data["default_dns_ipv6_address"] = conv::toString(default_dnsv6);
+  json_data["default_dns_sec_ipv6_address"] = conv::toString(default_dns_secv6);
 
-  bool register_nrf;
-  bool discover_upf;
-  bool use_local_subscription_info;
-  bool use_fqdn_dns;
-  unsigned int http_version;
-  bool use_nwi;
-  bool enable_ur;
+  json_data["default_cscf_ipv4_address"] = inet_ntoa(default_cscfv4);
+  json_data["default_cscf_ipv6_address"] = conv::toString(default_cscfv6);
 
-  struct {
-    struct in_addr ipv4_addr;
-    unsigned int port;
-    std::string api_version;
-    std::string fqdn;
-  } amf_addr;
+  json_data["ue_mtu"] = ue_mtu;
 
-  struct {
-    struct in_addr ipv4_addr;
-    unsigned int port;
-    std::string api_version;
-    std::string fqdn;
-  } udm_addr;
+  json_data["supported_features"]["registered_nrf"] = register_nrf;
+  json_data["supported_features"]["discover_upf"] = discover_upf;
+  json_data["supported_features"]["force_push_protocol_configuration_options"] = force_push_pco;
+  json_data["supported_features"]["use_local_subscription_info"] = use_local_subscription_info;
+  json_data["supported_features"]["use_fqdn_dns"] = use_fqdn_dns;
+  json_data["supported_features"]["use_network_instance"] = use_nwi;
+  json_data["supported_features"]["enable_usage_reporting"] = enable_ur;
+  json_data["supported_features"]["http_version"] = http_version;
+  
+  if (register_nrf) {
+    json_data["nrf"] = nrf_addr.to_json();
+  }
+  json_data["upf_list"] = nlohmann::json::array();
+  for (auto s : upfs) {
+    json_data["upf_list"].push_back(s.toString());
+  }
 
-  std::vector<pfcp::node_id_t> upfs;
+  if (amf_addr.ipv4_addr.s_addr != INADDR_ANY) {
+    json_data["amf"] = amf_addr.to_json();
+  }
+  if (udm_addr.ipv4_addr.s_addr != INADDR_ANY) {
+    json_data["udm"] = udm_addr.to_json();
+  }
 
-  struct {
-    struct in_addr ipv4_addr;
-    unsigned int port;
-    unsigned int http_version;
-    std::string api_version;
-    std::string fqdn;
-  } nrf_addr;
+  json_data["local_configuration"]["session_management_subscription_list"] = nlohmann::json::array();
+  for (auto s : session_management_subscriptions) {
+    json_data["local_configuration"]["session_management_subscription_list"].push_back(s.to_json());
+  }
+  
+  json_data["http2_port"] = sbi_http2_port;
+  json_data["sbi_api_version"] = sbi_api_version;
+  json_data["itti"] = itti.to_json();
 
-  // Network instance
-  // bool network_instance_configuration;
-  struct upf_nwi_list_s {
-    pfcp::node_id_t upf_id;
-    std::string domain_access;
-    std::string domain_core;
-    //      std::string domain_sgi_lan;
-  };
-  typedef struct upf_nwi_list_s upf_nwi_list_t;
-
-  std::vector<upf_nwi_list_t> upf_nwi_list;
-
-  std::vector<session_management_subscription_t>
-      session_management_subscriptions;
+  for (auto s : upf_nwi_list) {
+    json_data["upf_nwi_list"].push_back(s.to_json());
+  }
 }
 
 //------------------------------------------------------------------------------

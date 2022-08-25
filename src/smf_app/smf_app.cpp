@@ -809,7 +809,7 @@ void smf_app::handle_itti_msg(itti_sbi_smf_configuration& itti_msg) {
 
   // Notify to the result
   if (itti_msg.promise_id > 0) {
-    // trigger_process_response(itti_msg.promise_id, response_data);
+    trigger_process_response(itti_msg.promise_id, response_data);
     return;
   }
 }
@@ -2454,5 +2454,20 @@ void smf_app::trigger_upf_status_notification_subscribe() {
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::trigger_process_response(uint32_t pid, const nlohmann::json& json_data) {
+  Logger::smf_app().debug(
+      "Trigger process response: Set promise with ID %u "
+      "to ready",
+      pid);
+  std::unique_lock lock(m_smf_handle_response_promises);
+  if (smf_handle_response_promise.count(pid) > 0) {
+    Logger::smf_app().debug("Found promise with ID %u ", pid);
+    smf_handle_response_promise[pid]->set_value(json_data);
+    // Remove this promise from list
+    smf_handle_response_promise.erase(pid);
   }
 }
