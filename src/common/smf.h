@@ -98,6 +98,18 @@ typedef struct s_nssai  // section 28.4, TS23.003
     return s;
   }
 
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = {};
+    json_data["sst"]         = this->sst;
+    json_data["sd"]          = this->sd;
+    return json_data;
+  }
+
+  void from_json(nlohmann::json& json_data) {
+    this->sst = json_data["sst"].get<int>();
+    this->sd  = json_data["sd"].get<int>();
+  }
+
 } snssai_t;
 
 typedef uint8_t pdu_session_id;

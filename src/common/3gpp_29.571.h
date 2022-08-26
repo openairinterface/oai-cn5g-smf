@@ -22,6 +22,8 @@
 #ifndef FILE_3GPP_29_571_SEEN
 #define FILE_3GPP_29_571_SEEN
 
+#include <nlohmann/json.hpp>
+
 typedef struct session_ambr_s {
   std::string uplink;
   std::string downlink;
@@ -37,6 +39,21 @@ typedef struct arp_5gc_s {
   uint8_t priority_level;  // (integer 1-15)
   std::string preempt_cap;
   std::string preempt_vuln;  // NOT_PREEMPTABLE, PREEMPTABLE
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data    = {};
+    json_data["priority_level"] = this->priority_level;
+    json_data["preempt_cap"]    = this->preempt_cap;
+    json_data["preempt_vuln"]   = this->preempt_vuln;
+    return json_data;
+  }
+
+  void from_json(nlohmann::json& json_data) {
+    this->priority_level = json_data["priority_level"].get<int>();
+    this->preempt_cap    = json_data["preempt_cap"].get<std::string>();
+    this->preempt_vuln   = json_data["preempt_vuln"].get<std::string>();
+  }
+
 } arp_5gc_t;
 
 // see section 5.4.4.1@TS 29.571
@@ -44,6 +61,15 @@ typedef struct subscribed_default_qos_s {
   uint8_t _5qi;
   arp_5gc_t arp;
   uint8_t priority_level;  // 1-127
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data    = {};
+    json_data["_5qi"]           = this->_5qi;
+    json_data["arp"]            = this->arp.to_json();
+    json_data["priority_level"] = this->priority_level;
+    return json_data;
+  }
+
 } subscribed_default_qos_t;
 
 enum reflective_qos_attribute_e { RQOS = 1, NO_RQOS = 2 };

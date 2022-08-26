@@ -289,6 +289,18 @@ void smf_app_task(void*) {
         }
         break;
 
+      case SBI_SMF_CONFIGURATION: {
+        itti_sbi_smf_configuration* m =
+            dynamic_cast<itti_sbi_smf_configuration*>(msg);
+        smf_app_inst->handle_itti_msg(ref(*m));
+      } break;
+
+      case SBI_UPDATE_SMF_CONFIGURATION: {
+        itti_sbi_update_smf_configuration* m =
+            dynamic_cast<itti_sbi_update_smf_configuration*>(msg);
+        smf_app_inst->handle_itti_msg(ref(*m));
+      } break;
+
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::smf_app().info("TIME-OUT event timer id %d", to->timer_id);
@@ -772,6 +784,48 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
   //  timer_nrf_heartbeat = itti_inst->timer_setup(
   //      nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
   //      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0); //TODO arg2_user
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_sbi_smf_configuration& itti_msg) {
+  Logger::smf_app().info(
+      "Handle an SBISMFConfiguration from a NF (HTTP version "
+      "%d)",
+      itti_msg.http_version);
+
+  // Process the request and trigger the response from SMF API Server
+  nlohmann::json response_data = {};
+  response_data["content"]     = {};
+  if (read_smf_configuration(response_data["content"])) {
+    Logger::smf_app().debug(
+        "SMF configuration:\n %s", response_data["content"].dump().c_str());
+    response_data["httpResponseCode"] = 200;  // TODO:
+  } else {
+    response_data["httpResponseCode"]                      = 400;  // TODO:
+    oai::smf_server::model::ProblemDetails problem_details = {};
+    // TODO set problem_details
+    to_json(response_data["ProblemDetails"], problem_details);
+  }
+
+  // Notify to the result
+  if (itti_msg.promise_id > 0) {
+    trigger_process_response(itti_msg.promise_id, response_data);
+    return;
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_sbi_update_smf_configuration& itti_msg) {}
+
+//---------------------------------------------------------------------------------------------
+bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
+  smf_cfg.to_json(json_data);
+  return true;
+}
+
+//---------------------------------------------------------------------------------------------
+bool smf_app::update_smf_configuration(nlohmann::json& json_data) {
+  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -2039,6 +2093,13 @@ void smf_app::add_promise(
 }
 
 //---------------------------------------------------------------------------------------------
+void smf_app::add_promise(
+    uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p) {
+  std::unique_lock lock(m_smf_handle_response_promises);
+  smf_handle_response_promise.emplace(id, p);
+}
+
+//---------------------------------------------------------------------------------------------
 void smf_app::trigger_create_context_error_response(
     const uint32_t& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
@@ -2393,5 +2454,20 @@ void smf_app::trigger_upf_status_notification_subscribe() {
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::trigger_process_response(uint32_t pid, const nlohmann::json& json_data) {
+  Logger::smf_app().debug(
+      "Trigger process response: Set promise with ID %u "
+      "to ready",
+      pid);
+  std::unique_lock lock(m_smf_handle_response_promises);
+  if (smf_handle_response_promise.count(pid) > 0) {
+    Logger::smf_app().debug("Found promise with ID %u ", pid);
+    smf_handle_response_promise[pid]->set_value(json_data);
+    // Remove this promise from list
+    smf_handle_response_promise.erase(pid);
   }
 }

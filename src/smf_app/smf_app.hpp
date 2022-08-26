@@ -117,6 +117,7 @@ class smf_app {
   mutable std::shared_mutex m_sm_context_create_promises;
   mutable std::shared_mutex m_sm_context_update_promises;
   mutable std::shared_mutex m_sm_context_release_promises;
+  mutable std::shared_mutex m_smf_handle_response_promises;
 
   std::map<
       uint32_t,
@@ -130,6 +131,9 @@ class smf_app {
       uint32_t, boost::shared_ptr<
                     boost::promise<pdu_session_release_sm_context_response>>>
       sm_context_release_promises;
+
+  std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
+      smf_handle_response_promise;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
@@ -391,6 +395,34 @@ class smf_app {
    * @return void
    */
   void handle_itti_msg(itti_n11_update_nf_instance_response& u);
+
+  /*
+   * Handle ITTI message from NF (Get SMF configuration)
+   * @param [itti_sbi_smf_configuration&] c
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_smf_configuration& c);
+
+  /*
+   * Handle ITTI message from NF to update SMF conf
+   * @param [itti_sbi_update_smf_configuration&] c
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_update_smf_configuration& c);
+
+  /*
+   * Get the current SMF's configuration
+   * @param [nlohmann::json&]: json_data: Store SMF configuration
+   * @return true if success, otherwise return false
+   */
+  bool read_smf_configuration(nlohmann::json& json_data);
+
+  /*
+   * Update SMF configuration
+   * @param [nlohmann::json&]: json_data: New SMF configuration
+   * @return true if success, otherwise return false
+   */
+  bool update_smf_configuration(nlohmann::json& json_data);
 
   /*
    * Restore a N4 Session
@@ -743,6 +775,8 @@ class smf_app {
       boost::shared_ptr<
           boost::promise<pdu_session_release_sm_context_response>>& p);
 
+  void add_promise(
+      uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
   /*
    * To trigger the response to the HTTP server by set the value of the
    * corresponding promise to ready
@@ -914,6 +948,14 @@ class smf_app {
    * @return void
    */
   void trigger_upf_status_notification_subscribe();
+
+  /*
+   * Set the value of the promise to make it ready
+   * @param [uint32_t] pid: promise id
+   * @param [const nlohmann::json&] json_data: JSON response data
+   * @return void
+   */
+  void trigger_process_response(uint32_t pid, const nlohmann::json& json_data);
 };
 }  // namespace smf
 #include "smf_config.hpp"

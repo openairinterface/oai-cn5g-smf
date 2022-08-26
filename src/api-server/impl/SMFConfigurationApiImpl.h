@@ -19,31 +19,39 @@
  *      contact@openairinterface.org
  */
 
-/*! \file thread_sched.hpp
- \brief
- \company Eurecom
- \email: lionel.gauthier@eurecom.fr
- */
+#ifndef SMF_CONFIGURATION_API_IMPL_H_
+#define SMF_CONFIGURATION_API_IMPL_H_
 
-#ifndef FILE_THREAD_SCHED_HPP_SEEN
-#define FILE_THREAD_SCHED_HPP_SEEN
+#include "smf_app.hpp"
+#include <SMFConfigurationApi.h>
+#include <pistache/http.h>
+#include <pistache/optional.h>
 
-#include <sched.h>
-#include "logger.hpp"
-#include <nlohmann/json.hpp>
+namespace oai::smf_server::api {
 
-namespace util {
+using namespace oai::smf_server::model;
 
-class thread_sched_params {
+class SMFConfigurationApiImpl
+    : public oai::smf_server::api::SMFConfigurationApi {
+ private:
+  smf::smf_app* m_smf_app;
+
  public:
-  thread_sched_params()
-      : cpu_id(0), sched_policy(SCHED_FIFO), sched_priority(84) {}
-  int cpu_id;
-  int sched_policy;
-  int sched_priority;
-  void apply(const int task_id, _Logger& logger) const;
-  nlohmann::json to_json() const;
+  SMFConfigurationApiImpl(
+      std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst);
+  ~SMFConfigurationApiImpl() {}
+
+  void read_configuration(Pistache::Http::ResponseWriter& response);
+  void update_configuration(
+      nlohmann::json& configuration_info,
+      Pistache::Http::ResponseWriter& response);
+
+ protected:
+  static uint64_t generate_promise_id() {
+    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+  }
 };
 
-}  // namespace util
-#endif /* FILE_THREAD_SCHED_HPP_SEEN */
+}  // namespace oai::smf_server::api
+
+#endif
