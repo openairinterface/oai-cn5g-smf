@@ -815,7 +815,10 @@ void smf_app::handle_itti_msg(itti_sbi_smf_configuration& itti_msg) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_sbi_update_smf_configuration& itti_msg) {}
+void smf_app::handle_itti_msg(itti_sbi_update_smf_configuration& itti_msg) {
+
+
+}
 
 //---------------------------------------------------------------------------------------------
 bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
@@ -825,6 +828,7 @@ bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
 
 //---------------------------------------------------------------------------------------------
 bool smf_app::update_smf_configuration(nlohmann::json& json_data) {
+  smf_cfg.from_json(json_data);
   return true;
 }
 
