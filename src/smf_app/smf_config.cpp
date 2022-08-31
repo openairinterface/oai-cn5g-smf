@@ -58,6 +58,7 @@ using namespace libconfig;
 using namespace smf;
 
 extern smf_config smf_cfg;
+extern smf_context smf_ctx;
 
 //------------------------------------------------------------------------------
 int smf_config::load_thread_sched_params(
@@ -1125,6 +1126,7 @@ void smf_config::to_json(nlohmann::json& json_data) const {
 
   json_data["ue_mtu"] = ue_mtu;
 
+  // TODO: change to support_features (?)
   json_data["supported_features"]["registered_nrf"] = register_nrf;
   json_data["supported_features"]["discover_upf"] = discover_upf;
   json_data["supported_features"]["force_push_protocol_configuration_options"] = force_push_pco;
@@ -1168,6 +1170,9 @@ void smf_config::to_json(nlohmann::json& json_data) const {
 bool smf_config::from_json(nlohmann::json& json_data) const {
   nlohmann::json json_missing = {},
                  json_tmp = {};
+  
+  // TODO: Use the Support(ed) Features whenever possible
+  
   try {
     if (json_data.find("use_local_subscription_info") != json_data.end()) {
       bool val = boost::iequals(json_data["use_local_subscription_info"].get<std::string>(), "yes");
@@ -1191,8 +1196,12 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       for (auto s : json_data["dnn_list"]) {
         dnn_t dnn_item = {};
         dnn_item.from_json(s);
-        if (dnns.find(dnn_item.dnn) != dnns.end()) {
-          // TODO: Update existing one IF NOT USED
+        std::map<std::string, dnn_t>::iterator it = smf_cfg.dnns.find(dnn_item.dnn);
+        if (it != dnns.end()) {
+          // Check that the DNN is not used
+          if (smf_ctx.find_dnn_subscription(smf_cfg)) {
+            it->second = dnn_item;
+          }
         } else {
           // ADD a new one
           smf_cfg.dnns.insert(std::pair<std::string, dnn_t>(dnn_item.dnn, dnn_item));
@@ -1200,7 +1209,8 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       }
     }
 
-    if (true) { // TODO: Check that no UE is connected
+    // Check that no UE is connected
+    if (smf_ctx.get_number_pdu_sessions() == 0) { // TODO: Right way to check?
       if (json_data.find("default_dns_ipv4_address") != json_data.end()) {
         std::string addr = json_data["default_dns_ipv4_address"].get<std::string>();
         smf_cfg.default_dnsv4 = conv::fromString(addr);
@@ -1213,6 +1223,8 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
           Logger::smf_app().info("New Default DNS IPv6 address: %s", conv::toString(default_dnsv6));
         } else {
           Logger::smf_app().debug("Failed to update DNS IPv6 address from %s to %s", conv::toString(default_dnsv6));
+          json_tmp["default_dns_ipv6_address"] = json_data["default_dns_ipv6_address"];
+          json_missing.push_back(json_tmp);
         }
       }
       if (json_data.find("default_dns_sec_ipv4_address") != json_data.end()) {
@@ -1247,6 +1259,8 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       if (json_data.find("ue_mtu") != json_data.end()) {
         smf_cfg.ue_mtu = json_data["ue_mtu"].get<uint32_t>();
       }
+    } else {
+      // TODO: Add to json_missing the non-updatable fields from json_data (?)
     }
 
     if (!discover_upf && json_data.find("upf_list") != json_data.end()) {
@@ -1274,9 +1288,9 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
           std::string address = {};
           fqdn::resolve(astring, address, upf_port, addr_type, "");
           if (addr_type == 0) {
-            
+            // IPv4
           } else {
-            // TODO: warn the non supported type
+            // TODO: warn the non supported type, update the other ones
           }
         }
       }
