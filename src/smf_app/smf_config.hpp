@@ -306,6 +306,13 @@ typedef struct session_management_subscription_s {
     return json_data;
   }
 
+  void from_json(nlohmann::json& json_data) {
+    this->single_nssai.from_json(json_data["single_nssai"]);
+    this->session_type = json_data["session_type"].get<std::string>();
+    this->dnn = json_data["dnn"].get<std::string>();
+    this->ssc_mode = json_data["ssc_mode"].get<uint8_t>();
+  }
+
 } session_management_subscription_t;
 
 class smf_config {
