@@ -51,9 +51,9 @@ void util::thread_sched_params::apply(
 
 //------------------------------------------------------------------------------
 nlohmann::json util::thread_sched_params::to_json() const {
-  nlohmann::json json_data = {};
-  json_data["cpu_id"] = cpu_id;
-  json_data["sched_policy"] = sched_policy;
+  nlohmann::json json_data    = {};
+  json_data["cpu_id"]         = cpu_id;
+  json_data["sched_policy"]   = sched_policy;
   json_data["sched_priority"] = sched_priority;
   return json_data;
 }

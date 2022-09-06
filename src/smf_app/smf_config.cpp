@@ -58,7 +58,7 @@ using namespace libconfig;
 using namespace smf;
 
 extern smf_config smf_cfg;
-extern smf_context smf_ctx;
+extern smf_app smf_app_inst;
 
 //------------------------------------------------------------------------------
 int smf_config::load_thread_sched_params(
@@ -1108,7 +1108,7 @@ void smf_config::to_json(nlohmann::json& json_data) const {
   json_data["instance"] = instance;
   json_data["fqdn"]     = fqdn;
 
-  json_data["interfaces"]["n4"] = n4.to_json();
+  json_data["interfaces"]["n4"]  = n4.to_json();
   json_data["interfaces"]["sbi"] = sbi.to_json();
 
   json_data["dnn_list"] = nlohmann::json::array();
@@ -1116,9 +1116,9 @@ void smf_config::to_json(nlohmann::json& json_data) const {
     json_data["dnn_list"].push_back(s.second.to_json());
   }
 
-  json_data["default_dns_ipv4_address"] = inet_ntoa(default_dnsv4);
+  json_data["default_dns_ipv4_address"]     = inet_ntoa(default_dnsv4);
   json_data["default_dns_sec_ipv4_address"] = inet_ntoa(default_dns_secv4);
-  json_data["default_dns_ipv6_address"] = conv::toString(default_dnsv6);
+  json_data["default_dns_ipv6_address"]     = conv::toString(default_dnsv6);
   json_data["default_dns_sec_ipv6_address"] = conv::toString(default_dns_secv6);
 
   json_data["default_cscf_ipv4_address"] = inet_ntoa(default_cscfv4);
@@ -1128,14 +1128,16 @@ void smf_config::to_json(nlohmann::json& json_data) const {
 
   // TODO: change to support_features (?)
   json_data["supported_features"]["registered_nrf"] = register_nrf;
-  json_data["supported_features"]["discover_upf"] = discover_upf;
-  json_data["supported_features"]["force_push_protocol_configuration_options"] = force_push_pco;
-  json_data["supported_features"]["use_local_subscription_info"] = use_local_subscription_info;
-  json_data["supported_features"]["use_fqdn_dns"] = use_fqdn_dns;
-  json_data["supported_features"]["use_network_instance"] = use_nwi;
+  json_data["supported_features"]["discover_upf"]   = discover_upf;
+  json_data["supported_features"]["force_push_protocol_configuration_options"] =
+      force_push_pco;
+  json_data["supported_features"]["use_local_subscription_info"] =
+      use_local_subscription_info;
+  json_data["supported_features"]["use_fqdn_dns"]           = use_fqdn_dns;
+  json_data["supported_features"]["use_network_instance"]   = use_nwi;
   json_data["supported_features"]["enable_usage_reporting"] = enable_ur;
-  json_data["supported_features"]["http_version"] = http_version;
-  
+  json_data["supported_features"]["http_version"]           = http_version;
+
   if (register_nrf) {
     json_data["nrf"] = nrf_addr.to_json();
   }
@@ -1151,45 +1153,48 @@ void smf_config::to_json(nlohmann::json& json_data) const {
     json_data["udm"] = udm_addr.to_json();
   }
 
-  json_data["local_configuration"]["session_management_subscription_list"] = nlohmann::json::array();
+  json_data["local_configuration"]["session_management_subscription_list"] =
+      nlohmann::json::array();
   for (auto s : session_management_subscriptions) {
-    json_data["local_configuration"]["session_management_subscription_list"].push_back(s.to_json());
+    json_data["local_configuration"]["session_management_subscription_list"]
+        .push_back(s.to_json());
   }
-  
-  json_data["http2_port"] = sbi_http2_port;
+
+  json_data["http2_port"]      = sbi_http2_port;
   json_data["sbi_api_version"] = sbi_api_version;
-  json_data["itti"] = itti.to_json();
+  json_data["itti"]            = itti.to_json();
 
   for (auto s : upf_nwi_list) {
     json_data["upf_nwi_list"].push_back(s.to_json());
   }
 }
 
-
 //------------------------------------------------------------------------------
 bool smf_config::from_json(nlohmann::json& json_data) const {
-  nlohmann::json json_missing = {},
-                 json_tmp = {};
+  nlohmann::json json_missing = {}, json_tmp = {};
   oai::smf_server::model::ProblemDetails prob_details;
 
   // TODO: Branch on the Supported Features whenever possible
-  
+
   try {
     if (json_data.find("supported_features") != json_data.end()) {
       json_tmp = json_data["supported_features"];
       if (json_tmp.find("use_local_subscription_info") != json_tmp.end()) {
-        bool val = boost::iequals(json_tmp["use_local_subscription_info"].get<std::string>(), "yes");
+        bool val = boost::iequals(
+            json_tmp["use_local_subscription_info"].get<std::string>(), "yes");
         smf_cfg.use_local_subscription_info = val;
       }
 
       if (json_tmp.find("use_fqdn_dns") != json_tmp.end()) {
-        bool val = boost::iequals(json_tmp["use_fqdn_dns"].get<std::string>(), "yes");
+        bool val =
+            boost::iequals(json_tmp["use_fqdn_dns"].get<std::string>(), "yes");
         smf_cfg.use_fqdn_dns = val;
       }
 
       // TODO: Check if VPP is used
       if (true and json_tmp.find("enable_usage_reporting") != json_tmp.end()) {
-        bool val = boost::iequals(json_tmp["enable_usage_reporting"].get<std::string>(), "yes");
+        bool val = boost::iequals(
+            json_tmp["enable_usage_reporting"].get<std::string>(), "yes");
         smf_cfg.enable_ur = val;
       }
     }
@@ -1198,63 +1203,87 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       for (auto s : json_data["dnn_list"]) {
         dnn_t dnn_item = {};
         dnn_item.from_json(s);
-        std::map<std::string, dnn_t>::iterator it = smf_cfg.dnns.find(dnn_item.dnn);
+        std::map<std::string, dnn_t>::iterator it =
+            smf_cfg.dnns.find(dnn_item.dnn);
         if (it != dnns.end()) {
-          // Check that the DNN is not used
-          if (true /*smf_ctx.find_dnn_subscription()*/) { // TODO: Right way (?)
+          // TODO: Check that the DNN is not used
+          if (true) {
             it->second = dnn_item;
           }
         } else {
           // ADD a new one
-          smf_cfg.dnns.insert(std::pair<std::string, dnn_t>(dnn_item.dnn, dnn_item));
+          smf_cfg.dnns.insert(
+              std::pair<std::string, dnn_t>(dnn_item.dnn, dnn_item));
         }
       }
     }
 
-    // Check that no UE is connected
-    if (true /*smf_ctx.get_number_pdu_sessions() == 0*/) { // TODO: Right way to check?
+    // TODO: Check that no UE is connected
+    if (true) {
       if (json_data.find("default_dns_ipv4_address") != json_data.end()) {
-        std::string addr = json_data["default_dns_ipv4_address"].get<std::string>();
+        std::string addr =
+            json_data["default_dns_ipv4_address"].get<std::string>();
         smf_cfg.default_dnsv4 = conv::fromString(addr);
       }
       if (json_data.find("default_dns_ipv6_address") != json_data.end()) {
-        std::string addr = json_data["default_dns_ipv6_address"].get<std::string>();
+        std::string addr =
+            json_data["default_dns_ipv6_address"].get<std::string>();
         unsigned char buf_in6_addr[sizeof(struct in6_addr)];
         if (inet_pton(AF_INET6, addr.c_str(), buf_in6_addr) == 1) {
           memcpy(&smf_cfg.default_dnsv6, buf_in6_addr, sizeof(struct in6_addr));
-          Logger::smf_app().info("New Default DNS IPv6 address: %s", conv::toString(default_dnsv6));
+          Logger::smf_app().info(
+              "New Default DNS IPv6 address: %s",
+              conv::toString(default_dnsv6));
         } else {
-          Logger::smf_app().debug("Failed to update DNS IPv6 address from %s to %s", conv::toString(default_dnsv6));
-          json_tmp["default_dns_ipv6_address"] = json_data["default_dns_ipv6_address"];
+          Logger::smf_app().debug(
+              "Failed to update DNS IPv6 address from %s to %s",
+              conv::toString(default_dnsv6));
+          json_tmp["default_dns_ipv6_address"] =
+              json_data["default_dns_ipv6_address"];
           json_missing.push_back(json_tmp);
         }
       }
       if (json_data.find("default_dns_sec_ipv4_address") != json_data.end()) {
-        std::string addr = json_data["default_dns_sec_ipv4_address"].get<std::string>();
+        std::string addr =
+            json_data["default_dns_sec_ipv4_address"].get<std::string>();
         smf_cfg.default_dns_secv4 = conv::fromString(addr);
       }
       if (json_data.find("default_dns_sec_ipv6_address") != json_data.end()) {
-        std::string addr = json_data["default_dns_sec_ipv6_address"].get<std::string>();
+        std::string addr =
+            json_data["default_dns_sec_ipv6_address"].get<std::string>();
         unsigned char buf_in6_addr[sizeof(struct in6_addr)];
         if (inet_pton(AF_INET6, addr.c_str(), buf_in6_addr) == 1) {
-          memcpy(&smf_cfg.default_dns_secv6, buf_in6_addr, sizeof(struct in6_addr));
-          Logger::smf_app().info("New Default DNS Sec IPv6 address: %s", conv::toString(default_dnsv6));
+          memcpy(
+              &smf_cfg.default_dns_secv6, buf_in6_addr,
+              sizeof(struct in6_addr));
+          Logger::smf_app().info(
+              "New Default DNS Sec IPv6 address: %s",
+              conv::toString(default_dnsv6));
         } else {
-          Logger::smf_app().debug("Failed to update DNS Sec IPv6 address from %s to %s", conv::toString(default_dnsv6));
+          Logger::smf_app().debug(
+              "Failed to update DNS Sec IPv6 address from %s to %s",
+              conv::toString(default_dnsv6));
         }
       }
       if (json_data.find("default_cscf_ipv4_address") != json_data.end()) {
-        std::string addr = json_data["default_cscf_ipv4_address"].get<std::string>();
+        std::string addr =
+            json_data["default_cscf_ipv4_address"].get<std::string>();
         smf_cfg.default_cscfv4 = conv::fromString(addr);
       }
       if (json_data.find("default_cscf_ipv6_address") != json_data.end()) {
-        std::string addr = json_data["default_cscf_ipv6_address"].get<std::string>();
+        std::string addr =
+            json_data["default_cscf_ipv6_address"].get<std::string>();
         unsigned char buf_in6_addr[sizeof(struct in6_addr)];
         if (inet_pton(AF_INET6, addr.c_str(), buf_in6_addr) == 1) {
-          memcpy(&smf_cfg.default_cscfv6, buf_in6_addr, sizeof(struct in6_addr));
-          Logger::smf_app().info("New Default CSCF IPv6 address: %s", conv::toString(default_dnsv6));
+          memcpy(
+              &smf_cfg.default_cscfv6, buf_in6_addr, sizeof(struct in6_addr));
+          Logger::smf_app().info(
+              "New Default CSCF IPv6 address: %s",
+              conv::toString(default_dnsv6));
         } else {
-          Logger::smf_app().debug("Failed to update DNS Sec IPv6 address from %s to %s", conv::toString(default_dnsv6));
+          Logger::smf_app().debug(
+              "Failed to update DNS Sec IPv6 address from %s to %s",
+              conv::toString(default_dnsv6));
         }
       }
 
@@ -1267,48 +1296,52 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
 
     if (!discover_upf && json_data.find("upf_list") != json_data.end()) {
       for (auto s : json_data["upf_list"]) {
-        bool used = false;
-        std::string astring         = {};
+        bool used                = false;
+        std::string astring      = {};
         pfcp::node_id_t new_node = {};
         unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
-        if (!use_fqdn_dns) { // IPv4/6
+        if (!use_fqdn_dns) {  // IPv4/6
           // TODO: Is IPv6 supported???
-          astring = s.get<std::string>();
+          astring               = s.get<std::string>();
           new_node.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
           if (inet_pton(AF_INET, util::trim(astring).c_str(), buf_in_addr) ==
-                1) {
-              memcpy(&new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
-              for (auto upf : smf_cfg.upfs) {
-                if (new_node == upf) {
-                  used = true;
-                  break;
-                }
+              1) {
+            memcpy(
+                &new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
+            for (auto upf : smf_cfg.upfs) {
+              if (new_node == upf) {
+                used = true;
+                break;
               }
-              if (!used) {
-                smf_cfg.upfs.push_back(new_node);
-              }
+            }
+            if (!used) {
+              smf_cfg.upfs.push_back(new_node);
+            }
           } else {
-            Logger::smf_app().warn("Failed to read UPF id in configuration update: %s", astring);
+            Logger::smf_app().warn(
+                "Failed to read UPF id in configuration update: %s", astring);
             // TODO: Add to ProblemDetails
           }
         } else {
           // FQDN
           unsigned int upf_port = {0};
-          uint8_t addr_type   = {0};
-          std::string address = {};
+          uint8_t addr_type     = {0};
+          std::string address   = {};
           fqdn::resolve(astring, address, upf_port, addr_type, "");
-          if (addr_type == 0 and inet_pton(AF_INET, address.c_str(), buf_in_addr) == 1) {
-              new_node.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
-              memcpy(&new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
-              for (auto upf : smf_cfg.upfs) {
-                if (new_node == upf) {
-                  used = true;
-                  break;
-                }
+          if (addr_type == 0 and
+              inet_pton(AF_INET, address.c_str(), buf_in_addr) == 1) {
+            new_node.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
+            memcpy(
+                &new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
+            for (auto upf : smf_cfg.upfs) {
+              if (new_node == upf) {
+                used = true;
+                break;
               }
-              if (!used) {
-                smf_cfg.upfs.push_back(new_node);
-              }
+            }
+            if (!used) {
+              smf_cfg.upfs.push_back(new_node);
+            }
           } else {
             // TODO: warn the non supported IPv6 / failed conversion
           }
@@ -1318,10 +1351,11 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
 
     if (json_data.find("local_configuration") != json_data.end()) {
       json_tmp = json_data["local_configuration"];
-      if (json_tmp.find("session_management_subscription_list") != json_tmp.end()) {
+      if (json_tmp.find("session_management_subscription_list") !=
+          json_tmp.end()) {
         for (auto s : json_tmp["session_management_subscription_list"]) {
           session_management_subscription_t new_sub = {};
-          bool used = false;
+          bool used                                 = false;
           new_sub.from_json(s);
           for (auto sub : smf_cfg.session_management_subscriptions) {
             if (!sub.dnn.compare(new_sub.dnn)) {
@@ -1347,7 +1381,6 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
   }
   return true;
 }
-
 
 //------------------------------------------------------------------------------
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {

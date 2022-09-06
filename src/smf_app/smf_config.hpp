@@ -223,11 +223,11 @@ typedef struct itti_cfg_s {
   util::thread_sched_params async_cmd_sched_params;
 
   nlohmann::json to_json() const {
-    nlohmann::json json_data        = {};
+    nlohmann::json json_data             = {};
     json_data["itti_timer_sched_params"] = itti_timer_sched_params.to_json();
-    json_data["n4_sched_params"] = n4_sched_params.to_json();
-    json_data["smf_app_sched_params"] = smf_app_sched_params.to_json();
-    json_data["async_cmd_sched_params"] = async_cmd_sched_params.to_json();
+    json_data["n4_sched_params"]         = n4_sched_params.to_json();
+    json_data["smf_app_sched_params"]    = smf_app_sched_params.to_json();
+    json_data["async_cmd_sched_params"]  = async_cmd_sched_params.to_json();
 
     return json_data;
   }
@@ -302,15 +302,15 @@ typedef struct session_management_subscription_s {
     json_data["session_type"] = this->session_type;
     json_data["dnn"]          = this->dnn;
     json_data["ssc_mode"]     = this->ssc_mode;
-    
+
     return json_data;
   }
 
   void from_json(nlohmann::json& json_data) {
     this->single_nssai.from_json(json_data["single_nssai"]);
     this->session_type = json_data["session_type"].get<std::string>();
-    this->dnn = json_data["dnn"].get<std::string>();
-    this->ssc_mode = json_data["ssc_mode"].get<uint8_t>();
+    this->dnn          = json_data["dnn"].get<std::string>();
+    this->ssc_mode     = json_data["ssc_mode"].get<uint8_t>();
   }
 
 } session_management_subscription_t;
@@ -419,7 +419,7 @@ class smf_config {
     std::string fqdn;
 
     nlohmann::json to_json() const {
-      nlohmann::json json_data = {};
+      nlohmann::json json_data  = {};
       json_data["ipv4_addr"]    = inet_ntoa(this->ipv4_addr);
       json_data["port"]         = this->port;
       json_data["api_version"]  = this->api_version;
@@ -449,10 +449,10 @@ class smf_config {
     //      std::string domain_sgi_lan;
 
     nlohmann::json to_json() const {
-      nlohmann::json json_data = {};
-      json_data["upf_id"] = upf_id.toString();
+      nlohmann::json json_data   = {};
+      json_data["upf_id"]        = upf_id.toString();
       json_data["domain_access"] = domain_access;
-      json_data["domain_core"] = domain_core;
+      json_data["domain_core"]   = domain_core;
 
       return json_data;
     }

@@ -198,8 +198,8 @@ enum class sm_context_status_e {
   SM_CONTEXT_STATUS_RELEASED = 1
 };
 
-static const std::vector<std::string> sm_context_status_e2str = {
-    "ACTIVE", "RELEASED"};
+static const std::vector<std::string> sm_context_status_e2str = {"ACTIVE",
+                                                                 "RELEASED"};
 
 typedef struct qos_profile_gbr_s {
   gfbr_t gfbr;  // Guaranteed Flow Bit Rate
@@ -391,6 +391,7 @@ typedef struct interface_upf_info_item_s {
 typedef struct upf_info_s {
   std::vector<interface_upf_info_item_t> interface_upf_info_list;
   std::vector<snssai_upf_info_item_t> snssai_upf_info_list;
+  bool is_vpp_used;
 
   upf_info_s& operator=(const upf_info_s& s) {
     interface_upf_info_list = s.interface_upf_info_list;
