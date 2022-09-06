@@ -1267,19 +1267,26 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
 
     if (!discover_upf && json_data.find("upf_list") != json_data.end()) {
       for (auto s : json_data["upf_list"]) {
+        bool used = false;
         std::string astring         = {};
         pfcp::node_id_t new_node = {};
         unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
-        if (!use_fqdn_dns) {
-          // IPv4/6
+        if (!use_fqdn_dns) { // IPv4/6
           // TODO: Is IPv6 supported???
-          
           astring = s.get<std::string>();
           new_node.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
           if (inet_pton(AF_INET, util::trim(astring).c_str(), buf_in_addr) ==
                 1) {
               memcpy(&new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
-              smf_cfg.upfs.push_back(new_node);
+              for (auto upf : smf_cfg.upfs) {
+                if (new_node == upf) {
+                  used = true;
+                  break;
+                }
+              }
+              if (!used) {
+                smf_cfg.upfs.push_back(new_node);
+              }
           } else {
             Logger::smf_app().warn("Failed to read UPF id in configuration update: %s", astring);
             // TODO: Add to ProblemDetails
@@ -1293,7 +1300,15 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
           if (addr_type == 0 and inet_pton(AF_INET, address.c_str(), buf_in_addr) == 1) {
               new_node.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
               memcpy(&new_node.u1.ipv4_address, buf_in_addr, sizeof(struct in_addr));
-              smf_cfg.upfs.push_back(new_node);
+              for (auto upf : smf_cfg.upfs) {
+                if (new_node == upf) {
+                  used = true;
+                  break;
+                }
+              }
+              if (!used) {
+                smf_cfg.upfs.push_back(new_node);
+              }
           } else {
             // TODO: warn the non supported IPv6 / failed conversion
           }
@@ -1305,9 +1320,18 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       json_tmp = json_data["local_configuration"];
       if (json_tmp.find("session_management_subscription_list") != json_tmp.end()) {
         for (auto s : json_tmp["session_management_subscription_list"]) {
-          session_management_subscription_t sub = {};
-          sub.from_json(s);
-          smf_cfg.session_management_subscriptions.push_back(sub);
+          session_management_subscription_t new_sub = {};
+          bool used = false;
+          new_sub.from_json(s);
+          for (auto sub : smf_cfg.session_management_subscriptions) {
+            if (!sub.dnn.compare(new_sub.dnn)) {
+              used = true;
+              break;
+            }
+          }
+          if (!used) {
+            smf_cfg.session_management_subscriptions.push_back(new_sub);
+          }
         }
       }
     }
