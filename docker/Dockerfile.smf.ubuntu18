@@ -34,6 +34,8 @@ ARG NEEDED_GIT_PROXY
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN echo "deb http://fr.archive.ubuntu.com/ubuntu bionic main restricted" >> /etc/apt/sources.list
+
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
