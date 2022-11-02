@@ -71,7 +71,7 @@ class smf_qos_flow {
     precedence  = {};
     far_id_ul   = {};
     far_id_dl   = {};
-    released    = false;
+    released    = true;
     qos_profile = {};
     cause_value = 0;
   }
@@ -121,7 +121,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     ipv6                = false;
     ipv4_address.s_addr = INADDR_ANY;
     ipv6_address        = in6addr_any;
-    released            = false;
+    released            = true;
     dnn                 = {};
     snssai              = {};
     pdu_session_type    = {};
@@ -146,7 +146,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     ipv6                = false;
     ipv4_address.s_addr = INADDR_ANY;
     ipv6_address        = in6addr_any;
-    released            = false;
+    released            = true;
     pdu_session_id      = 0;
     dnn                 = {};
     snssai              = {};
