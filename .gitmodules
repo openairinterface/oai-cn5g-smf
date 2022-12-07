@@ -1,0 +1,3 @@
+[submodule "component/oai-common"]
+	path = component/oai-common
+	url = git@gitlab.eurecom.fr:romain.lacroix/oai-common.git
