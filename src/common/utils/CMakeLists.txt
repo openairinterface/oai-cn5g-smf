@@ -19,6 +19,7 @@
 #      contact@openairinterface.org
 ################################################################################
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${SRC_TOP_DIR}/../component/oai-common)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/utils)

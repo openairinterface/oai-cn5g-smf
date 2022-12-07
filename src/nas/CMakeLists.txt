@@ -29,12 +29,13 @@ include_directories(${NAS_DIR}/sm/msg)
 include_directories(${NAS_DIR}/security)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/ngap/ies)
+include_directories(${SRC_TOP_DIR}/../component/oai-common)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/utils)
 include_directories(${SRC_TOP_DIR}/common/utils/bstr)
 include_directories(${SRC_TOP_DIR}/common/nas)
-  
+
 file(GLOB NAS_src_files
     ${NAS_DIR}/*.c
     ${NAS_DIR}/ies/*.c
@@ -49,6 +50,6 @@ file(GLOB NAS_src_files
     ${SRC_TOP_DIR}/common/*.c
     ${SRC_TOP_DIR}/ngap/asn1c/*.c
     ${SRC_TOP_DIR}/ngap/ies/*.c
-)   
+)
 
 add_library(NAS ${NAS_src_files} ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES})

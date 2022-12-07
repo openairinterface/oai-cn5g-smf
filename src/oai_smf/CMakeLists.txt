@@ -282,6 +282,7 @@ add_definitions("-DPACKAGE_NAME=\"SMF\"")
 include_directories(${SRC_TOP_DIR}/smf_app)
 include_directories(${SRC_TOP_DIR}/oai_smf)
 include_directories(${SRC_TOP_DIR}/itti)
+include_directories(${SRC_TOP_DIR}/../component/oai-common)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/nas)
@@ -317,7 +318,7 @@ IF(STATIC_LINKING)
     SET_TARGET_PROPERTIES(smf PROPERTIES LINK_SEARCH_END_STATIC 1)
     # asan do not support static linking
     SET(ASAN)
-ENDIF(STATIC_LINKING)   
+ENDIF(STATIC_LINKING)
 
-target_link_libraries (smf ${ASAN} 
+target_link_libraries (smf ${ASAN}
     -Wl,--start-group CN_UTILS SMF UDP  PFCP 3GPP_COMMON_TYPES SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto NAS dl -Wl,--end-group pthread m rt config++ event boost_system boost_chrono pistache curl)

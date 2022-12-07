@@ -27,6 +27,7 @@ include_directories(${SMF_API_SERVER_DIR}/model)
 include_directories(${SMF_API_SERVER_DIR}/)
 include_directories(${SRC_TOP_DIR}/smf_app)
 include_directories(${SRC_TOP_DIR}/itti)
+include_directories(${SRC_TOP_DIR}/../component/oai-common)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/utils)
@@ -51,6 +52,6 @@ file(GLOB SMF_API_SERVER_src_files
     ${SMF_API_SERVER_DIR}/api/*.cpp
     ${SMF_API_SERVER_DIR}/impl/*.cpp
 )
- 
+
 add_library(SMF_API STATIC
            ${SMF_API_SERVER_src_files})
