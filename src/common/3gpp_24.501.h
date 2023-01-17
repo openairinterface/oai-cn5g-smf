@@ -339,7 +339,7 @@ typedef struct pdu_session_type_s {
     return (p == pdu_session_type);
   }
   //------------------------------------------------------------------------------
-  const std::string& toString() const {
+  const std::string& to_string() const {
     return pdu_session_type_e2str.at(pdu_session_type);
   }
 

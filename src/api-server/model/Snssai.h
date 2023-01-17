@@ -39,6 +39,9 @@ class Snssai {
 
   void validate();
 
+  bool operator==(const Snssai& rhs) const;
+  bool operator!=(const Snssai& rhs) const;
+
   /////////////////////////////////////////////
   /// Snssai members
 

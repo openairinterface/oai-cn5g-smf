@@ -198,7 +198,7 @@ class HtmlReport():
 					self.file.write('    <strong>All files in repository follow OAI rules. <span class="glyphicon glyphicon-ok-circle"></span> -> (' + nb_total.strip() + ' were checked)</strong>\n')
 				self.file.write('  </div>\n')
 			else:
-				self.file.write('  <div class="alert alert-warning">\n')
+				self.file.write('  <div class="alert alert-danger">\n')
 				if self.git_pull_request:
 					self.file.write('    <strong>' + nb_fail.strip() + ' modified files in Pull-Request DO NOT follow OAI rules. <span class="glyphicon glyphicon-warning-sign"></span> -> (' + nb_total.strip() + ' were checked)</strong>\n')
 				else:
@@ -481,8 +481,6 @@ class HtmlReport():
 				section_end_pattern = 'build_smf --clean --Verbose --build-type Release --jobs'
 				section_status = False
 				package_install = False
-				folly_build_start = False
-				folly_build_status = False
 				spdlog_build_start = False
 				spdlog_build_status = False
 				pistache_build_start = False
@@ -494,7 +492,7 @@ class HtmlReport():
 				base_image = False
 				with open(cwd + '/archives/' + logFileName, 'r') as logfile:
 					for line in logfile:
-						result = re.search('FROM oai-smf-base', line)
+						result = re.search('FROM oai-smf-base:latest', line)
 						if result is not None:
 							base_image = True
 						result = re.search(section_start_pattern, line)
@@ -510,12 +508,6 @@ class HtmlReport():
 							result = re.search('distro libs installation complete', line)
 							if result is not None:
 								package_install = True
-							result = re.search('Starting to install folly', line)
-							if result is not None:
-								folly_build_start = True
-							result = re.search('folly installation complete', line)
-							if result is not None and folly_build_start:
-								folly_build_status = True
 							result = re.search('Starting to install spdlog', line)
 							if result is not None:
 								spdlog_build_start = True
@@ -564,12 +556,6 @@ class HtmlReport():
 				else:
 					cell_msg += '   ** spdlog Installation: KO\n'
 				if base_image:
-					cell_msg += '   ** folly Installation: N/A\n'
-				elif folly_build_status:
-					cell_msg += '   ** folly Installation: OK\n'
-				else:
-					cell_msg += '   ** folly Installation: KO\n'
-				if base_image:
 					cell_msg += '   ** pistache Installation: N/A\n'
 				elif pistache_build_status:
 					cell_msg += '   ** pistache Installation: OK\n'
@@ -582,11 +568,11 @@ class HtmlReport():
 				else:
 					cell_msg += '   ** Nlohmann Json Installation: KO\n'
 				if base_image:
-					cell_msg += '   ** nghttp2 Installation: N/A\n'
+					cell_msg += '   ** nghttp2-asio Installation: N/A\n'
 				elif nghttp2_build_status:
-					cell_msg += '   ** nghttp2 Installation: OK\n'
+					cell_msg += '   ** nghttp2-asio Installation: OK\n'
 				else:
-					cell_msg += '   ** nghttp2 Installation: KO\n'
+					cell_msg += '   ** nghttp2-asio Installation: KO\n'
 				cell_msg += '</b></pre></td>\n'
 			else:
 				cell_msg = '	  <td bgcolor="Tomato"><pre style="border:none; background-color:Tomato"><b>'
@@ -620,7 +606,7 @@ class HtmlReport():
 				status = False
 				if nfType == 'SMF':
 					section_start_pattern = 'build_smf --clean --Verbose --build-type Release --jobs'
-					section_end_pattern = 'FROM ubuntu:bionic as oai-smf$'
+					section_end_pattern = 'FROM .* as oai-smf$'
 					pass_pattern = 'smf installed'
 				section_status = False
 				with open(cwd + '/archives/' + logFileName, 'r') as logfile:
@@ -670,7 +656,7 @@ class HtmlReport():
 			if os.path.isfile(cwd + '/archives/' + logFileName):
 				if nfType == 'SMF':
 					section_start_pattern = 'build_smf --clean --Verbose --build-type Release --jobs'
-					section_end_pattern = 'FROM ubuntu:bionic as oai-smf$'
+					section_end_pattern = 'FROM .* as oai-smf$'
 				section_status = False
 				with open(cwd + '/archives/' + logFileName, 'r') as logfile:
 					for line in logfile:
@@ -733,7 +719,7 @@ class HtmlReport():
 		for variant in variants:
 			logFileName = 'smf_' + variant + '_image_build.log'
 			if os.path.isfile(cwd + '/archives/' + logFileName):
-				section_start_pattern = 'FROM ubuntu:bionic as oai-smf$'
+				section_start_pattern = 'FROM .* as oai-smf$'
 				section_end_pattern = 'WORKDIR /openair-smf/etc'
 				section_status = False
 				status = False

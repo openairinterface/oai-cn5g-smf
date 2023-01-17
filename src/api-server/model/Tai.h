@@ -37,6 +37,13 @@ class Tai {
 
   void validate();
 
+  bool validate(std::stringstream& msg) const;
+
+  bool validate(std::stringstream& msg, const std::string& pathPrefix) const;
+
+  bool operator==(const Tai& rhs) const;
+  bool operator!=(const Tai& rhs) const;
+
   /////////////////////////////////////////////
   /// Tai members
 

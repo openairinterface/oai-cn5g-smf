@@ -37,6 +37,9 @@ class RouteInformation {
 
   void validate();
 
+  bool operator==(const RouteInformation& rhs) const;
+  bool operator!=(const RouteInformation& rhs) const;
+
   /////////////////////////////////////////////
   /// RouteInformation members
 

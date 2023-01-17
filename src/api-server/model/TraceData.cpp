@@ -34,6 +34,40 @@ void TraceData::validate() {
   // TODO: implement validation
 }
 
+bool TraceData::operator==(const TraceData& rhs) const {
+  return
+
+      (getTraceRef() == rhs.getTraceRef()) &&
+
+      //(getTraceDepth() == rhs.getTraceDepth()) &&
+
+      (getNeTypeList() == rhs.getNeTypeList()) &&
+
+      (getEventList() == rhs.getEventList()) &&
+
+      ((!collectionEntityIpv4AddrIsSet() &&
+        !rhs.collectionEntityIpv4AddrIsSet()) ||
+       (collectionEntityIpv4AddrIsSet() &&
+        rhs.collectionEntityIpv4AddrIsSet() &&
+        getCollectionEntityIpv4Addr() == rhs.getCollectionEntityIpv4Addr())) &&
+
+      ((!collectionEntityIpv6AddrIsSet() &&
+        !rhs.collectionEntityIpv6AddrIsSet()) ||
+       (collectionEntityIpv6AddrIsSet() &&
+        rhs.collectionEntityIpv6AddrIsSet() &&
+        getCollectionEntityIpv6Addr() == rhs.getCollectionEntityIpv6Addr())) &&
+
+      ((!interfaceListIsSet() && !rhs.interfaceListIsSet()) ||
+       (interfaceListIsSet() && rhs.interfaceListIsSet() &&
+        getInterfaceList() == rhs.getInterfaceList()))
+
+          ;
+}
+
+bool TraceData::operator!=(const TraceData& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const TraceData& o) {
   j               = nlohmann::json();
   j["traceRef"]   = o.m_TraceRef;

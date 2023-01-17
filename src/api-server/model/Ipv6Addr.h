@@ -38,10 +38,20 @@ class Ipv6Addr {
   /////////////////////////////////////////////
   /// Ipv6Addr members
 
+  bool operator==(const Ipv6Addr& rhs) const;
+  bool operator!=(const Ipv6Addr& rhs) const;
+
+  /////////////////////////////////////////////
+  /// Ipv6Addr members
+
   friend void to_json(nlohmann::json& j, const Ipv6Addr& o);
   friend void from_json(const nlohmann::json& j, Ipv6Addr& o);
 
+  std::string getIpv6Addr() const;
+  void setIpv6Addr(std::string const& value);
+
  protected:
+  std::string m_Ipv6Addr;
 };
 
 }  // namespace model

@@ -36,6 +36,9 @@ class GNbId {
 
   void validate();
 
+  bool operator==(const GNbId& rhs) const;
+  bool operator!=(const GNbId& rhs) const;
+
   /////////////////////////////////////////////
   /// GNbId members
 

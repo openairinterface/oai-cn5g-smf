@@ -519,6 +519,29 @@ int smf_config::load(const string& config_file) {
       }
 
       support_features.lookupValue(
+          SMF_CONFIG_STRING_SUPPORT_FEATURES_DISCOVER_PCF, opt);
+      if (boost::iequals(opt, "yes")) {
+        Logger::smf_app().warn(
+            "Discover PCF feature is not supported, you need to configure the "
+            "PCF in the config file. This feature is set to false.");
+        discover_pcf = false;  // set to false as not yet supported
+      } else {
+        discover_pcf = false;
+      }
+
+      support_features.lookupValue(
+          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_PCC_RULES, opt);
+      if (boost::iequals(opt, "yes")) {
+        Logger::smf_app().warn(
+            "Local PCC rules feature is not yet supported, the default values "
+            "from the config file are used.");
+        use_local_pcc_rules = true;
+        // discover_pcf        = false;
+      } else {
+        use_local_pcc_rules = false;
+      }
+
+      support_features.lookupValue(
           SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_SUBSCRIPTION_INFO, opt);
       if (boost::iequals(opt, "yes")) {
         use_local_subscription_info = true;
@@ -660,6 +683,52 @@ int smf_config::load(const string& config_file) {
         }
       }
     }
+    // Get PCF address if necessary
+    if (!use_local_pcc_rules) {
+      if (!discover_pcf) {
+        const Setting& pcf_cfg       = smf_cfg[SMF_CONFIG_STRING_PCF];
+        struct in_addr pcf_ipv4_addr = {};
+        unsigned int pcf_port        = {0};
+        std::string pcf_api_version  = {};
+
+        if (!use_fqdn_dns) {
+          pcf_cfg.lookupValue(SMF_CONFIG_STRING_PCF_IPV4_ADDRESS, astring);
+          IPV4_STR_ADDR_TO_INADDR(
+              util::trim(astring).c_str(), pcf_ipv4_addr,
+              "BAD IPv4 ADDRESS FORMAT FOR PCF !");
+          pcf_addr.ipv4_addr = pcf_ipv4_addr;
+          if (!(pcf_cfg.lookupValue(SMF_CONFIG_STRING_PCF_PORT, pcf_port))) {
+            Logger::smf_app().error(SMF_CONFIG_STRING_PCF_PORT "failed");
+            throw(SMF_CONFIG_STRING_PCF_PORT "failed");
+          }
+          pcf_addr.port = pcf_port;
+
+          if (!(pcf_cfg.lookupValue(
+                  SMF_CONFIG_STRING_API_VERSION, pcf_api_version))) {
+            Logger::smf_app().error(SMF_CONFIG_STRING_API_VERSION "failed");
+            throw(SMF_CONFIG_STRING_API_VERSION "failed");
+          }
+          pcf_addr.api_version = pcf_api_version;
+        } else {
+          pcf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, astring);
+          uint8_t addr_type   = {0};
+          std::string address = {};
+
+          fqdn::resolve(astring, address, pcf_port, addr_type);
+          if (addr_type != 0) {  // IPv6
+            // TODO:
+            throw("DO NOT SUPPORT IPV6 ADDR FOR PCF!");
+          } else {  // IPv4
+            IPV4_STR_ADDR_TO_INADDR(
+                util::trim(address).c_str(), pcf_ipv4_addr,
+                "BAD IPv4 ADDRESS FORMAT FOR PCF !");
+            pcf_addr.ipv4_addr   = pcf_ipv4_addr;
+            pcf_addr.port        = pcf_port;
+            pcf_addr.api_version = "v1";  // TODO: to get API version from DNS
+          }
+        }
+      }
+    }
 
     // UPF list
     if (!discover_upf) {
@@ -742,7 +811,7 @@ int smf_config::load(const string& config_file) {
     }
 
     // NRF
-    if (discover_upf or register_nrf) {
+    if (discover_upf or register_nrf or discover_pcf) {
       const Setting& nrf_cfg       = smf_cfg[SMF_CONFIG_STRING_NRF];
       struct in_addr nrf_ipv4_addr = {};
       unsigned int nrf_port        = {0};
@@ -933,40 +1002,21 @@ void smf_config::display() {
   */
 
   Logger::smf_app().info("- AMF:");
-  Logger::smf_app().info(
-      "    IPv4 Addr ...........: %s",
-      inet_ntoa(*((struct in_addr*) &amf_addr.ipv4_addr)));
-  Logger::smf_app().info("    Port ................: %lu  ", amf_addr.port);
-  Logger::smf_app().info(
-      "    API version .........: %s", amf_addr.api_version.c_str());
-  if (use_fqdn_dns)
-    Logger::smf_app().info(
-        "    FQDN ................: %s", amf_addr.fqdn.c_str());
+  amf_addr.log_infos(use_fqdn_dns);
 
   if (!use_local_subscription_info) {
     Logger::smf_app().info("- UDM:");
-    Logger::smf_app().info(
-        "    IPv4 Addr ...........: %s",
-        inet_ntoa(*((struct in_addr*) &udm_addr.ipv4_addr)));
-    Logger::smf_app().info("    Port ................: %lu  ", udm_addr.port);
-    Logger::smf_app().info(
-        "    API version .........: %s", udm_addr.api_version.c_str());
-    if (use_fqdn_dns)
-      Logger::smf_app().info(
-          "    FQDN ................: %s", udm_addr.fqdn.c_str());
+    udm_addr.log_infos(use_fqdn_dns);
   }
 
-  if (register_nrf or discover_upf) {
+  if (register_nrf or discover_upf or discover_pcf) {
     Logger::smf_app().info("- NRF:");
-    Logger::smf_app().info(
-        "    IPv4 Addr ...........: %s",
-        inet_ntoa(*((struct in_addr*) &nrf_addr.ipv4_addr)));
-    Logger::smf_app().info("    Port ................: %lu  ", nrf_addr.port);
-    Logger::smf_app().info(
-        "    API version .........: %s", nrf_addr.api_version.c_str());
-    if (use_fqdn_dns)
-      Logger::smf_app().info(
-          "    FQDN ................: %s", nrf_addr.fqdn.c_str());
+    nrf_addr.log_infos(use_fqdn_dns);
+  }
+
+  if (!use_local_pcc_rules && !discover_pcf) {
+    Logger::smf_app().info("- PCF:");
+    pcf_addr.log_infos(use_fqdn_dns);
   }
 
   if (!discover_upf) {
@@ -996,10 +1046,12 @@ void smf_config::display() {
     Logger::smf_app().info("    Secondary DNS v6 ....: %s", str_addr6);
   }
 
+  Logger::smf_app().info("- CSCF:");
   Logger::smf_app().info(
-      "   CSCF .........: %s", inet_ntoa(*((struct in_addr*) &default_cscfv4)));
+      "    CSCF IPv4 ...........: %s",
+      inet_ntoa(*((struct in_addr*) &default_cscfv4)));
   if (inet_ntop(AF_INET6, &default_cscfv6, str_addr6, sizeof(str_addr6))) {
-    Logger::smf_app().info("    CSCF v6 ......: %s", str_addr6);
+    Logger::smf_app().info("    CSCF IPv6 ...........: %s", str_addr6);
   }
 
   Logger::smf_app().info("- Default UE MTU: %d", ue_mtu);
@@ -1011,8 +1063,15 @@ void smf_config::display() {
       "    Discover UPF........................: %s",
       discover_upf ? "Yes" : "No");
   Logger::smf_app().info(
+      "    Discover PCF........................: %s",
+      discover_pcf ? "Yes" : "No");
+
+  Logger::smf_app().info(
       "    Use Local Subscription Configuration: %s",
       use_local_subscription_info ? "Yes" : "No");
+  Logger::smf_app().info(
+      "    Use Local PCC Rules: ...............: %s",
+      use_local_pcc_rules ? "Yes" : "No");
   Logger::smf_app().info(
       "    Push PCO (DNS+MTU)..................: %s",
       force_push_pco ? "Yes" : "No");
@@ -1028,7 +1087,7 @@ void smf_config::display() {
        it++) {
     Logger::smf_app().info(
         "    DNN..........: %s (%s)", it->second.dnn.c_str(),
-        it->second.pdu_session_type.toString().c_str());
+        it->second.pdu_session_type.to_string().c_str());
 
     if ((it->second.pdu_session_type.pdu_session_type ==
          pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4) or

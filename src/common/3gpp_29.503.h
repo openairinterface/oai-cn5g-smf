@@ -24,6 +24,7 @@
 
 #include "smf.h"
 #include "3gpp_29.571.h"
+#include <nlohmann/json.hpp>
 
 enum ssc_mode_e {
   SSC_MODE_1 = 1,
@@ -31,7 +32,7 @@ enum ssc_mode_e {
   SSC_MODE_3 = 3,
 };
 static const std::vector<std::string> ssc_mode_e2str = {
-    "Error", "SSC_MODE_1", "SSC_MODE_2", "SSC_MODE_3"};
+    "SSC_MODE_ERROR", "SSC_MODE_1", "SSC_MODE_2", "SSC_MODE_3"};
 
 typedef struct ssc_mode_s {
   uint8_t ssc_mode;
@@ -58,16 +59,48 @@ typedef struct ssc_mode_s {
 
   virtual ~ssc_mode_s(){};
 
+  const std::string& to_string() const { return ssc_mode_e2str.at(ssc_mode); }
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = to_string();
+    return json_data;
+  }
 } ssc_mode_t;
 
 typedef struct pdu_session_types_s {
   pdu_session_type_t default_session_type;
   std::vector<pdu_session_type_t> allowed_session_types;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data       = {};
+    json_data["pdu_session_types"] = default_session_type.to_string();
+    if (allowed_session_types.size() > 0) {
+      json_data["allowed_session_types"] = nlohmann::json::array();
+    }
+    for (const auto& a : allowed_session_types) {
+      nlohmann::json json_item = a.to_string();
+      json_data["allowed_session_types"].push_back(json_item);
+    }
+    return json_data;
+  }
 } pdu_session_types_t;
 
 typedef struct ssc_modes_s {
   ssc_mode_t default_ssc_mode;
   std::vector<ssc_mode_t> allowed_ssc_modes;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data      = {};
+    json_data["default_ssc_mode"] = default_ssc_mode.to_string();
+    if (allowed_ssc_modes.size() > 0) {
+      json_data["allowed_ssc_modes"] = nlohmann::json::array();
+    }
+    for (const auto& a : allowed_ssc_modes) {
+      nlohmann::json json_item = a.to_string();
+      json_data["allowed_ssc_modes"].push_back(json_item);
+    }
+    return json_data;
+  }
 } ssc_modes_t;
 
 enum ip_address_type_value_e {
@@ -75,6 +108,10 @@ enum ip_address_type_value_e {
   IP_ADDRESS_TYPE_IPV6_ADDRESS = 1,
   IP_ADDRESS_TYPE_IPV6_PREFIX  = 2
 };
+
+static const std::vector<std::string> ip_address_type_value_e2str = {
+    "IP_ADDRESS_TYPE_IPV4_ADDRESS", "IP_ADDRESS_TYPE_IPV6_ADDRESS",
+    "IP_ADDRESS_TYPE_IPV6_PREFIX"};
 
 typedef struct ipv6_prefix_s {
   struct in6_addr prefix;
@@ -189,6 +226,15 @@ typedef struct ip_address_s {
     }
     return std::string("Unknown IP Address Type");
   }
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = {};
+    json_data["ip_address_type"] =
+        ip_address_type_value_e2str.at(ip_address_type);
+    json_data["addr"] = to_string();
+    return json_data;
+  }
+
 } ip_address_t;
 
 typedef struct dnn_configuration_s {
@@ -197,6 +243,24 @@ typedef struct dnn_configuration_s {
   session_ambr_t session_ambr;
   subscribed_default_qos_t _5g_qos_profile;
   std::vector<ip_address_t> static_ip_addresses;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data       = {};
+    json_data["pdu_session_types"] = pdu_session_types.to_json();
+    json_data["ssc_modes"]         = ssc_modes.to_json();
+    json_data["session_ambr"]      = session_ambr.to_json();
+    json_data["_5g_qos_profile"]   = _5g_qos_profile.to_json();
+
+    if (static_ip_addresses.size() > 0) {
+      json_data["static_ip_addresses"] = nlohmann::json::array();
+    }
+    for (const auto& a : static_ip_addresses) {
+      nlohmann::json json_item = a.to_string();
+      json_data["static_ip_addresses"].push_back(json_item);
+    }
+
+    return json_data;
+  }
 } dnn_configuration_t;
 
 #endif

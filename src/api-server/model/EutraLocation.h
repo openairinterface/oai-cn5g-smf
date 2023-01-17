@@ -39,6 +39,9 @@ class EutraLocation {
 
   void validate();
 
+  bool operator==(const EutraLocation& rhs) const;
+  bool operator!=(const EutraLocation& rhs) const;
+
   /////////////////////////////////////////////
   /// EutraLocation members
 

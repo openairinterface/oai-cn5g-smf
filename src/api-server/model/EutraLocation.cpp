@@ -35,6 +35,43 @@ void EutraLocation::validate() {
   // TODO: implement validation
 }
 
+bool EutraLocation::operator==(const EutraLocation& rhs) const {
+  return
+
+      (getTai() == rhs.getTai()) &&
+
+      (getEcgi() == rhs.getEcgi()) &&
+
+      ((!ageOfLocationInformationIsSet() &&
+        !rhs.ageOfLocationInformationIsSet()) ||
+       (ageOfLocationInformationIsSet() &&
+        rhs.ageOfLocationInformationIsSet() &&
+        getAgeOfLocationInformation() == rhs.getAgeOfLocationInformation())) &&
+
+      ((!ueLocationTimestampIsSet() && !rhs.ueLocationTimestampIsSet()) ||
+       (ueLocationTimestampIsSet() && rhs.ueLocationTimestampIsSet() &&
+        getUeLocationTimestamp() == rhs.getUeLocationTimestamp())) &&
+
+      ((!geographicalInformationIsSet() &&
+        !rhs.geographicalInformationIsSet()) ||
+       (geographicalInformationIsSet() && rhs.geographicalInformationIsSet() &&
+        getGeographicalInformation() == rhs.getGeographicalInformation())) &&
+
+      ((!geodeticInformationIsSet() && !rhs.geodeticInformationIsSet()) ||
+       (geodeticInformationIsSet() && rhs.geodeticInformationIsSet() &&
+        getGeodeticInformation() == rhs.getGeodeticInformation())) &&
+
+      ((!globalNgenbIdIsSet() && !rhs.globalNgenbIdIsSet()) ||
+       (globalNgenbIdIsSet() && rhs.globalNgenbIdIsSet() &&
+        getGlobalNgenbId() == rhs.getGlobalNgenbId()))
+
+          ;
+}
+
+bool EutraLocation::operator!=(const EutraLocation& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const EutraLocation& o) {
   j         = nlohmann::json();
   j["tai"]  = o.m_Tai;

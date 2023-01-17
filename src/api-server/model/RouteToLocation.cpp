@@ -30,6 +30,39 @@ void RouteToLocation::validate() {
   // TODO: implement validation
 }
 
+bool RouteToLocation::validate(std::stringstream& msg) const {
+  return validate(msg, "");
+}
+
+bool RouteToLocation::validate(
+    std::stringstream& msg, const std::string& pathPrefix) const {
+  bool success = true;
+  const std::string _pathPrefix =
+      pathPrefix.empty() ? "RouteToLocation" : pathPrefix;
+
+  return success;
+}
+
+bool RouteToLocation::operator==(const RouteToLocation& rhs) const {
+  return
+
+      (getDnai() == rhs.getDnai()) &&
+
+      ((!routeInfoIsSet() && !rhs.routeInfoIsSet()) ||
+       (routeInfoIsSet() && rhs.routeInfoIsSet() &&
+        getRouteInfo() == rhs.getRouteInfo())) &&
+
+      ((!routeProfIdIsSet() && !rhs.routeProfIdIsSet()) ||
+       (routeProfIdIsSet() && rhs.routeProfIdIsSet() &&
+        getRouteProfId() == rhs.getRouteProfId()))
+
+          ;
+}
+
+bool RouteToLocation::operator!=(const RouteToLocation& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const RouteToLocation& o) {
   j         = nlohmann::json();
   j["dnai"] = o.m_Dnai;

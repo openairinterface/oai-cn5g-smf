@@ -37,6 +37,9 @@ class Ecgi {
 
   void validate();
 
+  bool operator==(const Ecgi& rhs) const;
+  bool operator!=(const Ecgi& rhs) const;
+
   /////////////////////////////////////////////
   /// Ecgi members
 

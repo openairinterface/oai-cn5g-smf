@@ -27,6 +27,13 @@
 typedef struct session_ambr_s {
   std::string uplink;
   std::string downlink;
+
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = {};
+    json_data["uplink"]      = uplink;
+    json_data["downlink"]    = downlink;
+    return json_data;
+  }
 } session_ambr_t;
 
 enum preemtion_capability_e { NOT_PREEMPT = 1, MAY_PREEMPT = 2 };
@@ -42,18 +49,11 @@ typedef struct arp_5gc_s {
 
   nlohmann::json to_json() const {
     nlohmann::json json_data    = {};
-    json_data["priority_level"] = this->priority_level;
-    json_data["preempt_cap"]    = this->preempt_cap;
-    json_data["preempt_vuln"]   = this->preempt_vuln;
+    json_data["priority_level"] = priority_level;
+    json_data["preempt_cap"]    = preempt_cap;
+    json_data["preempt_vuln"]   = preempt_vuln;
     return json_data;
   }
-
-  void from_json(nlohmann::json& json_data) {
-    this->priority_level = json_data["priority_level"].get<int>();
-    this->preempt_cap    = json_data["preempt_cap"].get<std::string>();
-    this->preempt_vuln   = json_data["preempt_vuln"].get<std::string>();
-  }
-
 } arp_5gc_t;
 
 // see section 5.4.4.1@TS 29.571
@@ -64,12 +64,11 @@ typedef struct subscribed_default_qos_s {
 
   nlohmann::json to_json() const {
     nlohmann::json json_data    = {};
-    json_data["_5qi"]           = this->_5qi;
-    json_data["arp"]            = this->arp.to_json();
-    json_data["priority_level"] = this->priority_level;
+    json_data["_5qi"]           = _5qi;
+    json_data["arp"]            = arp.to_json();
+    json_data["priority_level"] = priority_level;
     return json_data;
   }
-
 } subscribed_default_qos_t;
 
 enum reflective_qos_attribute_e { RQOS = 1, NO_RQOS = 2 };
@@ -80,6 +79,12 @@ static const std::vector<std::string> reflective_qos_attribute_e2str = {
 typedef struct gNB_id_s {
   uint8_t bit_length;
   std::string gNB_value;
+  nlohmann::json to_json() const {
+    nlohmann::json json_data = {};
+    json_data["bit_length"]  = bit_length;
+    json_data["gNB_value"]   = gNB_value;
+    return json_data;
+  }
 } gNB_id_t;  // 22bits to 32bits
 
 typedef struct global_ran_node_id_s {
@@ -87,6 +92,7 @@ typedef struct global_ran_node_id_s {
   //    n3IwfId:
   gNB_id_t gNbId;
   //        ngeNbId:
+
 } global_ran_node_id_t;
 
 #endif

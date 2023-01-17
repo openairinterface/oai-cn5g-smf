@@ -28,6 +28,20 @@ void GNbId::validate() {
   // TODO: implement validation
 }
 
+bool GNbId::operator==(const GNbId& rhs) const {
+  return
+
+      (getBitLength() == rhs.getBitLength()) &&
+
+      (getGNBValue() == rhs.getGNBValue())
+
+          ;
+}
+
+bool GNbId::operator!=(const GNbId& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const GNbId& o) {
   j              = nlohmann::json();
   j["bitLength"] = o.m_BitLength;

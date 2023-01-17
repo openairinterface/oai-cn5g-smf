@@ -1026,6 +1026,13 @@ struct node_id_s {
     struct in6_addr ipv6_address;
   } u1;
   std::string fqdn;  // should be in union but problem with virtual ~
+  node_id_s() {
+    node_id_type           = node_id_type_value_e::NODE_ID_TYPE_UNKNOWN;
+    u1.ipv4_address.s_addr = INADDR_ANY;
+    u1.ipv6_address        = in6addr_any;
+    fqdn                   = {};
+  }
+
   bool operator==(const struct node_id_s& i) const {
     if (i.node_id_type != this->node_id_type) return false;
     switch (i.node_id_type) {

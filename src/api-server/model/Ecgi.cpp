@@ -27,6 +27,20 @@ void Ecgi::validate() {
   // TODO: implement validation
 }
 
+bool Ecgi::operator==(const Ecgi& rhs) const {
+  return
+
+      (getPlmnId() == rhs.getPlmnId()) &&
+
+      (getEutraCellId() == rhs.getEutraCellId())
+
+          ;
+}
+
+bool Ecgi::operator!=(const Ecgi& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const Ecgi& o) {
   j                = nlohmann::json();
   j["plmnId"]      = o.m_PlmnId;

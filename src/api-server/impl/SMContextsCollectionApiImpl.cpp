@@ -84,15 +84,13 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
       m_address + base + smf_cfg.sbi_api_version +
       NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
 
-  boost::shared_ptr<
-      boost::promise<smf::pdu_session_create_sm_context_response> >
-      p = boost::make_shared<
-          boost::promise<smf::pdu_session_create_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_create_sm_context_response> f;
+  boost::shared_ptr<boost::promise<nlohmann::json> > p =
+      boost::make_shared<boost::promise<nlohmann::json> >();
+  boost::shared_future<nlohmann::json> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = generate_promise_id();
+  uint32_t promise_id = m_smf_app->generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
@@ -112,40 +110,60 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
     assert(f.has_value());
     assert(!f.has_exception());
     // Wait for the result from APP and send reply to AMF
-    smf::pdu_session_create_sm_context_response sm_context_response = f.get();
+    nlohmann::json sm_context_response = f.get();
     Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
     nlohmann::json json_data = {};
     std::string json_format  = {};
     std::string body         = {};
+    bool n1_sm_msg_is_set    = false;
 
-    sm_context_response.get_json_data(json_data);
-    sm_context_response.get_json_format(json_format);
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
 
-    if (sm_context_response.n1_sm_msg_is_set()) {  // add N1 container if
-                                                   // available
+    if (sm_context_response.find("json_format") != sm_context_response.end()) {
+      json_format = sm_context_response["json_format"].get<std::string>();
+    }
+    if (sm_context_response.find("json_data") != sm_context_response.end()) {
+      json_data = sm_context_response["json_data"];
+    }
+
+    if (sm_context_response.find("n1_sm_message") !=
+        sm_context_response.end()) {
+      // json_data = sm_context_response["n1_sm_message"].get<std::string>();
+      n1_sm_msg_is_set = true;
+    }
+
+    if (http_code == http_status_code_e::HTTP_STATUS_CODE_201_CREATED) {
+      if (sm_context_response.find("smf_context_uri") !=
+          sm_context_response.end()) {
+        response.headers().add<Pistache::Http::Header::Location>(
+            sm_context_response["smf_context_uri"]
+                .get<std::string>());  // Location header
+      }
+    }
+
+    if (n1_sm_msg_is_set) {  // add N1 container if available
       mime_parser::create_multipart_related_content(
           body, json_data.dump(), CURL_MIME_BOUNDARY,
-          sm_context_response.get_n1_sm_message(),
+          sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
               std::string(CURL_MIME_BOUNDARY)));
     } else if (!json_data.empty()) {  // if not, include json data if available
-      response.headers().add<Pistache::Http::Header::Location>(
-          sm_context_response.get_smf_context_uri());  // Location header
-
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));
       body = json_data.dump().c_str();
     } else {  // otherwise, send reply without content
-      response.send(Pistache::Http::Code(sm_context_response.get_http_code()));
+      response.send(Pistache::Http::Code(http_code));
       return;
     }
 
-    response.send(
-        Pistache::Http::Code(sm_context_response.get_http_code()), body);
+    response.send(Pistache::Http::Code(http_code), body);
   } else {
     response.send(Pistache::Http::Code::Request_Timeout);
   }

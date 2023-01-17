@@ -30,6 +30,26 @@ void RouteInformation::validate() {
   // TODO: implement validation
 }
 
+bool RouteInformation::operator==(const RouteInformation& rhs) const {
+  return
+
+      ((!ipv4AddrIsSet() && !rhs.ipv4AddrIsSet()) ||
+       (ipv4AddrIsSet() && rhs.ipv4AddrIsSet() &&
+        getIpv4Addr() == rhs.getIpv4Addr())) &&
+
+      ((!ipv6AddrIsSet() && !rhs.ipv6AddrIsSet()) ||
+       (ipv6AddrIsSet() && rhs.ipv6AddrIsSet() &&
+        getIpv6Addr() == rhs.getIpv6Addr())) &&
+
+      (getPortNumber() == rhs.getPortNumber())
+
+          ;
+}
+
+bool RouteInformation::operator!=(const RouteInformation& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const RouteInformation& o) {
   j = nlohmann::json();
   if (o.ipv4AddrIsSet()) j["ipv4Addr"] = o.m_Ipv4Addr;

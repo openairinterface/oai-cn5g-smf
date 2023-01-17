@@ -47,8 +47,8 @@ class SmContextReleaseData {
   /// <summary>
   ///
   /// </summary>
-  Cause getCause() const;
-  void setCause(Cause const& value);
+  std::string getCause() const;
+  void setCause(std::string const& value);
   bool causeIsSet() const;
   void unsetCause();
   /// <summary>
@@ -119,7 +119,7 @@ class SmContextReleaseData {
   friend void from_json(const nlohmann::json& j, SmContextReleaseData& o);
 
  protected:
-  Cause m_Cause;
+  std::string m_Cause;
   bool m_CauseIsSet;
   NgApCause m_NgApCause;
   bool m_NgApCauseIsSet;

@@ -35,6 +35,43 @@ void NrLocation::validate() {
   // TODO: implement validation
 }
 
+bool NrLocation::operator==(const NrLocation& rhs) const {
+  return
+
+      (getTai() == rhs.getTai()) &&
+
+      (getNcgi() == rhs.getNcgi()) &&
+
+      ((!ageOfLocationInformationIsSet() &&
+        !rhs.ageOfLocationInformationIsSet()) ||
+       (ageOfLocationInformationIsSet() &&
+        rhs.ageOfLocationInformationIsSet() &&
+        getAgeOfLocationInformation() == rhs.getAgeOfLocationInformation())) &&
+
+      ((!ueLocationTimestampIsSet() && !rhs.ueLocationTimestampIsSet()) ||
+       (ueLocationTimestampIsSet() && rhs.ueLocationTimestampIsSet() &&
+        getUeLocationTimestamp() == rhs.getUeLocationTimestamp())) &&
+
+      ((!geographicalInformationIsSet() &&
+        !rhs.geographicalInformationIsSet()) ||
+       (geographicalInformationIsSet() && rhs.geographicalInformationIsSet() &&
+        getGeographicalInformation() == rhs.getGeographicalInformation())) &&
+
+      ((!geodeticInformationIsSet() && !rhs.geodeticInformationIsSet()) ||
+       (geodeticInformationIsSet() && rhs.geodeticInformationIsSet() &&
+        getGeodeticInformation() == rhs.getGeodeticInformation())) &&
+
+      ((!globalGnbIdIsSet() && !rhs.globalGnbIdIsSet()) ||
+       (globalGnbIdIsSet() && rhs.globalGnbIdIsSet() &&
+        getGlobalGnbId() == rhs.getGlobalGnbId()))
+
+          ;
+}
+
+bool NrLocation::operator!=(const NrLocation& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const NrLocation& o) {
   j         = nlohmann::json();
   j["tai"]  = o.m_Tai;

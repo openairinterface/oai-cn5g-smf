@@ -538,6 +538,10 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
       event_subscription.smf_event = smf_event_e::SMF_EVENT_UE_IP_CH;
     } else if (event_id.compare("DDDS") == 0) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_DDDS;
+    } else if (event_id.compare("PDU_SES_EST") == 0) {
+      event_subscription.smf_event = smf_event_e::SMF_EVENT_PDUSESEST;
+    } else if (event_id.compare("QOS_MON") == 0) {
+      event_subscription.smf_event = smf_event_e::SMF_EVENT_QOS_MON;
     } else if (event_id.compare("FLEXCN") == 0) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_FLEXCN;
     } else {
@@ -560,8 +564,8 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
 void xgpp_conv::sm_context_request_from_nas(
     const nas_message_t& nas_msg,
     smf::pdu_session_create_sm_context_request& pcr) {
-  pdu_session_type_t pdu_session_type = {
-      .pdu_session_type = PDU_SESSION_TYPE_E_IPV4};
+  pdu_session_type_t pdu_session_type = {};
+  pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
   // Extended Protocol Discriminator
   pcr.set_epd(nas_msg.header.extended_protocol_discriminator);
   // Message Type

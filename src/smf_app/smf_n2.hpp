@@ -162,6 +162,10 @@ class smf_n2 {
       pdu_session_update_sm_context_response& sm_context_res,
       n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
 
+  bool create_n2_pdu_session_resource_release_command_transfer(
+      const std::shared_ptr<pdu_session_msg>& msg,
+      n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
+
   /*
    * Create N2 SM Information: PDU Session Resource Release Command Transfer IE
    * This IE is included in the following messages:

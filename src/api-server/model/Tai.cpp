@@ -27,6 +27,30 @@ void Tai::validate() {
   // TODO: implement validation
 }
 
+bool Tai::validate(std::stringstream& msg) const {
+  return validate(msg, "");
+}
+
+bool Tai::validate(
+    std::stringstream& msg, const std::string& pathPrefix) const {
+  // TODO implement validation
+  return true;
+}
+
+bool Tai::operator==(const Tai& rhs) const {
+  return
+
+      (getPlmnId() == rhs.getPlmnId()) &&
+
+      (getTac() == rhs.getTac())
+
+          ;
+}
+
+bool Tai::operator!=(const Tai& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const Tai& o) {
   j           = nlohmann::json();
   j["plmnId"] = o.m_PlmnId;

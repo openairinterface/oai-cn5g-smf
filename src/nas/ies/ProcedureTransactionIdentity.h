@@ -20,12 +20,11 @@
  */
 
 #include <stdint.h>
-#include "bstrlib.h"
 
 #define PROCEDURE_TRANSACTION_IDENTITY_MINIMUM_LENGTH 1
 #define PROCEDURE_TRANSACTION_IDENTITY_MAXIMUM_LENGTH 1
 
-typedef bstring ProcedureTransactionIdentity;
+typedef uint8_t ProcedureTransactionIdentity;
 
 int encode_procedure_transaction_identity(
     ProcedureTransactionIdentity proceduretransactionidentity, uint8_t iei,

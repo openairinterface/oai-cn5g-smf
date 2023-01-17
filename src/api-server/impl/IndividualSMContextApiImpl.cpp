@@ -65,15 +65,13 @@ void IndividualSMContextApiImpl::release_sm_context(
   xgpp_conv::sm_context_release_from_openapi(
       smContextReleaseMessage, sm_context_req_msg);
 
-  boost::shared_ptr<
-      boost::promise<smf::pdu_session_release_sm_context_response> >
-      p = boost::make_shared<
-          boost::promise<smf::pdu_session_release_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_release_sm_context_response> f;
+  boost::shared_ptr<boost::promise<nlohmann::json> > p =
+      boost::make_shared<boost::promise<nlohmann::json> >();
+  boost::shared_future<nlohmann::json> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = generate_promise_id();
+  uint32_t promise_id = m_smf_app->generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
@@ -85,12 +83,24 @@ void IndividualSMContextApiImpl::release_sm_context(
   itti_msg->http_version = 1;
   m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
 
-  // Wait for the result from APP and send reply to AMF
-  smf::pdu_session_release_sm_context_response sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
+    // Wait for the result from APP and send reply to NF consumer (e.g., AMF)
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
-  // TODO: Process the response
-  response.send(Pistache::Http::Code(sm_context_response.get_http_code()));
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
+    // TODO: Process the response
+  }
+  response.send(Pistache::Http::Code(http_code));
 }
 
 void IndividualSMContextApiImpl::retrieve_sm_context(
@@ -118,15 +128,13 @@ void IndividualSMContextApiImpl::update_sm_context(
   xgpp_conv::sm_context_update_from_openapi(
       smContextUpdateMessage, sm_context_req_msg);
 
-  boost::shared_ptr<
-      boost::promise<smf::pdu_session_update_sm_context_response> >
-      p = boost::make_shared<
-          boost::promise<smf::pdu_session_update_sm_context_response> >();
-  boost::shared_future<smf::pdu_session_update_sm_context_response> f;
+  boost::shared_ptr<boost::promise<nlohmann::json> > p =
+      boost::make_shared<boost::promise<nlohmann::json> >();
+  boost::shared_future<nlohmann::json> f;
   f = p->get_future();
 
   // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = generate_promise_id();
+  uint32_t promise_id = m_smf_app->generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
@@ -138,54 +146,90 @@ void IndividualSMContextApiImpl::update_sm_context(
   itti_msg->http_version = 1;
   m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
 
-  // Wait for the result from APP and send reply to AMF
-  smf::pdu_session_update_sm_context_response sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
+    // Wait for the result from APP and send reply to NF consumer (e.g., AMF)
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
-  nlohmann::json json_data = {};
-  std::string body         = {};
-  std::string json_format;
+    nlohmann::json json_data = {};
+    std::string body         = {};
+    std::string json_format;
+    bool n1_sm_msg_is_set  = false;
+    bool n2_sm_info_is_set = false;
 
-  sm_context_response.get_json_format(json_format);
-  sm_context_response.get_json_data(json_data);
-  Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
 
-  if (sm_context_response.n1_sm_msg_is_set() and
-      sm_context_response.n2_sm_info_is_set()) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n1_sm_message(),
-        sm_context_response.get_n2_sm_information(), json_format);
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType(
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)));
-  } else if (sm_context_response.n1_sm_msg_is_set()) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n1_sm_message(),
-        multipart_related_content_part_e::NAS, json_format);
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType(
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)));
-  } else if (sm_context_response.n2_sm_info_is_set()) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response.get_n2_sm_information(),
-        multipart_related_content_part_e::NGAP, json_format);
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType(
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)));
-  } else if (json_data.size() > 0) {
-    response.headers().add<Pistache::Http::Header::ContentType>(
-        Pistache::Http::Mime::MediaType(json_format));
-    body = json_data.dump().c_str();
+    if (sm_context_response.find("json_format") != sm_context_response.end()) {
+      json_format = sm_context_response["json_format"].get<std::string>();
+    }
+    if (sm_context_response.find("json_data") != sm_context_response.end()) {
+      json_data = sm_context_response["json_data"];
+    }
+
+    if (sm_context_response.find("n1_sm_message") !=
+        sm_context_response.end()) {
+      // json_data = sm_context_response["n1_sm_message"].get<std::string>();
+      n1_sm_msg_is_set = true;
+    }
+
+    if (sm_context_response.find("n2_sm_information") !=
+        sm_context_response.end()) {
+      n2_sm_info_is_set = true;
+    }
+
+    // sm_context_response.get_json_format(json_format);
+    // sm_context_response.get_json_data(json_data);
+    Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
+
+    if (n1_sm_msg_is_set and n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          json_format);
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(
+              "multipart/related; boundary=" +
+              std::string(CURL_MIME_BOUNDARY)));
+    } else if (n1_sm_msg_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          multipart_related_content_part_e::NAS, json_format);
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(
+              "multipart/related; boundary=" +
+              std::string(CURL_MIME_BOUNDARY)));
+    } else if (n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          multipart_related_content_part_e::NGAP, json_format);
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(
+              "multipart/related; boundary=" +
+              std::string(CURL_MIME_BOUNDARY)));
+    } else if (json_data.size() > 0) {
+      response.headers().add<Pistache::Http::Header::ContentType>(
+          Pistache::Http::Mime::MediaType(json_format));
+      body = json_data.dump().c_str();
+    } else {
+      response.send(Pistache::Http::Code(http_code));
+      return;
+    }
+    response.send(Pistache::Http::Code(http_code), body);
   } else {
-    response.send(Pistache::Http::Code(sm_context_response.get_http_code()));
-    return;
+    response.send(Pistache::Http::Code::Request_Timeout);
   }
-
-  response.send(
-      Pistache::Http::Code(sm_context_response.get_http_code()), body);
 }
 }  // namespace api
 }  // namespace smf_server

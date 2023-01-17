@@ -29,6 +29,21 @@ void Snssai::validate() {
   // TODO: implement validation
 }
 
+bool Snssai::operator==(const Snssai& rhs) const {
+  return
+
+      (getSst() == rhs.getSst()) &&
+
+      ((!sdIsSet() && !rhs.sdIsSet()) ||
+       (sdIsSet() && rhs.sdIsSet() && getSd() == rhs.getSd()))
+
+          ;
+}
+
+bool Snssai::operator!=(const Snssai& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const Snssai& o) {
   j        = nlohmann::json();
   j["sst"] = o.m_Sst;

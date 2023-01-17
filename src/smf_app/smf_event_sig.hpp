@@ -33,6 +33,7 @@
 #include <boost/signals2.hpp>
 #include <string>
 #include "3gpp_24.007.h"
+#include "EventNotification.h"
 
 namespace bs2 = boost::signals2;
 
@@ -45,10 +46,9 @@ typedef bs2::signal_type<
     bs2::keywords::mutex_type<bs2::dummy_mutex>>::type sm_context_status_sig_t;
 
 // Signal for Event exposure
-// PDU session Release, SUPI, PDU SessionID, HTTP version
+// PDU session Release, SCID, HTTP version
 typedef bs2::signal_type<
-    void(supi64_t, pdu_session_id_t, uint8_t),
-    bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
+    void(scid_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
     ee_pdu_session_release_sig_t;
 
 // TODO: ee_ue_ip_address_change_sig_t; //UI IP Address, UE ID
@@ -69,6 +69,18 @@ typedef bs2::signal_type<
 typedef bs2::signal_type<
     void(scid_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
     ee_ddds_sig_t;
+
+// Signal for PDU SESSION ESTABLISHMENT
+// SCID, HTTP version
+typedef bs2::signal_type<
+    void(scid_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
+    ee_pdusesest_sig_t;
+// Signal for QoS Monitoring Event exposure (Usage Report)
+// SEID, Event Notification Model , HTTP version
+// TODO: use SCID and access PDU Session ID (need binding SCIDs - PDUSessID)
+typedef bs2::signal_type<
+    void(seid_t, oai::smf_server::model::EventNotification, uint8_t),
+    bs2::keywords::mutex_type<bs2::dummy_mutex>>::type ee_qos_monitoring_sig_t;
 
 // Signal for FlexCN event (for Event Exposure)
 // SCID, HTTP version

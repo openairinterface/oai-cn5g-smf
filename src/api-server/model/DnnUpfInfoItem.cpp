@@ -35,6 +35,8 @@ void to_json(nlohmann::json& j, const DnnUpfInfoItem& o) {
   if (o.dnaiListIsSet() || !o.m_DnaiList.empty()) j["dnaiList"] = o.m_DnaiList;
   if (o.pduSessionTypesIsSet() || !o.m_PduSessionTypes.empty())
     j["pduSessionTypes"] = o.m_PduSessionTypes;
+  if (o.dnaiNwInstanceListIsSet() || !o.m_DnaiNwInstanceList.empty())
+    j["dnaiNwInstanceList"] = o.m_DnaiNwInstanceList;
 }
 
 void from_json(const nlohmann::json& j, DnnUpfInfoItem& o) {
@@ -46,6 +48,10 @@ void from_json(const nlohmann::json& j, DnnUpfInfoItem& o) {
   if (j.find("pduSessionTypes") != j.end()) {
     j.at("pduSessionTypes").get_to(o.m_PduSessionTypes);
     o.m_PduSessionTypesIsSet = true;
+  }
+  if (j.find("dnaiNwInstanceList") != j.end()) {
+    j.at("dnaiNwInstanceList").get_to(o.m_DnaiNwInstanceList);
+    o.m_DnaiNwInstanceListIsSet = true;
   }
 }
 
@@ -81,6 +87,21 @@ bool DnnUpfInfoItem::pduSessionTypesIsSet() const {
 }
 void DnnUpfInfoItem::unsetPduSessionTypes() {
   m_PduSessionTypesIsSet = false;
+}
+
+std::map<std::string, std::string>& DnnUpfInfoItem::getDnaiNwInstanceList() {
+  return m_DnaiNwInstanceList;
+}
+void DnnUpfInfoItem::setDnaiNwInstanceList(
+    std::map<std::string, std::string> const& value) {
+  m_DnaiNwInstanceList      = value;
+  m_DnaiNwInstanceListIsSet = true;
+}
+bool DnnUpfInfoItem::dnaiNwInstanceListIsSet() const {
+  return m_DnaiNwInstanceListIsSet;
+}
+void DnnUpfInfoItem::unsetDnaiNwInstanceList() {
+  m_DnaiNwInstanceListIsSet = false;
 }
 
 }  // namespace model

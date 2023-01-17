@@ -36,6 +36,9 @@ class PlmnId {
 
   void validate();
 
+  bool operator==(const PlmnId& rhs) const;
+  bool operator!=(const PlmnId& rhs) const;
+
   /////////////////////////////////////////////
   /// PlmnId members
 

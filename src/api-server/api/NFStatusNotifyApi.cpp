@@ -21,6 +21,7 @@
 
 #include "NFStatusNotifyApi.h"
 #include "Helpers.h"
+#include "logger.hpp"
 #include "smf_config.hpp"
 
 extern smf::smf_config smf_cfg;
@@ -56,6 +57,9 @@ void NFStatusNotifyApi::setupRoutes() {
 void NFStatusNotifyApi::notify_nf_status_handler(
     const Pistache::Rest::Request& request,
     Pistache::Http::ResponseWriter response) {
+  Logger::smf_api_server().info("Received a NFStatusNotify message");
+  Logger::smf_api_server().debug("Message body: %s", request.body().c_str());
+
   // Getting the body param
   NotificationData notificationData;
 

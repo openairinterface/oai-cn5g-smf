@@ -197,51 +197,51 @@ int smf_app::process_pco_request_ipcp(
          * returning the IP address of a valid DNS server.
          * By default, no secondary DNS address is provided.
          */
-        Logger::smf_app().debug(
-            "PCO: Protocol identifier IPCP option "
-            "SECONDARY_DNS_SERVER_IP_ADDRESS length %u",
-            ipcp_req_option_length);
+        /* Logger::smf_app().debug(
+             "PCO: Protocol identifier IPCP option "
+             "SECONDARY_DNS_SERVER_IP_ADDRESS length %u",
+             ipcp_req_option_length);
 
-        if (ipcp_req_option_length >= 6) {
-          ipcp_dns_sec_ipv4_addr = htonl(
-              (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 2))
-               << 24) |
-              (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 3))
-               << 16) |
-              (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 4))
-               << 8) |
-              (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 5))));
-          Logger::smf_app().debug(
-              "PCO: Protocol identifier IPCP option "
-              "SECONDARY_DNS_SERVER_IP_ADDRESS ipcp_dns_sec_ipv4_addr 0x%x",
-              ipcp_dns_sec_ipv4_addr);
+         if (ipcp_req_option_length >= 6) {
+           ipcp_dns_sec_ipv4_addr = htonl(
+               (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 2))
+                << 24) |
+               (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 3))
+                << 16) |
+               (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index + 4))
+                << 8) |
+               (((uint32_t) poc_id->protocol_id_contents.at(pco_in_index +
+         5)))); Logger::smf_app().debug( "PCO: Protocol identifier IPCP option "
+               "SECONDARY_DNS_SERVER_IP_ADDRESS ipcp_dns_sec_ipv4_addr 0x%x",
+               ipcp_dns_sec_ipv4_addr);
 
-          if (ipcp_dns_sec_ipv4_addr == INADDR_ANY) {
-            ipcp_out_dns_sec_ipv4_addr = smf_cfg.default_dns_secv4.s_addr;
-            ipcp_out_code              = IPCP_CODE_CONFIGURE_NACK;
-          } else if (
-              smf_cfg.default_dns_secv4.s_addr != ipcp_dns_sec_ipv4_addr) {
-            ipcp_out_code              = IPCP_CODE_CONFIGURE_NACK;
-            ipcp_out_dns_sec_ipv4_addr = smf_cfg.default_dns_secv4.s_addr;
-          } else {
-            ipcp_out_dns_sec_ipv4_addr = ipcp_dns_sec_ipv4_addr;
-          }
+           if (ipcp_dns_sec_ipv4_addr == INADDR_ANY) {
+             ipcp_out_dns_sec_ipv4_addr = smf_cfg.default_dns_secv4.s_addr;
+             ipcp_out_code              = IPCP_CODE_CONFIGURE_NACK;
+           } else if (
+               smf_cfg.default_dns_secv4.s_addr != ipcp_dns_sec_ipv4_addr) {
+             ipcp_out_code              = IPCP_CODE_CONFIGURE_NACK;
+             ipcp_out_dns_sec_ipv4_addr = smf_cfg.default_dns_secv4.s_addr;
+           } else {
+             ipcp_out_dns_sec_ipv4_addr = ipcp_dns_sec_ipv4_addr;
+           }
 
-          Logger::smf_app().debug(
-              "PCO: Protocol identifier IPCP option "
-              "SECONDARY_DNS_SERVER_IP_ADDRESS ipcp_out_dns_sec_ipv4_addr 0x%x",
-              ipcp_out_dns_sec_ipv4_addr);
-        }
-        uint8_t ids[6] = {0};
-        ids[0]         = IPCP_OPTION_SECONDARY_DNS_SERVER_IP_ADDRESS;
-        ids[1]         = 6;
-        ids[2]         = (uint8_t)(ipcp_out_dns_sec_ipv4_addr & 0x000000FF);
-        ids[3] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 8) & 0x000000FF);
-        ids[4] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 16) & 0x000000FF);
-        ids[5] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 24) & 0x000000FF);
-        ipcp_out_length += 6;
-        std::string tmp_s((const char*) &ids[0], 6);
-        poc_id_resp.protocol_id_contents.append(tmp_s);
+           Logger::smf_app().debug(
+               "PCO: Protocol identifier IPCP option "
+               "SECONDARY_DNS_SERVER_IP_ADDRESS ipcp_out_dns_sec_ipv4_addr
+         0x%x", ipcp_out_dns_sec_ipv4_addr);
+         }
+         uint8_t ids[6] = {0};
+         ids[0]         = IPCP_OPTION_SECONDARY_DNS_SERVER_IP_ADDRESS;
+         ids[1]         = 6;
+         ids[2]         = (uint8_t)(ipcp_out_dns_sec_ipv4_addr & 0x000000FF);
+         ids[3] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 8) & 0x000000FF);
+         ids[4] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 16) & 0x000000FF);
+         ids[5] = (uint8_t)((ipcp_out_dns_sec_ipv4_addr >> 24) & 0x000000FF);
+         ipcp_out_length += 6;
+         std::string tmp_s((const char*) &ids[0], 6);
+         poc_id_resp.protocol_id_contents.append(tmp_s);
+         */
       } break;
 
       default:
@@ -387,6 +387,24 @@ int smf_app::process_pco_p_cscf_v6_request(
 }
 
 //------------------------------------------------------------------------------
+int smf_app::process_pco_selected_bearer_control_mode(
+    protocol_configuration_options_t& pco_resp,
+    const pco_protocol_or_container_id_t* const poc_id) {
+  pco_protocol_or_container_id_t poc_id_resp = {0};
+  uint8_t value[1];
+
+  Logger::smf_app().debug(
+      "PCO: Protocol identifier Selected Bearer Control Mode");
+  poc_id_resp.protocol_id =
+      PCO_CONTAINER_IDENTIFIER_SELECTED_BEARER_CONTROL_MODE;
+  poc_id_resp.length_of_protocol_id_contents = 1;
+  value[0] = (uint8_t)(0x02);  // MS/NW mode, hardcoded for now
+  std::string tmp_s((const char*) &value[0], sizeof(value));
+  poc_id_resp.protocol_id_contents = tmp_s;
+  return pco_push_protocol_or_container_id(pco_resp, &poc_id_resp);
+}
+
+//------------------------------------------------------------------------------
 int smf_app::process_pco_request(
     const protocol_configuration_options_t& pco_req,
     protocol_configuration_options_t& pco_resp,
@@ -445,6 +463,11 @@ int smf_app::process_pco_request(
         process_pco_p_cscf_request(
             pco_resp, &pco_req.protocol_or_container_ids[id]);
         pco_ids.ci_ipv4_p_cscf_request = true;
+        break;
+      case PCO_CONTAINER_IDENTIFIER_SELECTED_BEARER_CONTROL_MODE:
+        process_pco_selected_bearer_control_mode(
+            pco_resp, &pco_req.protocol_or_container_ids[id]);
+        pco_ids.ci_selected_bearer_control_mode = true;
         break;
       default:
         Logger::smf_app().warn(

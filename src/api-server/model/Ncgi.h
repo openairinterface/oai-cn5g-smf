@@ -37,6 +37,9 @@ class Ncgi {
 
   void validate();
 
+  bool operator==(const Ncgi& rhs) const;
+  bool operator!=(const Ncgi& rhs) const;
+
   /////////////////////////////////////////////
   /// Ncgi members
 

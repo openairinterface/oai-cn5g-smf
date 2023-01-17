@@ -15,7 +15,8 @@
  *
  * Possible values are - AC_TY_CH: Access Type Change - UP_PATH_CH: UP Path
  * Change - PDU_SES_REL: PDU Session Release - PLMN_CH: PLMN Change - UE_IP_CH:
- * UE IP address change - DDDS: Downlink data delivery status
+ * UE IP address change - DDDS: Downlink data delivery status - QOS_MON: QoS
+ * Monitoring
  */
 
 #ifndef SmfEvent_H_
@@ -30,7 +31,8 @@ namespace model {
 /// <summary>
 /// Possible values are - AC_TY_CH: Access Type Change - UP_PATH_CH: UP Path
 /// Change - PDU_SES_REL: PDU Session Release - PLMN_CH: PLMN Change - UE_IP_CH:
-/// UE IP address change - DDDS: Downlink data delivery status
+/// UE IP address change - DDDS: Downlink data delivery status - QOS_MON: QoS
+/// Monitoring
 /// </summary>
 class SmfEvent {
  public:

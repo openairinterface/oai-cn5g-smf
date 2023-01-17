@@ -22,6 +22,7 @@
 #include <string>
 #include "PduSessionType.h"
 #include <vector>
+#include <map>
 #include <nlohmann/json.hpp>
 
 namespace oai {
@@ -61,6 +62,11 @@ class DnnUpfInfoItem {
   bool pduSessionTypesIsSet() const;
   void unsetPduSessionTypes();
 
+  std::map<std::string, std::string>& getDnaiNwInstanceList();
+  void setDnaiNwInstanceList(std::map<std::string, std::string> const& value);
+  bool dnaiNwInstanceListIsSet() const;
+  void unsetDnaiNwInstanceList();
+
   friend void to_json(nlohmann::json& j, const DnnUpfInfoItem& o);
   friend void from_json(const nlohmann::json& j, DnnUpfInfoItem& o);
 
@@ -71,6 +77,9 @@ class DnnUpfInfoItem {
   bool m_DnaiListIsSet;
   std::vector<PduSessionType> m_PduSessionTypes;
   bool m_PduSessionTypesIsSet;
+
+  std::map<std::string, std::string> m_DnaiNwInstanceList;
+  bool m_DnaiNwInstanceListIsSet;
 };
 
 }  // namespace model

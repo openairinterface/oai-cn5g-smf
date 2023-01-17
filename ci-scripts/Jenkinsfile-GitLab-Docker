@@ -182,12 +182,13 @@ pipeline {
                   // Currently this pipeline only runs for pushes to `develop` branch
                   // First clean image registry
                   try {
+                    myShCmd('docker image tag oai-smf:develop oai-smf:develop-previous', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
                     myShCmd('docker image rm oai-smf:develop', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
                   } catch (Exception e) {
                     echo "Maybe a previous build went wrong"
                   }
                   // In case of push to `develop` branch we build from scratch
-                  myShCmd('docker build --no-cache --target oai-smf --tag oai-smf:' + smf_tag + ' --file docker/Dockerfile.smf.ubuntu18 . > archives/smf_docker_image_build.log 2>&1', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
+                  myShCmd('docker build --no-cache --target oai-smf --tag oai-smf:' + smf_tag + ' --file docker/Dockerfile.smf.ubuntu . > archives/smf_docker_image_build.log 2>&1', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
                 }
                 if ("MERGE".equals(env.gitlabActionType)) {
                   try {
@@ -200,7 +201,7 @@ pipeline {
                   }
                   // "latest" is the tag used in the docker file.
                   myShCmd('docker image tag oai-smf-base:' +SMF_BASE_IMAGE_TAG + ' oai-smf-base:latest', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
-                  myShCmd('docker build --no-cache --target oai-smf --tag oai-smf:' + smf_tag + ' --file ci-scripts/docker/Dockerfile.ci.ubuntu.18.04 . > archives/smf_docker_image_build.log 2>&1', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
+                  myShCmd('docker build --no-cache --target oai-smf --tag oai-smf:' + smf_tag + ' --file ci-scripts/docker/Dockerfile.ci.ubuntu . > archives/smf_docker_image_build.log 2>&1', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
                 }
                 // Putting a place holder to try out on the flattening of image.
                 // If not satisfactory, we can remove it.
@@ -221,8 +222,11 @@ pipeline {
             }
             success {
               sh "echo 'OAI-SMF DOCKER IMAGE BUILD: OK' >> archives/smf_docker_image_build.log"
+              myShCmd('docker image rm oai-smf:develop-previous || true', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
             }
             unsuccessful {
+              myShCmd('docker image tag oai-smf:develop-previous oai-smf:develop || true', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
+              myShCmd('docker image rm oai-smf:develop-previous || true', rem_u18_host_flag, rem_u18_host_user, rem_u18_host)
               sh "echo 'OAI-SMF DOCKER IMAGE BUILD: KO' >> archives/smf_docker_image_build.log"
             }
           }
@@ -237,6 +241,7 @@ pipeline {
                     // Currently this pipeline only runs for pushes to `develop` branch
                     // First clean image registry
                     try {
+                      myShCmd('sudo podman image tag oai-smf:develop oai-smf:develop-previous || true', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                       myShCmd('sudo podman image rm oai-smf:develop || true', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                     } catch (Exception e) {
                       echo "Maybe a previous build went wrong"
@@ -251,10 +256,7 @@ pipeline {
                   myShCmd('cp /etc/pki/entitlement/*pem ./etc-pki-entitlement', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                   myShCmd('sudo cp /etc/rhsm/rhsm.conf ./rhsm-conf', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                   myShCmd('sudo cp /etc/rhsm/ca/*pem ./rhsm-ca', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
-                  myShCmd('sudo podman build --no-cache --target oai-smf --tag oai-smf:' + smf_tag + ' --file docker/Dockerfile.smf.rhel8 . > archives/smf_podman_image_build.log 2>&1', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
-                  // Putting a place holder to try out on the flattening of image.
-                  // If not satisfactory, we can remove it.
-                  myShCmd('python3 ./ci-scripts/flatten_image.py --tag oai-smf:' + smf_tag, rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
+                  myShCmd('sudo podman build --no-cache --squash --target oai-smf --tag oai-smf:' + smf_tag + ' --file docker/Dockerfile.smf.rhel8 --format docker . > archives/smf_podman_image_build.log 2>&1', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                   myShCmd('sudo podman image ls >> archives/smf_podman_image_build.log', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
                   if ("MERGE".equals(env.gitlabActionType)) {
                     myShCmd('sudo podman image tag oai-smf:' + smf_tag + ' oai-smf:' + rhel_smf_tag, rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
@@ -270,9 +272,12 @@ pipeline {
               }
             }
             success {
+              myShCmd('sudo podman image rm oai-smf:develop-previous || true', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
               sh "echo 'OAI-SMF PODMAN RHEL8 IMAGE BUILD: OK' >> archives/smf_podman_image_build.log"
             }
             unsuccessful {
+              myShCmd('sudo podman image tag oai-smf:develop-previous oai-smf:develop || true', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
+              myShCmd('sudo podman image rm oai-smf:develop-previous || true', rem_rhel_host_flag, rem_rhel_host_user, rem_rhel_host)
               sh "echo 'OAI-SMF PODMAN RHEL8 IMAGE BUILD: KO' >> archives/smf_podman_image_build.log"
             }
           }

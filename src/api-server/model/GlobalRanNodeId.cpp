@@ -39,6 +39,43 @@ void GlobalRanNodeId::validate() {
   // TODO: implement validation
 }
 
+bool GlobalRanNodeId::operator==(const GlobalRanNodeId& rhs) const {
+  return
+
+      (getPlmnId() == rhs.getPlmnId()) &&
+
+      ((!n3IwfIdIsSet() && !rhs.n3IwfIdIsSet()) ||
+       (n3IwfIdIsSet() && rhs.n3IwfIdIsSet() &&
+        getN3IwfId() == rhs.getN3IwfId())) &&
+
+      ((!gNbIdIsSet() && !rhs.gNbIdIsSet()) ||
+       (gNbIdIsSet() && rhs.gNbIdIsSet() && getGNbId() == rhs.getGNbId())) &&
+
+      ((!ngeNbIdIsSet() && !rhs.ngeNbIdIsSet()) ||
+       (ngeNbIdIsSet() && rhs.ngeNbIdIsSet() &&
+        getNgeNbId() == rhs.getNgeNbId())) &&
+
+      ((!wagfIdIsSet() && !rhs.wagfIdIsSet()) ||
+       (wagfIdIsSet() && rhs.wagfIdIsSet() &&
+        getWagfId() == rhs.getWagfId())) &&
+
+      ((!tngfIdIsSet() && !rhs.tngfIdIsSet()) ||
+       (tngfIdIsSet() && rhs.tngfIdIsSet() &&
+        getTngfId() == rhs.getTngfId())) &&
+
+      ((!nidIsSet() && !rhs.nidIsSet()) ||
+       (nidIsSet() && rhs.nidIsSet() && getNid() == rhs.getNid())) &&
+
+      ((!eNbIdIsSet() && !rhs.eNbIdIsSet()) ||
+       (eNbIdIsSet() && rhs.eNbIdIsSet() && getENbId() == rhs.getENbId()))
+
+          ;
+}
+
+bool GlobalRanNodeId::operator!=(const GlobalRanNodeId& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const GlobalRanNodeId& o) {
   j           = nlohmann::json();
   j["plmnId"] = o.m_PlmnId;

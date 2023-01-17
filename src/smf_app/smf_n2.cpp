@@ -231,7 +231,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
       1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI->fiveQI = (uint8_t) qos_flow.qfi.qfi;
+      .choice.nonDynamic5QI->fiveQI = (uint8_t) DEFAULT_5QI;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
       .allocationAndRetentionPriority.priorityLevelARP =
       qos_flow.qos_profile.arp.priority_level;
@@ -842,6 +842,55 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   free_wrapper((void**) &ngap_IEs);
   free_wrapper((void**) &buffer);
 
+  return result;
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
+    const std::shared_ptr<pdu_session_msg>& msg,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  Logger::smf_n2().debug(
+      "Create N2 SM Information: NGAP PDU Session Resource Release Command "
+      "Transfer IE");
+  bool result = false;
+  Ngap_PDUSessionResourceReleaseCommandTransfer_t*
+      ngap_resource_release_command_transfer = nullptr;
+  ngap_resource_release_command_transfer =
+      (Ngap_PDUSessionResourceReleaseCommandTransfer_t*) calloc(
+          1, sizeof(Ngap_PDUSessionResourceReleaseCommandTransfer_t));
+
+  // TODO: To be completed, here's an example
+  ngap_resource_release_command_transfer->cause.present =
+      Ngap_Cause_PR_radioNetwork;
+  ngap_resource_release_command_transfer->cause.choice.radioNetwork = 1;
+
+  // encode
+  size_t buffer_size = BUF_LEN;
+  char* buffer       = (char*) calloc(1, buffer_size);
+
+  ssize_t encoded_size = aper_encode_to_new_buffer(
+      &asn_DEF_Ngap_PDUSessionResourceReleaseCommandTransfer, nullptr,
+      ngap_resource_release_command_transfer, (void**) &buffer);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Release Command encode failed (encoded size %d)",
+        encoded_size);
+    result = false;
+  } else {
+#if DEBUG_IS_ON
+    Logger::smf_n2().debug("N2 SM buffer data: ");
+    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+#endif
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+
+  // free memory
+  free_wrapper((void**) &ngap_resource_release_command_transfer);
+  free_wrapper((void**) &buffer);
   return result;
 }
 

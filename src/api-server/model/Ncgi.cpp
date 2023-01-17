@@ -27,6 +27,16 @@ void Ncgi::validate() {
   // TODO: implement validation
 }
 
+bool Ncgi::operator==(const Ncgi& rhs) const {
+  return
+
+      (getPlmnId() == rhs.getPlmnId()) &&
+
+      (getNrCellId() == rhs.getNrCellId())
+
+          ;
+}
+
 void to_json(nlohmann::json& j, const Ncgi& o) {
   j             = nlohmann::json();
   j["plmnId"]   = o.m_PlmnId;

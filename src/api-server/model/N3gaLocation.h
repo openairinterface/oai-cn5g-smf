@@ -37,6 +37,9 @@ class N3gaLocation {
 
   void validate();
 
+  bool operator==(const N3gaLocation& rhs) const;
+  bool operator!=(const N3gaLocation& rhs) const;
+
   /////////////////////////////////////////////
   /// N3gaLocation members
 

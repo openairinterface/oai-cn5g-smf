@@ -25,11 +25,29 @@ void Ipv6Addr::validate() {
   // TODO: implement validation
 }
 
-void to_json(nlohmann::json& j, const Ipv6Addr& o) {
-  j = nlohmann::json();
+bool Ipv6Addr::operator==(const Ipv6Addr& rhs) const {
+  return getIpv6Addr() == rhs.getIpv6Addr();
 }
 
-void from_json(const nlohmann::json& j, Ipv6Addr& o) {}
+bool Ipv6Addr::operator!=(const Ipv6Addr& rhs) const {
+  return !(*this == rhs);
+}
+
+void to_json(nlohmann::json& j, const Ipv6Addr& o) {
+  j = nlohmann::json();
+  j = o.getIpv6Addr();
+}
+
+void from_json(const nlohmann::json& j, Ipv6Addr& o) {
+  o.setIpv6Addr(j);
+}
+
+std::string Ipv6Addr::getIpv6Addr() const {
+  return m_Ipv6Addr;
+}
+void Ipv6Addr::setIpv6Addr(std::string const& value) {
+  m_Ipv6Addr = value;
+}
 
 }  // namespace model
 }  // namespace smf_server

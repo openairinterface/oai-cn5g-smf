@@ -135,6 +135,9 @@ class smf_n1 {
       pdu_session_update_sm_context_request& sm_context_res,
       std::string& nas_msg_str, cause_value_5gsm_e sm_cause);
 
+  bool create_n1_pdu_session_release_command(
+      const std::shared_ptr<pdu_session_msg>& msg, std::string& nas_msg_str,
+      cause_value_5gsm_e sm_cause);
   /*
    * Create N1 SM Container: PDU Session Release Command
    * Included in PDU Session Update SM Context Response (PDU Session Release

@@ -11,31 +11,28 @@ PREFIX='/usr/local/etc/oai'
 sudo mkdir -m 0777 -p $PREFIX
 cp ../../etc/smf.conf  $PREFIX
 
-declare -A SMF_CONF
+export CONFIG_FILE=$PREFIX/smf.conf
+export MOUNT_CONFIG=NO
 
-SMF_CONF[@INSTANCE@]=$INSTANCE
-SMF_CONF[@PREFIX@]=$PREFIX
-SMF_CONF[@PID_DIRECTORY@]='/var/run'
+export INSTANCE=1
+export SMF_INTERFACE_NAME_FOR_N4='eno1:sn4'
+export SMF_INTERFACE_NAME_FOR_SBI='eno1:smf'
+export UDM_IPV4_ADDRESS='172.16.1.103'
+export UDM_PORT='80'
+export AMF_IPV4_ADDRESS='172.16.1.102'
+export AMF_PORT='80'
+export UPF_IPV4_ADDRESS='172.16.2.102'
 
-SMF_CONF[@SMF_INTERFACE_NAME_FOR_N4@]='eno1:sn4'
-SMF_CONF[@SMF_INTERFACE_NAME_FOR_SBI@]='eno1:smf'
+export DEFAULT_DNS_IPV4_ADDRESS='8.8.8.8'
+export DEFAULT_DNS_SEC_IPV4_ADDRESS='4.4.4.4'
 
-SMF_CONF[@SMF_INTERFACE_IPV4_ADDRESS_FOR_SBI@]='172.16.1.101'
-SMF_CONF[@SMF_INTERFACE_PORT_FOR_SBI@]='80'
-SMF_CONF[@SMF_INTERFACE_HTTP2_PORT_FOR_SBI@]='9090'
+# One mandatory slice
+export DNN_NI0=oai
+export TYPE0=IPv4
+export DNN_RANGE0='12.1.1.151 - 12.1.1.253'
+export NSSAI_SST0=1
+#export NSSAI_SD0=123
+export SESSION_AMBR_UL0=800Mbps
+export SESSION_AMBR_DL0=1000Mbps
 
-SMF_CONF[@UDM_IPV4_ADDRESS@]='172.16.1.103'
-SMF_CONF[@UDM_PORT@]='80'
-
-SMF_CONF[@AMF_IPV4_ADDRESS@]='172.16.1.102'
-SMF_CONF[@AMF_PORT@]='80'
-
-SMF_CONF[@UPF_IPV4_ADDRESS@]='172.16.2.102'
-
-SMF_CONF[@DEFAULT_DNS_IPV4_ADDRESS@]='8.8.8.8'
-SMF_CONF[@DEFAULT_DNS_SEC_IPV4_ADDRESS@]='4.4.4.4'
-
-for K in "${!SMF_CONF[@]}"; do 
-  egrep -lRZ "$K" $PREFIX | xargs -0 -l sed -i -e "s|$K|${SMF_CONF[$K]}|g"
-  ret=$?;[[ ret -ne 0 ]] && echo "Tried to replace $K with ${SMF_CONF[$K]}"
-done
+../../scripts/entrypoint.py

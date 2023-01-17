@@ -51,6 +51,8 @@ EventNotification::EventNotification() {
   m_DddStatusIsSet          = false;
   m_MaxWaitTime             = "";
   m_MaxWaitTimeIsSet        = false;
+  m_usageReport             = {};
+  m_usageReportIsSet        = false;
 }
 
 EventNotification::~EventNotification() {}
@@ -86,6 +88,7 @@ void to_json(nlohmann::json& j, const EventNotification& o) {
   if (o.pduSeIdIsSet()) j["pduSeId"] = o.m_PduSeId;
   if (o.dddStatusIsSet()) j["dddStatus"] = o.m_DddStatus;
   if (o.maxWaitTimeIsSet()) j["maxWaitTime"] = o.m_MaxWaitTime;
+  if (o.usageReportIsSet()) j["Usage Report"] = o.m_usageReport;
 }
 
 void from_json(const nlohmann::json& j, EventNotification& o) {
@@ -174,6 +177,10 @@ void from_json(const nlohmann::json& j, EventNotification& o) {
   if (j.find("maxWaitTime") != j.end()) {
     j.at("maxWaitTime").get_to(o.m_MaxWaitTime);
     o.m_MaxWaitTimeIsSet = true;
+  }
+  if (j.find("Usage Report") != j.end()) {
+    j.at("Usage Report").get_to(o.m_usageReport);
+    o.m_usageReportIsSet = true;
   }
 }
 
@@ -461,6 +468,19 @@ bool EventNotification::maxWaitTimeIsSet() const {
 }
 void EventNotification::unsetMaxWaitTime() {
   m_MaxWaitTimeIsSet = false;
+}
+UsageReport EventNotification::getUsageReport() const {
+  return m_usageReport;
+}
+void EventNotification::setUsageReport(UsageReport const& value) {
+  m_usageReport      = value;
+  m_usageReportIsSet = true;
+}
+bool EventNotification::usageReportIsSet() const {
+  return m_usageReportIsSet;
+}
+void EventNotification::unsetUsageReport() {
+  m_usageReportIsSet = false;
 }
 
 }  // namespace model

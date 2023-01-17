@@ -63,6 +63,7 @@ void Logger::_init(
   m_smf_n1         = new _Logger("smf_n1 ", m_sinks, ss.str().c_str());
   m_smf_n2         = new _Logger("smf_n2 ", m_sinks, ss.str().c_str());
   m_smf_n4         = new _Logger("smf_n4 ", m_sinks, ss.str().c_str());
+  m_smf_n7         = new _Logger("smf_n7 ", m_sinks, ss.str().c_str());
   m_smf_sbi        = new _Logger("smf_sbi", m_sinks, ss.str().c_str());
   m_smf_api_server = new _Logger("sbi_srv", m_sinks, ss.str().c_str());
 }

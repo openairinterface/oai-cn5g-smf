@@ -50,6 +50,7 @@ typedef struct protocol_configuration_options_ids_s {
   uint8_t ci_dns_server_ipv6_address_request : 1;
   uint8_t ci_ipv6_p_cscf_request : 1;
   uint8_t ci_ipv4_p_cscf_request : 1;
+  uint8_t ci_selected_bearer_control_mode : 1;
 } protocol_configuration_options_ids_t;
 
 #endif

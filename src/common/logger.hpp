@@ -84,6 +84,7 @@ class Logger {
   static _Logger& smf_n1() { return *singleton().m_smf_n1; }
   static _Logger& smf_n2() { return *singleton().m_smf_n2; }
   static _Logger& smf_n4() { return *singleton().m_smf_n4; }
+  static _Logger& smf_n7() { return *singleton().m_smf_n7; }
   static _Logger& smf_sbi() { return *singleton().m_smf_sbi; }
   static _Logger& smf_api_server() { return *singleton().m_smf_api_server; }
 
@@ -113,6 +114,7 @@ class Logger {
   _Logger* m_smf_n1;
   _Logger* m_smf_n2;
   _Logger* m_smf_n4;
+  _Logger* m_smf_n7;
   _Logger* m_smf_sbi;
   _Logger* m_smf_api_server;
 };

@@ -79,9 +79,6 @@ class SMContextsCollectionApiImpl
   std::string m_address;
 
  protected:
-  static uint64_t generate_promise_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
-  }
 };
 
 }  // namespace api

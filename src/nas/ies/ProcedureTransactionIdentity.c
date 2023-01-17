@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "common_types.h"
 #include "TLVEncoder.h"
 #include "TLVDecoder.h"
 #include "ProcedureTransactionIdentity.h"
@@ -30,54 +31,17 @@
 int encode_procedure_transaction_identity(
     ProcedureTransactionIdentity proceduretransactionidentity, uint8_t iei,
     uint8_t* buffer, uint32_t len) {
-  uint32_t encoded = 0;
-  int encode_result;
+  uint8_t encoded = 0;
   CHECK_PDU_POINTER_AND_LENGTH_ENCODER(
       buffer, PROCEDURE_TRANSACTION_IDENTITY_MINIMUM_LENGTH, len);
-
-  if ((encode_result = encode_bstring(
-           proceduretransactionidentity, buffer + encoded, len - encoded)) < 0)
-    return encode_result;
-  else
-    encoded += encode_result;
-
+  ENCODE_U8(buffer + encoded, (uint8_t) proceduretransactionidentity, encoded);
   return encoded;
-  /*
-   uint32_t encoded = 0;
-   uint8_t bitStream = 0x0;
-   CHECK_PDU_POINTER_AND_LENGTH_ENCODER (buffer,
-   PROCEDURE_TRANSACTION_IDENTITY_MINIMUM_LENGTH, len);
-
-   if(iei > 0){
-   bitStream = 0x00 | (iei & 0xf0) | (proceduretransactionidentity & 0x0f);
-   }
-   ENCODE_U8(buffer + encoded, bitStream, encoded);
-   return encoded;
-   */
 }
 
 int decode_procedure_transaction_identity(
     ProcedureTransactionIdentity* proceduretransactionidentity, uint8_t iei,
     uint8_t* buffer, uint32_t len) {
-  int decoded   = 0;
-  uint8_t ielen = 0;
-  int decode_result;
-
-  if ((decode_result = decode_bstring(
-           proceduretransactionidentity, ielen, buffer + decoded,
-           len - decoded)) < 0)
-    return decode_result;
-  else
-    decoded += decode_result;
+  int decoded = 0;
+  DECODE_U8(buffer + decoded, proceduretransactionidentity, decoded);
   return decoded;
-  /*
-   int decoded = 0;
-   uint8_t bitStream = 0x0;
-
-   DECODE_U8(buffer + decoded, bitStream, decoded);
-   if(iei != (bitStream & 0xf0))
-   return -1;
-   *proceduretransactionidentity = bitStream & 0x0f;
-   return decoded;
-   */
 }

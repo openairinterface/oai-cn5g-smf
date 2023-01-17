@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 #
 # Dockerfile for the Open-Air-Interface SMF service
-#   Valid for RHEL 8.2
+#   Valid for UBI 8.6 | RHEL 8.6
 #
 #---------------------------------------------------------------------
 
@@ -30,7 +30,7 @@
 #---------------------------------------------------------------------
 FROM registry.access.redhat.com/ubi8/ubi:latest AS oai-smf-builder
 
-ARG NEEDED_GIT_PROXY
+ENV IS_DOCKERFILE=1
 
 # Copy the entitlements
 COPY ./etc-pki-entitlement /etc/pki/entitlement
@@ -41,18 +41,24 @@ COPY ./rhsm-ca /etc/rhsm/ca
 
 RUN rm -f /etc/rhsm-host && \
     yum repolist --disablerepo=* && \
-    subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms && \   
+    subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms && \
     yum update -y && \
     yum install -y \
         psmisc \
         git \
         diffutils \
         file \
-        boost-devel &&\
-    rm -rf /var/lib/apt/lists/* 
+        gcc-c++ \
+        ninja-build \
+        boost-devel \
+        openssl-devel \
+        openssl \
+        wget \
+        libasan && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
+    echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
 
 # Some GIT configuration command quite useful
-RUN /bin/bash -c "if [[ -v NEEDED_GIT_PROXY ]]; then git config --global http.proxy $NEEDED_GIT_PROXY; fi"
 RUN git config --global https.postBuffer 123289600 && \
     git config --global http.sslverify false
 
@@ -60,49 +66,67 @@ RUN git config --global https.postBuffer 123289600 && \
 WORKDIR /openair-smf
 COPY . /openair-smf
 
-# Installing and Building SMF
+# Installing all the needed libraries/packages to build and run SMF
 WORKDIR /openair-smf/build/scripts
 RUN ./build_smf --install-deps --force
-RUN ./build_smf --clean --Verbose --build-type Release --jobs && \
+
+# Building SMF
+WORKDIR /openair-smf/build/scripts
+RUN ldconfig && \
+    ./build_smf --clean --Verbose --build-type Release --jobs && \
     ldd /openair-smf/build/smf/build/smf && \
     mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf && \
-    rm /etc/pki/entitlement/*pem
+    # Remove entitlements and Subscription Manager configs
+    rm -rf /etc/pki/entitlement && \
+    rm -rf /etc/rhsm
 
 #---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi8/ubi:latest as oai-smf
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as oai-smf
 ENV TZ=Europe/Paris
-# We install some debug tools for the moment in addition of mandatory libraries
-RUN yum update -y && \
-    yum install -y --enablerepo="ubi-8-codeready-builder" \
-        psmisc \
-        tzdata \
-        procps-ng \
-        net-tools \
-        libevent && \
-    yum clean all -y && \
-    rm -rf /var/cache/yum /var/cache/dnf
+
+# Copy the entitlements
+COPY ./etc-pki-entitlement /etc/pki/entitlement
+# Copy the subscription manager configurations
+COPY ./rhsm-conf /etc/rhsm
+COPY ./rhsm-ca /etc/rhsm/ca
+
+
+RUN rm -f /etc/rhsm-host && \
+    microdnf update -y && \
+    microdnf install -y \
+      python3 \
+      python3-pip \
+      tzdata \
+#      libasan \
+      procps-ng \
+      psmisc \
+      net-tools \
+      libicu \
+      boost \
+      libevent \
+      findutils \
+      libconfig && \
+    pip3 install jinja2 && \
+    microdnf clean all -y && \
+    rm -rf /var/cache/yum /var/cache/dnf && \
+    # Remove entitlements and Subscription Manager configs
+    rm -rf /etc/pki/entitlement && \
+    rm -rf /etc/rhsm
 
 # Copying executable and generated libraries
 WORKDIR /openair-smf/bin
 COPY --from=oai-smf-builder \
     /openair-smf/build/smf/build/oai_smf \
-    /openair-smf/scripts/entrypoint.sh \
+    /openair-smf/scripts/entrypoint.py \
+    /openair-smf/scripts/healthcheck.sh \
     ./
 
 COPY --from=oai-smf-builder \
     /usr/local/lib64/libpistache.so.0 \
     /usr/local/lib/libnghttp2_asio.so \
-    /usr/lib64/libgflags.so.2.1 \
-    /usr/lib64/libglog.so.0 \
-    /usr/lib64/libdouble-conversion.so.1 \
-    /usr/lib64/libconfig++.so.9 \
-    /usr/lib64/libboost_system.so.1.66.0 \
-    /usr/lib64/libboost_thread.so.1.66.0 \
-    /usr/lib64/libboost_chrono.so.1.66.0 \
     /usr/local/lib/libnghttp2_asio.so.1 \
-    /usr/lib64/libasan.so.5 \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /usr/lib64/
 
@@ -118,6 +142,11 @@ WORKDIR /openair-smf
 
 # expose ports
 EXPOSE 80/tcp 9090/tcp 8805/udp
+# healthcheck
+HEALTHCHECK --interval=10s \
+            --timeout=15s \
+            --retries=6 \
+    CMD /openair-smf/bin/healthcheck.sh
 
-ENTRYPOINT ["/openair-smf/bin/entrypoint.sh"]
+ENTRYPOINT ["python3", "/openair-smf/bin/entrypoint.py"]
 CMD ["/openair-smf/bin/oai_smf", "-c", "/openair-smf/etc/smf.conf", "-o"]

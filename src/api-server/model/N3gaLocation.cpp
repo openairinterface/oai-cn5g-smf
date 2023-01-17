@@ -34,6 +34,34 @@ void N3gaLocation::validate() {
   // TODO: implement validation
 }
 
+bool N3gaLocation::operator==(const N3gaLocation& rhs) const {
+  return
+
+      ((!n3gppTaiIsSet() && !rhs.n3gppTaiIsSet()) ||
+       (n3gppTaiIsSet() && rhs.n3gppTaiIsSet() &&
+        getN3gppTai() == rhs.getN3gppTai())) &&
+
+      ((!n3IwfIdIsSet() && !rhs.n3IwfIdIsSet()) ||
+       (n3IwfIdIsSet() && rhs.n3IwfIdIsSet() &&
+        getN3IwfId() == rhs.getN3IwfId())) &&
+
+      ((!ueIpv4AddrIsSet() && !rhs.ueIpv4AddrIsSet()) ||
+       (ueIpv4AddrIsSet() && rhs.ueIpv4AddrIsSet() &&
+        getUeIpv4Addr() == rhs.getUeIpv4Addr())) &&
+
+      ((!ueIpv6AddrIsSet() && !rhs.ueIpv6AddrIsSet()) ||
+       (ueIpv6AddrIsSet() && rhs.ueIpv6AddrIsSet() &&
+        getUeIpv6Addr() == rhs.getUeIpv6Addr())) &&
+
+      ((!portNumberIsSet() && !rhs.portNumberIsSet()) ||
+       (portNumberIsSet() && rhs.portNumberIsSet() &&
+        getPortNumber() == rhs.getPortNumber()));
+}
+
+bool N3gaLocation::operator!=(const N3gaLocation& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const N3gaLocation& o) {
   j = nlohmann::json();
   if (o.n3gppTaiIsSet()) j["n3gppTai"] = o.m_N3gppTai;

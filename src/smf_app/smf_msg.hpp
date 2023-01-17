@@ -161,6 +161,9 @@ class pdu_session_msg {
   void set_n2_sm_info_type(const std::string& value);
   bool n2_sm_info_type_is_set() const;
 
+  void to_json(nlohmann::json& data) const;
+  void from_json(const nlohmann::json& data);
+
  private:
   pdu_session_msg_type_t m_msg_type;
   std::string m_api_root;
@@ -235,6 +238,9 @@ class pdu_session_sm_context_response : public pdu_session_msg {
   void get_json_data(nlohmann::json& data) const;
   void set_json_format(const std::string& format);
   void get_json_format(std::string& format) const;
+
+  void to_json(nlohmann::json& data) const;
+  void from_json(const nlohmann::json& data);
 
  private:
   uint8_t m_cause;
@@ -322,6 +328,9 @@ class pdu_session_create_sm_context_response
   std::string get_smf_context_uri() const;
   void set_epco(const protocol_configuration_options_t& p);
   void get_epco(protocol_configuration_options_t& p) const;
+
+  void to_json(nlohmann::json& data) const;
+  void from_json(const nlohmann::json& data);
 
  private:
   paa_t m_paa;
@@ -440,6 +449,9 @@ class pdu_session_update_sm_context_response
   void set_smf_context_uri(const std::string& value);
   std::string get_smf_context_uri() const;
 
+  void to_json(nlohmann::json& data) const;
+  void from_json(const nlohmann::json& data);
+
  private:
   std::map<uint8_t, qos_flow_context_updated> qos_flow_context_updateds;
   std::string m_smf_context_uri;
@@ -464,21 +476,17 @@ class pdu_session_release_sm_context_request : public pdu_session_msg {
 };
 
 //---------------------------------------------------------------------------------------
-class pdu_session_release_sm_context_response : public pdu_session_msg {
+class pdu_session_release_sm_context_response
+    : public pdu_session_sm_context_response {
  public:
   pdu_session_release_sm_context_response()
-      : pdu_session_msg(PDU_SESSION_RELEASE_SM_CONTEXT_RESPONSE) {
-    m_cause     = 0;
-    m_http_code = 0;
-  };
-  void set_cause(uint8_t cause);
-  uint8_t get_cause();
-  void set_http_code(const uint32_t code);
-  uint32_t get_http_code() const;
+      : pdu_session_sm_context_response(
+            PDU_SESSION_RELEASE_SM_CONTEXT_RESPONSE){};
+
+  void to_json(nlohmann::json& data) const;
+  void from_json(const nlohmann::json& data);
 
  private:
-  uint8_t m_cause;
-  uint32_t m_http_code;
 };
 
 //---------------------------------------------------------------------------------------
@@ -632,6 +640,22 @@ class event_notification {
   oai::smf_server::model::DddStatus get_ddds() const;
   bool is_ddds_is_set() const;
 
+  void set_dnn(std::string const& value);
+  std::string get_dnn() const;
+  bool is_dnn_set() const;
+
+  void set_sst(uint8_t const& value);
+  uint8_t get_sst() const;
+  bool is_sst_set() const;
+
+  void set_sd(std::string const& value);
+  std::string get_sd() const;
+  bool is_sd_set() const;
+
+  void set_pdu_session_type(std::string const& value);
+  std::string get_pdu_session_type() const;
+  bool is_pdu_session_type_set() const;
+
   void set_pdu_session_id(const pdu_session_id_t value);
   pdu_session_id_t get_pdu_session_id() const;
   bool is_psi_is_set() const;
@@ -667,6 +691,15 @@ class event_notification {
   // for ddds change
   oai::smf_server::model::DddStatus m_DddStatus;
   bool m_DddStatusIsSet;
+
+  bool m_dnn_is_set;
+  std::string m_dnn;
+  bool m_sst_is_set;
+  uint8_t m_sst;
+  bool m_sd_is_set;
+  std::string m_sd;
+  bool m_pdu_session_type_is_set;
+  std::string m_pdu_session_type;
 
   // for an access type change
   // AccessType m_AccType;

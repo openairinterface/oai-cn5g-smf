@@ -200,6 +200,23 @@ class smf_sbi {
       const std::string& method, uint8_t http_version = 1);
 
   /*
+   * Create Curl handle for multi curl with support of response headers
+   * @param [const std::string &] uri: URI of the subscribed NF
+   * @param [const std::string& ] data: data to be sent
+   * @param [std::string &] response_data: response data
+   * @param [std::string &] response_headers: all response headers
+   * @param [uint32_t* ] promise_id: pointer to the promise id
+   * @param [const std::string&] method: HTTP method
+   * @param [bool] is_multipart: use multipart or json format
+   * @return true if a handle was created successfully, otherwise return false
+   */
+  bool curl_create_handle(
+      const std::string& uri, const std::string& data,
+      std::string& response_data, std::string& response_headers,
+      uint32_t* promise_id, const std::string& method,
+      uint8_t http_version = 1);
+
+  /*
    * Create Curl handle for multi curl
    * @param [const std::string &] uri: URI of the subscribed NF
    * @param [std::string &] response_data: response data

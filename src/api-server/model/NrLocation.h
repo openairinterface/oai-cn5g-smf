@@ -39,6 +39,9 @@ class NrLocation {
 
   void validate();
 
+  bool operator==(const NrLocation& rhs) const;
+  bool operator!=(const NrLocation& rhs) const;
+
   /////////////////////////////////////////////
   /// NrLocation members
 

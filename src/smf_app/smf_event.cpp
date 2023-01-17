@@ -61,9 +61,22 @@ bs2::connection smf_event::subscribe_ee_plmn_change(
 }
 
 //------------------------------------------------------------------------------
+
 bs2::connection smf_event::subscribe_ee_ddds(
     const ee_ddds_sig_t::slot_type& sig) {
   return ee_ddds.connect(sig);
+}
+//------------------------------------------------------------------------------
+
+bs2::connection smf_event::subscribe_ee_pdusesest(
+    const ee_pdusesest_sig_t::slot_type& sig) {
+  return ee_pdusesest.connect(sig);
+}
+
+//------------------------------------------------------------------------------
+bs2::connection smf_event::subscribe_ee_qos_monitoring(
+    const ee_qos_monitoring_sig_t::slot_type& sig) {
+  return ee_qos_monitoring.connect(sig);
 }
 
 //------------------------------------------------------------------------------

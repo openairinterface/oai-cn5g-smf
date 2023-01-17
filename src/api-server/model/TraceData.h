@@ -37,6 +37,9 @@ class TraceData {
 
   void validate();
 
+  bool operator==(const TraceData& rhs) const;
+  bool operator!=(const TraceData& rhs) const;
+
   /////////////////////////////////////////////
   /// TraceData members
 

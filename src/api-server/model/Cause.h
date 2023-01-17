@@ -45,11 +45,14 @@ class Cause {
 
   /////////////////////////////////////////////
   /// Cause members
+  std::string getValue() const;
+  void setValue(const std::string& value);
 
   friend void to_json(nlohmann::json& j, const Cause& o);
   friend void from_json(const nlohmann::json& j, Cause& o);
 
  protected:
+  std::string cause;
 };
 
 }  // namespace model

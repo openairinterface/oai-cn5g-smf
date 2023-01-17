@@ -38,6 +38,9 @@ class GlobalRanNodeId {
 
   void validate();
 
+  bool operator==(const GlobalRanNodeId& rhs) const;
+  bool operator!=(const GlobalRanNodeId& rhs) const;
+
   /////////////////////////////////////////////
   /// GlobalRanNodeId members
 

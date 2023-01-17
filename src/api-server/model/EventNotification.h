@@ -27,6 +27,7 @@
 #include "PlmnId.h"
 #include "RouteToLocation.h"
 #include "AccessType.h"
+#include "UsageReport.h"
 #include <nlohmann/json.hpp>
 
 namespace oai {
@@ -203,6 +204,13 @@ class EventNotification {
   void setMaxWaitTime(std::string const& value);
   bool maxWaitTimeIsSet() const;
   void unsetMaxWaitTime();
+  /// <summary>
+  ///
+  /// </summary>
+  UsageReport getUsageReport() const;
+  void setUsageReport(UsageReport const& value);
+  bool usageReportIsSet() const;
+  void unsetUsageReport();
 
   friend void to_json(nlohmann::json& j, const EventNotification& o);
   friend void from_json(const nlohmann::json& j, EventNotification& o);
@@ -254,6 +262,8 @@ class EventNotification {
   bool m_DddStatusIsSet;
   std::string m_MaxWaitTime;
   bool m_MaxWaitTimeIsSet;
+  UsageReport m_usageReport;
+  bool m_usageReportIsSet;
 };
 
 }  // namespace model

@@ -118,19 +118,10 @@ class smf_app {
   mutable std::shared_mutex m_sm_context_update_promises;
   mutable std::shared_mutex m_sm_context_release_promises;
   mutable std::shared_mutex m_smf_handle_response_promises;
+  mutable std::shared_mutex m_sbi_server_promises;
 
-  std::map<
-      uint32_t,
-      boost::shared_ptr<boost::promise<pdu_session_create_sm_context_response>>>
-      sm_context_create_promises;
-  std::map<
-      uint32_t,
-      boost::shared_ptr<boost::promise<pdu_session_update_sm_context_response>>>
-      sm_context_update_promises;
-  std::map<
-      uint32_t, boost::shared_ptr<
-                    boost::promise<pdu_session_release_sm_context_response>>>
-      sm_context_release_promises;
+  std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
+      sbi_server_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
       smf_handle_response_promise;
@@ -214,6 +205,16 @@ class smf_app {
    * @return
    */
   int process_pco_p_cscf_v6_request(
+      protocol_configuration_options_t& pco_resp,
+      const pco_protocol_or_container_id_t* const poc_id);
+
+  /*
+   * process_pco_selected_bearer_control_mode
+   * @param [protocol_configuration_options_t &] pco_resp
+   * @param [pco_protocol_or_container_id_t *const] proc_id
+   * @return
+   */
+  int process_pco_selected_bearer_control_mode(
       protocol_configuration_options_t& pco_resp,
       const pco_protocol_or_container_id_t* const poc_id);
 
@@ -748,35 +749,26 @@ class smf_app {
           p);
 
   /*
-   * To store a promise of a PDU Session Update SM Contex Response to be
+   * To store a promise of a SBI Server response message to be
    * triggered when the result is ready
    * @param [uint32_t] id: promise id
    * @param [boost::shared_ptr<
-   * boost::promise<pdu_session_update_sm_context_response> >&] p: pointer to
+   * boost::promise<nlohmann::json> >&] p: pointer to
    * the promise
    * @return void
    */
-  void add_promise(
-      uint32_t id,
-      boost::shared_ptr<boost::promise<pdu_session_update_sm_context_response>>&
-          p);
-
-  /*
-   * To store a promise of a PDU Session Release SM Context Response to be
-   * triggered when the result is ready
-   * @param [uint32_t] id: promise id
-   * @param [boost::shared_ptr<
-   * boost::promise<pdu_session_release_sm_context_response> >&] p: pointer to
-   * the promise
-   * @return void
-   */
-  void add_promise(
-      uint32_t id,
-      boost::shared_ptr<
-          boost::promise<pdu_session_release_sm_context_response>>& p);
-
   void add_promise(
       uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
+
+  /*
+   * To generate promise ID across SMF components
+   * @param void
+   * @return generated ID
+   */
+  static uint64_t generate_promise_id() {
+    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+  }
+
   /*
    * To trigger the response to the HTTP server by set the value of the
    * corresponding promise to ready
@@ -817,6 +809,17 @@ class smf_app {
   /*
    * To trigger the response to the HTTP server by set the value of the
    * corresponding promise to ready
+   * @param [const nlohmann::json&] response_message_json: response message in
+   * JSON format
+   * @param [uint32_t &] promise_id: Promise Id
+   * @return void
+   */
+  void trigger_http_response(
+      const nlohmann::json& response_message_json, uint32_t& pid);
+
+  /*
+   * To trigger the response to the HTTP server by set the value of the
+   * corresponding promise to ready
    * @param [const uint32_t &] http_code: Status code of HTTP response
    * @param [uint32_t &] promise_id: Promise Id
    * @param [uint8_t] msg_type: Type of HTTP message (Create/Update/Release)
@@ -847,18 +850,6 @@ class smf_app {
    */
   void trigger_session_update_sm_context_response(
       pdu_session_update_sm_context_response& sm_context_response,
-      uint32_t& pid);
-
-  /*
-   * To trigger the session release sm context response by set the value of the
-   * corresponding promise to ready
-   * @param [pdu_session_release_sm_context_response&] sm_context_response:
-   * response message
-   * @param [uint32_t &] promise_id: Promise Id
-   * @return void
-   */
-  void trigger_session_release_sm_context_response(
-      pdu_session_release_sm_context_response& sm_context_response,
       uint32_t& pid);
 
   /*
@@ -956,6 +947,13 @@ class smf_app {
    * @return void
    */
   void trigger_process_response(uint32_t pid, const nlohmann::json& json_data);
+
+  /*
+   * Get the SMF instance ID
+   * @param [void]
+   * @return SMF instance ID
+   */
+  std::string get_smf_instance_id() const;
 };
 }  // namespace smf
 #include "smf_config.hpp"

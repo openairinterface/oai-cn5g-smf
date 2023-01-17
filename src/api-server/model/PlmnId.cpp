@@ -28,6 +28,20 @@ void PlmnId::validate() {
   // TODO: implement validation
 }
 
+bool PlmnId::operator==(const PlmnId& rhs) const {
+  return
+
+      (getMcc() == rhs.getMcc()) &&
+
+      (getMnc() == rhs.getMnc())
+
+          ;
+}
+
+bool PlmnId::operator!=(const PlmnId& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const PlmnId& o) {
   j        = nlohmann::json();
   j["mcc"] = o.m_Mcc;

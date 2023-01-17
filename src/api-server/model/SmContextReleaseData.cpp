@@ -97,10 +97,10 @@ void from_json(const nlohmann::json& j, SmContextReleaseData& o) {
   }
 }
 
-Cause SmContextReleaseData::getCause() const {
+std::string SmContextReleaseData::getCause() const {
   return m_Cause;
 }
-void SmContextReleaseData::setCause(Cause const& value) {
+void SmContextReleaseData::setCause(std::string const& value) {
   m_Cause      = value;
   m_CauseIsSet = true;
 }

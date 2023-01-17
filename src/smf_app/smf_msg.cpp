@@ -218,6 +218,85 @@ bool pdu_session_msg::n2_sm_info_type_is_set() const {
   return m_n2_sm_info_type_is_set;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_msg::to_json(nlohmann::json& data) const {
+  data["msg_type"]                 = m_msg_type;
+  data["api_root"]                 = m_api_root;
+  std::string supi_str             = smf_supi_to_string(m_supi);
+  data["supi"]                     = supi_str;
+  data["supi_prefix"]              = m_supi_prefix;
+  data["pdu_session_id"]           = m_pdu_session_id;
+  data["dnn"]                      = m_dnn;
+  data["snssai"]["sst"]            = m_snssai.sst;
+  data["snssai"]["sd"]             = m_snssai.sd;
+  data["pdu_session_type"]         = m_pdu_session_type;
+  data["procedure_transaction_id"] = m_pti.procedure_transaction_id;
+  if (m_n1_sm_msg_is_set) data["n1_sm_message"] = m_n1_sm_message;
+  if (m_n2_sm_info_is_set) data["n2_sm_information"] = m_n2_sm_information;
+  if (m_n2_sm_info_type_is_set) data["n2_sm_info_type"] = m_n2_sm_info_type;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_msg::from_json(const nlohmann::json& data) {
+  if (data.find("msg_type") != data.end()) {
+    m_msg_type =
+        static_cast<pdu_session_msg_type_t>(data["msg_type"].get<int>());
+  }
+
+  if (data.find("api_root") != data.end()) {
+    m_api_root = data["api_root"].get<std::string>();
+  }
+
+  if (data.find("supi") != data.end()) {
+    smf_string_to_supi(&m_supi, data["supi"].get<std::string>().c_str());
+  }
+
+  if (data.find("supi_prefix") != data.end()) {
+    m_supi_prefix = data["supi_prefix"].get<std::string>();
+  }
+
+  if (data.find("pdu_session_id") != data.end()) {
+    m_pdu_session_id = data["pdu_session_id"].get<int>();
+  }
+  if (data.find("dnn") != data.end()) {
+    m_dnn = data["dnn"].get<std::string>();
+  }
+
+  if (data.find("snssai") != data.end()) {
+    if (data["snssai"].find("sst") != data["snssai"].end()) {
+      m_snssai.sst = data["snssai"]["sst"].get<int>();
+    }
+  }
+  if (data.find("snssai") != data.end()) {
+    if (data["snssai"].find("sd") != data["snssai"].end()) {
+      m_snssai.sd = data["snssai"]["sd"].get<int>();
+    }
+  }
+
+  if (data.find("pdu_session_type") != data.end()) {
+    m_pdu_session_type = data["pdu_session_type"].get<int>();
+  }
+
+  if (data.find("procedure_transaction_id") != data.end()) {
+    m_pti.procedure_transaction_id =
+        data["procedure_transaction_id"].get<int>();
+  }
+
+  if (data.find("n1_sm_message") != data.end()) {
+    m_n1_sm_message    = data["n1_sm_message"].get<std::string>();
+    m_n1_sm_msg_is_set = true;
+  }
+
+  if (data.find("n2_sm_information") != data.end()) {
+    m_n2_sm_information = data["n2_sm_information"].get<std::string>();
+    m_n2_sm_info_is_set = true;
+  }
+  if (data.find("n2_sm_info_type") != data.end()) {
+    m_n2_sm_info_type        = data["n2_sm_info_type"].get<std::string>();
+    m_n2_sm_info_type_is_set = true;
+  }
+}
+
 /*
  * class: PDU Session SM Context Request
  */
@@ -289,6 +368,35 @@ void pdu_session_sm_context_response::set_json_format(
 void pdu_session_sm_context_response::get_json_format(
     std::string& format) const {
   format = m_json_format;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_sm_context_response::to_json(nlohmann::json& data) const {
+  pdu_session_msg::to_json(data);
+  data["cause"]       = m_cause;
+  data["json_data"]   = m_json_data;
+  data["json_format"] = m_json_format;
+  data["http_code"]   = m_http_code;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_sm_context_response::from_json(const nlohmann::json& data) {
+  pdu_session_msg::from_json(data);
+  if (data.find("cause") != data.end()) {
+    m_cause = data["cause"].get<int>();
+  }
+
+  if (data.find("json_data") != data.end()) {
+    m_json_data = data["json_data"];
+  }
+
+  if (data.find("json_format") != data.end()) {
+    m_json_format = data["json_format"];
+  }
+
+  if (data.find("http_code") != data.end()) {
+    m_http_code = data["http_code"].get<int>();
+  }
 }
 
 /*
@@ -447,6 +555,31 @@ void pdu_session_create_sm_context_response::set_epco(
 void pdu_session_create_sm_context_response::get_epco(
     protocol_configuration_options_t& p) const {
   p = m_epco;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_create_sm_context_response::to_json(
+    nlohmann::json& data) const {
+  pdu_session_sm_context_response::to_json(data);
+  // TODO: paa_t m_paa
+  // TODO:  qos_flow_context_updated m_qos_flow_context
+  // TODO: protocol_configuration_options_t m_epco
+  data["amf_url"]         = m_amf_url;
+  data["smf_context_uri"] = m_smf_context_uri;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_create_sm_context_response::from_json(
+    const nlohmann::json& data) {
+  // TODO: paa_t m_paa
+  // TODO:  qos_flow_context_updated m_qos_flow_context
+  // TODO: protocol_configuration_options_t m_epco
+  if (data.find("amf_url") != data.end()) {
+    m_amf_url = data["amf_url"].get<std::string>();
+  }
+  if (data.find("smf_context_uri") != data.end()) {
+    m_smf_context_uri = data["smf_context_uri"].get<std::string>();
+  }
 }
 
 /*
@@ -689,29 +822,37 @@ std::string pdu_session_update_sm_context_response::get_smf_context_uri()
   return m_smf_context_uri;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_response::to_json(
+    nlohmann::json& data) const {
+  pdu_session_sm_context_response::to_json(data);
+  // TODO: qos_flow_context_updateds
+  data["smf_context_uri"] = m_smf_context_uri;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_response::from_json(
+    const nlohmann::json& data) {
+  pdu_session_sm_context_response::from_json(data);
+  // TODO: qos_flow_context_updateds
+  if (data.find("smf_context_uri") != data.end()) {
+    m_smf_context_uri = data["smf_context_uri"].get<std::string>();
+  }
+}
 /*
  * class: PDU Session Release SM Context Response
  */
 
 //-----------------------------------------------------------------------------
-void pdu_session_release_sm_context_response::set_cause(uint8_t cause) {
-  m_cause = cause;
+void pdu_session_release_sm_context_response::to_json(
+    nlohmann::json& data) const {
+  pdu_session_sm_context_response::to_json(data);
 }
 
 //-----------------------------------------------------------------------------
-uint8_t pdu_session_release_sm_context_response::get_cause() {
-  return m_cause;
-}
-
-//-----------------------------------------------------------------------------
-void pdu_session_release_sm_context_response::set_http_code(
-    const uint32_t code) {
-  m_http_code = code;
-}
-
-//-----------------------------------------------------------------------------
-uint32_t pdu_session_release_sm_context_response::get_http_code() const {
-  return m_http_code;
+void pdu_session_release_sm_context_response::from_json(
+    const nlohmann::json& data) {
+  pdu_session_sm_context_response::from_json(data);
 }
 
 /*
@@ -1151,4 +1292,68 @@ void data_notification_msg::set_profile(const std::shared_ptr<nf_profile>& p) {
 //-----------------------------------------------------------------------------
 void data_notification_msg::get_profile(std::shared_ptr<nf_profile>& p) const {
   p = profile;
+}
+
+//-----------------------------------------------------------------------------
+void event_notification::set_dnn(std::string const& value) {
+  m_dnn        = value;
+  m_dnn_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+std::string event_notification::get_dnn() const {
+  return m_dnn;
+}
+
+//-----------------------------------------------------------------------------
+bool event_notification::is_dnn_set() const {
+  return m_dnn_is_set;
+}
+
+//-----------------------------------------------------------------------------
+void event_notification::set_sst(uint8_t const& value) {
+  m_sst        = value;
+  m_sst_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+uint8_t event_notification::get_sst() const {
+  return m_sst;
+}
+
+//-----------------------------------------------------------------------------
+bool event_notification::is_sst_set() const {
+  return m_sst_is_set;
+}
+
+//-----------------------------------------------------------------------------
+void event_notification::set_sd(std::string const& value) {
+  m_sd        = value;
+  m_sd_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+std::string event_notification::get_sd() const {
+  return m_sd;
+}
+
+//-----------------------------------------------------------------------------
+bool event_notification::is_sd_set() const {
+  return m_sd_is_set;
+}
+
+//-----------------------------------------------------------------------------
+void event_notification::set_pdu_session_type(std::string const& value) {
+  m_pdu_session_type        = value;
+  m_pdu_session_type_is_set = true;
+}
+
+//-----------------------------------------------------------------------------
+std::string event_notification::get_pdu_session_type() const {
+  return m_pdu_session_type;
+}
+
+//-----------------------------------------------------------------------------
+bool event_notification::is_pdu_session_type_set() const {
+  return m_pdu_session_type_is_set;
 }
