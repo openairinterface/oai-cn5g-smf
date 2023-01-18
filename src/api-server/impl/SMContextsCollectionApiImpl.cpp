@@ -92,7 +92,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   // Generate ID for this promise (to be used in SMF-APP)
   uint32_t promise_id = m_smf_app->generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_smf_app->add_promise(promise_id, p);
+  m_smf_app->add_promise_config(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
   std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =

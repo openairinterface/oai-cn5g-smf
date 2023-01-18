@@ -2138,6 +2138,13 @@ void smf_app::add_promise(
 }
 
 //---------------------------------------------------------------------------------------------
+void smf_app::add_promise_config(
+    uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p) {
+  std::unique_lock lock(m_smf_config_response_promises);
+  smf_config_promises.emplace(id, p);
+}
+
+//---------------------------------------------------------------------------------------------
 void smf_app::trigger_create_context_error_response(
     const uint32_t& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
@@ -2476,12 +2483,12 @@ void smf_app::trigger_process_response(
       "Trigger process response: Set promise with ID %u "
       "to ready",
       pid);
-  std::unique_lock lock(m_smf_handle_response_promises);
-  if (smf_handle_response_promise.count(pid) > 0) {
+  std::unique_lock lock(m_smf_config_response_promises);
+  if (smf_config_promises.count(pid) > 0) {
     Logger::smf_app().debug("Found promise with ID %u ", pid);
-    smf_handle_response_promise[pid]->set_value(json_data);
+    smf_config_promises[pid]->set_value(json_data);
     // Remove this promise from list
-    smf_handle_response_promise.erase(pid);
+    smf_config_promises.erase(pid);
   }
 }
 
