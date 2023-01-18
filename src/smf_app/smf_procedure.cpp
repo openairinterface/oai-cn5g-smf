@@ -339,7 +339,7 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
     edge& edge, const qfi_t& qfi) {
   auto flow = edge.get_qos_flow(qfi);
 
-  pfcp::urr_id_t urr_id = {};
+  // pfcp::urr_id_t urr_id = {};
   sps->generate_urr_id(flow->urr_id);
   pfcp::create_urr create_urr                   = {};
   pfcp::measurement_method_t measurement_method = {};
@@ -370,7 +370,7 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
 
   time_threshold.time_threshold = 5;
 
-  create_urr.set(urr_id);
+  create_urr.set(flow->urr_id);
   create_urr.set(measurement_method);
   create_urr.set(measurement_Period);
   create_urr.set(reporting_triggers);
