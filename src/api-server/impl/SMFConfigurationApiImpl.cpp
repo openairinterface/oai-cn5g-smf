@@ -43,7 +43,7 @@ void SMFConfigurationApiImpl::read_configuration(
   boost::shared_ptr<boost::promise<nlohmann::json>> p =
       boost::make_shared<boost::promise<nlohmann::json>>();
   boost::shared_future<nlohmann::json> f = p->get_future();
-  m_smf_app->add_promise(promise_id, p);
+  m_smf_app->add_promise_config(promise_id, p);
 
   // Handle the SMFConfiguration in smf_app
   std::shared_ptr<itti_sbi_smf_configuration> itti_msg =
@@ -113,7 +113,7 @@ void SMFConfigurationApiImpl::update_configuration(
   boost::shared_ptr<boost::promise<nlohmann::json>> p =
       boost::make_shared<boost::promise<nlohmann::json>>();
   boost::shared_future<nlohmann::json> f = p->get_future();
-  m_smf_app->add_promise(promise_id, p);
+  m_smf_app->add_promise_config(promise_id, p);
 
   // Handle the SMFConfiguration in smf_app
   std::shared_ptr<itti_sbi_update_smf_configuration> itti_msg =

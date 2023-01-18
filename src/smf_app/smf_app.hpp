@@ -117,14 +117,14 @@ class smf_app {
   mutable std::shared_mutex m_sm_context_create_promises;
   mutable std::shared_mutex m_sm_context_update_promises;
   mutable std::shared_mutex m_sm_context_release_promises;
-  mutable std::shared_mutex m_smf_handle_response_promises;
+  mutable std::shared_mutex m_smf_config_response_promises;
   mutable std::shared_mutex m_sbi_server_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
       sbi_server_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
-      smf_handle_response_promise;
+      smf_config_promises;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
@@ -758,6 +758,19 @@ class smf_app {
    * @return void
    */
   void add_promise(
+      uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
+
+
+  /*
+   * To store a promise of a SBI Server response message to be
+   * triggered when the result is ready
+   * @param [uint32_t] id: promise id
+   * @param [boost::shared_ptr<
+   * boost::promise<nlohmann::json> >&] p: pointer to
+   * the promise
+   * @return void
+   */
+  void add_promise_config(
       uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
 
   /*
