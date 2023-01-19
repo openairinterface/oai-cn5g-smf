@@ -67,9 +67,11 @@ pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
     ue_ip.v4           = 1;
     ue_ip.ipv4_address = sps->ipv4_address;
   }
+  // TODO malformed PFCP message, should be fixed in PFCP layer, but we dont
+  // need it for now
   if (sps->ipv6) {
-    ue_ip.v6           = 1;
-    ue_ip.ipv6_address = sps->ipv6_address;
+    ue_ip.v6 = 0;
+    // ue_ip.ipv6_address = sps->ipv6_address;
   }
   return ue_ip;
 }
@@ -339,7 +341,6 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
     edge& edge, const qfi_t& qfi) {
   auto flow = edge.get_qos_flow(qfi);
 
-  // pfcp::urr_id_t urr_id = {};
   sps->generate_urr_id(flow->urr_id);
   pfcp::create_urr create_urr                   = {};
   pfcp::measurement_method_t measurement_method = {};

@@ -15,6 +15,7 @@ At the moment, it contains the following network elements:
 * Unified Data Management (**UDM**)
 * Unified Data Repository (**UDR**)
 * User Plane Function (**UPF**)
+* Network Slicing Selection Function (**NSSF**)
 
 Each has its own repository: this repository (`oai-cn5g-smf`) is meant for SMF.
 
