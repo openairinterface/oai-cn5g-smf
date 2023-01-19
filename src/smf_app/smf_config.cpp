@@ -1238,24 +1238,20 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
   try {
     if (json_data.find("supported_features") != json_data.end()) {
       json_tmp = json_data["supported_features"];
-      if (json_tmp.find("use_local_subscription_info") != json_tmp.end()) {
-        bool val = boost::iequals(
-            json_tmp["use_local_subscription_info"].get<std::string>(), "yes");
-        smf_cfg.use_local_subscription_info = val;
-      }
 
-      if (json_tmp.find("use_fqdn_dns") != json_tmp.end()) {
-        bool val =
-            boost::iequals(json_tmp["use_fqdn_dns"].get<std::string>(), "yes");
-        smf_cfg.use_fqdn_dns = val;
-      }
+      if (json_tmp.find("use_local_subscription_info") != json_tmp.end())
+        smf_cfg.use_local_subscription_info =
+            json_tmp["use_local_subscription_info"].get<bool>();
+
+      if (json_tmp.find("use_fqdn_dns") != json_tmp.end())
+        smf_cfg.use_fqdn_dns = json_tmp["use_fqdn_dns"].get<bool>();
 
       // TODO: Check if VPP is used
-      if (true and json_tmp.find("enable_usage_reporting") != json_tmp.end()) {
-        bool val = boost::iequals(
-            json_tmp["enable_usage_reporting"].get<std::string>(), "yes");
-        smf_cfg.enable_ur = val;
-      }
+      if (true and json_tmp.find("enable_usage_reporting") != json_tmp.end())
+        smf_cfg.enable_ur = json_tmp["enable_usage_reporting"].get<bool>();
+
+      if (true and json_tmp.find("use_network_instance") != json_tmp.end())
+        smf_cfg.use_nwi = json_tmp["use_network_instance"].get<bool>();
     }
 
     if (json_data.find("dnn_list") != json_data.end()) {

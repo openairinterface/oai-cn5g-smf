@@ -124,7 +124,7 @@ class smf_app {
       sbi_server_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
-      smf_handle_response_promise;
+      smf_config_promises;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
