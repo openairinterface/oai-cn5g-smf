@@ -760,7 +760,6 @@ class smf_app {
   void add_promise(
       uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p);
 
-
   /*
    * To store a promise of a SBI Server response message to be
    * triggered when the result is ready
