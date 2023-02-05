@@ -4695,56 +4695,125 @@ class pfcp_end_time_ie : public pfcp_ie {
 //  }
 //};
 ////-------------------------------------
-//// IE USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE
-// class pfcp_usage_report_within_session_deletion_response_ie : public pfcp_ie
-// { public:
-//  uint8_t todo;
-//
-//  //--------
-//  pfcp_usage_report_within_session_deletion_response_ie(const
-//  pfcp::usage_report_within_pfcp_session_deletion_response& b) :
-//  pfcp_ie(PFCP_IE_USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_usage_report_within_session_deletion_response_ie() :
-//  pfcp_ie(PFCP_IE_USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_usage_report_within_session_deletion_response_ie(const pfcp_tlv& t) :
-//  pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::usage_report_within_pfcp_session_deletion_response&
-//  b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::usage_report_within_pfcp_session_deletion_response
-//      usage_report_within_session_deletion_response = {};
-//      to_core_type(usage_report_within_session_deletion_response);
-//      s.set(usage_report_within_session_deletion_response);
-//  }
-//};
+// IE USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE
+class pfcp_usage_report_within_session_deletion_response_ie
+    : public pfcp_grouped_ie {
+ public:
+  //--------
+  pfcp_usage_report_within_session_deletion_response_ie(
+      const pfcp::usage_report_within_pfcp_session_deletion_response& b)
+      : pfcp_grouped_ie(PFCP_IE_USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE) {
+    tlv.set_length(0);
+    // if (b.urr_id.first) {
+    //   std::shared_ptr<pfcp_urr_id_ie> sie =
+    //       std::make_shared<pfcp_urr_id_ie>(b.urr_id.second);
+    //   add_ie(sie);
+    // }
+    if (b.urr_id.first) {
+      std::shared_ptr<pfcp_urr_id_ie> sie(new pfcp_urr_id_ie(b.urr_id.second));
+      add_ie(sie);
+    }
+    // if (b.ur_seqn.first) {
+    //   std::shared_ptr<pfcp_ur_seqn_ie> sie =
+    //       make_shared<pfcp_ur_seqn_ie>(b.ur_seqn.second);
+    //   add_ie(sie);
+    // }
+    // if (b.usage_report_trigger.first) {
+    //   std::shared_ptr<pfcp_usage_report_trigger_ie> sie =
+    //       std::make_shared<pfcp_usage_report_trigger_ie>(
+    //           b.usage_report_trigger.second);
+    //   add_ie(sie);
+    // }
+    // if (b.start_time.first) {
+    //   std::shared_ptr<pfcp_start_time_ie> sie =
+    //       std::make_shared<pfcp_start_time_ie>(b.start_time.second);
+    //   add_ie(sie);
+    // }
+    // if (b.end_time.first) {
+    //   std::shared_ptr<pfcp_end_time_ie> sie =
+    //       std::make_shared<pfcp_end_time_ie>(b.end_time.second);
+    //   add_ie(sie);
+    // }
+    // if (b.volume_measurement.first) {
+    //   std::shared_ptr<pfcp_volume_measurement_ie> sie =
+    //       std::make_shared<pfcp_volume_measurement_ie>(
+    //           b.volume_measurement.second);
+    //   add_ie(sie);
+    // }
+    // if (b.duration_measurement.first) {
+    //   std::shared_ptr<pfcp_duration_measurement_ie> sie =
+    //       std::make_shared<pfcp_duration_measurement_ie>(
+    //           b.duration_measurement.second);
+    //   add_ie(sie);
+    // }
+    // if (b.time_of_first_packet.first) {
+    //   std::shared_ptr<pfcp_time_of_first_packet_ie> sie =
+    //       std::make_shared<pfcp_time_of_first_packet_ie>(
+    //           b.time_of_first_packet.second);
+    //   add_ie(sie);
+    // }
+    // if (b.time_of_last_packet.first) {
+    //   std::shared_ptr<pfcp_time_of_last_packet_ie> sie =
+    //       std::make_shared<pfcp_time_of_last_packet_ie>(
+    //           b.time_of_last_packet.second);
+    //   add_ie(sie);
+    // }
+
+    // if (b.usage_information.first) {
+    //   std::shared_ptr<pfcp_usage_information_ie> sie(
+    //       new pfcp_usage_information_ie(b.usage_information.second));
+    //   add_ie(sie);
+    // }
+    // if (b.ethernet_traffic_information.first) {
+    //   std::shared_ptr<pfcp_ethernet_traffic_information_ie> sie(
+    //       new
+    //       pfcp_ethernet_traffic_information_ie(b.ethernet_traffic_information.second));
+    //   add_ie(sie);
+    // }
+  }
+  //--------
+  pfcp_usage_report_within_session_deletion_response_ie()
+      : pfcp_grouped_ie(PFCP_IE_USAGE_REPORT_WITHIN_SESSION_DELETION_RESPONSE) {
+  }
+  //--------
+  explicit pfcp_usage_report_within_session_deletion_response_ie(
+      const pfcp_tlv& t)
+      : pfcp_grouped_ie(t){};
+  //--------
+  void to_core_type(
+      pfcp::usage_report_within_pfcp_session_deletion_response& c) {
+    for (auto sie : ies) {
+      sie.get()->to_core_type(c);
+    }
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::usage_report_within_pfcp_session_deletion_response i = {};
+    to_core_type(i);
+    s.set(i);
+  }
+  //  //--------
+  //  void dump_to(std::ostream& os) {
+  //    tlv.dump_to(os);
+  //    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
+  //  }
+  //  //--------
+  //  void load_from(std::istream& is) {
+  //    //tlv.load_from(is);
+  //    if (tlv.get_length() != 1) {
+  //      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
+  //      __FILE__, __LINE__);
+  //    }
+  //    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
+  //  }
+  //  //--------
+  //  void to_core_type(pfcp_ies_container& s) {
+  //      pfcp::usage_report_within_pfcp_session_deletion_response
+  //      usage_report_within_session_deletion_response = {};
+  //      to_core_type(usage_report_within_session_deletion_response);
+  //      s.set(usage_report_within_session_deletion_response);
+  //  }
+};
 //-------------------------------------
 // IE URR_ID
 class pfcp_urr_id_ie : public pfcp_ie {

@@ -7201,11 +7201,16 @@ class pfcp_session_deletion_response : public pfcp_ies_container {
 
   std::pair<bool, pfcp::cause_t> cause;
   std::pair<bool, pfcp::offending_ie_t> offending_ie;
+  std::pair<bool, pfcp::usage_report_within_pfcp_session_deletion_response>
+      usage_report;
 
-  pfcp_session_deletion_response() : cause(), offending_ie() {}
+  pfcp_session_deletion_response() : cause(), offending_ie(), usage_report() {}
 
-  pfcp_session_deletion_response(const pfcp_session_deletion_response& i)
-      : cause(i.cause), offending_ie(i.offending_ie) {}
+  pfcp_session_deletion_response(const pfcp_session_deletion_response& i) {
+    cause        = i.cause;
+    offending_ie = i.offending_ie;
+    usage_report = i.usage_report;
+  }
 
   const char* get_msg_name() const { return "PFCP_SESSION_DELETION_RESPONSE"; };
 
@@ -7223,7 +7228,13 @@ class pfcp_session_deletion_response : public pfcp_ies_container {
     }
     return false;
   }
-
+  bool get(pfcp::usage_report_within_pfcp_session_deletion_response& v) const {
+    if (usage_report.first) {
+      v = usage_report.second;
+      return true;
+    }
+    return false;
+  }
   void set(const pfcp::cause_t& v) {
     cause.first  = true;
     cause.second = v;
@@ -7231,6 +7242,10 @@ class pfcp_session_deletion_response : public pfcp_ies_container {
   void set(const pfcp::offending_ie_t& v) {
     offending_ie.first  = true;
     offending_ie.second = v;
+  }
+  void set(const pfcp::usage_report_within_pfcp_session_deletion_response& v) {
+    usage_report.first  = true;
+    usage_report.second = v;
   }
 };
 //------------------------------------------------------------------------------
