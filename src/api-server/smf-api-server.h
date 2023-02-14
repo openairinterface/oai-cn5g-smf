@@ -50,6 +50,7 @@
 #include "IndividualSubscriptionDocumentApiImpl.h"
 #include "SubscriptionsCollectionApiImpl.h"
 #include "NFStatusNotifyApiImpl.h"
+#include "UEInfoApiImpl.h"
 
 #include "smf_app.hpp"
 
@@ -79,6 +80,8 @@ class SMFApiServer {
             m_router, smf_app_inst, m_address);
     m_nfStatusNotifyApiImpl = std::make_shared<NFStatusNotifyApiImpl>(
         m_router, smf_app_inst, m_address);
+    m_ueInfoApiImpl = std::make_shared<UEInfoApiImpl>(
+        m_router, smf_app_inst, m_address);
   }
   void init(size_t thr = 1);
   void start();
@@ -97,6 +100,7 @@ class SMFApiServer {
   std::shared_ptr<SubscriptionsCollectionApiImpl>
       m_subscriptionsCollectionApiImpl;
   std::shared_ptr<NFStatusNotifyApiImpl> m_nfStatusNotifyApiImpl;
+  std::shared_ptr<UEInfoApiImpl> m_ueInfoApiImpl;
   std::string m_address;
 };
 
