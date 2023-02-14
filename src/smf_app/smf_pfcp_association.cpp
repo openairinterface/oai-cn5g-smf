@@ -88,6 +88,8 @@ edge edge::from_upf_info(
   // TODO: Bring updates from the previous funtion to this one
   edge e = {};
   e.type = pfcp_association::iface_type_from_string(interface.interface_type);
+  e.ip_addr.s_addr = interface.ipv4_addresses[0].s_addr;
+  // e.ip6_addr    = interface.ipv6_addresses[0];
   e.nw_instance = interface.network_instance;
 
   // we filter out the DNAIs which do not map to the given NW interface

@@ -288,6 +288,10 @@ struct edge {
   unsigned int precedence = 0;
   std::string nw_instance;
   iface_type type;
+  // Get first address from vector since multiple addresses on same interface
+  // type is not under scope for now
+  in_addr ip_addr;
+  in6_addr ip6_addr;
   bool uplink = false;
   std::vector<std::shared_ptr<smf_qos_flow>> qos_flows;
   bool n4_sent = false;
