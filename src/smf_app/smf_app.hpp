@@ -123,6 +123,9 @@ class smf_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
+  mutable std::shared_mutex m_ues_info;
+  std::vector <uemsg_t> ues_info;
+
   /*
    * Apply the config from the configuration file for DNN pools
    * @param [const smf_config &cfg] cfg
@@ -911,6 +914,9 @@ class smf_app {
    * @return SMF instance ID
    */
   std::string get_smf_instance_id() const;
+
+  void get_uemsg_list(std::vector <uemsg_t>& uemsg_list);
+  void update_uemsg_list(uemsg_t& uemsg);
 };
 }  // namespace smf
 #include "smf_config.hpp"
