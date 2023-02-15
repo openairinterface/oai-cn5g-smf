@@ -2384,31 +2384,26 @@ std::string smf_app::get_smf_instance_id() const {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::get_uemsg_list(std::vector <uemsg_t>& uemsg_list)
-{
+void smf_app::get_uemsg_list(std::vector<uemsg_t>& uemsg_list) {
   std::unique_lock lock(m_ues_info);
-  
-  if(!ues_info.empty()){
-      
-      uemsg_list = ues_info;
-  }
 
+  if (!ues_info.empty()) {
+    uemsg_list = ues_info;
+  }
 }
 
 //------------------------------------------------------------------------------
-void smf_app::update_uemsg_list(uemsg_t& uemsg)
-{
+void smf_app::update_uemsg_list(uemsg_t& uemsg) {
   std::unique_lock lock(m_ues_info);
-  
-  if(!ues_info.empty()){
-      for (std::vector<uemsg_t>::iterator it = ues_info.begin(); it != ues_info.end(); it++)
-      {
-        if(uemsg.imsi.compare(it->imsi)==0){
-            ues_info.erase(it++);
-        }
-      } 
+
+  if (!ues_info.empty()) {
+    for (std::vector<uemsg_t>::iterator it = ues_info.begin();
+         it != ues_info.end(); it++) {
+      if (uemsg.imsi.compare(it->imsi) == 0) {
+        ues_info.erase(it++);
+      }
+    }
   }
-  
+
   ues_info.push_back(uemsg);
-  
 }

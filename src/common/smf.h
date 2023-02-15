@@ -535,10 +535,10 @@ typedef struct guami_5g_s {
   std::string amf_id;
 } guami_5g_t;
 
-typedef struct uemsg_s{
-  std::string imsi; 
+typedef struct uemsg_s {
+  std::string imsi;
   std::string ueip;
   std::string timestamp;
-}uemsg_t;
+} uemsg_t;
 
 #endif

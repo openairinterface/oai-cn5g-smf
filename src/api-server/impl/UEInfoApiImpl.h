@@ -8,16 +8,14 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-class UEInfoApiImpl
-    : public oai::smf_server::api::UEInfoApi {
+class UEInfoApiImpl : public oai::smf_server::api::UEInfoApi {
  public:
   UEInfoApiImpl(
       std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst,
       std::string address);
   ~UEInfoApiImpl() {}
-  
-  void get_ue_information(
-      Pistache::Http::ResponseWriter& response);
+
+  void get_ue_information(Pistache::Http::ResponseWriter& response);
   void set_supi(const supi_t& s);
 
  private:
@@ -25,8 +23,8 @@ class UEInfoApiImpl
   std::string m_address;
 };
 
-}
-}
-}
+}  // namespace api
+}  // namespace smf_server
+}  // namespace oai
 
 #endif

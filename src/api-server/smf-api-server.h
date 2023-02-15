@@ -80,8 +80,8 @@ class SMFApiServer {
             m_router, smf_app_inst, m_address);
     m_nfStatusNotifyApiImpl = std::make_shared<NFStatusNotifyApiImpl>(
         m_router, smf_app_inst, m_address);
-    m_ueInfoApiImpl = std::make_shared<UEInfoApiImpl>(
-        m_router, smf_app_inst, m_address);
+    m_ueInfoApiImpl =
+        std::make_shared<UEInfoApiImpl>(m_router, smf_app_inst, m_address);
   }
   void init(size_t thr = 1);
   void start();
