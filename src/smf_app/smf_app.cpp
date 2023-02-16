@@ -168,6 +168,27 @@ void smf_app::free_seid_n4(const uint64_t& seid) {
 }
 
 //------------------------------------------------------------------------------
+void smf_app::set_supi_2_smf_ue_msg(
+    const std::string& supi, std::shared_ptr<smf_ue_msg>& um) {
+  std::unique_lock lock(m_supi2smf_ue_msg);
+  supi2smf_ue_msg[supi] = um;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_ue_msg_request(nlohmann::json& response_data) {
+  response_data = nlohmann::json::array();
+  int i         = 0;
+
+  std::unique_lock lock(m_supi2smf_ue_msg);
+  for (const auto& it : supi2smf_ue_msg) {
+    response_data[i]["imsi"]      = it.second->m_supi;
+    response_data[i]["ueip"]      = it.second->m_ueip;
+    response_data[i]["timestamp"] = it.second->m_timestamp;
+    i++;
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_app::set_seid_2_smf_context(
     const seid_t& seid, std::shared_ptr<smf_context>& pc) {
   std::unique_lock lock(m_seid2smf_context);
@@ -2381,29 +2402,4 @@ void smf_app::trigger_upf_status_notification_subscribe() {
 //------------------------------------------------------------------------------
 std::string smf_app::get_smf_instance_id() const {
   return smf_instance_id;
-}
-
-//------------------------------------------------------------------------------
-void smf_app::get_uemsg_list(std::vector<uemsg_t>& uemsg_list) {
-  std::unique_lock lock(m_ues_info);
-
-  if (!ues_info.empty()) {
-    uemsg_list = ues_info;
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_app::update_uemsg_list(uemsg_t& uemsg) {
-  std::unique_lock lock(m_ues_info);
-
-  if (!ues_info.empty()) {
-    for (std::vector<uemsg_t>::iterator it = ues_info.begin();
-         it != ues_info.end(); it++) {
-      if (uemsg.imsi.compare(it->imsi) == 0) {
-        ues_info.erase(it++);
-      }
-    }
-  }
-
-  ues_info.push_back(uemsg);
 }

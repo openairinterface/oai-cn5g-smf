@@ -87,6 +87,26 @@ class smf_context_ref {
   pdu_session_id_t pdu_session_id;
 };
 
+class smf_ue_msg {
+ public:
+  smf_ue_msg(const std::string& supi, const std::string& ueip) {
+    char timestamp[64] = {};
+    time_t nowtime;
+
+    nowtime = time(NULL);
+    strftime(
+        timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&nowtime));
+
+    m_timestamp = timestamp;
+    m_supi      = supi;
+    m_ueip      = ueip;
+  }
+
+  std::string m_supi;
+  std::string m_ueip;
+  std::string m_timestamp;
+};
+
 class smf_app {
  private:
   std::thread::id thread_id;
@@ -123,8 +143,8 @@ class smf_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
-  mutable std::shared_mutex m_ues_info;
-  std::vector<uemsg_t> ues_info;
+  mutable std::shared_mutex m_supi2smf_ue_msg;
+  std::map<std::string, std::shared_ptr<smf_ue_msg>> supi2smf_ue_msg;
 
   /*
    * Apply the config from the configuration file for DNN pools
@@ -220,6 +240,22 @@ class smf_app {
   virtual ~smf_app();
 
   void operator=(smf_app const&) = delete;
+
+  /*
+   * Set the association between supi and smf ue msg
+   * @param [const std::string &] supi: supi
+   * @param [std::shared_ptr<smf_ue_msg> &] um : Shared_ptr to a ue msg
+   * @return
+   */
+  void set_supi_2_smf_ue_msg(
+      const std::string& supi, std::shared_ptr<smf_ue_msg>& um);
+
+  /*
+   * Handle ue msg request (HTTP Response)
+   * @param [nlohmann::json &] response: json object "data"
+   * @return void
+   */
+  void handle_ue_msg_request(nlohmann::json& response_data);
 
   /*
    * Set the association between Seid and SM Context
@@ -914,9 +950,6 @@ class smf_app {
    * @return SMF instance ID
    */
   std::string get_smf_instance_id() const;
-
-  void get_uemsg_list(std::vector<uemsg_t>& uemsg_list);
-  void update_uemsg_list(uemsg_t& uemsg);
 };
 }  // namespace smf
 #include "smf_config.hpp"

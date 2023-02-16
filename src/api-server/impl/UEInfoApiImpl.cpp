@@ -12,20 +12,11 @@ void UEInfoApiImpl::get_ue_information(
     Pistache::Http::ResponseWriter& response) {
   response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>("*");
   nlohmann::json response_data_json = {};
-  nlohmann::json json_array         = nlohmann::json::array();
+  nlohmann::json json_array         = {};
 
-  std::vector<uemsg_t> UeMsgList;
-  m_smf_app->get_uemsg_list(UeMsgList);
+  m_smf_app->handle_ue_msg_request(json_array);
 
-  if (UeMsgList.size() > 0) {
-    int i = 0;
-    for (std::vector<uemsg_t>::iterator it = UeMsgList.begin();
-         it != UeMsgList.end(); it++) {
-      json_array[i]["imsi"]      = it->imsi;
-      json_array[i]["ueip"]      = it->ueip;
-      json_array[i]["timestamp"] = it->timestamp;
-      i++;
-    }
+  if (!json_array.empty()) {
     response_data_json["code"] = 200;
     response_data_json["msg"]  = "success";
     response_data_json["data"] = json_array;

@@ -15,8 +15,7 @@ class UEInfoApiImpl : public oai::smf_server::api::UEInfoApi {
       std::string address);
   ~UEInfoApiImpl() {}
 
-  void get_ue_information(Pistache::Http::ResponseWriter& response);
-  void set_supi(const supi_t& s);
+  void get_ue_information(Pistache::Http::ResponseWriter& response) override;
 
  private:
   smf::smf_app* m_smf_app;

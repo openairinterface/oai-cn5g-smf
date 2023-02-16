@@ -882,24 +882,11 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     return smf_procedure_code::ERROR;
   }
 
-  // get ue information  ues_info
-  uemsg_t ue_msg = {};
-
-  // timestap
-  time_t nowtime;
-  nowtime = time(NULL);
-  char timestamp[64];
-  strftime(
-      timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&nowtime));
-  ue_msg.timestamp = timestamp;
-  // imsi
-  ue_msg.imsi =
+  std::string supi =
       smf_supi_to_string(n11_triggered_pending->res.get_supi()).c_str();
-  // ueip
-  struct in_addr ue_addr = n11_triggered_pending->res.get_paa().ipv4_address;
-  ue_msg.ueip            = inet_ntoa(ue_addr);
-
-  smf_app_inst->update_uemsg_list(ue_msg);
+  std::shared_ptr<smf_ue_msg> ue_msg(new smf_ue_msg(
+      supi, conv::toString(n11_triggered_pending->res.get_paa().ipv4_address)));
+  smf_app_inst->set_supi_2_smf_ue_msg(supi, ue_msg);
 
   return smf_procedure_code::OK;
 }
