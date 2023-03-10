@@ -1083,6 +1083,8 @@ void smf_config::display() {
       "    ENABLE DL PDR IN PFCP SESSION ESTAB.: %s",
       enable_dl_pdr_in_pfcp_sess_estab ? "Yes" : "No");
   Logger::smf_app().info(
+      "    ENABLE USAGE REPORTING..............: %s", enable_ur ? "Yes" : "No");
+  Logger::smf_app().info(
       "    UPF N3 LOCAL ADDRESS ...............: %s", local_n3_addr.c_str());
 
   Logger::smf_app().info("- DNN configurations:");
