@@ -1,0 +1,3 @@
+[submodule "src/oai-cn5g-common-src"]
+	path = src/oai-cn5g-common-src
+	url = https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-common-src.git
