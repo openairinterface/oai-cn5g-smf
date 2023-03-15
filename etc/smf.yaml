@@ -1,0 +1,222 @@
+################################################################################
+# Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The OpenAirInterface Software Alliance licenses this file to You under
+# the OAI Public License, Version 1.1  (the "License"); you may not use this file
+# except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.openairinterface.org/?page_id=698
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#-------------------------------------------------------------------------------
+# For more information about the OpenAirInterface (OAI) Software Alliance:
+#      contact@openairinterface.org
+################################################################################
+
+##### Base configuration #####
+
+# Name of the component, used towards NRF. Valid values: any string, DEFAULT="PCF"
+name: "{{ env["SMF_NAME"] if "SMF_NAME" in env.keys() else 'OAI-SMF' }}"
+
+# DNS configuration
+## Allowed values: IPv4 dotted decimal string
+dns_primary_ipv4: "{{ env["DEFAULT_DNS_IPV4_ADDRESS"] }}"
+## Allowed values: IPv6 hex string
+dns_primary_ipv6: "2001:4860:4860::8888"
+## Allowed values: IPv4 dotted decimal string
+dns_secondary_ipv4: "{{ env["DEFAULT_DNS_SEC_IPV4_ADDRESS"] }}"
+## Allowed values: IPv6 hex string
+dns_secondary_ipv6: "2001:4860:4860::8844"
+
+# IMS (P-CSCF) configuration
+## Allowed values: IPv4 dotted decimal string
+pcscf_ipv4: "{{ env["DEFAULT_PCSCF_IPV4_ADDRESS"] if "DEFAULT_PCSCF_IPV4_ADDRESS" in env.keys() else '127.0.0.1' }}"
+## Allowed values: IPv6 hex string
+pcscf_ipv6: "fe80::7915:f408:1787:db8b"
+
+ue_mtu: {{ env["UE_MTU"] if "UE_MTU" in env.keys() else '1500' }}
+
+
+
+##### Options to enable/disable #####
+# If "on": Register to NRF, DEFAULT= off
+register_nrf: {{ env["REGISTER_NRF"] if "REGISTER_NRF" in env.keys() else 'no' }}
+
+# If "on": Discover UPF via NRF, Default= off
+discover_upf: "{{ env["DISCOVER_UPF"] if "DISCOVER_UPF" in env.keys() else 'no' }}"
+
+# If "on": Discover PCF via NRF, Default= off
+# TODO currently not supported
+discover_pcf: "{{ env["DISCOVER_PCF"] if "DISCOVER_PCF" in env.keys() else 'no' }}"
+
+# If "on": Use the local subscription info from this file, else use a UDM, Default=off
+use_local_subscription_info: "{{ env["USE_LOCAL_SUBSCRIPTION_INFO"] if "USE_LOCAL_SUBSCRIPTION_INFO" in env.keys() else 'no' }}"
+
+# If "on": Use the local PCC rules from this file, else use a PCF, Default=on
+# TODO local PCC rules not yet supported, will just use the default subscription info
+use_local_pcc_rules: "{{ env["USE_LOCAL_PCC_RULES"] if "USE_LOCAL_PCC_RULES" in env.keys() else 'yes' }}"
+
+# If "2": Send only HTTP/2 requests, DEFAULT=1 (HTTP1)
+client_http_version: {{ env["CLIENT_HTTP_VERSION"] if "CLIENT_HTTP_VERSION" in env.keys() else '1' }}
+
+##### Local interface #####
+# Local SBI interface
+## name: Name of the NIC to read the IP address from
+## port_http: unsigned int between 1-65535 for HTTP1 port
+## port_http2: unsigned int between 1-65535 for HTTP2 port
+## http_version: Allowed values: "1", "2"
+## api_version: Allowed values: "v1", "v2", used to create the 3GPP API version for the SBI URL
+local_sbi_interface:
+  name: "{{ env["SBI_IF_NAME"] }}"
+  port_http: {{ env["SBI_PORT_HTTP1"] if "SBI_PORT_HTTP1" in env.keys() else '80' }}
+  port_http2: {{ env["SBI_PORT_HTTP2"] if "SBI_PORT_HTTP2" in env.keys() else '8080' }}
+  http_version: {{ env["SBI_HTTP_VERSION"] if "SBI_HTTP_VERSION" in env.keys() else '1' }}
+  api_version: "{{ env["SBI_API_VERSION"] if "SBI_API_VERSION" in env.keys() else 'v1' }}"
+
+local_n4_interface:
+  name: "{{ env["SMF_INTERFACE_NAME_FOR_N4"] }}"
+  port: 8805
+
+##### Next hop interfaces #####
+
+# Next hop SBI interfaces
+## host: IPv4 address or hostname
+## api_version: Allowed values: "v1", "v2", used to create the 3GPP API version for the SBI URL
+amf:
+  host: "{{ env["AMF_HOST"] if "AMF_HOST" in env.keys() else 'oai-amf' }}"
+  port: {{ env["AMF_PORT"] if "AMF_PORT" in env.keys() else '80' }}
+  api_version: "{{ env["AMF_API_VERSION"] if "NRF_API_VERSION" in env.keys() else 'v1' }}"
+
+# mandatory if use_local_subscription_info=off
+udm:
+  host: "{{ env["UDM_HOST"] if "UDM_HOST" in env.keys() else 'oai-udm' }}"
+  port: {{ env["AMF_PORT"] if "AMF_PORT" in env.keys() else '80' }}
+  api_version: "{{ env["AMF_API_VERSION"] if "NRF_API_VERSION" in env.keys() else 'v1' }}"
+
+# mandatory if use_local_pcc_rules=off
+pcf:
+  host: "{{ env["PCF_HOST"] if "PCF_HOST" in env.keys() else 'oai-pcf' }}"
+  port: {{ env["PCF_PORT"] if "PCF_PORT" in env.keys() else '80' }}
+  api_version: "{{ env["PCF_API_VERSION"] if "PCF_API_VERSION" in env.keys() else 'v1' }}"
+
+# mandatory if REGISTER_NRF, DISCOVER_UPF or DISCOVER_PCF=on
+nrf:
+  host: "{{ env["NRF_HOST"] if "NRF_HOST" in env.keys() else 'oai-nrf' }}"
+  port: {{ env["NRF_PORT"] if "NRF_PORT" in env.keys() else '80' }}
+  api_version: "{{ env["NRF_API_VERSION"] if "NRF_API_VERSION" in env.keys() else 'v1' }}"
+
+# List of UPFs
+## If discover_upf=yes, these values are ignored and thus optional
+upfs:
+  - host: "{{ env["UPF_HOST0"] }}"
+    port: 8805
+    config:
+      enable_usage_reporting: {{ env["ENABLE_USAGE_REPORTING0"] if "ENABLE_USAGE_REPORTING0" in env.keys() else 'no' }}
+      enable_dl_pdr_in_pfcp_session_establishment: {{ env["ENABLE_DL_PDR_IN_PFCP_SESS_ESTAB0"] if "ENABLE_DL_PDR_IN_PFCP_SESS_ESTAB0" in env.keys() else 'no' }}
+      n3_local_ipv4: "{{ env["N3_LOCAL_IPV4_ADDRESS0"] if "N3_LOCAL_IPV4_ADDRESS0" in env.keys() else '0.0.0.0' }}"
+     # follows UPFInfo from 3GPP TS 29.510, currently only these values from interfaceUpfInfoList are supported
+    upf_info:
+      interfaceUpfInfoList:
+        - interfaceType: "N3"
+          networkInstance: "{{ env["DOMAIN_ACCESS0"] if "DOMAIN_ACCESS0" in env.keys() else 'access.oai.org' }}"
+        - interfaceType: "N6"
+          networkInstance: "{{ env["DOMAIN_CORE0"] if "DOMAIN_CORE0" in env.keys() else 'core.oai.org' }}"
+
+# List of DNNs
+## dnn: Allowed values: Any string
+## pdu_session_type: Allowed values: "IPv4", "IPv6", "IPv4v6"
+## ipv4_pool: Allowed values: Dotted decimal with slash notation (e.g., 12.1.1.0/24)
+##            The first host address is reserved for the GTP network device on UPF (TODO confirm??)
+## ipv6_prefix: Allowed values: IPv6 prefix with slash notation (e.g., 2001:1:2::/64)
+## Please make sure that the IP pools do NOT overlap
+dnns:
+  - dnn: "{{ env["DNN_NI0"] }}"
+    pdu_session_type: "{{ env["TYPE0"] if "TYPE0" in env.keys() else 'IPv4' }}"
+    ipv4_pool: "{{ env["DNN_V4_POOL0"] }}"
+    ipv6_prefix: "2001:1:2::/64"
+  - dnn: "{{ env["DNN_NI1"] }}"
+    pdu_session_type: "{{ env["TYPE1"] if "TYPE1" in env.keys() else 'IPv4' }}"
+    ipv4_pool: "{{ env["DNN_V4_POOL1"] }}"
+    ipv6_prefix: "2001:1:2::/64"
+  - dnn: "{{ env["DNN_NI2"] }}"
+    pdu_session_type: "{{ env["TYPE2"] if "TYPE2" in env.keys() else 'IPv4' }}"
+    ipv4_pool: "{{ env["DNN_V4_POOL2"] }}"
+    ipv6_prefix: "2001:1:2::/64"
+  - dnn: "{{ env["DNN_NI3"] }}"
+    pdu_session_type: "{{ env["TYPE3"] if "TYPE3" in env.keys() else 'IPv4' }}"
+    ipv4_pool: "{{ env["DNN_V4_POOL3"] }}"
+    ipv6_prefix: "2001:1:2::/64"
+
+# Local subscription info, only used if use_local_subscription_infos=on
+## nssai:
+### sst: Allowed values in decimal or in hexadecimal representation with leading 0x
+### sd: Allowed values in decimal or in hexadecimal representation with leading 0x
+## dnn: Any string
+## scc_mode: Allowed values: 1
+## qos_profile:
+### 5qi: decimal 5QI value
+### priority: decimal priority
+### arp_priority: decimal ARP priority
+# TODO check if other values are allowed as well
+### arp_preempt_capability: Allowed Values "NOT_PREEMPT"
+### arp_preempt_vulnerability: Allowed Values "NOT_PREEMTABLE"
+### session_ambr_ul: Decimal value followed by unit (Kbps, Mbps, Gbps, Tbps, Pbps)
+local_subscription_infos:
+  - nssai:
+      sst: "{{ env["NSSAI_SST0"] }}"
+      sd: "{{ env["NSSAI_SD0"] if "NSSAI_SD0" in env.keys() else '0xFFFFFF' }}"
+    dnn: "{{ env["DNN_NI0"] }}"
+    scc_mode: 1
+    qos_profile:
+      5qi: {{ env["QOS_PROFILE_5QI0"] if "QOS_PROFILE_5QI0" in env.keys() else '6' }}
+      priority: 1
+      arp_priority: 1
+      arp_preempt_capability: "NOT_PREEMPT"
+      arp_preempt_vulnerability: "NOT_PREEMPTABLE"
+      session_ambr_ul: "{{ env["SESSION_AMBR_UL0"] if "SESSION_AMBR_UL0" in env.keys() else '1000Mbps' }}"
+      session_ambr_dl: "{{ env["SESSION_AMBR_DL0"] if "SESSION_AMBR_DL0" in env.keys() else '1000Mbps' }}"
+  - nssai:
+      sst: {{ env["NSSAI_SST1"] }}
+      sd: "{{ env["NSSAI_SD1"] if "NSSAI_SD1" in env.keys() else '0xFFFFFF' }}"
+    dnn: "{{ env["DNN_NI1"] }}"
+    scc_mode: 1
+    qos_profile:
+      5qi: {{ env["QOS_PROFILE_5QI1"] if "QOS_PROFILE_5QI1" in env.keys() else '7' }}
+      priority: 1
+      arp_priority: 1
+      arp_preempt_capability: "NOT_PREEMPT"
+      arp_preempt_vulnerability: "NOT_PREEMPTABLE"
+      session_ambr_ul: "{{ env["SESSION_AMBR_UL1"] if "SESSION_AMBR_UL1" in env.keys() else '1000Mbps' }}"
+      session_ambr_dl: "{{ env["SESSION_AMBR_DL1"] if "SESSION_AMBR_DL1" in env.keys() else '1000Mbps' }}"
+  - nssai:
+      sst: {{ env["NSSAI_SST2"] }}
+      sd: "{{ env["NSSAI_SD2"] if "NSSAI_SD2" in env.keys() else '0xFFFFFF' }}"
+    dnn: "{{ env["DNN_NI2"] }}"
+    scc_mode: 1
+    qos_profile:
+      5qi: {{ env["QOS_PROFILE_5QI2"] if "QOS_PROFILE_5QI2" in env.keys() else '8' }}
+      priority: 1
+      arp_priority: 1
+      arp_preempt_capability: "NOT_PREEMPT"
+      arp_preempt_vulnerability: "NOT_PREEMPTABLE"
+      session_ambr_ul: "{{ env["SESSION_AMBR_UL2"] if "SESSION_AMBR_UL2" in env.keys() else '1000Mbps' }}"
+      session_ambr_dl: "{{ env["SESSION_AMBR_DL2"] if "SESSION_AMBR_DL2" in env.keys() else '1000Mbps' }}"
+  - nssai:
+      sst: {{ env["NSSAI_SST3"] }}
+      sd: "{{ env["NSSAI_SD3"] if "NSSAI_SD3" in env.keys() else '0xFFFFFF' }}"
+    dnn: "{{ env["DNN_NI3"] }}"
+    scc_mode: 1
+    qos_profile:
+      5qi: {{ env["QOS_PROFILE_5QI3"] if "QOS_PROFILE_5QI3" in env.keys() else '9' }}
+      priority: 1
+      arp_priority: 1
+      arp_preempt_capability: "NOT_PREEMPT"
+      arp_preempt_vulnerability: "NOT_PREEMPTABLE"
+      session_ambr_ul: "{{ env["SESSION_AMBR_UL3"] if "SESSION_AMBR_UL3" in env.keys() else '1000Mbps' }}"
+      session_ambr_dl: "{{ env["SESSION_AMBR_DL3"] if "SESSION_AMBR_DL3" in env.keys() else '1000Mbps' }}"
