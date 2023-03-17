@@ -90,8 +90,16 @@ struct policy_association {
     plmn_id_model.setMcc(mcc_string);
     context = {};
 
+    //TODO quick and dirty fix because PCF requires "imsi-" format
+    // we should handle this SMF-wide
+    std::string prefix_tmp = supi_prefix;
+    if (supi_prefix.empty())
+    {
+      prefix_tmp = "imsi";
+    }
+
     context.setPduSessionId(pdu_session_id);
-    context.setSupi(smf_get_supi_with_prefix(supi_prefix, supi));
+    context.setSupi(smf_get_supi_with_prefix(prefix_tmp, supi));
     oai::smf_server::model::PduSessionType pdu_session_type_model;
     // hacky
     from_json(pdu_session_type.to_string(), pdu_session_type_model);
