@@ -42,6 +42,7 @@
 #include "smf_profile.hpp"
 #include "PlmnId.h"
 #include "DddStatus.h"
+#include "SmPolicyDecision.h"
 
 extern "C" {
 #include "QOSRules.h"
@@ -758,16 +759,25 @@ class data_notification_msg {
 };
 
 class sm_policy_update {
-  private:
-    oai::smf_server::model::SmPolicyDecision smPolicyDecision;
-    std::string resourceUri;
-  void setSMPolicyDecision(oai::smf_server::model::SmPolicyDecision& decision){
+  public:
+  void setSMPolicyDecision(oai::smf_server::model::SmPolicyDecision decision){
     this->smPolicyDecision = decision;
+  }
+
+  oai::smf_server::model::SmPolicyDecision getSMPolicyDecision(){
+    return smPolicyDecision;
   }
 
   void setResourceUri(std::string resourceUri){
     this->resourceUri = resourceUri;
   }
+  
+  std::string getResourceUri(){
+    return resourceUri;
+  }
+  private:
+    oai::smf_server::model::SmPolicyDecision smPolicyDecision;
+    std::string resourceUri;
 };
 
 }  // namespace smf
