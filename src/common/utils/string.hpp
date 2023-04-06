@@ -30,6 +30,7 @@
 
 #include <string>
 #include <arpa/inet.h>
+#include <vector> 
 
 extern "C" {
 #include "bstrlib.h"
@@ -64,5 +65,6 @@ void string_to_bstring(const std::string& str, bstring bstr);
 bool string_to_dotted(const std::string& str, std::string& dotted);
 bool dotted_to_string(const std::string& dot, std::string& no_dot);
 void string_to_dnn(const std::string& str, bstring bstr);
+void split(std::string s, std::string delimiter, std::vector<std::string>& res);
 }  // namespace util
 #endif

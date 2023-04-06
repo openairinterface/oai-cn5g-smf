@@ -201,3 +201,16 @@ void util::string_to_dnn(const std::string& str, bstring bstr) {
   bstr->slen = str.length();
   memcpy((void*) bstr->data, (void*) str.c_str(), str.length());
 }
+
+void util::split(std::string s, std::string delimiter, std::vector<std::string>& res) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    std::string token;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+
+    res.push_back (s.substr (pos_start));
+}

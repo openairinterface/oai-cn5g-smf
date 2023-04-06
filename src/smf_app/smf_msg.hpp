@@ -756,6 +756,22 @@ class data_notification_msg {
   // std::vector<ChangeItem> m_ProfileChanges;
   // bool m_ProfileChangesIsSet;
 };
+
+class sm_policy_update {
+  private:
+    oai::smf_server::model::SmPolicyDecision smPolicyDecision;
+    std::string resourceUri;
+  void setSMPolicyDecision(oai::smf_server::model::SmPolicyDecision& decision){
+    this->smPolicyDecision = decision;
+  }
+
+  void setResourceUri(std::string resourceUri){
+    this->resourceUri = resourceUri;
+  }
+};
+
 }  // namespace smf
+
+
 
 #endif

@@ -1518,6 +1518,64 @@ bool smf_app::handle_nf_status_notification(
   return true;
 }
 
+
+bool smf_app::handle_sm_policy_update_notification(
+      std::shared_ptr<itti_sbi_policy_notification>& msg,
+      oai::smf_server::model::ProblemDetails& problem_details,
+      uint8_t& http_code) {
+    
+    Logger::smf_app().debug("Handling SM Policy Update Notification from PCF...");
+
+
+    // associate the policy update to the right session context using the referenceUri?
+    smf::sm_policy_update policy_decision =  msg.get()->policy_data;
+    std::vector<std::string> refs;
+    util::split(policy_decision.getResourceUri(), "-", refs);
+
+    // look for the correspondent SMF Context
+    std::string scid = refs[0];
+    uint32_t smf_context_id = stoul(scid);
+
+    std::shared_ptr<smf::smf_context_ref> scf = {};
+    if(is_scid_2_smf_context(smf_context_id)){
+      scf = scid_2_smf_context(smf_context_id);
+    }
+    else {
+      Logger::smf_app().warn(
+        "Context associated with this id " SCID_FMT " does not exit!", scid);
+      return false;
+    }
+    
+    supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
+    std::shared_ptr<smf::smf_context> sc = {};
+
+    if(is_supi_2_smf_context(supi64)){
+      sc = supi_2_smf_context(supi64);
+    }
+    else {
+      Logger::smf_app().warn(
+        "Context associated with this supi " SUPI_64_FMT " does not exit!", supi64);
+      return false;
+    }
+
+    // look for the interested PDU Session
+    std::string psi_s = refs[1];
+    pdu_session_id psi = stoi(psi_s);  
+
+
+    Logger::smf_app().warn(
+      "The context is not able to handle this procedure right now..."
+    );
+
+    //sc->handle_sm_policy_update(psi, policy_decision);
+    // let the SM Context handle the policy update
+
+    
+  return true;
+}
+
+
+
 //------------------------------------------------------------------------------
 bool smf_app::is_supi_2_smf_context(const supi64_t& supi) const {
   std::shared_lock lock(m_supi2smf_context);
