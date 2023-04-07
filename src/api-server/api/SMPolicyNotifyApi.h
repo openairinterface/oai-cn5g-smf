@@ -51,7 +51,7 @@ class SMPolicyNotifyApi {
   virtual ~SMPolicyNotifyApi() {}
   void init();
 
-  const std::string base = "/callbacks/npcf-smpolicycontrol/";
+  const std::string base = "/nsmf-smpolicycontrol-notify/";
 
  private:
   void setupRoutes();
