@@ -1253,7 +1253,139 @@ smf_procedure_code session_update_sm_context_procedure::run(
     } break;
 
     case session_management_procedures_type_e::
+        SERVICE_REQUEST_UE_TRIGGERED_STEP1: {
+      Logger::smf_app().debug("SERVICE_REQUEST_UE_TRIGGERED_STEP1");
+      for (const auto& qfi : list_of_qfis_to_be_modified) {
+        auto flow = dl_edges[0].get_qos_flow(qfi);
+        if (!flow) {  // no QoS flow found
+          Logger::smf_app().error(
+              "could not find any QoS flow with QFI %d", qfi.qfi);
+          // Set cause to SYSTEM_FAILURE and send response
+          qos_flow_context_updated qcu = {};
+          qcu.set_cause(static_cast<uint8_t>(
+              cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+          qcu.set_qfi(qfi);
+          n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
+          continue;
+        }
+        Logger::smf_app().debug("Create FAR DL");
+        // for each UL edge we need a FAR, because of UL CL
+        edge dl_edge = dl_edges[0];
+        for (auto& edge : ul_edges) {
+          // we set PDR ID UL to 0, so we create new ones
+          auto flow_dl       = dl_edge.get_qos_flow(flow->qfi);
+          flow_dl->pdr_id_dl = 0;
+
+          pfcp::create_far create_far = pfcp_create_far(dl_edge, flow->qfi);
+
+          synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
+          // Add IEs to message
+          n4_triggered->pfcp_ies.set(create_far);
+        }
+
+        send_n4 = true;
+        Logger::smf_app().debug(
+            "FAR DL ID "
+            "0x%" PRIx32 " ",
+            flow->far_id_dl.second.far_id);
+
+        if (not flow->pdr_id_dl.rule_id) {
+          Logger::smf_app().debug("Create PDR DL");
+          //-------------------
+          // IE create_pdr
+          //-------------------
+          // for each UL edge we need a PDR
+          for (auto& ul_edge : ul_edges) {
+            pfcp::create_pdr create_pdr = pfcp_create_pdr(
+                ul_edge, flow->qfi, current_upf->function_features.second);
+            n4_triggered->pfcp_ies.set(create_pdr);
+            synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
+          }
+
+          send_n4 = true;
+
+          Logger::smf_app().debug(
+              "PDR DL ID "
+              "0x%" PRIx16 " ",
+              flow->pdr_id_dl.rule_id);
+        } else {
+          // TODO refactor update
+          Logger::smf_app().debug(
+              "Update FAR, PDR DL Rule Id "
+              "0x%" PRIx16 ", FAR ID 0x%" PRIx32 " ",
+              flow->pdr_id_dl.rule_id, flow->far_id_dl.second.far_id);
+
+          pfcp::update_pdr update_pdr               = {};
+          pfcp::precedence_t precedence             = {};
+          pfcp::pdi pdi                             = {};
+          pfcp::ue_ip_address_t ue_ip_address       = {};
+          pfcp::source_interface_t source_interface = {};
+
+          if (sps->ipv4) {
+            ue_ip_address.v4 = 1;
+            // Bit 3 – S/D: TS 29.244 R16, 8.2.62 In the PDI IE, if this bit
+            // is set to "0", this indicates a Source IP address; if this bit
+            // is set to "1", this indicates a Destination IP address.
+            ue_ip_address.sd                  = 1;
+            ue_ip_address.ipv4_address.s_addr = sps->ipv4_address.s_addr;
+          }
+          if (sps->ipv6) {
+            ue_ip_address.v6           = 1;
+            ue_ip_address.ipv6_address = sps->ipv6_address;
+          }
+          precedence.precedence = flow->precedence.precedence;
+
+          source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
+          if (!ul_edges[0].nw_instance.empty()) {
+            // mandatory for travelping
+            pfcp::network_instance_t network_instance = {};
+            network_instance.network_instance         = ul_edges[0].nw_instance;
+            pdi.set(network_instance);
+          }
+
+          pdi.set(source_interface);
+          pdi.set(ue_ip_address);
+
+          if (smf_cfg.enable_ur) {
+            pfcp::urr_id_t urr_Id = flow->urr_id;
+            update_pdr.set(urr_Id);
+          }
+
+          update_pdr.set(flow->pdr_id_dl);
+          update_pdr.set(precedence);
+          update_pdr.set(pdi);
+          update_pdr.set(flow->far_id_dl.second);
+
+          // Add IEs to message
+          n4_triggered->pfcp_ies.set(update_pdr);
+
+          send_n4 = true;
+          Logger::smf_app().debug(
+              "PDR DL ID  "
+              "0x%" PRIx16 " updated",
+              flow->pdr_id_dl.rule_id);
+        }
+        // after a release flows
+        if (not flow->ul_fteid.is_zero()) {
+        }
+
+        if (not flow->dl_fteid.is_zero()) {
+        }
+        // may be modified
+        // TODO can I safely remove that?
+        // sps->add_qos_flow(flow);
+
+        qos_flow_context_updated qcu = {};
+        qcu.set_cause(static_cast<uint8_t>(
+            cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+        qcu.set_qfi(qfi);
+        n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
+      }
+    } break;
+
+    case session_management_procedures_type_e::
         PDU_SESSION_RELEASE_AN_INITIATED: {
+      Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
       // we use the first dl_edge as we can only have one N3 interface
       for (const auto& qfi : list_of_qfis_to_be_modified) {
         auto flow = dl_edges[0].get_qos_flow(qfi);
