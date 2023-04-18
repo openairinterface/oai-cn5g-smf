@@ -1276,8 +1276,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
         remove_pdr_dl.set(flow->pdr_id_dl);
         remove_pdr_ul.set(flow->pdr_id_ul);
-        remove_far_dl.far_id = flow->far_id_dl.second.far_id;
-        remove_far_ul.far_id = flow->far_id_ul.second.far_id;
+        remove_far_dl.far_id.first  = true;
+        remove_far_dl.far_id.second = flow->far_id_dl.second.far_id;
+        remove_far_ul.far_id.first  = true;
+        remove_far_ul.far_id.second = flow->far_id_ul.second.far_id;
 
         n4_triggered->pfcp_ies.set(remove_pdr_dl);
         n4_triggered->pfcp_ies.set(remove_pdr_ul);
