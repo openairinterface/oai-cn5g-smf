@@ -1645,6 +1645,21 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
         return smf_procedure_code::ERROR;
       }
     } break;
+    case session_management_procedures_type_e::
+        PDU_SESSION_RELEASE_AN_INITIATED: {
+      Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
+      std::map<uint8_t, qos_flow_context_updated>
+          qos_flow_context_to_be_updateds = {};
+      n11_triggered_pending->res.get_all_qos_flow_context_updateds(
+          qos_flow_context_to_be_updateds);
+      n11_triggered_pending->res.remove_all_qos_flow_context_updateds();
+
+      for (const auto& it : qos_flow_context_to_be_updateds) {
+        Logger::smf_app().debug(
+            "QoS Flow context to be modified QFI %d", it.first);
+        sps->remove_qos_flow(it.second.qfi);
+      }
+    }
   }
 
   std::shared_ptr<pfcp_association> next_upf = {};
