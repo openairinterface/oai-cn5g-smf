@@ -893,6 +893,8 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
 //------------------------------------------------------------------------------
 smf_procedure_code
 session_update_sm_context_procedure::send_n4_session_modification_request() {
+  Logger::smf_app().debug("Send N4 Session Modification Request");
+
   std::shared_ptr<pfcp_association> current_upf = {};
   std::vector<edge> dl_edges{};
   std::vector<edge> ul_edges{};

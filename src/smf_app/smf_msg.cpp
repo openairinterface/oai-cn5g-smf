@@ -624,6 +624,12 @@ void pdu_session_update_sm_context_request::set_upCnx_state(
 }
 
 //-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_upCnx_state(
+    std::string& value) const {
+  value = m_upCnx_state;
+}
+
+//-----------------------------------------------------------------------------
 bool pdu_session_update_sm_context_request::upCnx_state_is_set() const {
   return m_upCnx_state_is_set;
 }

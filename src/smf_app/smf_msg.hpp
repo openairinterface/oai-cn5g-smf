@@ -372,6 +372,7 @@ class pdu_session_update_sm_context_request
   void set_dl_fteid(const pfcp::fteid_t& t);
   void get_dl_fteid(pfcp::fteid_t& t);
   void set_upCnx_state(const std::string& value);
+  void get_upCnx_state(std::string& value) const;
   bool upCnx_state_is_set() const;
   void set_rat_type(const std::string& value);
   bool rat_type_is_set() const;
