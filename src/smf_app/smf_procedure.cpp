@@ -1252,6 +1252,58 @@ smf_procedure_code session_update_sm_context_procedure::run(
       }
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_RELEASE_AN_INITIATED: {
+      // we use the first dl_edge as we can only have one N3 interface
+      for (const auto& qfi : list_of_qfis_to_be_modified) {
+        auto flow = dl_edges[0].get_qos_flow(qfi);
+        if (!flow) {  // no QoS flow found
+          Logger::smf_app().error(
+              "could not find any QoS flow with QFI %d", qfi.qfi);
+          // Set cause to SYSTEM_FAILURE and send response
+          qos_flow_context_updated qcu = {};
+          qcu.set_cause(static_cast<uint8_t>(
+              cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+          qcu.set_qfi(qfi);
+          n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
+          continue;
+        }
+
+        pfcp::remove_pdr remove_pdr_dl = {};
+        pfcp::remove_pdr remove_pdr_ul = {};
+        pfcp::remove_far remove_far_dl = {};
+        pfcp::remove_far remove_far_ul = {};
+
+        remove_pdr_dl.set(flow->pdr_id_dl);
+        remove_pdr_ul.set(flow->pdr_id_ul);
+        remove_far_dl.far_id = flow->far_id_dl.second.far_id;
+        remove_far_ul.far_id = flow->far_id_ul.second.far_id;
+
+        n4_triggered->pfcp_ies.set(remove_pdr_dl);
+        n4_triggered->pfcp_ies.set(remove_pdr_ul);
+        n4_triggered->pfcp_ies.set(remove_far_dl);
+        n4_triggered->pfcp_ies.set(remove_far_ul);
+
+        Logger::smf_app().debug(
+            "Remove FAR ID DL first %d,  FAR DL ID second "
+            "0x%" PRIx32 " ",
+            flow->far_id_dl.first, flow->far_id_dl.second.far_id);
+
+        Logger::smf_app().debug(
+            "Remove FAR, PDR DL Rule Id "
+            "0x%" PRIx16 ", FAR ID 0x%" PRIx32 " ",
+            flow->pdr_id_dl.rule_id, flow->far_id_dl.second.far_id);
+
+        send_n4 = true;
+
+        qos_flow_context_updated qcu = {};
+        qcu.set_cause(static_cast<uint8_t>(
+            cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+        qcu.set_qfi(qfi);
+        n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
+      }
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
