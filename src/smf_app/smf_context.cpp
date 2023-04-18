@@ -2953,7 +2953,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     std::string up_cnx_state = {};
     sm_context_req_msg.get_upCnx_state(up_cnx_state);
 
-    if (boost::iequals(up_cnx_state, "ACTIVATED")) {
+    if (boost::iequals(up_cnx_state, "DEACTIVATED")) {
       Logger::smf_app().info(
           "Deactivation of User Plane connectivity of a PDU session");
       procedure_type = session_management_procedures_type_e::
