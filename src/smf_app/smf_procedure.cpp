@@ -1256,7 +1256,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
         SERVICE_REQUEST_UE_TRIGGERED_STEP1: {
       Logger::smf_app().debug("SERVICE_REQUEST_UE_TRIGGERED_STEP1");
       for (const auto& qfi : list_of_qfis_to_be_modified) {
-        auto flow = dl_edges[0].get_qos_flow(qfi);
+        edge dl_edge = dl_edges[0];
+        auto flow    = dl_edges[0].get_qos_flow(qfi);
         if (!flow) {  // no QoS flow found
           Logger::smf_app().error(
               "Could not find any QoS flow with QFI %d", qfi.qfi);
@@ -1281,8 +1282,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
           // copy values from UL edge, so we simulate two downlink edges for
           // PFCP
-          flow_tmp flow_tmp        = dl_edge.get_qos_flow(flow->qfi);
-          flow->pdr_id_ul          = 0;
+          auto flow_tmp            = dl_edge.get_qos_flow(flow->qfi);
+          flow_tmp->pdr_id_ul      = 0;
           dl_edge.flow_description = ul_edge.flow_description;
           dl_edge.precedence       = ul_edge.precedence;
 
