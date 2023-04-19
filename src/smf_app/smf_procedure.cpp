@@ -1268,6 +1268,47 @@ smf_procedure_code session_update_sm_context_procedure::run(
           n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
           continue;
         }
+
+        // In UL CL case, we have 2 PDRs, but they have the same choose ID ->
+        // same TEID We also set the same URR ID for all edges
+        for (auto ul_edge : ul_edges) {
+          //-------------------
+          // IE CREATE_FAR
+          //-------------------
+          pfcp::create_far create_far = pfcp_create_far(ul_edge, flow->qfi);
+          // copy created FAR ID to DL edge for PDR
+          synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
+
+          // copy values from UL edge, so we simulate two downlink edges for
+          // PFCP
+          flow_tmp flow_tmp        = dl_edge.get_qos_flow(flow->qfi);
+          flow->pdr_id_ul          = 0;
+          dl_edge.flow_description = ul_edge.flow_description;
+          dl_edge.precedence       = ul_edge.precedence;
+
+          //-------------------
+          // IE CREATE_PDR
+          //-------------------
+          pfcp::create_pdr create_pdr = pfcp_create_pdr(
+              dl_edge, flow->qfi, current_upf->function_features.second);
+          synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
+
+          // ADD IEs to message
+          //-------------------
+          n4_triggered->pfcp_ies.set(create_pdr);
+          n4_triggered->pfcp_ies.set(create_far);
+
+          if (smf_cfg.enable_dl_pdr_in_pfcp_sess_estab) {
+            pfcp::create_far create_far_dl =
+                pfcp_create_far(dl_edge, flow->qfi);
+            pfcp::create_pdr create_pdr_dl =
+                pfcp_create_pdr_dl(dl_edge, flow->qfi);
+            n4_triggered->pfcp_ies.set(create_pdr_dl);
+            n4_triggered->pfcp_ies.set(create_far_dl);
+          }
+        }
+
+        /*
         Logger::smf_app().debug("Create FAR DL");
         // for each UL edge we need a FAR, because of UL CL
         edge dl_edge = dl_edges[0];
@@ -1313,6 +1354,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
             "PDR DL ID "
             "0x%" PRIx16 " ",
             flow->pdr_id_dl.rule_id);
+*/
 
         /*
         if (not flow->pdr_id_dl.rule_id) {
