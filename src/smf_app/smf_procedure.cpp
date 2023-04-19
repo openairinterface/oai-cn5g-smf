@@ -1259,7 +1259,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
         auto flow = dl_edges[0].get_qos_flow(qfi);
         if (!flow) {  // no QoS flow found
           Logger::smf_app().error(
-              "could not find any QoS flow with QFI %d", qfi.qfi);
+              "Could not find any QoS flow with QFI %d", qfi.qfi);
           // Set cause to SYSTEM_FAILURE and send response
           qos_flow_context_updated qcu = {};
           qcu.set_cause(static_cast<uint8_t>(
@@ -1657,8 +1657,10 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       for (const auto& it : qos_flow_context_to_be_updateds) {
         Logger::smf_app().debug(
             "QoS Flow context to be modified QFI %d", it.first);
-        sps->remove_qos_flow(it.second.qfi);
+        // sps->remove_qos_flow(it.second.qfi);
       }
+      // Mark as deactivated
+      sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
     }
   }
 
