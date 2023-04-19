@@ -1289,6 +1289,26 @@ smf_procedure_code session_update_sm_context_procedure::run(
             "0x%" PRIx32 " ",
             flow->far_id_dl.second.far_id);
 
+        Logger::smf_app().debug("Create PDR DL");
+        //-------------------
+        // IE create_pdr
+        //-------------------
+        // for each UL edge we need a PDR
+        for (auto& ul_edge : ul_edges) {
+          pfcp::create_pdr create_pdr = pfcp_create_pdr(
+              ul_edge, flow->qfi, current_upf->function_features.second);
+          n4_triggered->pfcp_ies.set(create_pdr);
+          synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
+        }
+
+        send_n4 = true;
+
+        Logger::smf_app().debug(
+            "PDR DL ID "
+            "0x%" PRIx16 " ",
+            flow->pdr_id_dl.rule_id);
+
+        /*
         if (not flow->pdr_id_dl.rule_id) {
           Logger::smf_app().debug("Create PDR DL");
           //-------------------
@@ -1365,6 +1385,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
               "0x%" PRIx16 " updated",
               flow->pdr_id_dl.rule_id);
         }
+        */
         // after a release flows
         if (not flow->ul_fteid.is_zero()) {
         }
