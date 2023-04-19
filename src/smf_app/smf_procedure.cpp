@@ -1295,8 +1295,14 @@ smf_procedure_code session_update_sm_context_procedure::run(
         //-------------------
         // for each UL edge we need a PDR
         for (auto& ul_edge : ul_edges) {
+          // copy values from UL edge, so we simulate two downlink edges for
+          // PFCP
+          auto flow                   = dl_edge.get_qos_flow(flow->qfi);
+          flow->pdr_id_ul             = 0;
+          dl_edge.flow_description    = ul_edge.flow_description;
+          dl_edge.precedence          = ul_edge.precedence;
           pfcp::create_pdr create_pdr = pfcp_create_pdr(
-              ul_edge, flow->qfi, current_upf->function_features.second);
+              dl_edge, flow->qfi, current_upf->function_features.second);
           n4_triggered->pfcp_ies.set(create_pdr);
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
         }
