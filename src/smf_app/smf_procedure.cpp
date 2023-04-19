@@ -1309,6 +1309,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
           }
         }
 
+        send_n4 = true;
+
         /*
         Logger::smf_app().debug("Create FAR DL");
         // for each UL edge we need a FAR, because of UL CL
@@ -1449,6 +1451,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
         qcu.set_cause(static_cast<uint8_t>(
             cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
         qcu.set_qfi(qfi);
+
         n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
       }
     } break;
