@@ -273,14 +273,14 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // Session Establishment Request, 3GPP TS 29.244 V16.0.0)  source interface
   if (edge.uplink) {
     source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
-    if (flow->pdr_id_dl == 0) {
+    if (flow->pdr_id_dl.rule_id == 0) {
       sps->generate_pdr_id(flow->pdr_id_dl);
     }
     pdr_id = flow->pdr_id_dl;
     far_id = flow->far_id_dl.second;
   } else {
     source_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
-    if (flow->pdr_id_ul == 0) {
+    if (flow->pdr_id_ul.rule_id == 0) {
       sps->generate_pdr_id(flow->pdr_id_ul);
     }
     pdr_id = flow->pdr_id_ul;
@@ -1249,7 +1249,49 @@ smf_procedure_code session_update_sm_context_procedure::run(
             cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
         qcu.set_qfi(qfi);
         n11_triggered_pending->res.add_qos_flow_context_updated(qcu);
+
+        // TODO: for
+
+        if (session_procedure_type == session_management_procedures_type_e::
+                                          SERVICE_REQUEST_UE_TRIGGERED_STEP2) {
+          /*         Logger::smf_app().debug(
+                       "Update FAR UL "
+                       "0x%" PRIx32 " ",
+                       flow->far_id_ul.second.far_id);
+                   // Update FAR
+                   pfcp::update_far update_far_ul = {}; pfcp::apply_action_t
+             apply_action                               = {};
+                   pfcp::outer_header_creation_t outer_header_creation = {};
+                   pfcp::update_forwarding_parameters
+             update_forwarding_parameters = {}; pfcp::destination_interface_t
+             destination_interface             = {};
+
+                   update_far.set(flow->far_id_dl.second);
+                   outer_header_creation.outer_header_creation_description =
+                       OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
+                   outer_header_creation.teid = dl_fteid.teid;
+                   outer_header_creation.ipv4_address.s_addr =
+                       dl_fteid.ipv4_address.s_addr;
+                   update_forwarding_parameters.set(outer_header_creation);
+                   destination_interface.interface_value =
+             pfcp::INTERFACE_VALUE_ACCESS;
+                   update_forwarding_parameters.set(destination_interface);
+                   update_far.set(update_forwarding_parameters);
+                   apply_action.forw = 1;  // forward the packets
+                   // apply_action.nocp = 1; //notify the CP function about the
+             arrival
+                   // of a first DL packet
+                   update_far.set(apply_action);
+                   n4_triggered->pfcp_ies.set(update_far);
+
+                   send_n4               = true;
+                   flow->far_id_dl.first = true;
+                   flow->dl_fteid        = dl_fteid;
+
+       */
+        }
       }
+
     } break;
 
     case session_management_procedures_type_e::
@@ -1317,13 +1359,16 @@ smf_procedure_code session_update_sm_context_procedure::run(
                 send_n4 = true;
         */
 
+        // OK COPY TO NEXT STEP
+
         Logger::smf_app().debug("Create FAR DL");
         // for each UL edge we need a FAR, because of UL CL
         edge dl_edge = dl_edges[0];
         for (auto& edge : ul_edges) {
           // we set PDR ID UL to 0, so we create new ones
-          auto flow_dl       = dl_edge.get_qos_flow(flow->qfi);
-          flow_dl->pdr_id_dl = 0;
+          auto flow_dl               = dl_edge.get_qos_flow(flow->qfi);
+          flow_dl->pdr_id_dl.rule_id = 0;
+          flow_dl->far_id_dl         = {};
 
           pfcp::create_far create_far = pfcp_create_far(dl_edge, flow->qfi);
 
@@ -1344,6 +1389,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
         //-------------------
         // for each UL edge we need a PDR
         for (auto& ul_edge : ul_edges) {
+          // we set PDR ID UL to 0, so we create new ones
+          auto flow_dl                = dl_edge.get_qos_flow(flow->qfi);
+          flow_dl->pdr_id_dl.rule_id  = 0;
           pfcp::create_pdr create_pdr = pfcp_create_pdr(
               ul_edge, flow->qfi, current_upf->function_features.second);
           n4_triggered->pfcp_ies.set(create_pdr);
@@ -1358,19 +1406,24 @@ smf_procedure_code session_update_sm_context_procedure::run(
             flow->pdr_id_dl.rule_id);
 
         for (auto ul_edge : ul_edges) {
+          edge dl_edge = dl_edges[0];
           //-------------------
           // IE CREATE_FAR
           //-------------------
+          auto flow_ul               = dl_edge.get_qos_flow(flow->qfi);
+          flow_ul->pdr_id_ul.rule_id = 0;
+          flow_ul->far_id_ul         = {};
+
           pfcp::create_far create_far = pfcp_create_far(ul_edge, flow->qfi);
           // copy created FAR ID to DL edge for PDR
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
 
           // copy values from UL edge, so we simulate two downlink edges for
           // PFCP
-          auto flow_dl             = dl_edge.get_qos_flow(flow->qfi);
-          flow_dl->pdr_id_ul       = 0;
-          dl_edge.flow_description = ul_edge.flow_description;
-          dl_edge.precedence       = ul_edge.precedence;
+          auto flow_dl               = dl_edge.get_qos_flow(flow->qfi);
+          flow_dl->pdr_id_ul.rule_id = 0;
+          dl_edge.flow_description   = ul_edge.flow_description;
+          dl_edge.precedence         = ul_edge.precedence;
 
           //-------------------
           // IE CREATE_PDR
@@ -1526,6 +1579,16 @@ smf_procedure_code session_update_sm_context_procedure::run(
             "Remove FAR, PDR DL Rule Id "
             "0x%" PRIx16 ", FAR ID 0x%" PRIx32 " ",
             flow->pdr_id_dl.rule_id, flow->far_id_dl.second.far_id);
+
+        Logger::smf_app().debug(
+            "Remove FAR ID UL first %d,  FAR UL ID second "
+            "0x%" PRIx32 " ",
+            flow->far_id_ul.first, flow->far_id_ul.second.far_id);
+
+        Logger::smf_app().debug(
+            "Remove FAR, PDR UL Rule Id "
+            "0x%" PRIx16 ", FAR ID 0x%" PRIx32 " ",
+            flow->pdr_id_ul.rule_id, flow->far_id_ul.second.far_id);
 
         send_n4 = true;
         flow->clear();
