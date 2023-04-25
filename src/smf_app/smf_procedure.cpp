@@ -1354,7 +1354,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
           flow_dl->pdr_id_dl.rule_id  = 0;
           pfcp::create_pdr create_pdr = pfcp_create_pdr(
               ul_edge, flow->qfi, current_upf->function_features.second);
-          create_pdr.precedence.second.precedence = 1;
+          flow->precedence.precedence += 1;
+          create_pdr.precedence.second.precedence = flow->precedence.precedence;
           n4_triggered->pfcp_ies.set(create_pdr);
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi);
         }
@@ -1449,8 +1450,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
           auto flow_dl               = dl_edge.get_qos_flow(flow->qfi);
           flow_dl->pdr_id_ul.rule_id = 0;
           dl_edge.flow_description   = ul_edge.flow_description;
-          dl_edge.precedence = 1;  // ul_edge.precedence;
-
+          dl_edge.precedence =
+              flow_dl->precedence.precedence + 1;  // ul_edge.precedence;
+          flow_dl->precedence.precedence += 1;
           //-------------------
           // IE CREATE_PDR
           //-------------------

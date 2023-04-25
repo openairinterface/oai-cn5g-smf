@@ -226,11 +226,11 @@ class smf_qos_flow {
   smf_qos_flow() { clear(); }
 
   void clear() {
-    ul_fteid    = {};
-    dl_fteid    = {};
-    pdr_id_ul   = {};
-    pdr_id_dl   = {};
-    precedence  = {};
+    ul_fteid  = {};
+    dl_fteid  = {};
+    pdr_id_ul = {};
+    pdr_id_dl = {};
+    //    precedence  = {};
     far_id_ul   = {};
     far_id_dl   = {};
     urr_id      = {};
