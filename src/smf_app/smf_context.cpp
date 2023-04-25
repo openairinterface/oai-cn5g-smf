@@ -2747,8 +2747,9 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           return false;
         }
 
-        if (sm_context_req_msg.rat_type_is_set() and
-            sm_context_req_msg.an_type_is_set()) {
+        // if (sm_context_req_msg.rat_type_is_set() and
+        //     sm_context_req_msg.an_type_is_set()) {
+        if (sp->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_ACTIVATING) {
           procedure_type = session_management_procedures_type_e::
               SERVICE_REQUEST_UE_TRIGGERED_STEP2;
           Logger::smf_app().info(

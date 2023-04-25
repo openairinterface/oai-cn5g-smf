@@ -617,7 +617,7 @@ void smf_app::handle_itti_msg(
           status = pdu_session_status_e::PDU_SESSION_INACTIVE;
         } else if (m.msg_type == PDU_SESSION_ESTABLISHMENT_ACCEPT) {
           status = pdu_session_status_e::PDU_SESSION_ESTABLISHMENT_PENDING;
-          state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
+          // state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
         }
         update_pdu_session_status(m.scid, status);
         update_pdu_session_upCnx_state(m.scid, state);
