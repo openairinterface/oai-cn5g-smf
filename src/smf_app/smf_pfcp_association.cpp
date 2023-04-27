@@ -202,12 +202,6 @@ std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::pdr_id_t& pdr_id) {
   // it may happen that 2 qos flows have the same PDR ID e.g. in an
   // UL CL scenario, but then they will also have the same FTEID
   for (auto& flow_it : qos_flows) {
-    Logger::smf_app().debug(
-        "THINH4 PDR ID UL, rule ID %d, PDR ID %d", flow_it->pdr_id_ul.rule_id,
-        pdr_id.rule_id);
-    Logger::smf_app().debug(
-        "THINH4 PDR ID DL, rule ID %d, , PDR ID %d", flow_it->pdr_id_dl.rule_id,
-        pdr_id.rule_id);
     if (flow_it->pdr_id_ul == pdr_id || flow_it->pdr_id_dl == pdr_id) {
       return flow_it;
     }
