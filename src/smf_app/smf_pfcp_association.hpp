@@ -230,7 +230,8 @@ class smf_qos_flow {
     dl_fteid  = {};
     pdr_id_ul = {};
     pdr_id_dl = {};
-    //    precedence  = {};
+    //    precedence  = {}; //Keep the value of precedence to make sure the new
+    //    rule should be applied
     far_id_ul   = {};
     far_id_dl   = {};
     urr_id      = {};
