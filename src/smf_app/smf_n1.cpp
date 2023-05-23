@@ -220,7 +220,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // AlwaysonPDUSessionIndication
   sm_msg->pdu_session_establishment_accept.alwaysonpdusessionindication
-      .apsi_indication = ALWAYSON_PDU_SESSION_REQUIRED;
+      .apsi_indication = ALWAYSON_PDU_SESSION_NOT_ALLOWED;
 
   // TODO: MappedEPSBearerContexts
   // TODO: EAPMessage
