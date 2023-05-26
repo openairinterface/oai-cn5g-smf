@@ -1,122 +1,129 @@
 /*
- * Copyright (c) 2017 Sprint
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the
+ * License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
-#ifndef __LOGGER_H
-#define __LOGGER_H
+/*! \file logger.hpp
+\brief
+\author Stefan Spettel
+\company OpenAirInterface Software Alliance
+\date 2022
+\email: stefan.spettel@eurecom.fr
+*/
 
-#include <cstdarg>
-#include <stdexcept>
-#include <vector>
+#pragma once
 
-#define SPDLOG_LEVEL_NAMES                                                     \
-  {"trace", "debug", "info ", "start", "warn ", "error", "off  "};
+#include "logger_base.hpp"
 
-#define SPDLOG_ENABLE_SYSLOG
-#include "spdlog/spdlog.h"
-
-class LoggerException : public std::runtime_error {
- public:
-  explicit LoggerException(const char* m) : std::runtime_error(m) {}
-  explicit LoggerException(const std::string& m) : std::runtime_error(m) {}
-};
-
-class _Logger {
- public:
-  _Logger(
-      const char* category, std::vector<spdlog::sink_ptr>& sinks,
-      const char* pattern);
-
-  void trace(const char* format, ...);
-  void trace(const std::string& format, ...);
-  void debug(const char* format, ...);
-  void debug(const std::string& format, ...);
-  void info(const char* format, ...);
-  void info(const std::string& format, ...);
-  void startup(const char* format, ...);
-  void startup(const std::string& format, ...);
-  void warn(const char* format, ...);
-  void warn(const std::string& format, ...);
-  void error(const char* format, ...);
-  void error(const std::string& format, ...);
-
- private:
-  _Logger();
-
-  enum _LogType { _ltTrace, _ltDebug, _ltInfo, _ltStartup, _ltWarn, _ltError };
-
-  void log(_LogType lt, const char* format, va_list& args);
-
-  spdlog::logger m_log;
-};
+static const std::string SMF_APP        = "smf_app";
+static const std::string SMF_SBI        = "smf_sbi";
+static const std::string SYSTEM         = "system ";
+static const std::string UDP            = "udp    ";
+static const std::string PFCP           = "pfcp   ";
+static const std::string SMF_N4         = "smf_n4 ";
+static const std::string SMF_N1         = "smf_n1 ";
+static const std::string SMF_N2         = "smf_n2 ";
+static const std::string SMF_N7         = "smf_n7 ";
+static const std::string SMF_API_SERVER = "smf_api";
+static const std::string ITTI           = "itti   ";
+static const std::string ASYNC          = "async  ";
 
 class Logger {
  public:
   static void init(
-      const char* app, const bool log_stdout, const bool log_rot_file) {
-    singleton()._init(app, log_stdout, log_rot_file);
+      const std::string& name, bool log_stdout, bool log_rot_file) {
+    oai::logger::logger_registry::register_logger(
+        name, SMF_APP, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_SBI, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SYSTEM, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, UDP, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_N1, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_N2, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_N4, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_N7, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, SMF_API_SERVER, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, PFCP, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, ITTI, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
+        name, ASYNC, log_stdout, log_rot_file);
   }
-  static void init(
-      const std::string& app, const bool log_stdout, const bool log_rot_file) {
-    init(app.c_str(), log_stdout, log_rot_file);
+  static void set_level(spdlog::level::level_enum level) {
+    oai::logger::logger_registry::set_level(level);
+  }
+  static bool should_log(spdlog::level::level_enum level) {
+    return oai::logger::logger_registry::should_log(level);
   }
 
-  static _Logger& async_cmd() { return *singleton().m_async_cmd; }
-  static _Logger& itti() { return *singleton().m_itti; }
-  static _Logger& smf_app() { return *singleton().m_smf_app; }
-  static _Logger& system() { return *singleton().m_system; }
-  static _Logger& udp() { return *singleton().m_udp; }
-  static _Logger& pfcp() { return *singleton().m_pfcp; }
-  static _Logger& pfcp_switch() { return *singleton().m_pfcp_switch; }
-
-  static _Logger& smf_n1() { return *singleton().m_smf_n1; }
-  static _Logger& smf_n2() { return *singleton().m_smf_n2; }
-  static _Logger& smf_n4() { return *singleton().m_smf_n4; }
-  static _Logger& smf_n7() { return *singleton().m_smf_n7; }
-  static _Logger& smf_sbi() { return *singleton().m_smf_sbi; }
-  static _Logger& smf_api_server() { return *singleton().m_smf_api_server; }
-
- private:
-  static Logger* m_singleton;
-  static Logger& singleton() {
-    if (!m_singleton) m_singleton = new Logger();
-    return *m_singleton;
+  static const oai::logger::printf_logger& smf_app() {
+    return oai::logger::logger_registry::get_logger(SMF_APP);
   }
 
-  Logger() {}
-  ~Logger() {}
+  static const oai::logger::printf_logger& smf_sbi() {
+    return oai::logger::logger_registry::get_logger(SMF_SBI);
+  }
 
-  void _init(const char* app, const bool log_stdout, const bool log_rot_file);
+  static const oai::logger::printf_logger& system() {
+    return oai::logger::logger_registry::get_logger(SYSTEM);
+  }
 
-  std::vector<spdlog::sink_ptr> m_sinks;
+  static const oai::logger::printf_logger& udp() {
+    return oai::logger::logger_registry::get_logger(UDP);
+  }
 
-  std::string m_pattern;
+  static const oai::logger::printf_logger& smf_n1() {
+    return oai::logger::logger_registry::get_logger(SMF_N1);
+  }
 
-  _Logger* m_async_cmd;
-  _Logger* m_itti;
-  _Logger* m_smf_app;
-  _Logger* m_system;
-  _Logger* m_udp;
-  _Logger* m_pfcp;
-  _Logger* m_pfcp_switch;
-  _Logger* m_smf_n1;
-  _Logger* m_smf_n2;
-  _Logger* m_smf_n4;
-  _Logger* m_smf_n7;
-  _Logger* m_smf_sbi;
-  _Logger* m_smf_api_server;
+  static const oai::logger::printf_logger& smf_n2() {
+    return oai::logger::logger_registry::get_logger(SMF_N2);
+  }
+  static const oai::logger::printf_logger& smf_n4() {
+    return oai::logger::logger_registry::get_logger(SMF_N4);
+  }
+
+  static const oai::logger::printf_logger& smf_n7() {
+    return oai::logger::logger_registry::get_logger(SMF_N7);
+  }
+
+  static const oai::logger::printf_logger& smf_api_server() {
+    return oai::logger::logger_registry::get_logger(SMF_API_SERVER);
+  }
+
+  static const oai::logger::printf_logger& pfcp() {
+    return oai::logger::logger_registry::get_logger(PFCP);
+  }
+
+  static const oai::logger::printf_logger& itti() {
+    return oai::logger::logger_registry::get_logger(ITTI);
+  }
+
+  static const oai::logger::printf_logger& async_cmd() {
+    return oai::logger::logger_registry::get_logger(ASYNC);
+  }
 };
-
-#endif  // __LOGGER_H

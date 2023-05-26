@@ -2036,59 +2036,87 @@ class pfcp_reporting_triggers_ie : public pfcp_ie {
     s.set(v);
   }
 };
-////-------------------------------------
-//// IE REDIRECT_INFORMATION
-// class pfcp_redirect_information_ie : public pfcp_ie {
-// public:
-//  union {
-//    struct {
-//      uint8_t redirect_address_type:4;
-//      uint8_t spare:4;
-//   } bf;
-//   uint8_t b;
-//  } u1;
-//  uint16_t redirect_server_address_length;
-//  std::string
-//  //--------
-//  pfcp_redirect_information_ie(const pfcp::redirect_information_t& b) :
-//  pfcp_ie(PFCP_IE_REDIRECT_INFORMATION){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_redirect_information_ie() : pfcp_ie(PFCP_IE_REDIRECT_INFORMATION){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_redirect_information_ie(const pfcp_tlv& t) : pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::redirect_information_t& b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::redirect_information_t redirect_information = {};
-//      to_core_type(redirect_information);
-//      s.set(redirect_information);
-//  }
-//};
+//-------------------------------------
+// IE REDIRECT_INFORMATION
+// ToDo Verify UTF-8 encoding of redirect_server_address
+class pfcp_redirect_information_ie : public pfcp_ie {
+ public:
+  union {
+    struct {
+      uint8_t redirect_address_type : 4;
+      uint8_t spare : 4;
+    } bf;
+    uint8_t b;
+  } u1;
+  uint16_t redirect_server_address_length;
+  std::string redirect_server_address;
+  //--------
+  explicit pfcp_redirect_information_ie(const pfcp::redirect_information_t& b)
+      : pfcp_ie(PFCP_IE_REDIRECT_INFORMATION) {
+    u1.b                           = 0;
+    redirect_server_address_length = 0;
+    redirect_server_address        = {};
+    tlv.set_length(3);
+
+    u1.bf.redirect_address_type    = b.redirect_address_type;
+    redirect_server_address_length = b.redirect_server_address_length;
+    redirect_server_address        = b.redirect_server_address;
+    tlv.add_length(redirect_server_address.size());
+  }
+  //--------
+  pfcp_redirect_information_ie() : pfcp_ie(PFCP_IE_REDIRECT_INFORMATION) {
+    u1.b                           = 0;
+    redirect_server_address_length = 0;
+    redirect_server_address        = {};
+    tlv.set_length(3);
+  }
+  //--------
+  explicit pfcp_redirect_information_ie(const pfcp_tlv& t) : pfcp_ie(t) {
+    u1.b                           = 0;
+    redirect_server_address_length = 0;
+    redirect_server_address        = {};
+  };
+  //--------
+  void to_core_type(pfcp::redirect_information_t& b) {
+    b                                = {};
+    b.redirect_server_address_length = redirect_server_address_length;
+    b.redirect_server_address        = redirect_server_address;
+  }
+  //--------
+  void dump_to(std::ostream& os) {
+    tlv.dump_to(os);
+    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
+    auto be_redirect_server_address_length =
+        htobe16(redirect_server_address_length);
+    os.write(
+        reinterpret_cast<const char*>(&be_redirect_server_address_length),
+        sizeof(be_redirect_server_address_length));
+    os << redirect_server_address;
+  }
+  //--------
+  void load_from(std::istream& is) {
+    // tlv.load_from(is);
+    if (tlv.get_length() < 3) {
+      throw pfcp_tlv_bad_length_exception(
+          tlv.type, tlv.get_length(), __FILE__, __LINE__);
+    }
+    is.read(reinterpret_cast<char*>(&u1.b), sizeof(u1.b));
+    is.read(
+        reinterpret_cast<char*>(&redirect_server_address_length),
+        sizeof(redirect_server_address_length));
+    redirect_server_address_length = be16toh(redirect_server_address_length);
+
+    char e[redirect_server_address_length];
+    is.read(e, redirect_server_address_length);
+    redirect_server_address.assign(e, redirect_server_address_length);
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::redirect_information_t redirect_information = {};
+    to_core_type(redirect_information);
+    s.set(redirect_information);
+  }
+};
 //-------------------------------------
 // IE REPORT_TYPE
 class pfcp_report_type_ie : public pfcp_ie {
@@ -5529,52 +5557,138 @@ class pfcp_ue_ip_address_ie : public pfcp_ie {
     s.set(v);
   }
 };
-////-------------------------------------
-//// IE PACKET_RATE
-// class pfcp_packet_rate_ie : public pfcp_ie {
-// public:
-//  uint8_t todo;
-//
-//  //--------
-//  pfcp_packet_rate_ie(const pfcp::packet_rate_t& b) :
-//  pfcp_ie(PFCP_IE_PACKET_RATE){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_packet_rate_ie() : pfcp_ie(PFCP_IE_PACKET_RATE){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_packet_rate_ie(const pfcp_tlv& t) : pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::packet_rate_t& b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::packet_rate_t packet_rate = {};
-//      to_core_type(packet_rate);
-//      s.set(packet_rate);
-//  }
-//};
+//-------------------------------------
+// IE PACKET_RATE
+class pfcp_packet_rate_ie : public pfcp_ie {
+ public:
+  union {
+    struct {
+      uint8_t ulpr : 1;
+      uint8_t dlpr : 1;
+      uint8_t spare1 : 6;
+    } bf;
+    uint8_t b;
+  } u1;
+  union {
+    struct {
+      uint8_t uplink_time_unit : 3;
+      uint8_t spare2 : 5;
+    } bf;
+    uint8_t b;
+  } u2;
+  uint16_t maximum_uplink_packet_rate;
+  union {
+    struct {
+      uint8_t downlink_time_unit : 3;
+      uint8_t spare3 : 5;
+    } bf;
+    uint8_t b;
+  } u3;
+  uint16_t maximum_downlink_packet_rate;
+
+  //--------
+  explicit pfcp_packet_rate_ie(const pfcp::packet_rate_t& b)
+      : pfcp_ie(PFCP_IE_PACKET_RATE) {
+    u1.b                         = 0;
+    u2.b                         = 0;
+    maximum_uplink_packet_rate   = 0;
+    u3.b                         = 0;
+    maximum_downlink_packet_rate = 0;
+    tlv.set_length(3);
+
+    u1.bf.dlpr             = b.dlpr;
+    u1.bf.ulpr             = b.ulpr;
+    u2.bf.uplink_time_unit = b.uplink_time_unit;
+    if (u1.bf.ulpr) {
+      maximum_uplink_packet_rate = b.maximum_uplink_packet_rate;
+      tlv.add_length(2);
+    }
+    u3.bf.downlink_time_unit = b.downlink_time_unit;
+    if (u1.bf.dlpr) {
+      maximum_downlink_packet_rate = b.maximum_downlink_packet_rate;
+      tlv.add_length(2);
+    }
+  }
+  //--------
+  pfcp_packet_rate_ie() : pfcp_ie(PFCP_IE_PACKET_RATE) {
+    u1.b                         = 0;
+    u2.b                         = 0;
+    maximum_uplink_packet_rate   = 0;
+    u3.b                         = 0;
+    maximum_downlink_packet_rate = 0;
+    tlv.set_length(3);
+  }
+  //--------
+  explicit pfcp_packet_rate_ie(const pfcp_tlv& t) : pfcp_ie(t) {
+    u1.b                         = 0;
+    u2.b                         = 0;
+    maximum_uplink_packet_rate   = 0;
+    u3.b                         = 0;
+    maximum_downlink_packet_rate = 0;
+  };
+  //--------
+  void to_core_type(pfcp::packet_rate_t& b) {
+    b                  = {};
+    b.dlpr             = u1.bf.dlpr;
+    b.ulpr             = u1.bf.ulpr;
+    b.uplink_time_unit = u2.bf.uplink_time_unit;
+    if (u1.bf.ulpr) {
+      b.maximum_uplink_packet_rate = maximum_uplink_packet_rate;
+    }
+    b.downlink_time_unit = u3.bf.downlink_time_unit;
+    if (u1.bf.dlpr) {
+      b.maximum_downlink_packet_rate = maximum_downlink_packet_rate;
+    }
+  }
+  //--------
+  void dump_to(std::ostream& os) {
+    tlv.dump_to(os);
+    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
+    os.write(reinterpret_cast<const char*>(&u2.b), sizeof(u2.b));
+    if (u1.bf.ulpr) {
+      auto be_maximum_uplink_packet_rate = htobe16(maximum_uplink_packet_rate);
+      os.write(
+          reinterpret_cast<const char*>(&be_maximum_uplink_packet_rate),
+          sizeof(be_maximum_uplink_packet_rate));
+    }
+    os.write(reinterpret_cast<const char*>(&u3.b), sizeof(u3.b));
+    if (u1.bf.dlpr) {
+      auto be_maximum_downlink_packet_rate =
+          htobe16(maximum_downlink_packet_rate);
+      os.write(
+          reinterpret_cast<const char*>(&be_maximum_downlink_packet_rate),
+          sizeof(be_maximum_downlink_packet_rate));
+    }
+  }
+  //--------
+  void load_from(std::istream& is) {
+    if (tlv.get_length() < 3) {
+      throw pfcp_tlv_bad_length_exception(
+          tlv.type, tlv.get_length(), __FILE__, __LINE__);
+    }
+    is.read(reinterpret_cast<char*>(&u1.b), sizeof(u1.b));
+    is.read(reinterpret_cast<char*>(&u2.b), sizeof(u2.b));
+    if (u1.bf.ulpr) {
+      is.read(
+          reinterpret_cast<char*>(&maximum_uplink_packet_rate),
+          sizeof(maximum_uplink_packet_rate));
+      maximum_uplink_packet_rate = be16toh(maximum_uplink_packet_rate);
+    }
+    is.read(reinterpret_cast<char*>(&u3.b), sizeof(u3.b));
+    if (u1.bf.dlpr) {
+      is.read(
+          reinterpret_cast<char*>(&maximum_downlink_packet_rate),
+          sizeof(maximum_downlink_packet_rate));
+      maximum_downlink_packet_rate = be16toh(maximum_downlink_packet_rate);
+    }
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::packet_rate_t packet_rate = {};
+    to_core_type(packet_rate);
+    s.set(packet_rate);
+  }
+};
 //-------------------------------------
 // IE OUTER_HEADER_REMOVAL
 class pfcp_outer_header_removal_ie : public pfcp_ie {
@@ -5678,52 +5792,104 @@ class pfcp_recovery_time_stamp_ie : public pfcp_ie {
     s.set(v);
   }
 };
-////-------------------------------------
-//// IE DL_FLOW_LEVEL_MARKING
-// class pfcp_dl_flow_level_marking_ie : public pfcp_ie {
-// public:
-//  uint8_t todo;
-//
-//  //--------
-//  pfcp_dl_flow_level_marking_ie(const pfcp::dl_flow_level_marking_t& b) :
-//  pfcp_ie(PFCP_IE_DL_FLOW_LEVEL_MARKING){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_dl_flow_level_marking_ie() : pfcp_ie(PFCP_IE_DL_FLOW_LEVEL_MARKING){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_dl_flow_level_marking_ie(const pfcp_tlv& t) : pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::dl_flow_level_marking_t& b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::dl_flow_level_marking_t dl_flow_level_marking = {};
-//      to_core_type(dl_flow_level_marking);
-//      s.set(dl_flow_level_marking);
-//  }
-//};
+//-------------------------------------
+// IE DL_FLOW_LEVEL_MARKING
+class pfcp_dl_flow_level_marking_ie : public pfcp_ie {
+ public:
+  union {
+    struct {
+      uint8_t ttc : 1;
+      uint8_t sci : 1;
+      uint8_t spare1 : 6;
+    } bf;
+    uint8_t b;
+  } u1;
+  std::string tos_traffic_class;        // 2 octets
+  std::string service_class_indicator;  // 2 octets
+
+  //--------
+  explicit pfcp_dl_flow_level_marking_ie(const pfcp::dl_flow_level_marking_t& b)
+      : pfcp_ie(PFCP_IE_DL_FLOW_LEVEL_MARKING) {
+    tlv.set_length(1);
+    u1.b                    = 0;
+    tos_traffic_class       = {};
+    service_class_indicator = {};
+    u1.bf.ttc               = b.ttc;
+    u1.bf.sci               = b.sci;
+    if (u1.bf.ttc) {
+      if (b.tos_traffic_class.size() != 2) {
+        throw pfcp_ie_value_exception(tlv.type, "tos_traffic_class");
+      }
+      tos_traffic_class = b.tos_traffic_class;
+      tlv.add_length(2);
+    }
+    if (u1.bf.sci) {
+      if (b.service_class_indicator.size() != 2) {
+        throw pfcp_ie_value_exception(tlv.type, "service_class_indicator");
+      }
+      service_class_indicator = b.service_class_indicator;
+      tlv.add_length(2);
+    }
+  }
+  //--------
+  pfcp_dl_flow_level_marking_ie() : pfcp_ie(PFCP_IE_DL_FLOW_LEVEL_MARKING) {
+    u1.b                    = 0;
+    tos_traffic_class       = {};
+    service_class_indicator = {};
+    tlv.set_length(1);
+  }
+  //--------
+  explicit pfcp_dl_flow_level_marking_ie(const pfcp_tlv& t) : pfcp_ie(t){};
+  //--------
+  void to_core_type(pfcp::dl_flow_level_marking_t& b) {
+    b     = {};
+    b.ttc = u1.bf.ttc;
+    b.sci = u1.bf.sci;
+
+    if (u1.bf.ttc) {
+      b.tos_traffic_class = tos_traffic_class;
+    }
+    if (u1.bf.sci) {
+      b.service_class_indicator = service_class_indicator;
+    }
+  }
+  //--------
+  void dump_to(std::ostream& os) {
+    tlv.dump_to(os);
+    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
+    char spare = 0;
+    os.write(reinterpret_cast<const char*>(&spare), sizeof(spare));
+    if (u1.bf.ttc) {
+      os << tos_traffic_class;
+    }
+    if (u1.bf.sci) {
+      os << service_class_indicator;
+    }
+  }
+  //--------
+  void load_from(std::istream& is) {
+    // tlv.load_from(is);
+    is.read(reinterpret_cast<char*>(&u1.b), sizeof(u1.b));
+    char spare = 0;
+    is.read(reinterpret_cast<char*>(&spare), sizeof(spare));
+    if (u1.bf.ttc) {
+      char e[2];
+      is.read(e, 2);
+      tos_traffic_class.assign(e, 2);
+    }
+    if (u1.bf.sci) {
+      char e[2];
+      is.read(e, 2);
+      service_class_indicator.assign(e, 2);
+    }
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::dl_flow_level_marking_t v = {};
+    to_core_type(v);
+    s.set(v);
+  }
+};
 ////-------------------------------------
 //// IE HEADER_ENRICHMENT
 // class pfcp_header_enrichment_ie : public pfcp_ie {
@@ -7208,51 +7374,54 @@ class pfcp_user_plane_inactivity_timer_ie : public pfcp_ie {
 //      s.set(subsequent_time_quota);
 //  }
 //};
-////-------------------------------------
-//// IE RQI
-// class pfcp_rqi_ie : public pfcp_ie {
-// public:
-//  uint8_t todo;
-//
-//  //--------
-//  pfcp_rqi_ie(const pfcp::rqi_t& b) : pfcp_ie(PFCP_IE_RQI){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_rqi_ie() : pfcp_ie(PFCP_IE_RQI){
-//    todo = 0;
-//    tlv.set_length(1);
-//  }
-//  //--------
-//  pfcp_rqi_ie(const pfcp_tlv& t) : pfcp_ie(t) {
-//    todo = 0;
-//  };
-//  //--------
-//  void to_core_type(pfcp::rqi_t& b) {
-//    b.todo = todo;
-//  }
-//  //--------
-//  void dump_to(std::ostream& os) {
-//    tlv.dump_to(os);
-//    os.write(reinterpret_cast<const char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void load_from(std::istream& is) {
-//    //tlv.load_from(is);
-//    if (tlv.get_length() != 1) {
-//      throw pfcp_tlv_bad_length_exception(tlv.type, tlv.get_length(),
-//      __FILE__, __LINE__);
-//    }
-//    is.read(reinterpret_cast<char*>(&todo), sizeof(todo));
-//  }
-//  //--------
-//  void to_core_type(pfcp_ies_container& s) {
-//      pfcp::rqi_t rqi = {};
-//      to_core_type(rqi);
-//      s.set(rqi);
-//  }
-//};
+//-------------------------------------
+// IE RQI
+class pfcp_rqi_ie : public pfcp_ie {
+ public:
+  union {
+    struct {
+      uint8_t rqi : 1;
+      uint8_t spare : 7;
+    } bf;
+    uint8_t b;
+  } u1;
+
+  //--------
+  pfcp_rqi_ie(const pfcp::rqi_t& b) : pfcp_ie(PFCP_IE_RQI) {
+    u1.b      = 0;
+    u1.bf.rqi = b.rqi;
+    tlv.set_length(1);
+  }
+  //--------
+  pfcp_rqi_ie() : pfcp_ie(PFCP_IE_RQI) {
+    u1.b = 0;
+    tlv.set_length(1);
+  }
+  //--------
+  explicit pfcp_rqi_ie(const pfcp_tlv& t) : pfcp_ie(t){};
+  //--------
+  void to_core_type(pfcp::rqi_t& b) { b.rqi = u1.bf.rqi; }
+  //--------
+  void dump_to(std::ostream& os) {
+    tlv.dump_to(os);
+    os.write(reinterpret_cast<const char*>(&u1.b), sizeof(u1.b));
+  }
+  //--------
+  void load_from(std::istream& is) {
+    // tlv.load_from(is);
+    if (tlv.get_length() != 1) {
+      throw pfcp_tlv_bad_length_exception(
+          tlv.type, tlv.get_length(), __FILE__, __LINE__);
+    }
+    is.read(reinterpret_cast<char*>(&u1.b), sizeof(u1.b));
+  }
+  //--------
+  void to_core_type(pfcp_ies_container& s) {
+    pfcp::rqi_t v = {};
+    to_core_type(v);
+    s.set(v);
+  }
+};
 //-------------------------------------
 // IE QFI
 class pfcp_qfi_ie : public pfcp_ie {
@@ -9031,33 +9200,38 @@ class pfcp_forwarding_parameters_ie : public pfcp_grouped_ie {
       : pfcp_grouped_ie(PFCP_IE_FORWARDING_PARAMETERS) {
     tlv.set_length(0);
     if (b.destination_interface.first) {
-      std::shared_ptr<pfcp_destination_interface_ie> sie(
-          new pfcp_destination_interface_ie(b.destination_interface.second));
+      std::shared_ptr<pfcp_destination_interface_ie> sie =
+          std::make_shared<pfcp_destination_interface_ie>(
+              b.destination_interface.second);
       add_ie(sie);
     }
     if (b.network_instance.first) {
-      std::shared_ptr<pfcp_network_instance_ie> sie(
-          new pfcp_network_instance_ie(b.network_instance.second));
+      std::shared_ptr<pfcp_network_instance_ie> sie =
+          std::make_shared<pfcp_network_instance_ie>(b.network_instance.second);
       add_ie(sie);
     }
-    // if (b.redirect_information.first)
-    // {std::shared_ptr<pfcp_redirect_information_ie> sie(new
-    // pfcp_redirect_information_ie(b.redirect_information.second));
-    // add_ie(sie);}
+    if (b.redirect_information.first) {
+      std::shared_ptr<pfcp_redirect_information_ie> sie =
+          std::make_shared<pfcp_redirect_information_ie>(
+              b.redirect_information.second);
+      add_ie(sie);
+    }
     if (b.outer_header_creation.first) {
-      std::shared_ptr<pfcp_outer_header_creation_ie> sie(
-          new pfcp_outer_header_creation_ie(b.outer_header_creation.second));
+      std::shared_ptr<pfcp_outer_header_creation_ie> sie =
+          std::make_shared<pfcp_outer_header_creation_ie>(
+              b.outer_header_creation.second);
       add_ie(sie);
     }
     if (b.transport_level_marking.first) {
-      std::shared_ptr<pfcp_transport_level_marking_ie> sie(
-          new pfcp_transport_level_marking_ie(
-              b.transport_level_marking.second));
+      std::shared_ptr<pfcp_transport_level_marking_ie> sie =
+          std::make_shared<pfcp_transport_level_marking_ie>(
+              b.transport_level_marking.second);
       add_ie(sie);
     }
     if (b.forwarding_policy.first) {
-      std::shared_ptr<pfcp_forwarding_policy_ie> sie(
-          new pfcp_forwarding_policy_ie(b.forwarding_policy.second));
+      std::shared_ptr<pfcp_forwarding_policy_ie> sie =
+          std::make_shared<pfcp_forwarding_policy_ie>(
+              b.forwarding_policy.second);
       add_ie(sie);
     }
     // if (b.header_enrichment.first)
@@ -9302,6 +9476,53 @@ class pfcp_create_qer_ie : public pfcp_grouped_ie {
   explicit pfcp_create_qer_ie(const pfcp::create_qer& b)
       : pfcp_grouped_ie(PFCP_IE_CREATE_QER) {
     tlv.set_length(0);
+    if (b.qer_id.first) {
+      std::shared_ptr<pfcp_qer_id_ie> sie =
+          std::make_shared<pfcp_qer_id_ie>(b.qer_id.second);
+      add_ie(sie);
+    }
+    if (b.qer_correlation_id.first) {
+      std::shared_ptr<pfcp_qer_correlation_id_ie> sie =
+          std::make_shared<pfcp_qer_correlation_id_ie>(
+              b.qer_correlation_id.second);
+      add_ie(sie);
+    }
+    if (b.gate_status.first) {
+      std::shared_ptr<pfcp_gate_status_ie> sie =
+          std::make_shared<pfcp_gate_status_ie>(b.gate_status.second);
+      add_ie(sie);
+    }
+    if (b.maximum_bitrate.first) {
+      std::shared_ptr<pfcp_mbr_ie> sie =
+          std::make_shared<pfcp_mbr_ie>(b.maximum_bitrate.second);
+      add_ie(sie);
+    }
+    if (b.guaranteed_bitrate.first) {
+      std::shared_ptr<pfcp_gbr_ie> sie =
+          std::make_shared<pfcp_gbr_ie>(b.guaranteed_bitrate.second);
+      add_ie(sie);
+    }
+    if (b.packet_rate.first) {
+      std::shared_ptr<pfcp_packet_rate_ie> sie =
+          std::make_shared<pfcp_packet_rate_ie>(b.packet_rate.second);
+      add_ie(sie);
+    }
+    if (b.dl_flow_level_marking.first) {
+      std::shared_ptr<pfcp_dl_flow_level_marking_ie> sie =
+          std::make_shared<pfcp_dl_flow_level_marking_ie>(
+              b.dl_flow_level_marking.second);
+      add_ie(sie);
+    }
+    if (b.qos_flow_identifier.first) {
+      std::shared_ptr<pfcp_qfi_ie> sie =
+          std::make_shared<pfcp_qfi_ie>(b.qos_flow_identifier.second);
+      add_ie(sie);
+    }
+    if (b.reflective_qos.first) {
+      std::shared_ptr<pfcp_rqi_ie> sie =
+          std::make_shared<pfcp_rqi_ie>(b.reflective_qos.second);
+      add_ie(sie);
+    }
   }
   //--------
   pfcp_create_qer_ie() : pfcp_grouped_ie(PFCP_IE_CREATE_QER) {}
@@ -9371,6 +9592,16 @@ class pfcp_update_pdr_ie : public pfcp_grouped_ie {
     }
     if (b.pdi.first) {
       std::shared_ptr<pfcp_pdi_ie> sie(new pfcp_pdi_ie(b.pdi.second));
+      add_ie(sie);
+    }
+    if (b.outer_header_removal.first) {
+      std::shared_ptr<pfcp_outer_header_removal_ie> sie(
+          new pfcp_outer_header_removal_ie(b.outer_header_removal.second));
+      add_ie(sie);
+    }
+    if (b.precedence.first) {
+      std::shared_ptr<pfcp_precedence_ie> sie(
+          new pfcp_precedence_ie(b.precedence.second));
       add_ie(sie);
     }
   }

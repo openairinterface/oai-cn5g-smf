@@ -268,11 +268,11 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -367,11 +367,11 @@ bool smf_n1::create_n1_pdu_session_establishment_reject(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -503,11 +503,11 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -645,11 +645,11 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -702,11 +702,11 @@ bool smf_n1::create_n1_pdu_session_release_reject(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -771,11 +771,11 @@ bool smf_n1::create_n1_pdu_session_release_command(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -838,11 +838,11 @@ bool smf_n1::create_n1_pdu_session_release_command(
   bytes = nas_message_encode(
       data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
 
-#if DEBUG_IS_ON
   Logger::smf_n1().debug("Buffer Data: ");
-  for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-  printf(" (bytes %d)\n", bytes);
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
+    printf(" (bytes %d)\n", bytes);
+  }
 
   if (bytes > 0) {
     std::string n1Message((char*) data, bytes);
@@ -878,11 +878,11 @@ int smf_n1::decode_n1_sm_container(
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n1_sm_msg.c_str(), data_len);
 
-#if DEBUG_IS_ON
-  printf("Content: ");
-  for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
-  printf("\n");
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    printf("Content: ");
+    for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
+    printf("\n");
+  }
 
   // decode the NAS message
   decoder_rc =

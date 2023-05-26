@@ -256,6 +256,16 @@ int smf_config::load(const string& config_file) {
         "%s : %s, using defaults", nfex.what(), nfex.getPath());
   }
 
+  // Log Level
+  try {
+    std::string string_level;
+    smf_cfg.lookupValue(SMF_CONFIG_STRING_LOG_LEVEL, string_level);
+    log_level = spdlog::level::from_str(string_level);
+  } catch (const SettingNotFoundException& nfex) {
+    Logger::smf_app().error(
+        "%s : %s, using defaults", nfex.what(), nfex.getPath());
+  }
+
   // FQDN
   try {
     smf_cfg.lookupValue(SMF_CONFIG_STRING_FQDN_DNS, fqdn);
@@ -502,79 +512,82 @@ int smf_config::load(const string& config_file) {
           smf_cfg[SMF_CONFIG_STRING_SUPPORT_FEATURES];
       string opt;
       unsigned int httpVersion = {0};
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_REGISTER_NRF, opt);
-      if (boost::iequals(opt, "yes")) {
-        register_nrf = true;
-      } else {
-        register_nrf = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_REGISTER_NRF, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          register_nrf = true;
+        } else {
+          register_nrf = false;
+        }
       }
 
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_DISCOVER_UPF, opt);
-      if (boost::iequals(opt, "yes")) {
-        discover_upf = true;
-      } else {
-        discover_upf = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_DISCOVER_UPF, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          discover_upf = true;
+        } else {
+          discover_upf = false;
+        }
       }
 
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_DISCOVER_PCF, opt);
-      if (boost::iequals(opt, "yes")) {
-        Logger::smf_app().warn(
-            "Discover PCF feature is not supported, you need to configure the "
-            "PCF in the config file. This feature is set to false.");
-        discover_pcf = false;  // set to false as not yet supported
-      } else {
-        discover_pcf = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_DISCOVER_PCF, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          Logger::smf_app().warn(
+              "Discover PCF feature is not supported, you need to configure "
+              "the "
+              "PCF in the config file. This feature is set to false.");
+          discover_pcf = false;  // set to false as not yet supported
+        } else {
+          discover_pcf = false;
+        }
       }
 
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_PCC_RULES, opt);
-      if (boost::iequals(opt, "yes")) {
-        Logger::smf_app().warn(
-            "Local PCC rules feature is not yet supported, the default values "
-            "from the config file are used.");
-        use_local_pcc_rules = true;
-        // discover_pcf        = false;
-      } else {
-        use_local_pcc_rules = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_PCC_RULES, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          Logger::smf_app().warn(
+              "Local PCC rules feature is not yet supported, the default "
+              "values "
+              "from the config file are used.");
+          use_local_pcc_rules = true;
+          // discover_pcf        = false;
+        } else {
+          use_local_pcc_rules = false;
+        }
       }
 
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_SUBSCRIPTION_INFO, opt);
-      if (boost::iequals(opt, "yes")) {
-        use_local_subscription_info = true;
-      } else {
-        use_local_subscription_info = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_LOCAL_SUBSCRIPTION_INFO,
+              opt)) {
+        if (boost::iequals(opt, "yes")) {
+          use_local_subscription_info = true;
+        } else {
+          use_local_subscription_info = false;
+        }
       }
 
-      support_features.lookupValue(SMF_CONFIG_STRING_NAS_FORCE_PUSH_PCO, opt);
-      if (boost::iequals(opt, "yes")) {
-        force_push_pco = true;
-      } else {
-        force_push_pco = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_NAS_FORCE_PUSH_PCO, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          force_push_pco = true;
+        } else {
+          force_push_pco = false;
+        }
       }
 
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_FQDN_DNS, opt);
-      if (boost::iequals(opt, "yes")) {
-        use_fqdn_dns = true;
-      } else {
-        use_fqdn_dns = false;
+      if (support_features.lookupValue(
+              SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_FQDN_DNS, opt)) {
+        if (boost::iequals(opt, "yes")) {
+          use_fqdn_dns = true;
+        } else {
+          use_fqdn_dns = false;
+        }
       }
 
       support_features.lookupValue(
           SMF_CONFIG_STRING_SUPPORT_FEATURES_SBI_HTTP_VERSION, httpVersion);
       http_version = httpVersion;
-
-      support_features.lookupValue(
-          SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_NETWORK_INSTANCE, opt);
-      if (boost::iequals(opt, "yes")) {
-        use_nwi = true;
-      } else {
-        use_nwi = false;
-      }
 
       support_features.lookupValue(
           SMF_CONFIG_STRING_SUPPORT_FEATURES_ENABLE_USAGE_REPORTING, opt);
@@ -583,6 +596,17 @@ int smf_config::load(const string& config_file) {
       } else {
         enable_ur = false;
       }
+      support_features.lookupValue(
+          SMF_CONFIG_STRING_SUPPORT_FEATURES_enable_dl_pdr_in_pfcp_sess_estab,
+          opt);
+      if (boost::iequals(opt, "yes")) {
+        enable_dl_pdr_in_pfcp_sess_estab = true;
+      } else {
+        enable_dl_pdr_in_pfcp_sess_estab = false;
+      }
+
+      support_features.lookupValue(
+          SMF_CONFIG_STRING_N3_LOCAL_IPV4_ADDRESS, local_n3_addr);
 
     } catch (const SettingNotFoundException& nfex) {
       Logger::smf_app().error(
@@ -789,7 +813,7 @@ int smf_config::load(const string& config_file) {
           }
         }
         // Network Instance
-        if (upf_cfg.exists(SMF_CONFIG_STRING_NWI_LIST) & use_nwi) {
+        if (upf_cfg.exists(SMF_CONFIG_STRING_NWI_LIST)) {
           const Setting& nwi_cfg = upf_cfg[SMF_CONFIG_STRING_NWI_LIST];
           count                  = nwi_cfg.getLength();
           // Check if NWI list for given UPF is present
@@ -1079,7 +1103,12 @@ void smf_config::display() {
       "    Use FQDN ...........................: %s",
       use_fqdn_dns ? "Yes" : "No");
   Logger::smf_app().info(
-      "    Use NWI  ...........................: %s", use_nwi ? "Yes" : "No");
+      "    ENABLE USAGE REPORTING..............: %s", enable_ur ? "Yes" : "No");
+  Logger::smf_app().info(
+      "    ENABLE DL PDR IN PFCP SESSION ESTAB.: %s",
+      enable_dl_pdr_in_pfcp_sess_estab ? "Yes" : "No");
+  Logger::smf_app().info(
+      "    UPF N3 LOCAL ADDRESS ...............: %s", local_n3_addr.c_str());
 
   Logger::smf_app().info("- DNN configurations:");
 
@@ -1159,6 +1188,9 @@ void smf_config::display() {
       index++;
     }
   }
+  Logger::smf_app().info(
+      "- Log Level will be .......: %s",
+      spdlog::level::to_string_view(log_level));
 }
 
 //------------------------------------------------------------------------------
@@ -1517,59 +1549,27 @@ std::string smf_config::get_default_dnn() {
 }
 
 //------------------------------------------------------------------------------
-bool smf_config::get_nwi_list_index(
-    bool nwi_enabled, uint8_t nwi_list_index, pfcp::node_id_t node_id) {
-  if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS) {
-    for (int i = 0; i < upf_nwi_list.size(); i++) {
-      if (node_id.u1.ipv4_address.s_addr ==
-          upf_nwi_list[i].upf_id.u1.ipv4_address.s_addr) {
-        nwi_list_index = i;
-        nwi_enabled    = true;
-        return true;
-      }
-    }
-    nwi_enabled = false;
-    return false;
-  }
-  if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
-    // Resove FQDN here because, node id type is always IPV4_ADDRESS in
-    // upf_nwi_list
-    unsigned char buf_in_addr[sizeof(struct in_addr) + 1];
-    unsigned int upf_port = {0};
-    uint8_t addr_type     = {0};
-    std::string address   = {};
-    struct in_addr ipv4_Address;
-    fqdn::resolve(node_id.fqdn, address, upf_port, addr_type, "");
-    if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) == 1) {
-      memcpy(&ipv4_Address, buf_in_addr, sizeof(struct in_addr));
-    } else {
-      Logger::smf_app().error("FQDN resolve failed for get_nwi_list_index");
-    }
-
-    for (int i = 0; i < upf_nwi_list.size(); i++) {
-      if (ipv4_Address.s_addr ==
-          upf_nwi_list[i].upf_id.u1.ipv4_address.s_addr) {
-        nwi_list_index = i;
-        nwi_enabled    = true;
-        return true;
-      }
-    }
-    nwi_enabled = false;
-    return false;
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
 std::string smf_config::get_nwi(
-    const std::vector<interface_upf_info_item_t>& int_list,
-    const std::string& int_type) {
-  std::string nwi = {};
-  for (auto ui : int_list) {
-    if (!ui.interface_type.compare(int_type)) nwi = ui.network_instance;
+    const pfcp::node_id_t& node_id, const iface_type& type) {
+  // Note Stefan: In all cases, resolving should happen before this step and the
+  // IP address is set
+  for (const auto& upf_nwi : upf_nwi_list) {
+    if (upf_nwi.upf_id.u1.ipv4_address.s_addr ==
+        node_id.u1.ipv4_address.s_addr) {
+      switch (type) {
+        case iface_type::N3:
+          return upf_nwi.domain_access;
+        case iface_type::N6:
+          return upf_nwi.domain_core;
+        case iface_type::N9:
+          Logger::smf_app().warn(
+              "N9 interface type not supported for locally configured NWI");
+          return "";
+        default:
+          Logger::smf_app().error("Unsupported enum parameter in get_nwi");
+          return "";
+      }
+    }
   }
-  Logger::smf_app().debug(
-      "Interface Type - %s, NWI - %s", int_type.c_str(), nwi.c_str());
-  return nwi;
+  return "";
 }
-//------------------------------------------------------------------------------

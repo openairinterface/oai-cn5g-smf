@@ -283,11 +283,11 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    printf(" (%d bytes)\n", (int) encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      printf(" (%d bytes)\n", (int) encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -546,11 +546,11 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    printf(" (%d bytes)\n", (int) encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      printf(" (%d bytes)\n", (int) encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -809,11 +809,11 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    printf(" (%d bytes)\n", (int) encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      printf(" (%d bytes)\n", (int) encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -877,11 +877,11 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -926,11 +926,11 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -1045,11 +1045,11 @@ bool smf_n2::create_n2_pdu_session_resource_modify_response_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -1153,11 +1153,11 @@ bool smf_n2::create_n2_path_switch_request_ack(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -1256,11 +1256,11 @@ bool smf_n2::create_n2_handover_command_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -1314,11 +1314,11 @@ bool smf_n2::create_n2_handover_preparation_unsuccessful_transfer(
         encoded_size);
     result = false;
   } else {
-#if DEBUG_IS_ON
     Logger::smf_n2().debug("N2 SM buffer data: ");
-    for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-    Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-#endif
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
+    }
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
@@ -1343,11 +1343,11 @@ int smf_n2::decode_n2_sm_information(
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-#if DEBUG_IS_ON
-  printf("Content: ");
-  for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
-  printf("\n");
-#endif
+  if (Logger::should_log(spdlog::level::debug)) {
+    printf("Content: ");
+    for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
+    printf("\n");
+  }
 
   // PDUSessionResourceSetupResponseTransfer
   asn_dec_rval_t rc = asn_decode(

@@ -209,7 +209,7 @@ std::string conv::toString(const struct in_addr& inaddr) {
   char str[INET6_ADDRSTRLEN] = {};
   if (inet_ntop(AF_INET, (const void*) &inaddr, str, INET6_ADDRSTRLEN) ==
       NULL) {
-    s.append("Error in_addr");
+    s.append("");
   } else {
     s.append(str);
   }
@@ -221,7 +221,7 @@ std::string conv::toString(const struct in6_addr& in6addr) {
   char str[INET6_ADDRSTRLEN] = {};
   if (inet_ntop(AF_INET6, (const void*) &in6addr, str, INET6_ADDRSTRLEN) ==
       nullptr) {
-    s.append("Error in6_addr");
+    s.append("");
   } else {
     s.append(str);
   }
@@ -236,13 +236,14 @@ void conv::convert_string_2_hex(
   memset(data, 0, input_str.length() + 1);
   memcpy((void*) data, (void*) input_str.c_str(), input_str.length());
 
-#if DEBUG_IS_ON
   Logger::smf_app().debug("Input: ");
-  for (int i = 0; i < input_str.length(); i++) {
-    printf("%02x ", data[i]);
+  if (Logger::should_log(spdlog::level::debug)) {
+    for (int i = 0; i < input_str.length(); i++) {
+      printf("%02x ", data[i]);
+    }
+    printf("\n");
   }
-  printf("\n");
-#endif
+
   char* datahex = (char*) malloc(input_str.length() * 2 + 1);
   memset(datahex, 0, input_str.length() * 2 + 1);
 

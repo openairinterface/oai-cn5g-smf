@@ -72,8 +72,9 @@ struct policy_association {
   std::string pcf_location;
 
   void set_context(
-      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
-      const plmn_t& plmn, const uint8_t pdu_session_id,
+      const std::string& supi, const std::string& supi_prefix,
+      const std::string& dnn, const snssai_t& snssai, const plmn_t& plmn,
+      const uint8_t pdu_session_id,
       const pdu_session_type_t& pdu_session_type) {
     oai::smf_server::model::Snssai snssai_model;
     snssai_model.setSst(snssai.sst);
@@ -90,8 +91,7 @@ struct policy_association {
     context = {};
 
     context.setPduSessionId(pdu_session_id);
-    // TODO only support imsi SUPI, not NAI
-    context.setSupi("imsi-" + supi);
+    context.setSupi(smf_get_supi_with_prefix(supi_prefix, supi));
     oai::smf_server::model::PduSessionType pdu_session_type_model;
     // hacky
     from_json(pdu_session_type.to_string(), pdu_session_type_model);

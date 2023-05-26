@@ -42,6 +42,9 @@ int decode_procedure_transaction_identity(
     ProcedureTransactionIdentity* proceduretransactionidentity, uint8_t iei,
     uint8_t* buffer, uint32_t len) {
   int decoded = 0;
-  DECODE_U8(buffer + decoded, proceduretransactionidentity, decoded);
+  uint8_t pti = 0;
+  // TODO: should remove raw pointer
+  DECODE_U8(buffer + decoded, pti, decoded);
+  *proceduretransactionidentity = pti;
   return decoded;
 }

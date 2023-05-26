@@ -624,6 +624,7 @@ void smf_http2_server::nf_status_notify_handler(
     response.end(json_data.dump().c_str());
   }
 }
+
 //------------------------------------------------------------------------------
 void smf_http2_server::stop() {
   server.stop();

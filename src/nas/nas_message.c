@@ -336,7 +336,6 @@ static int _nas_message_header_encode(
     unsigned char* buffer, const nas_message_security_header_t* header,
     size_t length) {
   int size = 0;
-
   /*
    * Encode the first octet of the header (security header type or EPS bearer
    * identity, and protocol discriminator)
@@ -346,17 +345,10 @@ static int _nas_message_header_encode(
   // Security header type associated with a spare half octet;
   ENCODE_U8(buffer + size, *((uint8_t*) (header) + 1), size);
   // ENCODE_U8 (buffer+size,header->security_header_type,size);
-#if DEBUG_IS_ON
-  printf(
-      "extended_protocol_discriminator %d, security_header_type %d \n",
-      header->extended_protocol_discriminator, header->security_header_type);
-#endif
+
   if (header->extended_protocol_discriminator ==
       EPD_5GS_MOBILITY_MANAGEMENT_MESSAGES) {
     if (header->security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED) {
-#if DEBUG_IS_ON
-      printf("security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED\n");
-#endif
       if (length < NAS_MESSAGE_SECURITY_HEADER_SIZE) {
         /*
          * The buffer is not big enough to contain security header
@@ -373,9 +365,6 @@ static int _nas_message_header_encode(
        */
       ENCODE_U8(buffer + size, header->sequence_number, size);
     }
-#if DEBUG_IS_ON
-    printf("security_header_type: SECURITY_HEADER_TYPE_NOT_PROTECTED\n");
-#endif
   }
   return size;
 }

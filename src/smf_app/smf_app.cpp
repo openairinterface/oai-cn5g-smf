@@ -737,7 +737,8 @@ void smf_app::handle_itti_msg(
     } break;
 
     default: {
-      Logger::smf_app().warn("Unknown procedure type %d", m.procedure_type);
+      Logger::smf_app().warn(
+          "Unknown procedure type %d", (int) m.procedure_type);
     }
   }
 }

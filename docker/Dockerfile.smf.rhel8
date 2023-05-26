@@ -43,6 +43,7 @@ RUN rm -f /etc/rhsm-host && \
     yum repolist --disablerepo=* && \
     subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms && \
     yum update -y && \
+    cat /etc/os-release && \
     yum install -y \
         psmisc \
         git \
@@ -64,7 +65,9 @@ RUN git config --global https.postBuffer 123289600 && \
 
 # Copying source code
 WORKDIR /openair-smf
-COPY . /openair-smf
+COPY ./build/scripts /openair-smf/build/scripts
+COPY ./build/common-build /openair-smf/build/common-build
+COPY ./build/smf/CMakeLists.txt /openair-smf/build/smf/CMakeLists.txt
 
 # Installing all the needed libraries/packages to build and run SMF
 WORKDIR /openair-smf/build/scripts
@@ -72,10 +75,13 @@ RUN ./build_smf --install-deps --force
 
 # Building SMF
 WORKDIR /openair-smf/build/scripts
+COPY . /openair-smf
 RUN ldconfig && \
     ./build_smf --clean --Verbose --build-type Release --jobs && \
     ldd /openair-smf/build/smf/build/smf && \
     mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf && \
+    sed -i -e "s@nf-root-folder@smf@" -e "s@nf-config-file@smf.conf@" \
+      ../common-build/docker-scripts/entrypoint.py && \
     # Remove entitlements and Subscription Manager configs
     rm -rf /etc/pki/entitlement && \
     rm -rf /etc/rhsm
@@ -119,7 +125,7 @@ RUN rm -f /etc/rhsm-host && \
 WORKDIR /openair-smf/bin
 COPY --from=oai-smf-builder \
     /openair-smf/build/smf/build/oai_smf \
-    /openair-smf/scripts/entrypoint.py \
+    /openair-smf/build/common-build/docker-scripts/entrypoint.py \
     /openair-smf/scripts/healthcheck.sh \
     ./
 
@@ -127,6 +133,8 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libpistache.so.0 \
     /usr/local/lib/libnghttp2_asio.so \
     /usr/local/lib/libnghttp2_asio.so.1 \
+    /usr/local/lib64/libspdlog.so \
+    /usr/local/lib64/libfmt.so \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /usr/lib64/
 

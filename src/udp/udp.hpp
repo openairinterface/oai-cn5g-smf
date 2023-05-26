@@ -32,6 +32,7 @@
 #include "endpoint.hpp"
 #include "itti.hpp"
 #include "thread_sched.hpp"
+#include "logger.hpp"
 
 #include <arpa/inet.h>
 #include <inttypes.h>

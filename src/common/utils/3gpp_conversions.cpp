@@ -184,9 +184,16 @@ void xgpp_conv::sm_context_create_from_openapi(
   if (context_data.supiIsSet()) {
     // supi
     supi_t supi             = {.length = 0};
+    std::string supi_str    = {};
+    std::string supi_prefix = {};
     std::size_t pos         = context_data.getSupi().find("-");
-    std::string supi_str    = context_data.getSupi().substr(pos + 1);
-    std::string supi_prefix = context_data.getSupi().substr(0, pos);
+    if (pos != std::string::npos) {
+      supi_str    = context_data.getSupi().substr(pos + 1);
+      supi_prefix = context_data.getSupi().substr(0, pos);
+    } else {
+      supi_str = context_data.getSupi();
+    }
+
     smf_string_to_supi(&supi, supi_str.c_str());
     pcr.set_supi(supi);
     pcr.set_supi_prefix(supi_prefix);

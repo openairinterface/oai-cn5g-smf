@@ -642,13 +642,15 @@ typedef struct redirect_information_s {
   uint8_t redirect_address_type : 4;
   uint8_t spare : 4;
   uint16_t redirect_server_address_length;
+  std::string redirect_server_address;
 } redirect_information_t;
 
 enum redirect_address_type_e {
-  IPV4_ADDRESS = 0,
-  IPV6_ADDRESS = 1,
-  URL          = 2,
-  SIP_URI      = 3
+  IPV4_ADDRESS            = 0,
+  IPV6_ADDRESS            = 1,
+  URL                     = 2,
+  SIP_URI                 = 3,
+  IPV4_AND_IPV6_ADDRESSES = 4
 };
 
 //-------------------------------------
@@ -1417,8 +1419,8 @@ typedef struct dl_flow_level_marking_s {
   uint8_t spare : 6;
   uint8_t sci : 1;
   uint8_t ttc : 1;
-  uint16_t tos_traffic_class;
-  uint16_t service_class_indicator;
+  std::string tos_traffic_class;
+  std::string service_class_indicator;
 } dl_flow_level_marking_t;
 
 //-------------------------------------

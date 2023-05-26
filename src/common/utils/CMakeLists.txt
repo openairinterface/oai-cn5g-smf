@@ -36,7 +36,7 @@ include_directories(${SRC_TOP_DIR}/nas/sm)
 include_directories(${SRC_TOP_DIR}/nas/sm/msg)
 #include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
-include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
 
 set(CN_UTILS_SRC STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/3gpp_conversions.cpp

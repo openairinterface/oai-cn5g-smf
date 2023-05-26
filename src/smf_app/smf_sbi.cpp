@@ -164,8 +164,8 @@ smf_sbi::smf_sbi() {
   handles       = {};
   headers       = nullptr;
   headers       = curl_slist_append(headers, "Accept: application/json");
+  headers       = curl_slist_append(headers, "Charsets: utf-8");
   headers       = curl_slist_append(headers, "Content-Type: application/json");
-  headers       = curl_slist_append(headers, "charsets: utf-8");
 
   if ((code < 0) or (curl_multi == nullptr) or (headers == nullptr)) {
     Logger::smf_sbi().error("Cannot initialize Curl Multi Interface");
@@ -1092,10 +1092,16 @@ bool smf_sbi::curl_create_handle(
   // Create handle for a curl request
   CURL* curl = curl_easy_init();
 
+  headers = nullptr;
+  headers = curl_slist_append(headers, "Accept: application/json");
+  headers = curl_slist_append(headers, "Charsets: utf-8");
+
   if (is_multipart) {
-    std::string content_type = "content-type: multipart/related; boundary=" +
+    std::string content_type = "Content-type: multipart/related; boundary=" +
                                std::string(CURL_MIME_BOUNDARY);
     headers = curl_slist_append(headers, content_type.c_str());
+  } else {
+    headers = curl_slist_append(headers, "Content-Type: application/json");
   }
 
   if ((curl == nullptr) or (headers == nullptr)) {
@@ -1105,7 +1111,6 @@ bool smf_sbi::curl_create_handle(
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
   curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
   if (method.compare("POST") == 0)
     curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -1120,7 +1125,8 @@ bool smf_sbi::curl_create_handle(
   curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg.sbi.if_name.c_str());
 
   if (http_version == 2) {
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    if (Logger::should_log(spdlog::level::debug))
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // We use a self-signed test server, skip verification during debugging
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -1153,6 +1159,11 @@ bool smf_sbi::curl_create_handle(
   // Create handle for a curl request
   CURL* curl = curl_easy_init();
 
+  headers = nullptr;
+  headers = curl_slist_append(headers, "Accept: application/json");
+  headers = curl_slist_append(headers, "Charsets: utf-8");
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+
   if ((curl == nullptr) or (headers == nullptr)) {
     Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
     return false;
@@ -1160,7 +1171,6 @@ bool smf_sbi::curl_create_handle(
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
   curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
 
   if (method.compare("POST") == 0)
@@ -1176,7 +1186,8 @@ bool smf_sbi::curl_create_handle(
   curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg.sbi.if_name.c_str());
 
   if (http_version == 2) {
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    if (Logger::should_log(spdlog::level::debug))
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // We use a self-signed test server, skip verification during debugging
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -1212,6 +1223,11 @@ bool smf_sbi::curl_create_handle(
   // Create handle for a curl request
   CURL* curl = curl_easy_init();
 
+  headers = nullptr;
+  headers = curl_slist_append(headers, "Accept: application/json");
+  headers = curl_slist_append(headers, "Charsets: utf-8");
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+
   if ((curl == nullptr) or (headers == nullptr)) {
     Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
     return false;
@@ -1219,7 +1235,6 @@ bool smf_sbi::curl_create_handle(
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
   curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
 
   if (method.compare("POST") == 0)
@@ -1235,7 +1250,8 @@ bool smf_sbi::curl_create_handle(
   curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg.sbi.if_name.c_str());
 
   if (http_version == 2) {
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    if (Logger::should_log(spdlog::level::debug))
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // We use a self-signed test server, skip verification during debugging
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -1269,6 +1285,11 @@ bool smf_sbi::curl_create_handle(
   // Create handle for a curl request
   CURL* curl = curl_easy_init();
 
+  headers = nullptr;
+  headers = curl_slist_append(headers, "Accept: application/json");
+  headers = curl_slist_append(headers, "Charsets: utf-8");
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+
   if ((curl == nullptr) or (headers == nullptr)) {
     Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
     return false;
@@ -1276,7 +1297,6 @@ bool smf_sbi::curl_create_handle(
 
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
   curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
 
   if (method.compare("DELETE") == 0)
@@ -1288,7 +1308,8 @@ bool smf_sbi::curl_create_handle(
   curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg.sbi.if_name.c_str());
 
   if (http_version == 2) {
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    if (Logger::should_log(spdlog::level::debug))
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // We use a self-signed test server, skip verification during debugging
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);

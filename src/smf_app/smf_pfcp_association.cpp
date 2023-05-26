@@ -88,6 +88,8 @@ edge edge::from_upf_info(
   // TODO: Bring updates from the previous funtion to this one
   edge e = {};
   e.type = pfcp_association::iface_type_from_string(interface.interface_type);
+  e.ip_addr.s_addr = interface.ipv4_addresses[0].s_addr;
+  // e.ip6_addr    = interface.ipv6_addresses[0];
   e.nw_instance = interface.network_instance;
 
   // we filter out the DNAIs which do not map to the given NW interface
@@ -174,6 +176,25 @@ bool edge::serves_network(
   std::unordered_set<string> set;
   std::string s = {};
   return serves_network(dnn, snssai, set, s);
+}
+
+//---------------------------------------------------------------------------------------------
+bool edge::get_qos_flows(std::vector<std::shared_ptr<smf_qos_flow>>& flows) {
+  flows.clear();
+  for (const auto& flow : this->qos_flows) {
+    flows.push_back(flow);
+  }
+  return flows.size() > 0;
+}
+
+//---------------------------------------------------------------------------------------------
+bool edge::get_qos_flows(
+    pdu_session_id_t pid, std::vector<std::shared_ptr<smf_qos_flow>>& flows) {
+  flows.clear();
+  for (const auto& flow : this->qos_flows) {
+    if (flow->pdu_session_id == pid) flows.push_back(flow);
+  }
+  return flows.size() > 0;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -526,7 +547,9 @@ void pfcp_associations::associate_with_upf_profile(
   std::lock_guard<std::mutex> lck(m_mutex);
   // Associate with UPF profile if exist
   for (const auto& it : pending_associations) {
-    if ((it->node_id == node_id) and (it->is_upf_profile_set())) {
+    if (it->is_upf_profile_set() && ((it->node_id.fqdn == node_id.fqdn) ||
+                                     (it->node_id.u1.ipv4_address.s_addr ==
+                                      node_id.u1.ipv4_address.s_addr))) {
       Logger::smf_app().info("Associate with UPF profile");
       sa->set_upf_node_profile(it->get_upf_node_profile());
       return;
@@ -894,12 +917,14 @@ void upf_graph::insert_into_graph(const std::shared_ptr<pfcp_association>& sa) {
         "just add the node");
     Logger::smf_app().info("Assume that the UPF has a N3 and a N6 interface.");
 
-    edge n3_edge   = {};
-    n3_edge.type   = iface_type::N3;
-    n3_edge.uplink = false;
-    edge n6_edge   = {};
-    n6_edge.type   = iface_type::N6;
-    n6_edge.uplink = true;
+    edge n3_edge        = {};
+    n3_edge.type        = iface_type::N3;
+    n3_edge.nw_instance = smf_cfg.get_nwi(sa->node_id, iface_type::N3);
+    n3_edge.uplink      = false;
+    edge n6_edge        = {};
+    n6_edge.type        = iface_type::N6;
+    n6_edge.nw_instance = smf_cfg.get_nwi(sa->node_id, iface_type::N6);
+    n6_edge.uplink      = true;
 
     add_upf_graph_edge(sa, n3_edge);
     add_upf_graph_edge(sa, n6_edge);

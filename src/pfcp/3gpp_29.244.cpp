@@ -236,12 +236,12 @@ pfcp_ie* pfcp_ie::new_pfcp_ie_from_stream(std::istream& is) {
         ie->load_from(is);
         return ie;
       } break;
-        //    case PFCP_IE_REDIRECT_INFORMATION: {
-        //        pfcp_redirect_information_ie *ie = new
-        //        pfcp_redirect_information_ie(tlv); ie->load_from(is); return
-        //        ie;
-        //      }
-        //      break;
+      case PFCP_IE_REDIRECT_INFORMATION: {
+        pfcp_redirect_information_ie* ie =
+            new pfcp_redirect_information_ie(tlv);
+        ie->load_from(is);
+        return ie;
+      } break;
       case PFCP_IE_REPORT_TYPE: {
         pfcp_report_type_ie* ie = new pfcp_report_type_ie(tlv);
         ie->load_from(is);

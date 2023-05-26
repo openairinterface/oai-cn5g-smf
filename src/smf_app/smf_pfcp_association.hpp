@@ -47,8 +47,6 @@ namespace smf {
 #define PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES 2
 #define PFCP_ASSOCIATION_GRACEFUL_RELEASE_PERIOD 5
 
-enum iface_type { N9, N6, N3 };
-
 struct edge;
 
 class pfcp_association {
@@ -290,6 +288,10 @@ struct edge {
   unsigned int precedence = 0;
   std::string nw_instance;
   iface_type type;
+  // Get first address from vector since multiple addresses on same interface
+  // type is not under scope for now
+  in_addr ip_addr;
+  in6_addr ip6_addr;
   bool uplink = false;
   std::vector<std::shared_ptr<smf_qos_flow>> qos_flows;
   bool n4_sent = false;
@@ -311,6 +313,10 @@ struct edge {
       const std::string& dnn, const snssai_t& snssai,
       const std::unordered_set<std::string>& dnais,
       std::string& found_dnai) const;
+
+  bool get_qos_flows(std::vector<std::shared_ptr<smf_qos_flow>>& flows);
+  bool get_qos_flows(
+      pdu_session_id_t pid, std::vector<std::shared_ptr<smf_qos_flow>>& flows);
 
   std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::pdr_id_t& pdr_id);
 

@@ -29,8 +29,7 @@
 #define FILE_THREAD_SCHED_HPP_SEEN
 
 #include <sched.h>
-#include "logger.hpp"
-#include <nlohmann/json.hpp>
+#include "logger_base.hpp"
 
 namespace util {
 
@@ -41,8 +40,7 @@ class thread_sched_params {
   int cpu_id;
   int sched_policy;
   int sched_priority;
-  void apply(const int task_id, _Logger& logger) const;
-  nlohmann::json to_json() const;
+  void apply(const int task_id, const oai::logger::printf_logger& logger) const;
 };
 
 }  // namespace util

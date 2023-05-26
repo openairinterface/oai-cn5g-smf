@@ -287,6 +287,12 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void set_seid(const uint64_t& seid);
 
   /*
+   * Generate a value for TEID
+   * @return uint32_t
+   */
+  void generate_teid(pfcp::fteid_t& local_fteid);
+
+  /*
    * Generate a PDR ID
    * @param [pfcp::pdr_id_t &]: pdr_id: PDR ID generated
    * @return void
@@ -539,6 +545,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   util::uint_generator<uint32_t> far_id_generator;
   util::uint_generator<uint32_t> urr_id_generator;
 
+  util::uint_generator<uint32_t> teid_generator;
   // Shared lock
   mutable std::shared_mutex m_pdu_session_mutex;
 
@@ -1351,6 +1358,19 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   bool check_handover_possibility(
       const ng_ran_target_id_t& ran_target_id,
       const pdu_session_id_t& pdu_session_id) const;
+
+  /**
+   * Send a PDU Session Establishment response with a reject
+   * @param smreq Original request
+   * @param cause NAS cause value for PDU session establishment reject
+   * @param application_error PDU session establishment application error
+   * @param http_status
+   */
+  void send_pdu_session_establishment_response_reject(
+      const std::shared_ptr<itti_n11_create_sm_context_request> smreq,
+      cause_value_5gsm_e cause,
+      pdu_session_application_error_e application_error,
+      http_status_code_e http_status);
 
   /**
    * Send a PDU session Create Response, based on the content of resp.

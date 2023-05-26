@@ -280,7 +280,7 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
       true);
 
   if (response_code == http_status_code_e::HTTP_STATUS_CODE_201_CREATED) {
-    std::regex rgx("Location: *(.*)");
+    std::regex rgx("[L|l]ocation: *(.*)");
     std::smatch match;
 
     if (std::regex_search(response_headers, match, rgx)) {

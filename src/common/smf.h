@@ -60,6 +60,17 @@ static std::string smf_supi_to_string(supi_t const supi) {
   return supi_str;
 }
 
+static std::string smf_get_supi_with_prefix(
+    const std::string& prefix, const std::string& supi) {
+  std::string supi_str = {};
+  if (!prefix.empty()) {
+    supi_str = prefix + "-" + supi;
+  } else {
+    supi_str = supi;
+  }
+  return supi_str;
+}
+
 // TODO should we just replace the other function? Because this null chars are
 // annoying
 static std::string smf_supi_to_string_without_nulls(supi_t const supi) {

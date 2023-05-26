@@ -31,6 +31,10 @@ set (OPENAIRCN_DIR   $ENV{OPENAIRCN_DIR})
 set (BUILD_TOP_DIR   ${OPENAIRCN_DIR}/build)
 set (SRC_TOP_DIR     $ENV{OPENAIRCN_DIR}/src)
 
+set (NF_TARGET       smf)
+
+set (MOUNTED_COMMON      oai-cn5g-common-src)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../src/oai_smf/CMakeLists.txt)
 
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/smf_app ${CMAKE_CURRENT_BINARY_DIR}/smf_app)

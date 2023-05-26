@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
   // Config
   smf_cfg.load(Options::getlibconfigConfig());
   smf_cfg.display();
+  Logger::set_level(smf_cfg.log_level);
 
   // Inter-task Interface
   itti_inst = new itti_mw();

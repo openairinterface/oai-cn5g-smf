@@ -25,11 +25,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/nas)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ngap)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common/utils)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
-include_directories(${SRC_TOP_DIR}/../build/ext/spdlog/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
 
-add_library(3GPP_COMMON_TYPES STATIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/logger.cpp
-)
 
 

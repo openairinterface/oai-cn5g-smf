@@ -1,5 +1,30 @@
 # RELEASE NOTES: #
 
+## v1.5.1 -- May 2023 ##
+
+* Fix N1N2 Content message
+* Remove ranInfo field in n2infocontainer
+* Fix encoding NAS header
+* Resolved QoS Flow info missing in N2 Handover Preparation
+* Fix SUPI format: Use IMSI as SUPI
+* Fix: Send PDU Session Reject when PDU session fails before SMF procedure is started
+* Fix HTTP header
+* Fixing config parameter read
+* Fix for IE Redirect Information
+* Fix: Associate node id based on node id type
+* Use N3 ip address from NF profile if provided
+* Fix: UL TEID for multiple created PDR
+* Fix for encode/decode of create QER IE
+* Support for DL PDR in session establishment
+* Use NWI from config file when no UPF profile is associated
+* Fix HTTP/2 issue with PCF
+* Code Refactoring for:
+  * Logging mechanism (runtime log level selection)
+  * Installation / build scripts
+  * Continuous Integration scripts
+* Published image on Docker-Hub is using now Ubuntu-20 as base image
+  * We will soon obsolete the build system for Ubuntu18.04
+
 ## v1.5.0 -- January 2023 ##
 
 * Feature improvements:
@@ -25,6 +50,7 @@
   * Fix Protocol identifier Selected Bearer Control Mode
   * Fix issue for Static UE IP Addr
   * Fix URR ID in IE Create URR (post UPF graph implementation)
+  * Fix issue for Full DNN (APN Operator Identifier)
 * Docker image improvements
   * Fixed docker exit by catching SIGTERM
   * release mode does not use libasan anymore --> allocation of 20T virtual memory is no longer done

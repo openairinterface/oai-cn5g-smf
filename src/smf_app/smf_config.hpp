@@ -45,6 +45,7 @@
 #include "if.hpp"
 #include "logger.hpp"
 #include "smf.h"
+#include "smf_profile.hpp"
 
 #define SMF_CONFIG_STRING_SMF_CONFIG "SMF"
 #define SMF_CONFIG_STRING_PID_DIRECTORY "PID_DIRECTORY"
@@ -161,12 +162,15 @@
   "FORCE_PUSH_PROTOCOL_CONFIGURATION_OPTIONS"
 #define SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_FQDN_DNS "USE_FQDN_DNS"
 #define SMF_CONFIG_STRING_SUPPORT_FEATURES_SBI_HTTP_VERSION "HTTP_VERSION"
-#define SMF_CONFIG_STRING_SUPPORT_FEATURES_USE_NETWORK_INSTANCE                \
-  "USE_NETWORK_INSTANCE"
 #define SMF_CONFIG_STRING_SUPPORT_FEATURES_ENABLE_USAGE_REPORTING              \
   "ENABLE_USAGE_REPORTING"
+#define SMF_CONFIG_STRING_SUPPORT_FEATURES_enable_dl_pdr_in_pfcp_sess_estab    \
+  "ENABLE_DL_PDR_IN_PFCP_SESS_ESTAB"
+#define SMF_CONFIG_STRING_N3_LOCAL_IPV4_ADDRESS "N3_LOCAL_IPV4_ADDRESS"
 
 #define SMF_MAX_ALLOCATED_PDN_ADDRESSES 1024
+
+#define SMF_CONFIG_STRING_LOG_LEVEL "LOG_LEVEL"
 
 namespace smf {
 
@@ -334,6 +338,7 @@ class smf_config {
   /* Reader/writer lock for this configuration */
   std::mutex m_rw_lock;
   std::string pid_dir;
+  spdlog::level::level_enum log_level;
   unsigned int instance = 0;
   std::string fqdn      = {};
 
@@ -361,8 +366,9 @@ class smf_config {
   bool use_local_pcc_rules;
   bool use_fqdn_dns;
   unsigned int http_version;
-  bool use_nwi;
   bool enable_ur;
+  bool enable_dl_pdr_in_pfcp_sess_estab;
+  std::string local_n3_addr;
 
   // TODO: Could refactor amf, udm, nrf to typedef nf_addr
   // struct {
@@ -533,13 +539,14 @@ class smf_config {
     sbi_api_version = "v1";
     http_version    = 1;
 
-    use_local_subscription_info = false;
-    use_local_pcc_rules         = false;
-    register_nrf                = false;
-    discover_upf                = false;
-    discover_pcf                = false;
-    use_fqdn_dns                = false;
-    use_nwi                     = false;
+    use_local_subscription_info      = false;
+    use_local_pcc_rules              = false;
+    register_nrf                     = false;
+    discover_upf                     = false;
+    discover_pcf                     = false;
+    use_fqdn_dns                     = false;
+    enable_ur                        = false;
+    enable_dl_pdr_in_pfcp_sess_estab = false;
   };
   ~smf_config();
   void lock() { m_rw_lock.lock(); };
@@ -566,12 +573,14 @@ class smf_config {
   bool is_dotted_dnn_handled(
       const std::string& dnn, const pdu_session_type_t& pdn_session_type);
   std::string get_default_dnn();
-  bool get_nwi_list_index(
-      bool nwi_enabled, uint8_t nwi_list_index, pfcp::node_id_t node_id);
-  std::string get_nwi(
-      const std::vector<interface_upf_info_item_t>& int_list,
-      const std::string& int_type);
-};  // namespace smf
+
+  /**
+   * Returns network instance of iface_type typ. If not found, empty string is
+   * returned
+   * @param node_id IP address or FQDN to match against configuration
+   * @return NWI or empty string
+   */
+  std::string get_nwi(const pfcp::node_id_t& node_id, const iface_type& type);
 
 }  // namespace smf
 

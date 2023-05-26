@@ -1,0 +1,9 @@
+[submodule "src/oai-cn5g-common-src"]
+	path = src/oai-cn5g-common-src
+	url = https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-common-src.git
+[submodule "ci-scripts/common"]
+	path = ci-scripts/common
+	url = https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-common-ci.git
+[submodule "build/common-build"]
+	path = build/common-build
+	url = https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-common-build.git

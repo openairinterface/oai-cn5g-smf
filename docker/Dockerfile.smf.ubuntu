@@ -30,7 +30,7 @@
 #---------------------------------------------------------------------
 # BASE IMAGE
 #---------------------------------------------------------------------
-ARG BASE_IMAGE=ubuntu:bionic
+ARG BASE_IMAGE=ubuntu:focal
 FROM $BASE_IMAGE as oai-smf-base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -49,23 +49,28 @@ RUN git config --global https.postBuffer 123289600 && \
 
 # Copying source code
 WORKDIR /openair-smf
-COPY . /openair-smf
+COPY ./build/scripts /openair-smf/build/scripts
+COPY ./build/common-build /openair-smf/build/common-build
+COPY ./build/smf/CMakeLists.txt /openair-smf/build/smf/CMakeLists.txt
 
 # Installing all the needed libraries/packages to build and run SMF
 WORKDIR /openair-smf/build/scripts
-RUN ./build_smf --install-deps --force && \
-    cp -Rf /openair-smf/build/ext /openair-smf-ext-ref
+RUN ./build_smf --install-deps --force
 
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
 FROM oai-smf-base as oai-smf-builder
+# Copying source code
+COPY . /openair-smf
 # Building SMF
 WORKDIR /openair-smf/build/scripts
 RUN ldconfig && \
     ./build_smf --clean --Verbose --build-type Release --jobs && \
     ldd /openair-smf/build/smf/build/smf && \
-    mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf
+    mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf && \
+    sed -i -e "s@nf-root-folder@smf@" -e "s@nf-config-file@smf.conf@" \
+      ../common-build/docker-scripts/entrypoint.py
 
 #---------------------------------------------------------------------
 # TARGET IMAGE
@@ -113,7 +118,7 @@ RUN apt-get update && \
 WORKDIR /openair-smf/bin
 COPY --from=oai-smf-builder \
     /openair-smf/build/smf/build/oai_smf \
-    /openair-smf/scripts/entrypoint.py \
+    /openair-smf/build/common-build/docker-scripts/entrypoint.py \
     /openair-smf/scripts/healthcheck.sh \
     ./
 
@@ -123,6 +128,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib/libnghttp2.so.14 \
     /usr/local/lib/libnghttp2_asio.so.1 \
     /usr/local/lib/libpistache.so \
+    /usr/local/lib/libfmt.so \
     /openair-smf/build/smf/build/nas/libNAS.so \
 # Ubuntu 18 --> boost 67 will be copied
     /usr/lib/libboost_system.so.1.* \
