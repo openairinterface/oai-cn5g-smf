@@ -1224,8 +1224,8 @@ void smf_config::to_json(nlohmann::json& json_data) const {
       force_push_pco;
   json_data["supported_features"]["use_local_subscription_info"] =
       use_local_subscription_info;
-  json_data["supported_features"]["use_fqdn_dns"]           = use_fqdn_dns;
-  json_data["supported_features"]["use_network_instance"]   = use_nwi;
+  json_data["supported_features"]["use_fqdn_dns"] = use_fqdn_dns;
+  // json_data["supported_features"]["use_network_instance"]   = use_nwi;
   json_data["supported_features"]["enable_usage_reporting"] = enable_ur;
   json_data["supported_features"]["http_version"]           = http_version;
 
@@ -1282,8 +1282,8 @@ bool smf_config::from_json(nlohmann::json& json_data) const {
       if (true and json_tmp.find("enable_usage_reporting") != json_tmp.end())
         smf_cfg.enable_ur = json_tmp["enable_usage_reporting"].get<bool>();
 
-      if (true and json_tmp.find("use_network_instance") != json_tmp.end())
-        smf_cfg.use_nwi = json_tmp["use_network_instance"].get<bool>();
+      //  if (true and json_tmp.find("use_network_instance") != json_tmp.end())
+      //    smf_cfg.use_nwi = json_tmp["use_network_instance"].get<bool>();
     }
 
     if (json_data.find("dnn_list") != json_data.end()) {

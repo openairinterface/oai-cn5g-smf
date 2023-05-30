@@ -234,11 +234,11 @@ typedef struct itti_cfg_s {
   util::thread_sched_params async_cmd_sched_params;
 
   nlohmann::json to_json() const {
-    nlohmann::json json_data             = {};
-    json_data["itti_timer_sched_params"] = itti_timer_sched_params.to_json();
-    json_data["n4_sched_params"]         = n4_sched_params.to_json();
-    json_data["smf_app_sched_params"]    = smf_app_sched_params.to_json();
-    json_data["async_cmd_sched_params"]  = async_cmd_sched_params.to_json();
+    nlohmann::json json_data = {};
+    //    json_data["n4_sched_params"]         = n4_sched_params.to_json();
+    //    json_data["smf_app_sched_params"]    = smf_app_sched_params.to_json();
+    //    json_data["async_cmd_sched_params"]  =
+    //    async_cmd_sched_params.to_json();
 
     return json_data;
   }
@@ -581,6 +581,7 @@ class smf_config {
    * @return NWI or empty string
    */
   std::string get_nwi(const pfcp::node_id_t& node_id, const iface_type& type);
+};
 
 }  // namespace smf
 
