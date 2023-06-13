@@ -67,6 +67,7 @@ pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
     ue_ip.v4           = 1;
     ue_ip.ipv4_address = sps->ipv4_address;
   }
+  ue_ip.v6 = 0;
   // TODO malformed PFCP message, should be fixed in PFCP layer, but we dont
   // need it for now
   if (sps->ipv6) {
@@ -122,10 +123,13 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   apply_action.forw = 1;  // forward the packets
 
   pfcp::far_id_t far_id;
+  Logger::smf_app().error(
+      "[pfcp_create_far] QOS flow for this QFI %d", qfi.qfi);
 
   auto flow = edge.get_qos_flow(qfi);
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error(
+        "[pfcp_create_far]Could not find QOS flow for this QFI %d", qfi.qfi);
     return create_far;
   }
 
@@ -262,7 +266,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   auto flow = edge.get_qos_flow(qfi);
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error(
+        "[pfcp_create_pdr]Could not find QOS flow for this QFI %d", qfi.qfi);
     return create_pdr;
   }
 
@@ -382,7 +387,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr_dl(
   auto flow = edge.get_qos_flow(qfi);
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error("Could not find QOS flow for this QFI %d", qfi.qfi);
     return create_pdr;
   }
   far_id = flow->far_id_dl.second;
@@ -421,7 +426,8 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
   pfcp::time_threshold_t time_threshold         = {};
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error(
+        "[pfcp_create_urr] Could not find QOS flow for this QFI %d", qfi.qfi);
     return create_urr;
   }
 
@@ -571,11 +577,17 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   // IE CREATE_URR ( Usage Reporting Rules)
   //-------------------
   if (smf_cfg.enable_ur) {
-    pfcp::create_urr create_urr = pfcp_create_urr(dl_edge, current_flow.qfi);
-    n4_triggered->pfcp_ies.set(create_urr);
+    for (auto current_flow_item : current_flow) {
+      if (current_flow_item.qfi.qfi == 15) {
+        edge dl_edge = dl_edges[1];
+      }
+      pfcp::create_urr create_urr =
+          pfcp_create_urr(dl_edge, current_flow_item.qfi);
+      n4_triggered->pfcp_ies.set(create_urr);
 
-    // set URR ID also for other edge
-    synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi);
+      // set URR ID also for other edge
+      synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
+    }
   }
 
   // Here, we only consider an UL CL, so we create PDRs based on how many
@@ -583,16 +595,51 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
   // In UL CL case, we have 2 PDRs, but they have the same choose ID -> same
   // TEID We also set the same URR ID for all edges
+  int i = 0;
+  for (auto dl_edge : dl_edges) {
+    std::vector<std::shared_ptr<smf_qos_flow>> flow_test;
+    if (dl_edge.get_qos_flows(flow_test)) {
+      for (auto f : flow_test) {
+        Logger::smf_app().error("FLOW DL %d, %d", f->qfi.qfi, i);
+      }
+    }
+    i++;
+  }
+  i = 0;
   for (auto ul_edge : ul_edges) {
+    std::vector<std::shared_ptr<smf_qos_flow>> flow_test;
+    if (ul_edge.get_qos_flows(flow_test)) {
+      for (auto f : flow_test) {
+        Logger::smf_app().error("FLOW UL %d, %d", f->qfi.qfi, i);
+      }
+    }
+    i++;
+  }
+
+  // for (auto ul_edge : ul_edges) {
+  auto ul_edge = ul_edges[0];
+
+  for (auto current_flow_item : current_flow) {
+    if (current_flow_item.qfi.qfi == 15) {
+      dl_edge = dl_edges[dl_edges.size() - 1];
+      ul_edge = ul_edges[dl_edges.size() - 1];
+    }
     //-------------------
     // IE CREATE_FAR
     //-------------------
-    pfcp::create_far create_far = pfcp_create_far(ul_edge, current_flow.qfi);
+    pfcp::create_far create_far =
+        pfcp_create_far(ul_edge, current_flow_item.qfi);
     // copy created FAR ID to DL edge for PDR
-    synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi);
+    synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
 
     // copy values from UL edge, so we simulate two downlink edges for PFCP
-    auto flow                = dl_edge.get_qos_flow(current_flow.qfi);
+    auto flow = dl_edge.get_qos_flow(current_flow_item.qfi);
+    if (!flow) {
+      break;
+    } else {
+      Logger::smf_app().error("FLOW DL GET %d", flow->qfi.qfi);
+    }
+    Logger::smf_app().error("FLOW DL GET %d", flow->qfi.qfi);
     flow->pdr_id_ul          = 0;
     dl_edge.flow_description = ul_edge.flow_description;
     dl_edge.precedence       = ul_edge.precedence;
@@ -601,19 +648,20 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     // IE CREATE_PDR
     //-------------------
     pfcp::create_pdr create_pdr = pfcp_create_pdr(
-        dl_edge, current_flow.qfi, current_upf->function_features.second);
-    synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi);
+        dl_edge, current_flow_item.qfi, current_upf->function_features.second);
+    synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
 
     // ADD IEs to message
     //-------------------
     n4_triggered->pfcp_ies.set(create_pdr);
     n4_triggered->pfcp_ies.set(create_far);
+    Logger::smf_app().error("Adding PDR/FAR");
 
     if (smf_cfg.enable_dl_pdr_in_pfcp_sess_estab) {
       pfcp::create_far create_far_dl =
-          pfcp_create_far(dl_edge, current_flow.qfi);
+          pfcp_create_far(dl_edge, current_flow_item.qfi);
       pfcp::create_pdr create_pdr_dl =
-          pfcp_create_pdr_dl(dl_edge, current_flow.qfi);
+          pfcp_create_pdr_dl(dl_edge, current_flow_item.qfi);
       n4_triggered->pfcp_ies.set(create_pdr_dl);
       n4_triggered->pfcp_ies.set(create_far_dl);
     }
@@ -622,6 +670,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
       Logger::smf_app().info("Adding DL PDR and FAR start");
     }
   }
+
+  // }
 
   // TODO: verify whether N4 SessionID should be included in PDR and FAR
   // (Section 5.8.2.11@3GPP TS 23.501)
@@ -728,13 +778,35 @@ smf_procedure_code session_create_sm_context_procedure::run(
 
   sps->add_qos_flow(flow);
   sps->set_default_qos_flow(flow.qfi);
-  current_flow = flow;
+  current_flow.push_back(flow);
   graph->start_asynch_dfs_procedure(true, flow);
 
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
   std::shared_ptr<pfcp_association> upf = {};
   // Get next UPF for the first N4 session establishment
+  get_next_upf(dl_edges, ul_edges, upf);
+
+  // FOR TESTING PURPOSE: second flow
+  flow.pdu_session_id = sm_context_req->req.get_pdu_session_id();
+  // default QoS profile
+  flow.qfi.qfi                    = 15;
+  flow.qos_profile._5qi           = 15;
+  flow.qos_profile.arp            = default_qos.arp;
+  flow.qos_profile.priority_level = default_qos.priority_level;
+
+  // assign default QoS rule for this flow
+  // QOSRulesIE qos_rule = {};
+  sc->get_default_qos_rule(
+      qos_rule, sm_context_req->req.get_pdu_session_type());
+  sps->generate_qos_rule_id(rule_id);
+  qos_rule.qosruleidentifer = rule_id;
+  qos_rule.qosflowidentifer = flow.qfi.qfi;
+  sps->add_qos_rule(qos_rule);
+  current_flow.push_back(flow);
+
+  // current_flow = flow;
+  graph->start_asynch_dfs_procedure(true, flow);
   get_next_upf(dl_edges, ul_edges, upf);
 
   return send_n4_session_establishment_request();
@@ -810,7 +882,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     }
   }
 
-  synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi);
+  for (auto current_flow_item : current_flow) {
+    synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
+  }
 
   // covers the case that UL CL is returned from algorithm, but not all TEIDs
   // have been set (not all paths explored yet)
@@ -832,7 +906,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
       // update FTEID for forward tunnel info for this edge
       send_n4 = true;
       for (auto ul_edge : next_ul_edges) {
-        auto flow = ul_edge.get_qos_flow(current_flow.qfi);
+        auto flow = ul_edge.get_qos_flow(current_flow[0].qfi);
         if (!flow) {
           send_n4 = false;
         }
@@ -910,28 +984,36 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
   edge dl_edge = dl_edges[0];
-  for (auto& ul_edge : ul_edges) {
-    // we set PDR ID UL to 0, so we create new ones
-    auto flow_dl = dl_edge.get_qos_flow(current_flow.qfi);
-    auto ul_flow = ul_edge.get_qos_flow(current_flow.qfi);
-    if (!flow_dl || !ul_flow) {
-      Logger::smf_app().error("Could not get the QOS Flow for DL procedure");
-      continue;
+  for (auto current_flow_item : current_flow) {
+    for (auto& ul_edge : ul_edges) {
+      if (current_flow_item.qfi.qfi == 15) {
+        dl_edge = dl_edges[dl_edges.size() - 1];
+        ul_edge = ul_edges[dl_edges.size() - 1];
+      }
+      // we set PDR ID UL to 0, so we create new ones
+      auto flow_dl = dl_edge.get_qos_flow(current_flow_item.qfi);
+      auto ul_flow = ul_edge.get_qos_flow(current_flow_item.qfi);
+      if (!flow_dl || !ul_flow) {
+        Logger::smf_app().error("Could not get the QOS Flow for DL procedure");
+        continue;
+      }
+      flow_dl->pdr_id_dl = 0;
+
+      pfcp::create_far create_far =
+          pfcp_create_far(dl_edge, current_flow_item.qfi);
+
+      ul_flow->far_id_dl = create_far.far_id;
+
+      pfcp::create_pdr create_pdr = pfcp_create_pdr(
+          ul_edge, current_flow_item.qfi,
+          current_upf->function_features.second);
+
+      // Add IEs to message
+      n4_triggered->pfcp_ies.set(create_far);
+      n4_triggered->pfcp_ies.set(create_pdr);
     }
-    flow_dl->pdr_id_dl = 0;
-
-    pfcp::create_far create_far = pfcp_create_far(dl_edge, current_flow.qfi);
-
-    ul_flow->far_id_dl = create_far.far_id;
-
-    pfcp::create_pdr create_pdr = pfcp_create_pdr(
-        ul_edge, current_flow.qfi, current_upf->function_features.second);
-
-    // Add IEs to message
-    n4_triggered->pfcp_ies.set(create_far);
-    n4_triggered->pfcp_ies.set(create_pdr);
+    synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
   }
-  synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi);
 
   Logger::smf_app().info(
       "Sending ITTI message %s to task TASK_SMF_N4",
@@ -1030,7 +1112,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
   for (auto i : list_of_qfis_to_be_modified) {
     Logger::smf_app().debug("QoS Flow to be modified (QFI %d)", i.qfi);
     // TODO currently just support one flow
-    current_flow.qfi = i;
+    smf_qos_flow s = {};
+    s.qfi          = i;
+    current_flow.push_back(s);
+    // current_flow[0].qfi = i;
   }
 
   Logger::smf_app().debug(
@@ -1056,7 +1141,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
       sm_context_req_msg.get_dl_fteid(dl_fteid);  // eNB's fteid
       // we use the first dl_edge as we can only have one N3 interface
       for (const auto& qfi : list_of_qfis_to_be_modified) {
-        auto flow = dl_edges[0].get_qos_flow(qfi);
+        int index = 0;
+        if (qfi.qfi == 15) {
+          index = 1;
+        }
+
+        auto flow = dl_edges[index].get_qos_flow(qfi);
         if (!flow) {  // no QoS flow found
           Logger::smf_app().error(
               "could not find any QoS flow with QFI %d", qfi.qfi);
@@ -1120,7 +1210,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           flow->dl_fteid = dl_fteid;
           Logger::smf_app().debug("Create FAR DL");
           // for each UL edge we need a FAR, because of UL CL
-          edge dl_edge = dl_edges[0];
+          edge dl_edge = dl_edges[index];
           for (auto& edge : ul_edges) {
             // we set PDR ID UL to 0, so we create new ones
             auto flow_dl       = dl_edge.get_qos_flow(flow->qfi);

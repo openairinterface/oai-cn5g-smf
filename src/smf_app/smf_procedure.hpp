@@ -195,7 +195,7 @@ class session_create_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_n11_create_sm_context_response> n11_triggered_pending;
 
  private:
-  smf_qos_flow current_flow{};
+  std::vector<smf_qos_flow> current_flow{};
 
   /**
    * Sends a session establishment request, based on current UPF graph
@@ -245,7 +245,7 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
  private:
   // TODO currently support only one flow
-  smf_qos_flow current_flow{};
+  std::vector<smf_qos_flow> current_flow{};
   /**
    * Sends a session modification request, based on the graph
    * Does only consider normal DL procedures

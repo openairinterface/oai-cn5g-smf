@@ -1198,37 +1198,52 @@ void upf_graph::dfs_next_upf(
       }
     }
     upf = node_it->first;
-
+    Logger::smf_app().warn("qos_flow_asynch %d", qos_flow_asynch.qfi.qfi);
     // set correct edge infos
     for (auto& edge_it : node_it->second) {
       // copy QOS Flow for the whole graph
       //  TODO currently only one flow is supported
-      if (edge_it.qos_flows.empty()) {
-        std::shared_ptr<smf_qos_flow> flow =
-            std::make_shared<smf_qos_flow>(qos_flow_asynch);
-        edge_it.qos_flows.emplace_back(flow);
-      }
+      // if (edge_it.qos_flows.empty()) {
+      std::shared_ptr<smf_qos_flow> flow =
+          std::make_shared<smf_qos_flow>(qos_flow_asynch);
+      edge_it.qos_flows.emplace_back(flow);
+      //}
       // TODO thought for refactor: It would be much nicer if it would be the
       // same edge object so we dont have to do that
+      Logger::smf_app().warn("qos_flow_asynch 2 %d", qos_flow_asynch.qfi.qfi);
 
       // pointer is not null -> N9 interface
       if (edge_it.association) {
+        Logger::smf_app().warn("qos_flow_asynch 3 %d", qos_flow_asynch.qfi.qfi);
         // we add the TEID here for the edge in the other direction
         // direct access is safe as we know the edge exists
         auto edge_node = adjacency_list[edge_it.association];
         for (auto edge_edge : edge_node) {
-          if (edge_edge.qos_flows.empty()) {
-            edge_edge.qos_flows.emplace_back(
-                std::make_shared<smf_qos_flow>(qos_flow_asynch));
-          }
+          //  if (edge_edge.qos_flows.empty()) {
+          edge_edge.qos_flows.emplace_back(
+              std::make_shared<smf_qos_flow>(qos_flow_asynch));
+          Logger::smf_app().warn(
+              "qos_flow_asynch 4 %d", qos_flow_asynch.qfi.qfi);
+          // }
 
           if (edge_edge.association &&
               edge_edge.association == node_it->first) {
             if (edge_edge.type == iface_type::N9 && edge_edge.uplink) {
               // downlink direction
               edge_it.qos_flows[0]->dl_fteid = edge_edge.qos_flows[0]->dl_fteid;
+              Logger::smf_app().warn("QoS size %d", edge_it.qos_flows.size());
+              if (edge_it.qos_flows.size() > 1) {
+                edge_it.qos_flows[1]->dl_fteid =
+                    edge_edge.qos_flows[1]->dl_fteid;
+              }
+
             } else if (edge_edge.type == iface_type::N9) {
               edge_it.qos_flows[0]->ul_fteid = edge_edge.qos_flows[0]->ul_fteid;
+              Logger::smf_app().warn("QoS size %d", edge_it.qos_flows.size());
+              if (edge_it.qos_flows.size() > 1) {
+                edge_it.qos_flows[1]->ul_fteid =
+                    edge_edge.qos_flows[1]->ul_fteid;
+              }
             }
           }
         }
