@@ -527,6 +527,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   std::map<uint8_t, QOSRulesIE> qos_rules;    // QRI <-> QoS Rules
   std::vector<uint8_t> qos_rules_to_be_synchronised;
   std::vector<uint8_t> qos_rules_to_be_removed;
+  std::map<uint16_t, pfcp::qfi_t> pdr_2_qfi;  // PDR <-> QFI
+
   // 5GSM parameters and capabilities
   uint8_t maximum_number_of_supported_packet_filters;
   // TODO: 5GSM Capability (section 9.11.4.1@3GPP TS 24.501 V16.1.0)

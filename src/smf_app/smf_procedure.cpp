@@ -651,6 +651,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
         dl_edge, current_flow_item.qfi, current_upf->function_features.second);
     synch_ul_dl_edges(dl_edges, ul_edges, current_flow_item.qfi);
 
+    // TODO:
+    sps->pdr_2_qfi[flow->pdr_id_ul.rule_id] = flow->qfi;
     // ADD IEs to message
     //-------------------
     n4_triggered->pfcp_ies.set(create_pdr);
@@ -859,8 +861,14 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     pfcp::pdr_id_t pdr_id = {};
     pfcp::far_id_t far_id = {};
     if (it.get(pdr_id)) {
+      int index       = 0;
+      pfcp::qfi_t qfi = sps->pdr_2_qfi[pdr_id.rule_id];
+      if (qfi.qfi == 15) {
+        index = 1;
+      }
+
       // even in UL CL scenario, taking the TEID from one PDR is enough
-      auto flow = dl_edges[0].get_qos_flow(pdr_id);
+      auto flow = dl_edges[index].get_qos_flow(pdr_id);
       if (flow) {
         // pfcp::fteid_t local_up_fteid = { };
         if (flow->pdr_id_ul == pdr_id && it.get(flow->ul_fteid)) {
@@ -1090,6 +1098,30 @@ smf_procedure_code session_update_sm_context_procedure::run(
     return smf_procedure_code::ERROR;
   }
 
+  Logger::smf_app().error(
+      "SIZE DL EDGES %d, ul_edges %d", dl_edges.size(), ul_edges.size());
+
+  int i = 0;
+  for (auto dl_edge : dl_edges) {
+    std::vector<std::shared_ptr<smf_qos_flow>> flow_test;
+    if (dl_edge.get_qos_flows(flow_test)) {
+      for (auto f : flow_test) {
+        Logger::smf_app().error("FLOW DL %d, %d", f->qfi.qfi, i);
+      }
+    }
+    i++;
+  }
+  i = 0;
+  for (auto ul_edge : ul_edges) {
+    std::vector<std::shared_ptr<smf_qos_flow>> flow_test;
+    if (ul_edge.get_qos_flows(flow_test)) {
+      for (auto f : flow_test) {
+        Logger::smf_app().error("FLOW UL %d, %d", f->qfi.qfi, i);
+      }
+    }
+    i++;
+  }
+
   //-------------------
   n11_trigger           = sm_context_req;
   n11_triggered_pending = sm_context_resp;
@@ -1143,10 +1175,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
       for (const auto& qfi : list_of_qfis_to_be_modified) {
         int index = 0;
         if (qfi.qfi == 15) {
-          index = 1;
+          index = dl_edges.size() - 1;
         }
 
-        auto flow = dl_edges[index].get_qos_flow(qfi);
+        auto flow = dl_edges[0].get_qos_flow(qfi);
         if (!flow) {  // no QoS flow found
           Logger::smf_app().error(
               "could not find any QoS flow with QFI %d", qfi.qfi);
