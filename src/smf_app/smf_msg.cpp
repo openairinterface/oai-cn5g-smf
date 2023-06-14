@@ -517,9 +517,21 @@ void pdu_session_create_sm_context_response::set_qos_flow_context(
 }
 
 //-----------------------------------------------------------------------------
+void pdu_session_create_sm_context_response::add_qos_flow_context(
+    const qos_flow_context_updated& qos_flow) {
+  m_qos_flow_contexts.push_back(qos_flow);
+}
+
+//-----------------------------------------------------------------------------
 qos_flow_context_updated
 pdu_session_create_sm_context_response::get_qos_flow_context() const {
   return m_qos_flow_context;
+}
+
+//-----------------------------------------------------------------------------
+std::vector<qos_flow_context_updated>
+pdu_session_create_sm_context_response::get_qos_flow_contexts() const {
+  return m_qos_flow_contexts;
 }
 
 //-----------------------------------------------------------------------------

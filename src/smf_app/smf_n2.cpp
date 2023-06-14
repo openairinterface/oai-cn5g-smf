@@ -76,10 +76,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
   qos_flow_context_updated qos_flow = {};
 
-  // get default QoS value
-  qos_flow = sm_context_res.get_qos_flow_context();
+  std::vector<qos_flow_context_updated> qos_flows = {};
 
-  Logger::smf_n2().debug(
+  // get default QoS value
+  qos_flow  = sm_context_res.get_qos_flow_context();
+  qos_flows = sm_context_res.get_qos_flow_contexts();
+
+  Logger::smf_n2().error(
       "UL F-TEID, TEID "
       "0x%" PRIx32 ", IP Address %s",
       qos_flow.ul_fteid.teid,

@@ -321,7 +321,9 @@ class pdu_session_create_sm_context_response
   void set_paa(const paa_t& paa);
   paa_t get_paa() const;
   void set_qos_flow_context(const qos_flow_context_updated& qos_flow);
+  void add_qos_flow_context(const qos_flow_context_updated& qos_flow);
   qos_flow_context_updated get_qos_flow_context() const;
+  std::vector<qos_flow_context_updated> get_qos_flow_contexts() const;
   void set_amf_url(const std::string& value);
   std::string get_amf_url() const;
   void set_smf_context_uri(const std::string& value);
@@ -335,6 +337,7 @@ class pdu_session_create_sm_context_response
  private:
   paa_t m_paa;
   qos_flow_context_updated m_qos_flow_context;
+  std::vector<qos_flow_context_updated> m_qos_flow_contexts;
   std::string m_amf_url;
   std::string m_smf_context_uri;
   protocol_configuration_options_t m_epco;

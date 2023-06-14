@@ -74,6 +74,10 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // get default QoS value
   qos_flow_context_updated qos_flow = {};
   qos_flow                          = sm_context_res.get_qos_flow_context();
+
+  std::vector<qos_flow_context_updated> qos_flows = {};
+  qos_flows = sm_context_res.get_qos_flow_contexts();
+
   // check the QoS Flow
   if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
       (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {

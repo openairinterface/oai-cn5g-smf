@@ -845,6 +845,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   std::shared_ptr<smf_qos_flow> default_qos_flow = {};
+  std::map<uint8_t, std::shared_ptr<smf_qos_flow>> default_qos_flows;
   if (smf_cfg.enable_dl_pdr_in_pfcp_sess_estab &&
       resp.pfcp_ies.created_pdrs.empty()) {
     pfcp::pdr_id_t pdr_id_tmp;
@@ -853,7 +854,8 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     pdr_id_tmp.rule_id = 1;
     auto flow          = dl_edges[0].get_qos_flow(pdr_id_tmp);
     if (flow) {
-      default_qos_flow = flow;
+      default_qos_flow                 = flow;
+      default_qos_flows[flow->qfi.qfi] = flow;
     }
   }
 
@@ -875,7 +877,8 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
           // Update Qos Flow
           // TODO can i safely remove that?
           // sps->add_qos_flow(flow);
-          default_qos_flow = flow;
+          default_qos_flow                 = flow;
+          default_qos_flows[flow->qfi.qfi] = flow;
         }
       } else {
         // This may happen in UL CL, when we have 2 PDR IDs but only one DL
@@ -933,9 +936,53 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     return send_n4_session_establishment_request();
   }
 
-  // flow_updated info will be used to construct N1,N2 container
   qos_flow_context_updated flow_updated = {};
   QOSRulesIE qos_rule                   = {};
+
+  if (default_qos_flows.size() == 0) {
+    flow_updated.set_cause(static_cast<uint8_t>(
+        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    return smf_procedure_code::ERROR;
+  }
+
+  for (auto df : default_qos_flows) {
+    Logger::smf_app().error("ADDED QOS FLOWS %d", df.second->qfi.qfi);
+
+    // flow_updated info will be used to construct N1,N2 container
+    // qos_flow_context_updated flow_updated = {};
+    // QOSRulesIE qos_rule                   = {};
+
+    flow_updated.set_cause(
+        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    // if (!default_qos_flow) {
+    //   flow_updated.set_cause(static_cast<uint8_t>(
+    //       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    // } else {
+    if (df.second->ul_fteid.is_zero()) {
+      flow_updated.set_cause(static_cast<uint8_t>(
+          cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    } else {
+      flow_updated.set_ul_fteid(df.second->ul_fteid);  // tunnel info
+    }
+    if (sps->get_default_qos_rule(qos_rule)) {
+      flow_updated.add_qos_rule(qos_rule);
+    }
+    flow_updated.set_qfi(df.second->qfi);
+    qos_profile_t profile = {};
+    profile               = df.second->qos_profile;
+    flow_updated.set_qos_profile(profile);
+    flow_updated.set_priority_level(df.second->qos_profile.priority_level);
+    //}
+
+    // TODO: Set RQA (optional)
+
+    n11_triggered_pending->res.add_qos_flow_context(flow_updated);
+
+    if (flow_updated.cause_value !=
+        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+      return smf_procedure_code::ERROR;
+    }
+  }
 
   flow_updated.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
@@ -963,11 +1010,6 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   // TODO: Set RQA (optional)
 
   n11_triggered_pending->res.set_qos_flow_context(flow_updated);
-
-  if (flow_updated.cause_value !=
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
-    return smf_procedure_code::ERROR;
-  }
 
   return smf_procedure_code::OK;
 }
@@ -1178,7 +1220,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           index = dl_edges.size() - 1;
         }
 
-        auto flow = dl_edges[0].get_qos_flow(qfi);
+        auto flow = dl_edges[index].get_qos_flow(qfi);
         if (!flow) {  // no QoS flow found
           Logger::smf_app().error(
               "could not find any QoS flow with QFI %d", qfi.qfi);
@@ -1207,7 +1249,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           // TODO when does this happen?
         } else if ((flow->far_id_dl.first) && (flow->far_id_dl.second.far_id)) {
           // TODO also refactor update
-          Logger::smf_app().debug(
+          Logger::smf_app().error(
               "Update FAR DL "
               "0x%" PRIx32 " ",
               flow->far_id_dl.second.far_id);
@@ -1240,7 +1282,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
         } else {
           flow->dl_fteid = dl_fteid;
-          Logger::smf_app().debug("Create FAR DL");
+          Logger::smf_app().error("Create FAR DL");
           // for each UL edge we need a FAR, because of UL CL
           edge dl_edge = dl_edges[index];
           for (auto& edge : ul_edges) {
@@ -1267,7 +1309,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
         for (auto& ul_edge : ul_edges) {
           auto ul_flow = ul_edge.get_qos_flow(qfi);
           if (not ul_flow->pdr_id_dl.rule_id) {
-            Logger::smf_app().debug("Create PDR DL");
+            Logger::smf_app().error("Create PDR DL");
             //-------------------
             // IE create_pdr
             //-------------------
@@ -1282,7 +1324,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           } else {
             uint16_t rule_id = ul_flow->pdr_id_dl.rule_id;
 
-            Logger::smf_app().debug(
+            Logger::smf_app().error(
                 "Update FAR, PDR DL Rule Id "
                 "0x%" PRIx16 ", FAR ID 0x%" PRIx32 " ",
                 rule_id, flow->far_id_dl.second.far_id);
