@@ -562,7 +562,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   //-------------------
   pfcp::fseid_t cp_fseid = {};
   smf_cfg.get_pfcp_fseid(cp_fseid);
-  cp_fseid.seid = sps->seid;
+  cp_fseid.seid      = sps->seid;
+  n4_triggered->seid = cp_fseid;
   n4_triggered->pfcp_ies.set(cp_fseid);
 
   edge dl_edge = dl_edges[0];
