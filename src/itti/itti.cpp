@@ -41,7 +41,7 @@ static itti_timer null_timer(
 
 //------------------------------------------------------------------------------
 void itti_mw::timer_manager_task(
-    const util::thread_sched_params& sched_params) {
+    const oai::util::thread_sched_params& sched_params) {
   Logger::itti().info("Starting timer_manager_task");
   sched_params.apply(TASK_ITTI_TIMER, Logger::itti());
   while (true) {
@@ -127,7 +127,7 @@ itti_mw::~itti_mw() {
 }
 
 //------------------------------------------------------------------------------
-void itti_mw::start(const util::thread_sched_params& sched_params) {
+void itti_mw::start(const oai::util::thread_sched_params& sched_params) {
   Logger::itti().startup("Starting...");
   timer_thread = std::thread(timer_manager_task, sched_params);
   Logger::itti().startup("Started");

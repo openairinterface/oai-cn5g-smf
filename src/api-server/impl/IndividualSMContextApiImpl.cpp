@@ -85,8 +85,10 @@ void IndividualSMContextApiImpl::release_sm_context(
 
   boost::future_status status;
   // wait for timeout or ready
-  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
-  int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+  status =
+      f.wait_for(boost::chrono::milliseconds(http::FUTURE_STATUS_TIMEOUT_MS));
+  int http_code = static_cast<int>(
+      oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
   if (status == boost::future_status::ready) {
     assert(f.is_ready());
     assert(f.has_value());
@@ -148,7 +150,8 @@ void IndividualSMContextApiImpl::update_sm_context(
 
   boost::future_status status;
   // wait for timeout or ready
-  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  status =
+      f.wait_for(boost::chrono::milliseconds(http::FUTURE_STATUS_TIMEOUT_MS));
   if (status == boost::future_status::ready) {
     assert(f.is_ready());
     assert(f.has_value());
@@ -163,7 +166,8 @@ void IndividualSMContextApiImpl::update_sm_context(
     bool n1_sm_msg_is_set  = false;
     bool n2_sm_info_is_set = false;
 
-    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    int http_code = static_cast<int>(
+        http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
     if (sm_context_response.find("http_code") != sm_context_response.end()) {
       http_code = sm_context_response["http_code"].get<int>();
     }
@@ -192,32 +196,32 @@ void IndividualSMContextApiImpl::update_sm_context(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (json_data.size() > 0) {
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));

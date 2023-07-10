@@ -104,7 +104,7 @@ class pfcp_l4_stack : public udp_application {
   uint32_t get_next_seq_num();
 
   static uint64_t generate_trxn_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    return oai::util::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 
   static bool check_request_type(const uint8_t initial);
@@ -125,7 +125,7 @@ class pfcp_l4_stack : public udp_application {
   static const uint8_t version = 2;
   pfcp_l4_stack(
       const std::string& ip_address, const unsigned short port_num,
-      const util::thread_sched_params& sched_params);
+      const oai::util::thread_sched_params& sched_params);
   virtual void handle_receive(
       char* recv_buffer, const std::size_t bytes_transferred,
       endpoint& remote_endpoint);

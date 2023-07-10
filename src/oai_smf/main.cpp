@@ -36,7 +36,7 @@
 #include <unistd.h>  // get_pid(), pause()
 
 using namespace smf;
-using namespace util;
+using namespace oai::util;
 using namespace std;
 using namespace oai::smf_server::api;
 using namespace oai::config::smf;
@@ -134,8 +134,9 @@ int main(int argc, char** argv) {
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
-  string pid_file_name = get_exe_absolute_path("/var/run", smf_cfg->instance);
-  if (!is_pid_file_lock_success(pid_file_name.c_str())) {
+  string pid_file_name =
+      util::get_exe_absolute_path("/var/run", smf_cfg->instance);
+  if (!util::is_pid_file_lock_success(pid_file_name.c_str())) {
     Logger::smf_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
     exit(-EDEADLK);
   }

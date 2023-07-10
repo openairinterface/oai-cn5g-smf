@@ -148,7 +148,8 @@ class itti_mw {
 
   bool terminate;
 
-  static void timer_manager_task(const util::thread_sched_params& sched_params);
+  static void timer_manager_task(
+      const oai::util::thread_sched_params& sched_params);
 
  public:
   itti_mw();
@@ -156,7 +157,7 @@ class itti_mw {
   void operator=(itti_mw const&) = delete;
   ~itti_mw();
 
-  void start(const util::thread_sched_params& sched_params);
+  void start(const oai::util::thread_sched_params& sched_params);
 
   timer_id_t increment_timer_id();
   unsigned int increment_message_number();

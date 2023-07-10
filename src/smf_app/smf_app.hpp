@@ -101,10 +101,10 @@ class smf_app {
   std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
-  util::uint_generator<uint32_t> sm_context_ref_generator;
+  oai::util::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
 
-  util::uint_generator<uint32_t> evsub_id_generator;
+  oai::util::uint_generator<uint32_t> evsub_id_generator;
   std::map<
       std::pair<evsub_id_t, smf_event_t>, std::shared_ptr<smf_subscription>>
       smf_event_subscriptions;
@@ -728,7 +728,7 @@ class smf_app {
    * @return generated ID
    */
   static uint64_t generate_promise_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    return oai::util::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 
   /*
@@ -741,7 +741,7 @@ class smf_app {
    * @return void
    */
   void trigger_create_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause,
+      const oai::http::status_code_e& http_code, const uint8_t& cause,
       const std::string& n1_sm_msg, uint32_t& promise_id);
 
   /*
@@ -753,7 +753,8 @@ class smf_app {
    * @return void
    */
   void trigger_update_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id);
+      const oai::http::status_code_e& http_code, const uint8_t& cause,
+      uint32_t& promise_id);
 
   /*
    * To trigger the response to the HTTP server by set the value of the
@@ -765,7 +766,7 @@ class smf_app {
    * @return void
    */
   void trigger_update_context_error_response(
-      const uint32_t& http_code, const uint8_t& cause,
+      const oai::http::status_code_e& http_code, const uint8_t& cause,
       const std::string& n1_sm_msg, uint32_t& promise_id);
 
   /*
@@ -788,7 +789,8 @@ class smf_app {
    * @return void
    */
   void trigger_http_response(
-      const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type);
+      const oai::http::status_code_e& http_code, uint32_t& promise_id,
+      uint8_t msg_type);
 
   /*
    * To trigger the session create sm context response by set the value of the

@@ -31,7 +31,7 @@
 #include <sched.h>
 #include "logger_base.hpp"
 
-namespace util {
+namespace oai::util {
 
 class thread_sched_params {
  public:
@@ -43,5 +43,5 @@ class thread_sched_params {
   void apply(const int task_id, const oai::logger::printf_logger& logger) const;
 };
 
-}  // namespace util
+}  // namespace oai::util
 #endif /* FILE_THREAD_SCHED_HPP_SEEN */

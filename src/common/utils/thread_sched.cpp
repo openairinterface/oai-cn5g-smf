@@ -29,7 +29,7 @@
 using namespace oai::logger;
 
 //------------------------------------------------------------------------------
-void util::thread_sched_params::apply(
+void oai::util::thread_sched_params::apply(
     const int task_id, const printf_logger& logger) const {
   if (cpu_id >= 0) {
     cpu_set_t cpuset;

@@ -69,14 +69,14 @@ typedef struct interface_cfg_s {
   struct in6_addr addr6;
   unsigned int mtu;
   unsigned int port;
-  util::thread_sched_params thread_rd_sched_params;
+  oai::util::thread_sched_params thread_rd_sched_params;
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {
-  util::thread_sched_params itti_timer_sched_params;
-  util::thread_sched_params n4_sched_params;
-  util::thread_sched_params smf_app_sched_params;
-  util::thread_sched_params async_cmd_sched_params;
+  oai::util::thread_sched_params itti_timer_sched_params;
+  oai::util::thread_sched_params n4_sched_params;
+  oai::util::thread_sched_params smf_app_sched_params;
+  oai::util::thread_sched_params async_cmd_sched_params;
 } itti_cfg_t;
 
 typedef struct dnn_s {

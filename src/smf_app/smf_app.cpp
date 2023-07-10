@@ -38,7 +38,6 @@
 
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
-#include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
 #include "ProblemDetails.h"
@@ -72,11 +71,12 @@ extern "C" {
 
 using namespace smf;
 using namespace oai::config::smf;
+using namespace oai::http;
 
 #define PFCP_ASSOC_RETRY_COUNT 10
 #define PFCP_ASSOC_RESP_WAIT 2
 
-extern util::async_shell_cmd* async_shell_cmd_inst;
+extern oai::util::async_shell_cmd* async_shell_cmd_inst;
 extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 smf_n4* smf_n4_inst   = nullptr;
@@ -335,6 +335,9 @@ smf_app::smf_app(const std::string& config_file)
       m_scid2smf_context(),
       m_sbi_server_promises() {
   Logger::smf_app().startup("Starting...");
+  http_client::create_instance(
+      Logger::smf_sbi(), HTTP_TIMEOUT_MS,
+      smf_cfg->local().get_sbi().get_if_name(), smf_cfg->get_http_version());
 
   supi2smf_context  = {};
   set_seid_n4       = {};
@@ -825,14 +828,15 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
       // Trigger the reply to AMF
       trigger_create_context_error_response(
-          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
           PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
           smreq->pid);
     } else {
       // Trigger the reply to AMF
       trigger_http_response(
-          http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -858,13 +862,14 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
       // Trigger the reply to AMF
       trigger_create_context_error_response(
-          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
           PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, n1_sm_message_hex,
           smreq->pid);
     } else {
       trigger_http_response(
-          http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -898,13 +903,14 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
       // Trigger the reply to AMF
       trigger_create_context_error_response(
-          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
           PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
           smreq->pid);
     } else {
       trigger_http_response(
-          http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -918,7 +924,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     // section 7.3.2@3GPP TS 24.501; NAS N1 SM message: ignore the message
     // trigger to send reply to AMF
     trigger_http_response(
-        http_status_code_e::HTTP_STATUS_CODE_406_NOT_ACCEPTABLE, smreq->pid,
+        status_code_e::HTTP_STATUS_CODE_406_NOT_ACCEPTABLE, smreq->pid,
         N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     return;
   }
@@ -939,13 +945,13 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
       // Trigger the reply to AMF
       trigger_create_context_error_response(
-          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
           PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
           smreq->pid);
     } else {
       trigger_http_response(
-          http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -989,13 +995,13 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
       // Trigger the reply to AMF
       trigger_create_context_error_response(
-          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
           PDU_SESSION_APPLICATION_ERROR_DNN_DENIED, n1_sm_message_hex,
           smreq->pid);
     } else {
       trigger_http_response(
-          http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -1065,13 +1071,13 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
           // Trigger reply to AMF
           trigger_create_context_error_response(
-              http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+              status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
               PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED,
               n1_sm_message_hex, smreq->pid);
 
         } else {
           trigger_http_response(
-              http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
+              status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
               smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
         }
         return;
@@ -1125,7 +1131,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
         "the corresponding SMF context, ignore message!");
     // Trigger to send reply to AMF
     trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
         PDU_SESSION_APPLICATION_ERROR_CONTEXT_NOT_FOUND, smreq->pid);
 
     return;
@@ -1140,7 +1146,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
         "SM Context associated with this id " SCID_FMT " does not exit!", scid);
     // Trigger to send reply to AMF
     trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
         PDU_SESSION_APPLICATION_ERROR_CONTEXT_NOT_FOUND, smreq->pid);
     return;
   }
@@ -1161,7 +1167,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
         supi64);
     // Trigger to send reply to AMF
     trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
         PDU_SESSION_APPLICATION_ERROR_CONTEXT_NOT_FOUND, smreq->pid);
 
     return;
@@ -1175,7 +1181,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
         "the corresponding SMF context, ignore message!");
     // Trigger to send reply to AMF
     trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND,
         PDU_SESSION_APPLICATION_ERROR_CONTEXT_NOT_FOUND, smreq->pid);
     return;
   }
@@ -1202,7 +1208,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
         "Received PDU Session Update SM Context Request, couldn't process!");
     // trigger to send reply to AMF
     trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
+        status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
         PDU_SESSION_APPLICATION_ERROR_NETWORK_FAILURE, smreq->pid);
   }
   return;
@@ -1224,7 +1230,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
         "the corresponding SMF context, ignore message!");
     // trigger to send reply to AMF
     trigger_http_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
         N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
     return;
   }
@@ -1238,7 +1244,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
         "Context associated with this id " SCID_FMT " does not exit!", scid);
     // trigger to send reply to AMF
     trigger_http_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
         N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
     return;
   }
@@ -1263,7 +1269,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
         supi64);
     // trigger to send reply to AMF
     trigger_http_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
         N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
     return;
   }
@@ -1276,7 +1282,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
         "the corresponding SMF context, ignore message!");
     // trigger to send reply to AMF
     trigger_http_response(
-        http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
+        status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND, smreq->pid,
         N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
     return;
   }
@@ -2045,7 +2051,7 @@ void smf_app::add_promise(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_create_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause,
+    const oai::http::status_code_e& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of Server");
@@ -2065,13 +2071,14 @@ void smf_app::trigger_create_context_error_response(
   sm_context_response.set_json_data(json_data);
   sm_context_response.set_json_format("application/problem+json");
   sm_context_response.set_n1_sm_message(n1_sm_msg);
-  sm_context_response.set_http_code(http_code);
+  sm_context_response.set_http_code(static_cast<uint32_t>(http_code));
   trigger_session_create_sm_context_response(sm_context_response, promise_id);
 }
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_update_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id) {
+    const oai::http::status_code_e& http_code, const uint8_t& cause,
+    uint32_t& promise_id) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of API Server");
 
@@ -2085,13 +2092,13 @@ void smf_app::trigger_update_context_error_response(
   to_json(json_data, smContextUpdateError);
   sm_context_response.set_json_data(json_data);
   sm_context_response.set_json_format("application/problem+json");
-  sm_context_response.set_http_code(http_code);
+  sm_context_response.set_http_code(static_cast<int>(http_code));
   trigger_session_update_sm_context_response(sm_context_response, promise_id);
 }
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_update_context_error_response(
-    const uint32_t& http_code, const uint8_t& cause,
+    const oai::http::status_code_e& http_code, const uint8_t& cause,
     const std::string& n1_sm_msg, uint32_t& promise_id) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
@@ -2107,7 +2114,7 @@ void smf_app::trigger_update_context_error_response(
   sm_context_response.set_json_data(json_data);
   sm_context_response.set_json_format("application/problem+json");
   sm_context_response.set_n1_sm_message(n1_sm_msg);
-  sm_context_response.set_http_code(http_code);
+  sm_context_response.set_http_code(static_cast<uint32_t>(http_code));
   trigger_session_update_sm_context_response(sm_context_response, promise_id);
 }
 
@@ -2126,7 +2133,8 @@ void smf_app::trigger_http_response(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_http_response(
-    const uint32_t& http_code, uint32_t& promise_id, uint8_t msg_type) {
+    const oai::http::status_code_e& http_code, uint32_t& promise_id,
+    uint8_t msg_type) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
 

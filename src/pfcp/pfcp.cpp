@@ -38,7 +38,7 @@ extern itti_mw* itti_inst;
 //------------------------------------------------------------------------------
 pfcp_l4_stack::pfcp_l4_stack(
     const string& ip_address, const unsigned short port_num,
-    const util::thread_sched_params& sched_params)
+    const oai::util::thread_sched_params& sched_params)
     : udp_s_8805(ip_address.c_str(), port_num),
       udp_s_allocated(ip_address.c_str(), 0) {
   Logger::pfcp().info(
