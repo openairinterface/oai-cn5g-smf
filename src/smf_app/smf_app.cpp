@@ -2364,11 +2364,9 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
   json_data["validityTime"] = "20390531T235959";
 
-  std::string url =
-      std::string(
-          inet_ntoa(*((struct in_addr*) &smf_cfg->nrf_addr.ipv4_addr))) +
-      ":" + std::to_string(smf_cfg->nrf_addr.port) + NNRF_NFM_BASE +
-      smf_cfg->nrf_addr.api_version + NNRF_NF_STATUS_SUBSCRIBE_URL;
+  auto nrf_sbi    = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
+  std::string url = nrf_sbi.get_url() + NNRF_NFM_BASE +
+                    nrf_sbi.get_api_version() + NNRF_NF_STATUS_SUBSCRIBE_URL;
 
   itti_msg->url          = url;
   itti_msg->json_data    = json_data;

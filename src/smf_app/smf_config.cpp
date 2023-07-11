@@ -200,30 +200,6 @@ void smf_config::to_smf_config() {
   discover_pcf = false;
   discover_upf = config::register_nrf();
 
-  // we need to set some things (e.g. API version even if we do NRF
-  // discovery...)
-  amf_addr.from_sbi_config_type_no_resolving(
-      get_nf(AMF_CONFIG_NAME)->get_sbi(), http_version);
-  udm_addr.from_sbi_config_type_no_resolving(
-      get_nf(UDM_CONFIG_NAME)->get_sbi(), http_version);
-
-  if (get_nf(NRF_CONFIG_NAME)->is_set()) {
-    nrf_addr.from_sbi_config_type(
-        get_nf(NRF_CONFIG_NAME)->get_sbi(), http_version);
-  }
-  if (get_nf(AMF_CONFIG_NAME)->is_set()) {
-    amf_addr.from_sbi_config_type(
-        get_nf(AMF_CONFIG_NAME)->get_sbi(), http_version);
-  }
-  if (get_nf(UDM_CONFIG_NAME)->is_set()) {
-    udm_addr.from_sbi_config_type(
-        get_nf(UDM_CONFIG_NAME)->get_sbi(), http_version);
-  }
-  if (get_nf(PCF_CONFIG_NAME)->is_set()) {
-    pcf_addr.from_sbi_config_type(
-        get_nf(PCF_CONFIG_NAME)->get_sbi(), http_version);
-  }
-
   local_interface _n4 = local().get_nx();
 
   n4.port    = _n4.get_port();

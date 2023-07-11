@@ -897,9 +897,12 @@ void smf_context::handle_itti_msg(
             get_supi_prefix(supi_prefix);
             std::string supi_str =
                 smf_get_supi_with_prefix(supi_prefix, smf_supi_to_string(supi));
-            std::string url = "http://" + get_amf_addr() +
-                              NAMF_COMMUNICATION_BASE +
-                              smf_cfg->amf_addr.api_version +
+            std::string api_version =
+                smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+                    ->get_sbi()
+                    .get_api_version();
+            std::string url = get_amf_addr() + NAMF_COMMUNICATION_BASE +
+                              api_version +
                               fmt::format(
                                   NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL,
                                   supi_str.c_str());
@@ -1693,9 +1696,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Get and Store AMF Addr if available
   std::vector<std::string> split_result;
   std::string amf_addr_str =
-      conv::toString(smf_cfg->amf_addr.ipv4_addr)
-          .append(":")
-          .append(std::to_string(smf_cfg->amf_addr.port));
+      smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)->get_sbi().get_url();
 
   boost::split(split_result, amf_status_uri, boost::is_any_of("/"));
   if (split_result.size() >= 3) {
@@ -1713,7 +1714,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     if (inet_pton(AF_INET, util::trim(addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
-      amf_addr_str = full_addr;
+      amf_addr_str = "http://" + full_addr;
       Logger::smf_api_server().debug("AMF IP Addr %s", amf_addr_str.c_str());
     }
   }
@@ -1820,9 +1821,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     supi_str             = smf_get_supi_with_prefix(
         sm_context_resp_pending->res.get_supi_prefix(),
         smf_supi_to_string(supi));
+    std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+                                  ->get_sbi()
+                                  .get_api_version();
     std::string url =
-        "http://" + get_amf_addr() + NAMF_COMMUNICATION_BASE +
-        smf_cfg->amf_addr.api_version +
+        get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
         fmt::format(
             NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
     sm_context_resp_pending->res.set_amf_url(url);
@@ -3294,9 +3297,11 @@ void smf_context::handle_pdu_session_modification_network_requested(
   supi_t supi          = itti_msg->msg.get_supi();
   std::string supi_str = smf_get_supi_with_prefix(
       itti_msg->msg.get_supi_prefix(), smf_supi_to_string(supi));
+  std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+                                ->get_sbi()
+                                .get_api_version();
   std::string url =
-      "http://" + get_amf_addr() + NAMF_COMMUNICATION_BASE +
-      smf_cfg->amf_addr.api_version +
+      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
       fmt::format(
           NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
   itti_msg->msg.set_amf_url(url);
@@ -4946,9 +4951,11 @@ void smf_context::send_pdu_session_create_response(
   supi_t supi          = resp->res.get_supi();
   std::string supi_str = smf_get_supi_with_prefix(
       resp->res.get_supi_prefix(), smf_supi_to_string(supi));
+  std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+                                ->get_sbi()
+                                .get_api_version();
   std::string url =
-      "http://" + get_amf_addr() + NAMF_COMMUNICATION_BASE +
-      smf_cfg->amf_addr.api_version +
+      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
       fmt::format(
           NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
   resp->res.set_amf_url(url);
@@ -4981,7 +4988,8 @@ void smf_context::send_pdu_session_create_response(
         std::to_string(resp->res.get_snssai().sd);
     // N1N2MsgTxfrFailureNotification
     std::string callback_uri =
-        get_amf_addr() + NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
+        smf_cfg->local().get_sbi().get_url() + NSMF_PDU_SESSION_BASE +
+        smf_cfg->local().get_sbi().get_api_version() +
         fmt::format(
             NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi_str.c_str());
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
