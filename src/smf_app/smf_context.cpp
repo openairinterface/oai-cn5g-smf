@@ -1482,11 +1482,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::string smContextRef = std::to_string(smreq->scid);
   sp.get()->policy_ptr     = std::make_shared<n7::policy_association>();
   bool use_pcf_policy      = false;
+  std::string psi_s        = std::to_string(smreq->req.get_pdu_session_id());
+  std::string callbackUri  = 
+          "/nsmf-smpolicycontrol-notify/" + smf_cfg.sbi_api_version 
+          + "/callbacks/" + smContextRef + "-" + psi_s;
+          
   sp.get()->policy_ptr->set_context(
       smf_supi_to_string_without_nulls(smreq->req.get_supi()),
       smreq->req.get_supi_prefix(), smreq->req.get_dnn(), snssai, plmn,
-      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
-
+      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(), callbackUri);
   // TODO what is the exact meaning of SCID? Is this unique per registration
   // or unique per PDU session?
   sp.get()->policy_ptr->id = smreq->scid;

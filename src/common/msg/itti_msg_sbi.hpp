@@ -86,7 +86,29 @@ class itti_sbi_notification_data : public itti_sbi_msg {
         notification_msg(i.notification_msg),
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
-  smf::data_notification_msg notification_msg;
+  smf::data_notification_msg notification_msg; 
+  uint8_t http_version;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_policy_notification : public itti_sbi_msg {
+ public:
+  itti_sbi_policy_notification(const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_POLICY_NOTIFICATION, orig, dest),
+        policy_data(),
+        http_version(1) {}
+  itti_sbi_policy_notification(const itti_sbi_policy_notification& i)
+      : itti_sbi_msg(i),
+        policy_data(i.policy_data),
+        http_version(1) {}
+  itti_sbi_policy_notification(
+      const itti_sbi_policy_notification& i, const task_id_t orig,
+      const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        policy_data(i.policy_data),
+        http_version(i.http_version) {}
+  const char* get_msg_name() { return "SBI_POLICY_NOTIFICATION"; };
+  smf::sm_policy_update policy_data;
   uint8_t http_version;
 };
 

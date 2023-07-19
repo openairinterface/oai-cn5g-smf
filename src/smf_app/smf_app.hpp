@@ -567,6 +567,18 @@ class smf_app {
       uint8_t& http_code);
 
   /*
+   * Handle SM Policy Update notification (e.g., when PDU Session PCC Changes)
+   * @param [std::shared_ptr<itti_sbi_policy_notification>& ] msg: message
+   * @param [oai::smf_server::model::ProblemDetails& ] problem_details
+   * @param [uint8_t&] http_code
+   * @return true if handle sucessfully, otherwise return false
+   */
+  bool handle_sm_policy_update_notification(
+      std::shared_ptr<itti_sbi_policy_notification>& msg,
+      oai::smf_server::model::ProblemDetails& problem_details,
+      uint8_t& http_code);
+
+  /*
    * Trigger pdu session modification
    * @param [const supi_t &] supi
    * @param [const std::string &] dnn
