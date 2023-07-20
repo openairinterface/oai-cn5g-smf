@@ -297,6 +297,7 @@ typedef struct qos_profile_s {
 #define BUF_LEN 512
 
 // FOR FUTURE PROMISE
+#define FUTURE_STATUS_TIMEOUT_MS 100
 
 // for PFCP
 constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;

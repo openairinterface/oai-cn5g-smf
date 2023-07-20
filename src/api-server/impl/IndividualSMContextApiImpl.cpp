@@ -85,8 +85,7 @@ void IndividualSMContextApiImpl::release_sm_context(
 
   boost::future_status status;
   // wait for timeout or ready
-  status =
-      f.wait_for(boost::chrono::milliseconds(http::FUTURE_STATUS_TIMEOUT_MS));
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
   int http_code = static_cast<int>(
       oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
   if (status == boost::future_status::ready) {
@@ -150,8 +149,7 @@ void IndividualSMContextApiImpl::update_sm_context(
 
   boost::future_status status;
   // wait for timeout or ready
-  status =
-      f.wait_for(boost::chrono::milliseconds(http::FUTURE_STATUS_TIMEOUT_MS));
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
   if (status == boost::future_status::ready) {
     assert(f.is_ready());
     assert(f.has_value());
