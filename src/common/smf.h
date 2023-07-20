@@ -292,7 +292,6 @@ typedef struct qos_profile_s {
 #define MAX_WAIT_MSECS 10000  // 1 second
 #define AMF_NUMBER_RETRIES 3
 #define UDM_NUMBER_RETRIES 3
-#define HTTP_TIMEOUT_MS 10000
 // for N1N2
 #define BUF_LEN 512
 
