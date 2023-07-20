@@ -138,35 +138,41 @@ class smf_app {
       pco_protocol_or_container_id_t* const
           poc_id /* STOLEN_REF poc_id->contents*/);
 
-  /*
+  /**
    * process_pco_request_ipcp
    * @param [protocol_configuration_options_t &] pco_resp
    * @param [pco_protocol_or_container_id_t *const] proc_id
+   * @param dnn DNN for DNS selection, use default if not found in config
    * @return
    */
   int process_pco_request_ipcp(
       protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
+      const pco_protocol_or_container_id_t* const poc_id,
+      const std::string& dnn);
 
-  /*
+  /**
    * process_pco_dns_server_request
    * @param [protocol_configuration_options_t &] pco_resp
    * @param [pco_protocol_or_container_id_t *const] proc_id
+   * @param dnn DNN for DNS selection, use default if not found in config
    * @return
    */
   int process_pco_dns_server_request(
       protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
+      const pco_protocol_or_container_id_t* const poc_id,
+      const std::string& dnn);
 
-  /*
+  /**
    * process_pco_dns_server_v6_request
    * @param [protocol_configuration_options_t &] pco_resp
    * @param [pco_protocol_or_container_id_t *const] proc_id
+   * @param dnn DNN for DNS selection, use default if not found in config
    * @return
    */
   int process_pco_dns_server_v6_request(
       protocol_configuration_options_t& pco_resp,
-      const pco_protocol_or_container_id_t* const poc_id);
+      const pco_protocol_or_container_id_t* const poc_id,
+      const std::string& dnn);
 
   /*
    * process_pco_link_mtu_request
@@ -282,15 +288,16 @@ class smf_app {
    */
   int static_paa_get_pool_id(const struct in_addr& ue_addr);
 
-  /*
+  /**
    * process_pco_request
    * @param [const protocol_configuration_options_t &] pco_req
+   * @param dnn DNN to lookup DNS server
    * @param [const protocol_configuration_options_t &] pco_resp
    * @param [const protocol_configuration_options_ids_t &] pco_ids
    * @return pool index
    */
   int process_pco_request(
-      const protocol_configuration_options_t& pco_req,
+      const protocol_configuration_options_t& pco_req, const std::string& dnn,
       protocol_configuration_options_t& pco_resp,
       protocol_configuration_options_ids_t& pco_ids);
 

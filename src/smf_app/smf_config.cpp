@@ -226,16 +226,6 @@ void smf_config::to_smf_config() {
   sbi_api_version = smf_cfg->get_sbi().get_api_version();
   http_version    = get_http_version();
 
-  default_dnsv4     = smf_cfg->get_ue_dns().get_primary_dns_v4();
-  default_dns_secv4 = smf_cfg->get_ue_dns().get_secondary_dns_v4();
-  default_dnsv6     = smf_cfg->get_ue_dns().get_primary_dns_v6();
-  default_dns_secv6 = smf_cfg->get_ue_dns().get_secondary_dns_v6();
-
-  default_cscfv4 = smf_cfg->get_ims_config().get_pcscf_v4();
-  default_cscfv6 = smf_cfg->get_ims_config().get_pcscf_v6();
-
-  ue_mtu = smf_cfg->get_ue_mtu();
-
   // UPF configuration
   // NWI is handled in get_nwi function directly from new configuration
   for (const auto& upf : smf_cfg->get_upfs()) {
@@ -324,6 +314,13 @@ const upf& smf_config::get_upf(const pfcp::node_id_t& node_id) const {
 
 bool smf_config::init() {
   bool success = config::init();
+  // we update DNS settings per DNN if user did not set it
+  for (auto& dnn : m_dnns) {
+    if (!dnn.get_ue_dns().is_set()) {
+      dnn.set_ue_dns(smf()->get_ue_dns());
+    }
+  }
+
   // if there is an error here, we print the configuration before throwing
   try {
     to_smf_config();
@@ -361,4 +358,13 @@ void smf_config::update_used_nfs() {
   if (smf()->get_smf_support_features().use_local_pcc_rules()) {
     get_nf(PCF_CONFIG_NAME)->unset_config();
   }
+}
+
+const ue_dns& smf_config::get_dns_from_dnn(const string& dnn) {
+  for (const auto& dnn_cfg : get_dnns()) {
+    if (dnn_cfg.get_dnn() == dnn) {
+      return dnn_cfg.get_ue_dns();
+    }
+  }
+  return smf()->get_ue_dns();
 }

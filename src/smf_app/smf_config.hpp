@@ -109,16 +109,9 @@ class smf_config : public config {
   std::string sbi_api_version;
   itti_cfg_t itti;
 
-  struct in_addr default_dnsv4;
-  struct in_addr default_dns_secv4;
-  struct in_addr default_cscfv4;
-  struct in6_addr default_dnsv6;
-  struct in6_addr default_dns_secv6;
   std::map<std::string, dnn_t> dnns;
-  struct in6_addr default_cscfv6;
 
   bool force_push_pco;
-  uint ue_mtu;
 
   bool register_nrf;
   bool discover_upf;
@@ -177,6 +170,13 @@ class smf_config : public config {
    * @return SMF configuration
    */
   std::shared_ptr<smf_config_type> smf() const;
+
+  /**
+   * Returns UE DNS from the DNN, returns default DNS if DNN is not found
+   * @param dnn
+   * @return
+   */
+  const ue_dns& get_dns_from_dnn(const std::string& dnn);
 
   bool init() override;
 };

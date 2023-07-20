@@ -114,7 +114,7 @@ class smf_session_procedure : public smf_procedure {
  protected:
   void synch_ul_dl_edges(
       const vector<edge>& dl_edges, const vector<edge>& ul_edges,
-      const pfcp::qfi_t& qfi);
+      const pfcp::qfi_t& qfi, bool synch_pdr_for_uplink);
 
   /**
    * Helper function to get current UPF from graph in a safe way

@@ -66,11 +66,17 @@ int smf_app::pco_push_protocol_or_container_id(
 //------------------------------------------------------------------------------
 int smf_app::process_pco_request_ipcp(
     protocol_configuration_options_t& pco_resp,
-    const pco_protocol_or_container_id_t* const poc_id) {
-  in_addr_t ipcp_dns_prim_ipv4_addr          = INADDR_NONE;
-  in_addr_t ipcp_dns_sec_ipv4_addr           = INADDR_NONE;
-  in_addr_t ipcp_out_dns_prim_ipv4_addr      = INADDR_NONE;
-  in_addr_t ipcp_out_dns_sec_ipv4_addr       = INADDR_NONE;
+    const pco_protocol_or_container_id_t* const poc_id,
+    const std::string& dnn) {
+  in_addr_t ipcp_dns_prim_ipv4_addr     = INADDR_NONE;
+  in_addr_t ipcp_dns_sec_ipv4_addr      = INADDR_NONE;
+  in_addr_t ipcp_out_dns_prim_ipv4_addr = INADDR_NONE;
+  in_addr_t ipcp_out_dns_sec_ipv4_addr  = INADDR_NONE;
+
+  in_addr configured_prim_ipv4_addr =
+      smf_cfg->get_dns_from_dnn(dnn).get_primary_dns_v4();
+  // TODO what about the other DNS settings?
+
   pco_protocol_or_container_id_t poc_id_resp = {0};
   size_t ipcp_req_remaining_length = poc_id->length_of_protocol_id_contents;
   size_t pco_in_index              = 0;
@@ -154,7 +160,7 @@ int smf_app::process_pco_request_ipcp(
               ipcp_dns_prim_ipv4_addr);
 
           if (ipcp_dns_prim_ipv4_addr == INADDR_ANY) {
-            ipcp_out_dns_prim_ipv4_addr = smf_cfg->default_dnsv4.s_addr;
+            ipcp_out_dns_prim_ipv4_addr = configured_prim_ipv4_addr.s_addr;
             /* RFC 1877:
              * Primary-DNS-Address
              *  The four octet Primary-DNS-Address is the address of the primary
@@ -162,9 +168,10 @@ int smf_app::process_pco_request_ipcp(
              *  set to zero, it indicates an explicit request that the peer
              *  provide the address information in a Config-Nak packet. */
             ipcp_out_code = IPCP_CODE_CONFIGURE_NACK;
-          } else if (smf_cfg->default_dnsv4.s_addr != ipcp_dns_prim_ipv4_addr) {
+          } else if (
+              configured_prim_ipv4_addr.s_addr != ipcp_dns_prim_ipv4_addr) {
             ipcp_out_code               = IPCP_CODE_CONFIGURE_NACK;
-            ipcp_out_dns_prim_ipv4_addr = smf_cfg->default_dnsv4.s_addr;
+            ipcp_out_dns_prim_ipv4_addr = configured_prim_ipv4_addr.s_addr;
           } else {
             ipcp_out_dns_prim_ipv4_addr = ipcp_dns_prim_ipv4_addr;
           }
@@ -266,8 +273,10 @@ int smf_app::process_pco_request_ipcp(
 //------------------------------------------------------------------------------
 int smf_app::process_pco_dns_server_request(
     protocol_configuration_options_t& pco_resp,
-    const pco_protocol_or_container_id_t* const poc_id) {
-  in_addr_t ipcp_out_dns_prim_ipv4_addr      = smf_cfg->default_dnsv4.s_addr;
+    const pco_protocol_or_container_id_t* const poc_id,
+    const std::string& dnn) {
+  in_addr_t ipcp_out_dns_prim_ipv4_addr =
+      smf_cfg->get_dns_from_dnn(dnn).get_primary_dns_v4().s_addr;
   pco_protocol_or_container_id_t poc_id_resp = {0};
   uint8_t dns_array[4];
 
@@ -288,8 +297,10 @@ int smf_app::process_pco_dns_server_request(
 //------------------------------------------------------------------------------
 int smf_app::process_pco_dns_server_v6_request(
     protocol_configuration_options_t& pco_resp,
-    const pco_protocol_or_container_id_t* const poc_id) {
-  in6_addr ipcp_out_dns_prim_ipv6_addr       = smf_cfg->default_dnsv6;
+    const pco_protocol_or_container_id_t* const poc_id,
+    const std::string& dnn) {
+  in6_addr ipcp_out_dns_prim_ipv6_addr =
+      smf_cfg->get_dns_from_dnn(dnn).get_primary_dns_v6();
   pco_protocol_or_container_id_t poc_id_resp = {0};
   uint8_t dnsv6_array[16];
 
@@ -327,8 +338,8 @@ int smf_app::process_pco_link_mtu_request(
       "PCO: Protocol identifier IPCP option Link MTU Request");
   poc_id_resp.protocol_id = PCO_CONTAINER_IDENTIFIER_IPV4_LINK_MTU;
   poc_id_resp.length_of_protocol_id_contents = 2;
-  mtu_array[0]                               = (uint8_t)(smf_cfg->ue_mtu >> 8);
-  mtu_array[1] = (uint8_t)(smf_cfg->ue_mtu & 0xFF);
+  mtu_array[0] = (uint8_t)(smf_cfg->smf()->get_ue_mtu() >> 8);
+  mtu_array[1] = (uint8_t)(smf_cfg->smf()->get_ue_mtu() & 0xFF);
   std::string tmp_s((const char*) &mtu_array[0], 2);
   poc_id_resp.protocol_id_contents = tmp_s;
 
@@ -339,7 +350,8 @@ int smf_app::process_pco_link_mtu_request(
 int smf_app::process_pco_p_cscf_request(
     protocol_configuration_options_t& pco_resp,
     const pco_protocol_or_container_id_t* const poc_id) {
-  in_addr_t cscf_ipv4_addr                   = smf_cfg->default_cscfv4.s_addr;
+  in_addr_t cscf_ipv4_addr =
+      smf_cfg->smf()->get_ims_config().get_pcscf_v4().s_addr;
   pco_protocol_or_container_id_t poc_id_resp = {0};
   uint8_t cscf_array[4];
 
@@ -360,7 +372,7 @@ int smf_app::process_pco_p_cscf_request(
 int smf_app::process_pco_p_cscf_v6_request(
     protocol_configuration_options_t& pco_resp,
     const pco_protocol_or_container_id_t* const poc_id) {
-  in6_addr cscf_ipv6_addr                    = smf_cfg->default_cscfv6;
+  in6_addr cscf_ipv6_addr = smf_cfg->smf()->get_ims_config().get_pcscf_v6();
   pco_protocol_or_container_id_t poc_id_resp = {0};
   uint8_t cscfv6_array[16];
 
@@ -406,7 +418,7 @@ int smf_app::process_pco_selected_bearer_control_mode(
 
 //------------------------------------------------------------------------------
 int smf_app::process_pco_request(
-    const protocol_configuration_options_t& pco_req,
+    const protocol_configuration_options_t& pco_req, const std::string& dnn,
     protocol_configuration_options_t& pco_resp,
     protocol_configuration_options_ids_t& pco_ids) {
   switch (pco_req.configuration_protocol) {
@@ -428,18 +440,18 @@ int smf_app::process_pco_request(
     switch (pco_req.protocol_or_container_ids[id].protocol_id) {
       case PCO_PROTOCOL_IDENTIFIER_IPCP:
         process_pco_request_ipcp(
-            pco_resp, &pco_req.protocol_or_container_ids[id]);
+            pco_resp, &pco_req.protocol_or_container_ids[id], dnn);
         pco_ids.pi_ipcp = true;
         break;
 
       case PCO_CONTAINER_IDENTIFIER_DNS_SERVER_IPV4_ADDRESS_REQUEST:
         process_pco_dns_server_request(
-            pco_resp, &pco_req.protocol_or_container_ids[id]);
+            pco_resp, &pco_req.protocol_or_container_ids[id], dnn);
         pco_ids.ci_dns_server_ipv4_address_request = true;
         break;
       case PCO_CONTAINER_IDENTIFIER_DNS_SERVER_IPV6_ADDRESS:
         process_pco_dns_server_v6_request(
-            pco_resp, &pco_req.protocol_or_container_ids[id]);
+            pco_resp, &pco_req.protocol_or_container_ids[id], dnn);
         pco_ids.ci_dns_server_ipv6_address_request = true;
         break;
       case PCO_CONTAINER_IDENTIFIER_IP_ADDRESS_ALLOCATION_VIA_NAS_SIGNALLING:
@@ -479,7 +491,7 @@ int smf_app::process_pco_request(
   if (smf_cfg->force_push_pco) {
     pco_ids.ci_ip_address_allocation_via_nas_signalling = true;
     if (!pco_ids.ci_dns_server_ipv4_address_request) {
-      process_pco_dns_server_request(pco_resp, nullptr);
+      process_pco_dns_server_request(pco_resp, nullptr, dnn);
     }
     if (!pco_ids.ci_ipv4_link_mtu_request) {
       process_pco_link_mtu_request(pco_resp, nullptr);

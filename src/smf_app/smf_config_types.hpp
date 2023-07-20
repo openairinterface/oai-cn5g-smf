@@ -119,36 +119,6 @@ class upf : public config_type {
   [[nodiscard]] const upf_info_config_value& get_upf_info() const;
 };
 
-class ue_dns : public config_type {
- private:
-  string_config_value m_primary_dns_v4;
-  string_config_value m_secondary_dns_v4;
-  string_config_value m_primary_dns_v6;
-  string_config_value m_secondary_dns_v6;
-
-  // generated values
-  in_addr m_primary_dns_v4_ip{};
-  in_addr m_secondary_dns_v4_ip{};
-  in6_addr m_primary_dns_v6_ip{};
-  in6_addr m_secondary_dns_v6_ip{};
-
- public:
-  explicit ue_dns(
-      const std::string& primary_dns_v4, const std::string& secondary_dns_v4,
-      const std::string& primary_dns_v6, const std::string& secondary_dns_v6);
-
-  void from_yaml(const YAML::Node& node) override;
-
-  [[nodiscard]] std::string to_string(const std::string& indent) const override;
-
-  void validate() override;
-
-  [[nodiscard]] const in_addr& get_primary_dns_v4() const;
-  [[nodiscard]] const in_addr& get_secondary_dns_v4() const;
-  [[nodiscard]] const in6_addr& get_primary_dns_v6() const;
-  [[nodiscard]] const in6_addr& get_secondary_dns_v6() const;
-};
-
 class ims_config : public config_type {
  private:
   string_config_value m_pcscf_v4;
