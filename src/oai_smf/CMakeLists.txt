@@ -307,6 +307,7 @@ include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/ngap)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/ngap/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
