@@ -35,6 +35,7 @@ include_directories(${SRC_TOP_DIR}/common/utils)
 include_directories(${SRC_TOP_DIR}/common/utils/bstr)
 include_directories(${SRC_TOP_DIR}/common/nas)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
 
 file(GLOB NAS_src_files
     ${NAS_DIR}/*.c

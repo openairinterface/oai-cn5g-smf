@@ -26,6 +26,7 @@ include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 
 add_library (UDP STATIC
