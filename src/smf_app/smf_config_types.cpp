@@ -261,7 +261,7 @@ upf::upf(
     bool enable_dl_pdr_in_session_establishment, const std::string& local_n3_ip)
     : m_upf_config_value("access.oai.org", "core.oai.org") {
   m_host = string_config_value("host", host);
-  m_port = int_config_value("rort", port);
+  m_port = int_config_value("port", port);
   m_usage_reporting =
       option_config_value("enable_usage_reporting", enable_usage_reporting);
   m_dl_pdr_in_session_establishment = option_config_value(
@@ -509,12 +509,13 @@ const in6_addr& ims_config::get_pcscf_v6() const {
 smf_config_type::smf_config_type(
     const std::string& name, const std::string& host, const sbi_interface& sbi,
     const local_interface& n4)
-    : nf(name, host, sbi, n4),
+    : nf(name, host, sbi),
       m_ims_config("127.0.0.1", ""),
       m_support_feature(false, true),
       m_ue_dns("8.8.8.8", "1.1.1.1", "", "") {
   m_config_name = "SMF Config";
   m_ue_mtu      = int_config_value("ue_mtu", 1500);
+  m_n4          = n4;
 }
 
 void smf_config_type::from_yaml(const YAML::Node& node) {
@@ -527,6 +528,10 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
   }
   if (node["ims"]) {
     m_ims_config.from_yaml(node["ims"]);
+  }
+  if (node["n4"]) {
+    m_n4.set_host(get_host());
+    m_n4.from_yaml(node["n4"]);
   }
   if (node["upfs"]) {
     // any default UPF is deleted if people configure UPFs
@@ -594,6 +599,10 @@ std::string smf_config_type::to_string(const std::string& indent) const {
   std::string out = nf::to_string("");
 
   unsigned int inner_width = get_inner_width(indent.length());
+  out.append(indent).append(
+      fmt::format("{} {}\n", OUTER_LIST_ELEM, m_n4.get_config_name()));
+  out.append(m_n4.to_string(add_indent(indent)));
+
   out.append(m_support_feature.to_string(indent));
   out.append(indent).append(fmt::format(
       BASE_FORMATTER, OUTER_LIST_ELEM, m_ue_mtu.get_config_name(), inner_width,
@@ -620,6 +629,7 @@ void smf_config_type::validate() {
   nf::validate();
   m_ue_dns.validate();
   m_ue_mtu.validate();
+  m_n4.validate();
   for (auto& upf : m_upfs) {
     upf.validate();
   }
@@ -652,6 +662,10 @@ const std::vector<upf>& smf_config_type::get_upfs() const {
 std::vector<subscription_info_config>&
 smf_config_type::get_subscription_info() {
   return m_subscription_infos;
+}
+
+const local_interface& smf_config_type::get_n4() const {
+  return m_n4;
 }
 
 subscription_info_config::subscription_info_config(

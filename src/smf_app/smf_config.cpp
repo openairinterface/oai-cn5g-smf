@@ -94,7 +94,7 @@ smf_config::smf_config(
 
 //------------------------------------------------------------------------------
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
-  oai::config::local_interface _n4 = local().get_nx();
+  oai::config::local_interface _n4 = smf()->get_n4();
   // if we give a FQDN here, the IP address will be empty
   if (!conv::fromString(local().get_host()).s_addr) {
     node_id.node_id_type = pfcp::NODE_ID_TYPE_FQDN;
@@ -116,7 +116,7 @@ int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
 }
 
 int smf_config::get_pfcp_fseid(pfcp::fseid_t& fseid) {
-  oai::config::local_interface _n4 = local().get_nx();
+  oai::config::local_interface _n4 = smf()->get_n4();
   if (_n4.get_addr4().s_addr) {
     fseid.v4           = 1;
     fseid.ipv4_address = _n4.get_addr4();
@@ -225,13 +225,13 @@ void smf_config::to_smf_config() {
         get_nf(PCF_CONFIG_NAME)->get_sbi(), http_version);
   }
 
-  local_interface _n4 = local().get_nx();
+  local_interface _n4 = smf()->get_n4();
 
   n4.port    = _n4.get_port();
   n4.addr4   = _n4.get_addr4();
-  n4.addr6   = local().get_nx().get_addr6();
-  n4.if_name = local().get_nx().get_if_name();
-  n4.mtu     = local().get_nx().get_mtu();
+  n4.addr6   = _n4.get_addr6();
+  n4.if_name = _n4.get_if_name();
+  n4.mtu     = _n4.get_mtu();
 
   // TODO these values are not configurable anymore
   sbi.thread_rd_sched_params.sched_priority   = 90;
@@ -281,10 +281,19 @@ void smf_config::to_smf_config() {
   // DNNs
   for (const auto& cfg_dnn : get_dnns()) {
     dnn_t dnn;
-    dnn.pdu_session_type     = cfg_dnn.get_pdu_session_type();
-    dnn.dnn                  = cfg_dnn.get_dnn();
-    dnn.ue_pool_range_low    = cfg_dnn.get_ipv4_pool_start();
-    dnn.ue_pool_range_high   = cfg_dnn.get_ipv4_pool_end();
+    dnn.pdu_session_type  = cfg_dnn.get_pdu_session_type();
+    dnn.dnn               = cfg_dnn.get_dnn();
+    dnn.ue_pool_range_low = cfg_dnn.get_ipv4_pool_start();
+    // we need to add one IP as it is reserved for the GW
+    dnn.ue_pool_range_low.s_addr += be32toh(1);
+    dnn.ue_pool_range_high = cfg_dnn.get_ipv4_pool_end();
+
+    logger::logger_registry::get_logger(LOGGER_NAME)
+        .debug(
+            "DNN %s: -- First UE IPv4: %s -- Last UE IPv4: %s", dnn.dnn,
+            conv::toString(dnn.ue_pool_range_low),
+            conv::toString(dnn.ue_pool_range_high));
+
     dnn.paa_pool6_prefix     = cfg_dnn.get_ipv6_prefix();
     dnn.paa_pool6_prefix_len = cfg_dnn.get_ipv6_prefix_length();
     dnns[dnn.dnn]            = dnn;

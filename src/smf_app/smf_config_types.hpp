@@ -236,6 +236,7 @@ class smf_config_type : public nf {
   ims_config m_ims_config;
   std::vector<upf> m_upfs;
   std::vector<subscription_info_config> m_subscription_infos;
+  local_interface m_n4;
 
   int_config_value m_ue_mtu;
 
@@ -259,6 +260,7 @@ class smf_config_type : public nf {
 
   [[nodiscard]] const std::vector<upf>& get_upfs() const;
   [[nodiscard]] std::vector<subscription_info_config>& get_subscription_info();
+  [[nodiscard]] const local_interface& get_n4() const;
 };
 
 }  // namespace oai::config::smf
