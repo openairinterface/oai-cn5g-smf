@@ -44,6 +44,7 @@ include_directories(${SRC_TOP_DIR}/api-server/impl)
 include_directories(${SRC_TOP_DIR}/api-server/model)
 include_directories(${SRC_TOP_DIR}/api-server/)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 
 add_library (SMF STATIC

@@ -37,6 +37,7 @@ include_directories(${SRC_TOP_DIR}/nas/sm/msg)
 #include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 
 set(CN_UTILS_SRC STATIC
