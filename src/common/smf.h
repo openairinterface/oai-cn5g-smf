@@ -107,13 +107,8 @@ typedef struct s_nssai  // section 28.4, TS23.003
   s_nssai(const uint8_t& m_sst, const std::string m_sd) : sst(m_sst) {
     sd = SD_NO_VALUE;
     if (m_sd.empty()) return;
-    uint8_t base = 10;
+    uint8_t base = 16;
     try {
-      if (m_sd.size() > 2) {
-        if (boost::iequals(m_sd.substr(0, 2), "0x")) {
-          base = 16;
-        }
-      }
       sd = std::stoul(m_sd, nullptr, base);
     } catch (const std::exception& e) {
       Logger::smf_app().error(
