@@ -963,6 +963,20 @@ bool smf_sbi::get_sm_data(
                 it.value()["5gQosProfile"]["5qi"];
             dnn_configuration->_5g_qos_profile.arp.priority_level =
                 it.value()["5gQosProfile"]["arp"]["priorityLevel"];
+            
+	    // Store the GBR status for the QoS Profile
+            dnn_configuration->_5g_qos_profile.gbr_status = it.value()["5gQosProfile"]["GBR_status"];
+
+            //Fill the GBR info only GBR status is TRUE. we can avoid the reading if the particular UE is non GBR. since 
+	    //for the non-GBR UE, CORE will not send these information to UE as well RAN.
+	    if(dnn_configuration->_5g_qos_profile.gbr_status)
+            {
+            	dnn_configuration->_5g_qos_profile.GFBR_dl_flow = it.value()["5gQosProfile"]["GFBR_dl_flow"];
+            	dnn_configuration->_5g_qos_profile.GFBR_ul_flow = it.value()["5gQosProfile"]["GFBR_ul_flow"];
+            	dnn_configuration->_5g_qos_profile.MFBR_dl_flow = it.value()["5gQosProfile"]["MFBR_dl_flow"];
+            	dnn_configuration->_5g_qos_profile.MFBR_ul_flow = it.value()["5gQosProfile"]["MFBR_ul_flow"];
+	    }
+
             dnn_configuration->_5g_qos_profile.arp.preempt_cap =
                 it.value()["5gQosProfile"]["arp"]["preemptCap"];
             dnn_configuration->_5g_qos_profile.arp.preempt_vuln =

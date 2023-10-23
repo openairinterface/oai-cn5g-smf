@@ -71,6 +71,10 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
 
   bool result                                             = false;
+ 
+  //To encode the bit rate for GBR in UL and DL
+  uint32_t bit_rate_dl = {110000000};  
+  uint32_t bit_rate_ul = {110000000};
   Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
   ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
       1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
@@ -232,6 +236,25 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
       .choice.nonDynamic5QI->fiveQI = (uint8_t) DEFAULT_5QI;
+
+  if(ngap_QosFlowSetupRequestItem->qosFlowIdentifier <5){
+  // Filling the GBR info for the QOS
+  Ngap_GBR_QosInformation* gBR_QosInformation = nullptr;
+  gBR_QosInformation = (Ngap_GBR_QosInformation*) calloc(
+      1, sizeof(Ngap_GBR_QosInformation));
+
+  //Currently hard code the Bit rate in Mbps
+   bit_rate_dl *= 1000000;
+  INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.maximumFlowBitRateDL.buf);
+  INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.maximumFlowBitRateUL.buf);
+  INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.guaranteedFlowBitRateDL.buf);
+  INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.guaranteedFlowBitRateDL.buf);
+  /*ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.maximumFlowBitRateDL= (bit_rate_dl*= 1000000);
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.maximumFlowBitRateUL= (bit_rate_ul*= 1000000);
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.guaranteedFlowBitRateDL=(bit_rate_dl*= 1000000);
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters->gBR_QosInformation.guaranteedFlowBitRateUL= (bit_rate_ul*= 1000000);*/
+  }
+
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
       .allocationAndRetentionPriority.priorityLevelARP =
       qos_flow.qos_profile.arp.priority_level;
@@ -488,6 +511,14 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
       1, sizeof(Ngap_QosFlowSetupRequestItem_t));
   ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
+
+  ///
+  ////
+  ////
+  ////
+  ////
+  //
+
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
       .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics

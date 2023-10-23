@@ -1182,23 +1182,45 @@ void smf_context::get_default_qos_flow_description(
       PARAMETER_IDENTIFIER_5QI;
   //qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
   qos_flow_description.parameterslist[0].parametercontents._5qi = qfi.qfi;
-  /*
+ 
+   if(qfi.qfi<5)
+   {
+	   
    qos_flow_description.parameterslist[1].parameteridentifier =
    PARAMETER_IDENTIFIER_GFBR_UPLINK;
    qos_flow_description.parameterslist[1].parametercontents
    .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
    qos_flow_description.parameterslist[1].parametercontents
    .gfbrormfbr_uplinkordownlink.value = 0x10;
    qos_flow_description.parameterslist[2].parameteridentifier =
    PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
    qos_flow_description.parameterslist[2].parametercontents
    .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
    qos_flow_description.parameterslist[2].parametercontents
    .gfbrormfbr_uplinkordownlink.value = 0x10;
-   */
 
+      Logger::smf_app().debug(
+       "Default Qos Flow Description: %x %x %x %x %x %x",
+       qos_flow_description.qfi, qos_flow_description.operationcode,
+       qos_flow_description.e, qos_flow_description.numberofparameters,
+       qos_flow_description.parameterslist[0].parameteridentifier,
+       qos_flow_description.parameterslist[0].parametercontents._5qi
+             qos_flow_description.parameterslist[1].parameteridentifier,
+        qos_flow_description.parameterslist[1].parametercontents
+        .gfbrormfbr_uplinkordownlink.uint,
+        qos_flow_description.parameterslist[1].parametercontents
+        .gfbrormfbr_uplinkordownlink.value,
+        qos_flow_description.parameterslist[2].parameteridentifier,
+        qos_flow_description.parameterslist[2].parametercontents
+        .gfbrormfbr_uplinkordownlink.uint,
+        qos_flow_description.parameterslist[2].parametercontents
+        .gfbrormfbr_uplinkordownlink.value
+        );
+
+   }
+   
   Logger::smf_app().debug(
       "Default Qos Flow Description: %x %x %x %x %x %x",
       qos_flow_description.qfi, qos_flow_description.operationcode,
@@ -1291,25 +1313,6 @@ void smf_context::get_session_ambr(
           session_ambr.uint_for_session_ambr_for_uplink =
               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
         if (session_ambr_ul_unit.compare("Tbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-        if (session_ambr_ul_unit.compare("Pbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
-
-        session_ambr.session_ambr_for_uplink =
-            std::stoi((sdc.get()->session_ambr)
-                          .uplink.substr(0, leng_of_session_ambr_ul - 4));
-      } catch (const std::exception& e) {
-        Logger::smf_app().warn("Undefined error: %s", e.what());
-        // assign default value
-        session_ambr.session_ambr_for_uplink = 1;
-        session_ambr.uint_for_session_ambr_for_uplink =
-            AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-      }
-    }
-  } else {
-    Logger::smf_app().debug(
         "Could not get default info from the subscription information, use "
         "default value instead.");
     // use default value
@@ -1330,8 +1333,8 @@ void smf_context::get_session_ambr(
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
 
-  uint32_t bit_rate_dl = {110000000};  // TODO: to be updated
-  uint32_t bit_rate_ul = {110000000};  // TODO: to be updated
+  uint32_t bit_rate_dl = {11000000};  // TODO: to be updated
+  uint32_t bit_rate_ul = {11000000};  // TODO: to be updated
 
   session_ambr.pDUSessionAggregateMaximumBitRateDL.size = 4;
   session_ambr.pDUSessionAggregateMaximumBitRateDL.buf =
@@ -1376,6 +1379,25 @@ void smf_context::get_session_ambr(
       }
 
       // Uplink
+      size_t leng_of_session_ambr_ul =
+          (sdc.get()->session_ambr).uplink.length();
+      try {
+        bit_rate_ul =
+            std::stoi((sdc.get()->session_ambr)
+                          .uplink.substr(0, leng_of_session_ambr_ul - 4));
+        std::string session_ambr_ul_unit =
+            (sdc.get()->session_ambr)
+                .uplink.substr(
+                    leng_of_session_ambr_ul -
+                    4);  // 4 last characters stand for mbps, kbps, ..
+        if (session_ambr_ul_unit.compare("Kbps") == 0) bit_rate_ul *= 1000;
+        if (session_ambr_ul_unit.compare("Mbps") == 0) bit_rate_ul *= 1000000;
+        if (session_ambr_ul_unit.compare("Gbps") == 0)
+          bit_rate_ul *= 1000000000;
+        INT32_TO_BUFFER(
+            bit_rate_ul, session_ambr.pDUSessionAggregateMaximumBitRateUL.buf);
+      } catch (const std::exception& e) {
+        Logger::smf_app().warn("Undefined error: %s", e.what());
       size_t leng_of_session_ambr_ul =
           (sdc.get()->session_ambr).uplink.length();
       try {
@@ -5365,22 +5387,3 @@ void smf_context::send_pdu_session_release_response(
     }
 
   } else {
-    resp->res.set_http_code(
-        http_status_code_e::HTTP_STATUS_CODE_406_NOT_ACCEPTABLE);
-  }
-
-  // clear the resources including addresses allocated to this Session and
-  // associated QoS flows
-  sps->deallocate_ressources(resp->res.get_dnn());
-
-  // send ITTI message to SMF_APP interface to trigger the response towards
-  // AMFs
-  Logger::smf_app().info(
-      "Sending ITTI message %s to task TASK_SMF_APP", resp->get_msg_name());
-  int ret = itti_inst->send_msg(resp);
-  if (RETURNok != ret) {
-    Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_APP",
-        resp->get_msg_name());
-  }
-}
