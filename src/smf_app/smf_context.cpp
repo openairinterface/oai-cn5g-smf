@@ -86,6 +86,11 @@ extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+extern std::string gfbr_dl;
+extern std::string gfbr_ul;
+extern std::string mfbr_dl;
+extern std::string mfbr_ul;
+
 //------------------------------------------------------------------------------
 void smf_pdu_session::get_pdu_session_id(uint32_t& psi) const {
   psi = pdu_session_id;
@@ -1172,53 +1177,86 @@ void smf_context::get_default_qos_flow_description(
   Logger::smf_app().info(
       "Get default QoS Flow Description (PDU session type %d)",
       pdu_session_type);
+    //To encode the bit rate for GBR in UL and DL
+  uint32_t bit_rate_dl = {00000000};
+  uint32_t bit_rate_ul = {00000000};
+
   qos_flow_description.qfi                = qfi.qfi;
   qos_flow_description.operationcode      = CREATE_NEW_QOS_FLOW_DESCRIPTION;
   qos_flow_description.e                  = PARAMETERS_LIST_IS_INCLUDED;
   qos_flow_description.numberofparameters = 1;
   qos_flow_description.parameterslist =
-      (ParametersList*) calloc(3, sizeof(ParametersList));
+      (ParametersList*) calloc(5, sizeof(ParametersList));
   qos_flow_description.parameterslist[0].parameteridentifier =
       PARAMETER_IDENTIFIER_5QI;
   //qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
   qos_flow_description.parameterslist[0].parametercontents._5qi = qfi.qfi;
  
-   if(qfi.qfi<5)
-   {
-	   
+  switch(qfi.qfi){
+  case 1 ... 4:
+  case 65 ... 67:
+  case 71 ... 76:{
+  
+   /* Currently unit is represented based on 16 Mbps. To derive the 
+    * value of Downlink bit rate value it need to compute it by 16 */
+  size_t rate_len = gfbr_ul.length();
+
+  bit_rate_ul = std::stoi(gfbr_ul.substr(0, rate_len - 4));
+  
    qos_flow_description.parameterslist[1].parameteridentifier =
    PARAMETER_IDENTIFIER_GFBR_UPLINK;
    qos_flow_description.parameterslist[1].parametercontents
    .gfbrormfbr_uplinkordownlink.uint =
    GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
    qos_flow_description.parameterslist[1].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
+   .gfbrormfbr_uplinkordownlink.value =bit_rate_ul/16;
+
+
+  rate_len = gfbr_dl.length();
+
+  bit_rate_dl = std::stoi(gfbr_dl.substr(0, rate_len - 4));
+
+
    qos_flow_description.parameterslist[2].parameteridentifier =
    PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
    qos_flow_description.parameterslist[2].parametercontents
    .gfbrormfbr_uplinkordownlink.uint =
    GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
    qos_flow_description.parameterslist[2].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
+   .gfbrormfbr_uplinkordownlink.value = bit_rate_dl/16;
 
-      Logger::smf_app().debug(
-       "Default Qos Flow Description: %x %x %x %x %x %x",
-       qos_flow_description.qfi, qos_flow_description.operationcode,
-       qos_flow_description.e, qos_flow_description.numberofparameters,
-       qos_flow_description.parameterslist[0].parameteridentifier,
-       qos_flow_description.parameterslist[0].parametercontents._5qi
-             qos_flow_description.parameterslist[1].parameteridentifier,
-        qos_flow_description.parameterslist[1].parametercontents
-        .gfbrormfbr_uplinkordownlink.uint,
-        qos_flow_description.parameterslist[1].parametercontents
-        .gfbrormfbr_uplinkordownlink.value,
-        qos_flow_description.parameterslist[2].parameteridentifier,
-        qos_flow_description.parameterslist[2].parametercontents
-        .gfbrormfbr_uplinkordownlink.uint,
-        qos_flow_description.parameterslist[2].parametercontents
-        .gfbrormfbr_uplinkordownlink.value
-        );
 
+  rate_len = mfbr_ul.length();
+
+  bit_rate_ul = std::stoi(mfbr_ul.substr(0, rate_len - 4));
+  
+   qos_flow_description.parameterslist[3].parameteridentifier =
+   PARAMETER_IDENTIFIER_MFBR_UPLINK;
+   qos_flow_description.parameterslist[3].parametercontents
+   .gfbrormfbr_uplinkordownlink.uint =
+   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+   qos_flow_description.parameterslist[3].parametercontents
+   .gfbrormfbr_uplinkordownlink.value =bit_rate_ul/16;
+
+
+  rate_len = mfbr_dl.length();
+
+  bit_rate_dl = std::stoi(mfbr_dl.substr(0, rate_len - 4));
+
+
+   qos_flow_description.parameterslist[4].parameteridentifier =
+   PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
+   qos_flow_description.parameterslist[4].parametercontents
+   .gfbrormfbr_uplinkordownlink.uint =
+   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+   qos_flow_description.parameterslist[4].parametercontents
+   .gfbrormfbr_uplinkordownlink.value =bit_rate_dl/16;
+   }
+   break;
+
+   default:
+    Logger::smf_app().debug("Non-GBR 5QI Category");
+   break;
    }
    
   Logger::smf_app().debug(
@@ -1298,32 +1336,51 @@ void smf_context::get_session_ambr(
       size_t leng_of_session_ambr_ul =
           (sdc.get()->session_ambr).uplink.length();
       try {
-        std::string session_ambr_ul_unit =
-            (sdc.get()->session_ambr)
-                .uplink.substr(
-                    leng_of_session_ambr_ul -
-                    4);  // 4 last characters stand for mbps, kbps, ..
-        if (session_ambr_ul_unit.compare("Kbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-        if (session_ambr_ul_unit.compare("Mbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-        if (session_ambr_ul_unit.compare("Gbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-        if (session_ambr_ul_unit.compare("Tbps") == 0)
-        "Could not get default info from the subscription information, use "
-        "default value instead.");
-    // use default value
-    session_ambr.session_ambr_for_downlink = 1;
-    session_ambr.uint_for_session_ambr_for_downlink =
-        AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    session_ambr.session_ambr_for_uplink = 1;
-    session_ambr.uint_for_session_ambr_for_uplink =
-        AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-  }
-}
+         std::string session_ambr_ul_unit =
+             (sdc.get()->session_ambr)
+                 .uplink.substr(
+                     leng_of_session_ambr_ul -
+                     4);  // 4 last characters stand for mbps, kbps, ..
+         if (session_ambr_ul_unit.compare("Kbps") == 0)
+           session_ambr.uint_for_session_ambr_for_uplink =
+               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
+         if (session_ambr_ul_unit.compare("Mbps") == 0)
+           session_ambr.uint_for_session_ambr_for_uplink =
+               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+         if (session_ambr_ul_unit.compare("Gbps") == 0)
+           session_ambr.uint_for_session_ambr_for_uplink =
+               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
+         if (session_ambr_ul_unit.compare("Tbps") == 0)
+           session_ambr.uint_for_session_ambr_for_uplink =
+               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
+         if (session_ambr_ul_unit.compare("Pbps") == 0)
+           session_ambr.uint_for_session_ambr_for_uplink =
+               AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
+
+         session_ambr.session_ambr_for_uplink =
+             std::stoi((sdc.get()->session_ambr)
+                           .uplink.substr(0, leng_of_session_ambr_ul - 4));
+       } catch (const std::exception& e) {
+         Logger::smf_app().warn("Undefined error: %s", e.what());
+         // assign default value
+         session_ambr.session_ambr_for_uplink = 1;
+         session_ambr.uint_for_session_ambr_for_uplink =
+             AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+       }
+     }
+   } else {
+     Logger::smf_app().debug(
+         "Could not get default info from the subscription information, use "
+         "default value instead.");
+     // use default value
+     session_ambr.session_ambr_for_downlink = 1;
+     session_ambr.uint_for_session_ambr_for_downlink =
+         AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+     session_ambr.session_ambr_for_uplink = 1;
+     session_ambr.uint_for_session_ambr_for_uplink =
+         AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+   }
+ }
 
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
@@ -1434,6 +1491,7 @@ void smf_context::get_session_ambr(
       "Get AMBR info from the subscription information (DNN %s), uplink %d "
       "downlink %d",
       dnn.c_str(), bit_rate_ul, bit_rate_dl);
+}
 }
 
 //------------------------------------------------------------------------------
@@ -5386,4 +5444,24 @@ void smf_context::send_pdu_session_release_response(
       }
     }
 
-  } else {
+  } else{
+	  resp->res.set_http_code(
+         http_status_code_e::HTTP_STATUS_CODE_406_NOT_ACCEPTABLE);
+   }
+
+   // clear the resources including addresses allocated to this Session and
+   // associated QoS flows
+   sps->deallocate_ressources(resp->res.get_dnn());
+
+   // send ITTI message to SMF_APP interface to trigger the response towards
+   // AMFs
+   Logger::smf_app().info(
+       "Sending ITTI message %s to task TASK_SMF_APP", resp->get_msg_name());
+   int ret = itti_inst->send_msg(resp);
+   if (RETURNok != ret) {
+     Logger::smf_app().error(
+         "Could not send ITTI message %s to task TASK_SMF_APP",
+         resp->get_msg_name());
+   }
+ }
+
