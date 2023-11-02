@@ -1180,7 +1180,8 @@ void smf_context::get_default_qos_flow_description(
       (ParametersList*) calloc(3, sizeof(ParametersList));
   qos_flow_description.parameterslist[0].parameteridentifier =
       PARAMETER_IDENTIFIER_5QI;
-  qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
+  //qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
+  qos_flow_description.parameterslist[0].parametercontents._5qi = qfi.qfi;
   /*
    qos_flow_description.parameterslist[1].parameteridentifier =
    PARAMETER_IDENTIFIER_GFBR_UPLINK;
