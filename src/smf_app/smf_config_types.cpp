@@ -36,6 +36,13 @@ using namespace oai::config;
 using namespace oai::model::common;
 using namespace oai::model::nrf;
 
+
+/*TODO: As of now we are storing the GFBR and MFBR info from yaml file.
+ * This variables will be extended whereever GFBR and MFBR required.
+ * Once PCF integration done and GFBR,MFBR are configured by PCF this
+ * will be removed
+ * */
+
 std::string gfbr_ul;
 std::string gfbr_dl;
 std::string mfbr_ul;
@@ -486,25 +493,25 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     m_n4.set_host(get_host());
     m_n4.from_yaml(node["n4"]);
   }
-  if (node["gfbr_ul"])
-  {
-	  m_gfbr_ul.from_yaml(node["gfbr_ul"]);
-          gfbr_ul = m_gfbr_ul.get_value();
+
+  if (node["gfbr_ul"]) {
+    m_gfbr_ul.from_yaml(node["gfbr_ul"]);
+    gfbr_ul = m_gfbr_ul.get_value();
   }
-  if (node["gfbr_dl"])
-  {
-	  m_gfbr_dl.from_yaml(node["gfbr_dl"]);
-          gfbr_dl = m_gfbr_dl.get_value();
+
+  if (node["gfbr_dl"]) {
+    m_gfbr_dl.from_yaml(node["gfbr_dl"]);
+    gfbr_dl = m_gfbr_dl.get_value();
   }
-  if (node["mfbr_ul"])
-  {
-	  m_mfbr_ul.from_yaml(node["mfbr_ul"]);
-          mfbr_ul = m_mfbr_ul.get_value();
+
+  if (node["mfbr_ul"]) {
+    m_mfbr_ul.from_yaml(node["mfbr_ul"]);
+    mfbr_ul = m_mfbr_ul.get_value();
   }
-  if (node["mfbr_dl"])
-  {
-	  m_mfbr_dl.from_yaml(node["mfbr_dl"]);
-          mfbr_dl = m_mfbr_dl.get_value();
+
+  if (node["mfbr_dl"]) {
+    m_mfbr_dl.from_yaml(node["mfbr_dl"]);
+    mfbr_dl = m_mfbr_dl.get_value();
   }
 
   if (node["upfs"]) {

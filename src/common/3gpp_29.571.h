@@ -61,11 +61,6 @@ typedef struct arp_5gc_s {
 typedef struct subscribed_default_qos_s {
   uint8_t _5qi;
   arp_5gc_t arp;
-  //bool gbr_status;
-  //uint32 GFBR_dl_flow;
-  //uint32 GFBR_ul_flow;
-  //uint32 MFBR_dl_flow;
-  //uint32 MFBR_ul_flow;
   uint8_t priority_level;  // 1-127
 
   nlohmann::json to_json() const {
@@ -73,11 +68,6 @@ typedef struct subscribed_default_qos_s {
     json_data["_5qi"]           = _5qi;
     json_data["arp"]            = arp.to_json();
     json_data["priority_level"] = priority_level;
-    //json_data["GBR_status"]   = gbr_status;
-    //json_data["GFBR_dl_flow"]   = GFBR_dl_flow;
-    //json_data["GFBR_ul_flow"]   = GFBR_ul_flow;
-    //json_data["MFBR_dl_flow"]   = MFBR_dl_flow;
-    //json_data["MFBR_ul_flow"]   = MFBR_ul_flow;
     return json_data;
   }
 } subscribed_default_qos_t;
