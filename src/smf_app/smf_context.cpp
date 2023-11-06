@@ -1387,8 +1387,8 @@ void smf_context::get_session_ambr(
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
 
-  uint32_t bit_rate_dl = {11000000};  // TODO: to be updated
-  uint32_t bit_rate_ul = {11000000};  // TODO: to be updated
+  uint32_t bit_rate_dl = {110000000};  // TODO: to be updated
+  uint32_t bit_rate_ul = {110000000};  // TODO: to be updated
 
   session_ambr.pDUSessionAggregateMaximumBitRateDL.size = 4;
   session_ambr.pDUSessionAggregateMaximumBitRateDL.buf =
