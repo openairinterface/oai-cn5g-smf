@@ -260,6 +260,18 @@ include_directories(${CONFIG_INCLUDE_DIRS})
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 #find_package(Threads REQUIRED)
 
+##############
+# CPR
+##############
+# TODO: For the first draft. If it is working relocate the CPR built to common-build
+include(FetchContent)
+FetchContent_Declare(cpr GIT_REPOSITORY https://github.com/libcpr/cpr.git
+        GIT_TAG 0817715923c9705e68994eb52ef9df3f6845beba) # The commit hash for 1.10.x. Replace with the latest from: https://github.com/libcpr/cpr/releases
+FetchContent_MakeAvailable(cpr)
+
+find_package(PkgConfig)
+pkg_check_modules(Pistache REQUIRED IMPORTED_TARGET libpistache)
+
 ################################################################
 # Add sub modules
 ################################################################
@@ -307,6 +319,8 @@ include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/ngap)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/ngap/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
@@ -326,7 +340,7 @@ IF(STATIC_LINKING)
     SET_TARGET_PROPERTIES(smf PROPERTIES LINK_SEARCH_END_STATIC 1)
     # asan do not support static linking
     SET(ASAN)
-ENDIF(STATIC_LINKING)   
+ENDIF(STATIC_LINKING)
 
-target_link_libraries (smf ${ASAN} 
+target_link_libraries (smf ${ASAN} cpr::cpr
     -Wl,--start-group CN_UTILS SMF UDP PFCP SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp)

@@ -41,7 +41,7 @@
 #include "SmPolicyUpdateContextData.h"
 #include "SmPolicyDeleteData.h"
 #include "smf.h"
-#include "3gpp_29.500.h"
+#include "http_client.hpp"
 
 namespace smf::n7 {
 
@@ -195,6 +195,7 @@ class smf_pcf_client : public policy_storage {
       const std::string& pcf_addr, const std::string& pcf_api_version) {
     root_uri = pcf_addr + "/" + sm_api_name + "/" + pcf_api_version + "/" +
                sm_api_policy_resource_part;
+    m_http_client = oai::http::http_client::get_instance();
   }
 
   virtual ~smf_pcf_client();
@@ -237,11 +238,7 @@ class smf_pcf_client : public policy_storage {
       const oai::model::common::Snssai& snssai,
       const oai::model::common::PlmnId& plmn_id, const std::string& dnn);
 
-  http_status_code_e send_request(
-      const std::string& uri, const std::string& body,
-      const std::string& method, std::string& response_body,
-      std::string& response_headers, bool use_response_headers = false);
-
+  std::shared_ptr<oai::http::http_client_iface> m_http_client;
   std::string root_uri;
 };
 

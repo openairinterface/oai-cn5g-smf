@@ -310,7 +310,6 @@ typedef struct qos_profile_s {
 #define MAX_WAIT_MSECS 10000  // 1 second
 #define AMF_NUMBER_RETRIES 3
 #define UDM_NUMBER_RETRIES 3
-constexpr auto CURL_MIME_BOUNDARY = "----Boundary";
 
 // for N1N2
 #define BUF_LEN 512

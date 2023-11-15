@@ -39,6 +39,7 @@
 #include "NFStatusNotifyApiImpl.h"
 #include "uint_generator.hpp"
 #include "smf.h"
+#include "http_definitions.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;

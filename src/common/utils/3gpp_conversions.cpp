@@ -38,7 +38,7 @@
 #include "SmContextUpdateData.h"
 #include "SmContextReleaseData.h"
 #include "EventSubscription.h"
-#include "3gpp_29.500.h"
+#include "http_definitions.hpp"
 #include "3gpp_24.501.h"
 #include "conversions.hpp"
 #include "NgRanTargetId.h"
@@ -619,7 +619,7 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
     std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
   ctx_response->http_version = ctx_request->http_version;
-  ctx_response->res.set_http_code(http_status_code_e::HTTP_STATUS_CODE_200_OK);
+  ctx_response->res.set_http_code(static_cast<uint32_t>(oai::http::status_code_e::HTTP_STATUS_CODE_200_OK));
   ctx_response->res.set_supi(ctx_request->req.get_supi());
   ctx_response->res.set_supi_prefix(ctx_request->req.get_supi_prefix());
   ctx_response->res.set_cause(
@@ -638,7 +638,7 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
   ct_response->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);  // default status code
+          static_cast<uint32_t>(oai::http::status_code_e::HTTP_STATUS_CODE_200_OK));  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());
   ct_response->res.set_supi_prefix(ct_request->req.get_supi_prefix());
   ct_response->res.set_cause(

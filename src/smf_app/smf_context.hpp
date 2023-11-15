@@ -48,6 +48,7 @@
 #include "uint_generator.hpp"
 #include "smf_n7.hpp"
 #include "smf_pfcp_association.hpp"
+#include "http_client.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
@@ -534,18 +535,18 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   // TS 24.501 V16.1.0)
   uint8_t
       number_of_supported_packet_filters;  // number_of_supported_packet_filters
-  util::uint_generator<uint32_t> qos_rule_id_generator;
+  oai::util::uint_generator<uint32_t> qos_rule_id_generator;
 
   // PFCP related members
   // PFCP Session
   uint64_t seid;
   pfcp::fseid_t up_fseid;
   //
-  util::uint_generator<uint16_t> pdr_id_generator;
-  util::uint_generator<uint32_t> far_id_generator;
-  util::uint_generator<uint32_t> urr_id_generator;
+  oai::util::uint_generator<uint16_t> pdr_id_generator;
+  oai::util::uint_generator<uint32_t> far_id_generator;
+  oai::util::uint_generator<uint32_t> urr_id_generator;
 
-  util::uint_generator<uint32_t> teid_generator;
+  oai::util::uint_generator<uint32_t> teid_generator;
   // Shared lock
   mutable std::shared_mutex m_pdu_session_mutex;
 
@@ -1384,7 +1385,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::shared_ptr<itti_n11_create_sm_context_request> smreq,
       cause_value_5gsm_e cause,
       pdu_session_application_error_e application_error,
-      http_status_code_e http_status);
+      oai::http::status_code_e http_status);
 
   /**
    * Send a PDU session Create Response, based on the content of resp.

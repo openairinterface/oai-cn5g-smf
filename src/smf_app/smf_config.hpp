@@ -72,7 +72,7 @@ typedef struct interface_cfg_s {
   struct in6_addr addr6;
   unsigned int mtu;
   unsigned int port;
-  util::thread_sched_params thread_rd_sched_params;
+  ::util::thread_sched_params thread_rd_sched_params;
   nlohmann::json to_json() const {
     nlohmann::json json_data = {};
     json_data["if_name"]     = this->if_name;
@@ -101,7 +101,7 @@ typedef struct interface_cfg_s {
       }
     } else {
       IPV4_STR_ADDR_TO_INADDR(
-          util::trim(addr4_str).c_str(), this->addr4,
+          ::util::trim(addr4_str).c_str(), this->addr4,
           "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
       // TODO: addr6
       this->mtu  = json_data["mtu"].get<int>();
@@ -112,10 +112,10 @@ typedef struct interface_cfg_s {
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {
-  util::thread_sched_params itti_timer_sched_params;
-  util::thread_sched_params n4_sched_params;
-  util::thread_sched_params smf_app_sched_params;
-  util::thread_sched_params async_cmd_sched_params;
+  ::util::thread_sched_params itti_timer_sched_params;
+  ::util::thread_sched_params n4_sched_params;
+  ::util::thread_sched_params smf_app_sched_params;
+  ::util::thread_sched_params async_cmd_sched_params;
 } itti_cfg_t;
 
 typedef struct dnn_s {
@@ -146,13 +146,13 @@ typedef struct dnn_s {
     std::string ue_pool_range_low_str = {};
     ue_pool_range_low_str = json_data["ue_pool_range_low"].get<std::string>();
     IPV4_STR_ADDR_TO_INADDR(
-        util::trim(ue_pool_range_low_str).c_str(), this->ue_pool_range_low,
+        ::util::trim(ue_pool_range_low_str).c_str(), this->ue_pool_range_low,
         "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
 
     std::string ue_pool_range_high_str = {};
     ue_pool_range_high_str = json_data["ue_pool_range_high"].get<std::string>();
     IPV4_STR_ADDR_TO_INADDR(
-        util::trim(ue_pool_range_high_str).c_str(), this->ue_pool_range_high,
+        ::util::trim(ue_pool_range_high_str).c_str(), this->ue_pool_range_high,
         "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
 
     // TODO: pool_id_iv6
