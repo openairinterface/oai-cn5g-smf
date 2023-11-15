@@ -110,10 +110,10 @@ snssais:
     sst: 1
   - &embb_slice2
     sst: 1
-    sd: 1
+    sd: 000001
   - &custom_slice
     sst: 222
-    sd: 123
+    sd: 00007B
 
 ############## NF-specific configuration
 amf:
