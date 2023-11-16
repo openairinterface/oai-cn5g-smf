@@ -36,7 +36,6 @@
 #include <pistache/mime.h>
 #include <nlohmann/json.hpp>
 #include <boost/algorithm/string/split.hpp>
-//#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #include "common_defs.h"
@@ -473,7 +472,7 @@ void smf_sbi::register_nf_instance(
   uint32_t response_code    = static_cast<int>(resp.status_code);
 
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
+      "NF Instance Registration, response from NRF, HTTP Code: %u", response_code);
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_201_CREATED) {
     json response_json = {};

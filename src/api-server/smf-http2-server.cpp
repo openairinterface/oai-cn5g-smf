@@ -39,8 +39,6 @@
 #include "itti_msg_n11.hpp"
 #include "3gpp_29.502.h"
 #include "mime_parser.hpp"
-#include "3gpp_29.500.h"
-#include "http_definitions.hpp"
 #include "smf_config.hpp"
 #include "smf.h"
 #include "3gpp_conversions.hpp"
@@ -134,9 +132,9 @@ void smf_http2_server::start() {
               return;
             } catch (std::exception& e) {
               Logger::smf_api_server().warn("Error: %s!", e.what());
-              response.write_head(
-                  http_status_code_e::
-                      HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR);
+              response.write_head(static_cast<uint32_t>(
+                  oai::http::status_code_e::
+                      HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR));
               response.end();
               return;
             }

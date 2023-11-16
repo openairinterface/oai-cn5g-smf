@@ -66,7 +66,7 @@ class smf_sbi {
 
  public:
   smf_sbi();
-  virtual ~smf_sbi();
+  virtual ~smf_sbi()      = default;
   smf_sbi(smf_sbi const&) = delete;
   void operator=(smf_sbi const&) = delete;
 

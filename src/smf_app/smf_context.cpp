@@ -1748,8 +1748,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   json_data["smfServiceInstanceId"] = smf_app_inst->get_smf_instance_id();
   sm_context_response.set_json_data(json_data);
 
-  sm_context_response.set_http_code(
-      status_code_e::HTTP_STATUS_CODE_201_CREATED);
+  sm_context_response.set_http_code(static_cast<uint32_t>(
+      status_code_e::HTTP_STATUS_CODE_201_CREATED));
 
   smf_app_inst->trigger_session_create_sm_context_response(
       sm_context_response, smreq->pid);
@@ -3143,8 +3143,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               std::make_shared<itti_n11_release_sm_context_response>(
                   TASK_SMF_APP, TASK_SMF_APP, smreq_release->pid);
 
-      sm_context_rel_resp_pending->res.set_http_code(
-          status_code_e::HTTP_STATUS_CODE_200_OK);
+      sm_context_rel_resp_pending->res.set_http_code(static_cast<uint32_t>(
+          status_code_e::HTTP_STATUS_CODE_200_OK));
       sm_context_rel_resp_pending->res.set_supi(
           sm_context_rel_req_msg.get_supi());
       sm_context_rel_resp_pending->res.set_supi_prefix(
@@ -3241,8 +3241,8 @@ void smf_context::handle_pdu_session_release_sm_context_request(
           std::make_shared<itti_n11_release_sm_context_response>(
               TASK_SMF_SBI, TASK_SMF_APP, smreq->pid);
 
-  sm_context_resp_pending->res.set_http_code(
-      status_code_e::HTTP_STATUS_CODE_200_OK);
+  sm_context_resp_pending->res.set_http_code(static_cast<uint32_t>(
+      status_code_e::HTTP_STATUS_CODE_200_OK));
   sm_context_resp_pending->res.set_supi(smreq->req.get_supi());
   sm_context_resp_pending->res.set_supi_prefix(smreq->req.get_supi_prefix());
   sm_context_resp_pending->res.set_cause(

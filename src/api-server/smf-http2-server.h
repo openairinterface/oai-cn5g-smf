@@ -77,7 +77,7 @@ class smf_http2_server {
   void stop();
 
  private:
-  util::uint_generator<uint32_t> m_promise_id_generator;
+  oai::util::uint_generator<uint32_t> m_promise_id_generator;
   std::string m_address;
   uint32_t m_port;
   http2 server;
