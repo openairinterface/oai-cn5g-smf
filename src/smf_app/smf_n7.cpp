@@ -206,14 +206,14 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_201_CREATED) {
     for (const auto& hdr : resp.headers.list()) {
       auto loc_header =
-              dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
+          dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
       if (loc_header) {
         association.pcf_location = loc_header->location();
         nlohmann::json j         = nlohmann::json::parse(resp.body);
         from_json(j, association.decision);
         Logger::smf_n7().info(
-                "Successfully created SM Policy Association for SUPI %s",
-                association.context.getSupi().c_str());
+            "Successfully created SM Policy Association for SUPI %s",
+            association.context.getSupi().c_str());
         return sm_policy_status_code::CREATED;
       }
     }

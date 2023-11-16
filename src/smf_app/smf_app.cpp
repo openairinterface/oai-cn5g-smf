@@ -834,8 +834,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     } else {
       // Trigger the reply to AMF
       trigger_http_response(
-          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -866,8 +866,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           smreq->pid);
     } else {
       trigger_http_response(
-          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -906,8 +906,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           smreq->pid);
     } else {
       trigger_http_response(
-          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -947,8 +947,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           smreq->pid);
     } else {
       trigger_http_response(
-          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -997,8 +997,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           smreq->pid);
     } else {
       trigger_http_response(
-          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-          smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+          status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
     }
     return;
   }
@@ -2174,7 +2174,8 @@ void smf_app::trigger_create_context_error_response(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_update_context_error_response(
-    const oai::http::status_code_e& http_code, const uint8_t& cause, uint32_t& promise_id) {
+    const oai::http::status_code_e& http_code, const uint8_t& cause,
+    uint32_t& promise_id) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of API Server");
 
@@ -2229,7 +2230,8 @@ void smf_app::trigger_http_response(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::trigger_http_response(
-    const oai::http::status_code_e& http_code, uint32_t& promise_id, uint8_t msg_type) {
+    const oai::http::status_code_e& http_code, uint32_t& promise_id,
+    uint8_t msg_type) {
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
 

@@ -75,8 +75,8 @@ void smf_http2_server::start() {
                   "This method (%s) is not supported",
                   request.method().c_str());
               response.write_head(static_cast<uint32_t>(
-                              oai::http::status_code_e::
-                              HTTP_STATUS_CODE_405_METHOD_NOT_ALLOWED));
+                  oai::http::status_code_e::
+                      HTTP_STATUS_CODE_405_METHOD_NOT_ALLOWED));
               response.end();
               return;
             }
@@ -89,7 +89,7 @@ void smf_http2_server::start() {
             if (!sp.parse(msg)) {
               // send reply!!!
               response.write_head(static_cast<uint32_t>(
-                                      oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                  oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
               response.end();
               return;
             }
@@ -102,7 +102,7 @@ void smf_http2_server::start() {
             if (size < 2) {
               // send reply!!!
               response.write_head(static_cast<uint32_t>(
-                                      oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                  oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
               response.end();
               return;
             }
@@ -125,9 +125,8 @@ void smf_http2_server::start() {
             } catch (nlohmann::detail::exception& e) {
               Logger::smf_api_server().warn(
                   "Can not parse the json data (error: %s)!", e.what());
-              response.write_head(
-                      static_cast<uint32_t>(
-                              oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+              response.write_head(static_cast<uint32_t>(
+                  oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
               response.end();
               return;
             } catch (std::exception& e) {
@@ -162,9 +161,9 @@ void smf_http2_server::start() {
                 split_result, request.uri().path, boost::is_any_of("/"));
             if (split_result.size() != 6) {
               Logger::smf_api_server().warn("Requested URL is not implemented");
-              response.write_head(
-                      static_cast<uint32_t>(
-                              oai::http::status_code_e::HTTP_STATUS_CODE_501_NOT_IMPLEMENTED));
+              response.write_head(static_cast<uint32_t>(
+                  oai::http::status_code_e::
+                      HTTP_STATUS_CODE_501_NOT_IMPLEMENTED));
               response.end();
               return;
             }
@@ -187,9 +186,9 @@ void smf_http2_server::start() {
               mime_parser sp = {};
               if (!sp.parse(msg)) {
                 // send reply!!!
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
+                        HTTP_STATUS_CODE_400_BAD_REQUEST));
                 response.end();
                 return;
               }
@@ -229,16 +228,15 @@ void smf_http2_server::start() {
               } catch (nlohmann::detail::exception& e) {
                 Logger::smf_api_server().warn(
                     "Can not parse the json data (error: %s)!", e.what());
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
+                        HTTP_STATUS_CODE_400_BAD_REQUEST));
                 response.end();
                 return;
               } catch (std::exception& e) {
                 Logger::smf_api_server().warn("Error: %s!", e.what());
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
                         HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR));
                 response.end();
                 return;
@@ -255,9 +253,9 @@ void smf_http2_server::start() {
               mime_parser sp = {};
               if (!sp.parse(msg)) {
                 // send reply!!!
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
+                        HTTP_STATUS_CODE_400_BAD_REQUEST));
                 response.end();
                 return;
               }
@@ -295,16 +293,15 @@ void smf_http2_server::start() {
               } catch (nlohmann::detail::exception& e) {
                 Logger::smf_api_server().warn(
                     "Can not parse the json data (error: %s)!", e.what());
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
+                        HTTP_STATUS_CODE_400_BAD_REQUEST));
                 response.end();
                 return;
               } catch (std::exception& e) {
                 Logger::smf_api_server().warn("Error: %s!", e.what());
-                response.write_head(
-                        static_cast<uint32_t>(
-                                oai::http::status_code_e::
+                response.write_head(static_cast<uint32_t>(
+                    oai::http::status_code_e::
                         HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR));
                 response.end();
                 return;
@@ -316,9 +313,9 @@ void smf_http2_server::start() {
 
             } else {  // Unknown method
               Logger::smf_api_server().warn("Unknown method");
-              response.write_head(
-                      static_cast<uint32_t>(
-                              oai::http::status_code_e::HTTP_STATUS_CODE_405_METHOD_NOT_ALLOWED));
+              response.write_head(static_cast<uint32_t>(
+                  oai::http::status_code_e::
+                      HTTP_STATUS_CODE_405_METHOD_NOT_ALLOWED));
               response.end();
               return;
             }
@@ -343,9 +340,8 @@ void smf_http2_server::start() {
           } catch (nlohmann::detail::exception& e) {
             Logger::smf_sbi().warn(
                 "Can not parse the json data (error: %s)!", e.what());
-            response.write_head(
-                    static_cast<uint32_t>(
-                            oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+            response.write_head(static_cast<uint32_t>(
+                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
             response.end();
             return;
           }
@@ -370,9 +366,8 @@ void smf_http2_server::start() {
           } catch (nlohmann::detail::exception& e) {
             Logger::smf_sbi().warn(
                 "Can not parse the JSON data (error: %s)!", e.what());
-            response.write_head(
-                    static_cast<uint32_t>(
-                            oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+            response.write_head(static_cast<uint32_t>(
+                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
             response.end();
             return;
           }
@@ -403,9 +398,8 @@ void smf_http2_server::start() {
           } catch (nlohmann::detail::exception& e) {
             Logger::smf_sbi().warn(
                 "Can not parse the JSON data (error: %s)!", e.what());
-            response.write_head(
-                    static_cast<uint32_t>(
-                            oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
+            response.write_head(static_cast<uint32_t>(
+                oai::http::status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST));
             response.end();
             return;
           }
@@ -469,8 +463,8 @@ void smf_http2_server::create_sm_contexts_handler(
   nlohmann::json json_data = {};
   std::string json_format  = {};
   bool n1_sm_msg_is_set    = false;
-  int http_code = static_cast<uint32_t>(
-          oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+  int http_code            = static_cast<uint32_t>(
+      oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
 
   if (sm_context_response.find("http_code") != sm_context_response.end()) {
     http_code = sm_context_response["http_code"].get<int>();
@@ -555,8 +549,8 @@ void smf_http2_server::update_sm_context_handler(
   std::string json_format  = {};
   bool n1_sm_msg_is_set    = false;
   bool n2_sm_info_is_set   = false;
-  int http_code = static_cast<uint32_t>(
-          oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+  int http_code            = static_cast<uint32_t>(
+      oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
 
   if (sm_context_response.find("http_code") != sm_context_response.end()) {
     http_code = sm_context_response["http_code"].get<int>();
@@ -588,27 +582,27 @@ void smf_http2_server::update_sm_context_handler(
         sm_context_response["n2_sm_information"].get<std::string>(),
         json_format);
     h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(oai::http::CURL_MIME_BOUNDARY)});
+        "content-type", header_value{
+                            "multipart/related; boundary=" +
+                            std::string(oai::http::CURL_MIME_BOUNDARY)});
   } else if (n1_sm_msg_is_set) {
     mime_parser::create_multipart_related_content(
         body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
         sm_context_response["n1_sm_message"].get<std::string>(),
         multipart_related_content_part_e::NAS, json_format);
     h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(oai::http::CURL_MIME_BOUNDARY)});
+        "content-type", header_value{
+                            "multipart/related; boundary=" +
+                            std::string(oai::http::CURL_MIME_BOUNDARY)});
   } else if (n2_sm_info_is_set) {
     mime_parser::create_multipart_related_content(
         body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
         sm_context_response["n2_sm_information"].get<std::string>(),
         multipart_related_content_part_e::NGAP, json_format);
     h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(oai::http::CURL_MIME_BOUNDARY)});
+        "content-type", header_value{
+                            "multipart/related; boundary=" +
+                            std::string(oai::http::CURL_MIME_BOUNDARY)});
   } else {
     h.emplace("content-type", header_value{json_format});
     body = json_data.dump().c_str();
@@ -659,7 +653,7 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
   int http_code = static_cast<uint32_t>(
-          oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+      oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
   if (sm_context_response.find("http_code") != sm_context_response.end()) {
     http_code = sm_context_response["http_code"].get<int>();
   }
@@ -765,7 +759,7 @@ void smf_http2_server::get_configuration_handler(const response& response) {
     }
   } else {
     int http_code = static_cast<uint32_t>(
-            oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+        oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
     response.write_head(http_code);
     response.end();
   }
@@ -835,7 +829,7 @@ void smf_http2_server::update_configuration_handler(
     }
   } else {
     int http_code = static_cast<uint32_t>(
-            oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+        oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
     response.write_head(http_code);
     response.end();
   }
@@ -876,8 +870,10 @@ void smf_http2_server::create_event_subscription_handler(
   }
 
   h.emplace("content-type", header_value{"application/json"});
-  response.write_head(static_cast<uint32_t>(
-                              oai::http::status_code_e::HTTP_STATUS_CODE_201_CREATED), h);
+  response.write_head(
+      static_cast<uint32_t>(
+          oai::http::status_code_e::HTTP_STATUS_CODE_201_CREATED),
+      h);
   response.end(json_data.dump().c_str());
 }
 

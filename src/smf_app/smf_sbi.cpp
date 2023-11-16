@@ -193,7 +193,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
       "Send Communication_N1N2MessageTransfer to AMF, body %s", body.c_str());
 
   request req = m_http_client->prepare_multipart_request(
-          sm_context_res->res.get_amf_url(), body);
+      sm_context_res->res.get_amf_url(), body);
 
   response resp             = m_http_client->send_post(req);
   std::string response_data = resp.body;
@@ -266,7 +266,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   }
 
   request req = m_http_client->prepare_multipart_request(
-          sm_session_modification->msg.get_amf_url(), body);
+      sm_session_modification->msg.get_amf_url(), body);
 
   response resp             = m_http_client->send_post(req);
   std::string response_data = resp.body;
@@ -310,7 +310,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   }
 
   request req = m_http_client->prepare_multipart_request(
-          report_msg->res.get_amf_url(), body);
+      report_msg->res.get_amf_url(), body);
 
   response resp             = m_http_client->send_post(req);
   std::string response_data = resp.body;
@@ -366,7 +366,7 @@ void smf_sbi::send_sm_context_status_notification(
   std::string body = json_data.dump();
 
   request req = m_http_client->prepare_json_request(
-          sm_context_status->amf_status_uri, body);
+      sm_context_status->amf_status_uri, body);
 
   response resp             = m_http_client->send_post(req);
   std::string response_data = resp.body;
@@ -472,7 +472,8 @@ void smf_sbi::register_nf_instance(
   uint32_t response_code    = static_cast<int>(resp.status_code);
 
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", response_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %u",
+      response_code);
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_201_CREATED) {
     json response_json = {};
@@ -535,7 +536,8 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Response data %s", response_data.c_str());
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", response_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %u",
+      response_code);
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_200_OK ||
       resp.status_code == status_code_e::HTTP_STATUS_CODE_204_NO_CONTENT) {
@@ -580,7 +582,8 @@ void smf_sbi::deregister_nf_instance(
 
   Logger::smf_sbi().debug("Response data %s", response_data.c_str());
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", response_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %u",
+      response_code);
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_200_OK ||
       resp.status_code == status_code_e::HTTP_STATUS_CODE_204_NO_CONTENT) {
@@ -612,7 +615,8 @@ void smf_sbi::subscribe_upf_status_notify(
 
   Logger::smf_sbi().debug("Response data %s", response_data.c_str());
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", response_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %u",
+      response_code);
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_201_CREATED ||
       resp.status_code == status_code_e::HTTP_STATUS_CODE_204_NO_CONTENT) {

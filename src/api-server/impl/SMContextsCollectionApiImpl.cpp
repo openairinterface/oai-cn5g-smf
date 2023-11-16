@@ -119,7 +119,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
     bool n1_sm_msg_is_set    = false;
 
     int http_code = static_cast<int>(
-            http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
+        http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
     if (sm_context_response.find("http_code") != sm_context_response.end()) {
       http_code = sm_context_response["http_code"].get<int>();
     }

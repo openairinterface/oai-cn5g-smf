@@ -796,7 +796,8 @@ class smf_app {
    * @return void
    */
   void trigger_update_context_error_response(
-      const oai::http::status_code_e& http_code, const uint8_t& cause, uint32_t& promise_id);
+      const oai::http::status_code_e& http_code, const uint8_t& cause,
+      uint32_t& promise_id);
 
   /*
    * To trigger the response to the HTTP server by set the value of the
@@ -831,7 +832,8 @@ class smf_app {
    * @return void
    */
   void trigger_http_response(
-      const oai::http::status_code_e& http_code, uint32_t& promise_id, uint8_t msg_type);
+      const oai::http::status_code_e& http_code, uint32_t& promise_id,
+      uint8_t msg_type);
 
   /*
    * To trigger the session create sm context response by set the value of the

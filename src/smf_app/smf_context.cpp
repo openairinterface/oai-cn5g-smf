@@ -1748,8 +1748,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   json_data["smfServiceInstanceId"] = smf_app_inst->get_smf_instance_id();
   sm_context_response.set_json_data(json_data);
 
-  sm_context_response.set_http_code(static_cast<uint32_t>(
-      status_code_e::HTTP_STATUS_CODE_201_CREATED));
+  sm_context_response.set_http_code(
+      static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_201_CREATED));
 
   smf_app_inst->trigger_session_create_sm_context_response(
       sm_context_response, smreq->pid);
@@ -2453,8 +2453,8 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
   }
 
   smf_app_inst->trigger_http_response(
-      status_code_e::HTTP_STATUS_CODE_200_OK,
-      sm_context_request.get()->pid, N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE);
+      status_code_e::HTTP_STATUS_CODE_200_OK, sm_context_request.get()->pid,
+      N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE);
 
   return true;
 }
@@ -3073,8 +3073,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                   smreq->pid);
             } else {
               smf_app_inst->trigger_http_response(
-                  status_code_e::
-                      HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
+                  status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
                   smreq->pid, N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE);
             }
           } break;
@@ -3143,8 +3142,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               std::make_shared<itti_n11_release_sm_context_response>(
                   TASK_SMF_APP, TASK_SMF_APP, smreq_release->pid);
 
-      sm_context_rel_resp_pending->res.set_http_code(static_cast<uint32_t>(
-          status_code_e::HTTP_STATUS_CODE_200_OK));
+      sm_context_rel_resp_pending->res.set_http_code(
+          static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
       sm_context_rel_resp_pending->res.set_supi(
           sm_context_rel_req_msg.get_supi());
       sm_context_rel_resp_pending->res.set_supi_prefix(
@@ -3175,8 +3174,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         remove_procedure(sproc.get());
         // Trigger to send reply to AMF
         smf_app_inst->trigger_http_response(
-            status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
-            smreq_release->pid, N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
+            status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN, smreq_release->pid,
+            N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
         // TODO: set cause PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING
 
         return false;
@@ -3241,8 +3240,8 @@ void smf_context::handle_pdu_session_release_sm_context_request(
           std::make_shared<itti_n11_release_sm_context_response>(
               TASK_SMF_SBI, TASK_SMF_APP, smreq->pid);
 
-  sm_context_resp_pending->res.set_http_code(static_cast<uint32_t>(
-      status_code_e::HTTP_STATUS_CODE_200_OK));
+  sm_context_resp_pending->res.set_http_code(
+      static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
   sm_context_resp_pending->res.set_supi(smreq->req.get_supi());
   sm_context_resp_pending->res.set_supi_prefix(smreq->req.get_supi_prefix());
   sm_context_resp_pending->res.set_cause(
@@ -3570,8 +3569,8 @@ bool smf_context::handle_ho_preparation_request(
   json_data["n2SmInfoType"]          = "PDU_RES_SETUP_REQ";  // NGAP message
   json_data["hoState"]               = "PREPARING";
   sm_context_resp.get()->res.set_json_data(json_data);
-  sm_context_resp.get()->res.set_http_code(static_cast<uint32_t>(
-      status_code_e::HTTP_STATUS_CODE_200_OK));
+  sm_context_resp.get()->res.set_http_code(
+      static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
 
   // Set HOStatus to PREPARING
   sp.get()->set_ho_state(ho_state_e::HO_STATE_PREPARING);
@@ -3710,7 +3709,7 @@ bool smf_context::handle_ho_preparation_request_fail(
   sm_context_resp.get()->res.set_json_format("application/problem+json");
   sm_context_resp.get()->res.set_http_code(static_cast<uint32_t>(
       status_code_e::HTTP_STATUS_CODE_406_NOT_ACCEPTABLE));  // To be
-                                                                 // verified
+                                                             // verified
   sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
 
   return true;
@@ -3751,8 +3750,8 @@ bool smf_context::handle_ho_execution(
   nlohmann::json json_data = {};
   json_data["hoState"]     = "COMPLETED";
   sm_context_resp.get()->res.set_json_data(json_data);
-  sm_context_resp.get()->res.set_http_code(static_cast<uint32_t>(
-      status_code_e::HTTP_STATUS_CODE_200_OK));
+  sm_context_resp.get()->res.set_http_code(
+      static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
 
   // set HoState to NONE
   sp.get()->set_ho_state(ho_state_e::HO_STATE_COMPLETED);
@@ -4932,8 +4931,8 @@ void smf_context::send_pdu_session_establishment_response_reject(
         http_status, application_error, n1_sm_msg_hex, smreq->pid);
   } else {
     smf_app_inst->trigger_http_response(
-        status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR,
-        smreq->pid, N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+        status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR, smreq->pid,
+        N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
   }
 
   // TODO this may be a good point to unsubscribe from UDM/PCF
@@ -5149,7 +5148,8 @@ void smf_context::send_pdu_session_update_response(
         json_data["cause"]       = resp->res.get_cause();
         json_data["upCnxState"]  = "ACTIVATED";
         resp->res.set_json_data(json_data);
-        resp->res.set_http_code(static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
+        resp->res.set_http_code(
+            static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
       } break;
 
         // PDU Session Modification UE-initiated (Step 2)
@@ -5326,7 +5326,8 @@ void smf_context::send_pdu_session_release_response(
               PDU_SESSION_APPLICATION_ERROR_NETWORK_FAILURE, resp->pid);
           return;
         }
-        resp->res.set_http_code(static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
+        resp->res.set_http_code(
+            static_cast<uint32_t>(status_code_e::HTTP_STATUS_CODE_200_OK));
 
         // Store the context for the timer handling
         sps.get()->set_pending_n11_msg(
