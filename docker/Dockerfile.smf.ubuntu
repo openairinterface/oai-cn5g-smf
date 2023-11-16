@@ -127,6 +127,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib/libpistache.so \
     /usr/local/lib/libfmt.so \
     /openair-smf/build/smf/build/nas/libNAS.so \
+    /usr/local/lib/libcpr.so.1 \
     ./
 
 RUN ldconfig && \

@@ -136,6 +136,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libspdlog.so \
     /usr/local/lib64/libfmt.so \
     /usr/local/lib64/libyaml-cpp.so.0.* \
+    /usr/local/lib64/libcpr.so.1 \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /usr/lib64/
 
