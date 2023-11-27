@@ -58,6 +58,7 @@ extern "C" {
 #include "Ngap_HandoverCommandTransfer.h"
 #include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
 #include "dynamic_memory_check.h"
+#include "Ngap_MaximumIntegrityProtectedDataRate.h"
 }
 
 using namespace smf;
@@ -461,16 +462,25 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
 
   // SecurityIndication
-  // TODO: should get from UDM
-  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
-  //    nullptr;
-  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
-  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
-  //   = Ngap_IntegrityProtectionIndication_not_needed;
-  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
-  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
 
+  // TODO: should get from UDM
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* securityIndication =
+      nullptr;
+  securityIndication =
+      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  securityIndication->value.choice.SecurityIndication
+      .integrityProtectionIndication =
+      Ngap_IntegrityProtectionIndication_not_needed;
+  securityIndication->value.choice.SecurityIndication
+      .confidentialityProtectionIndication =
+      Ngap_ConfidentialityProtectionIndication_not_needed;
+  *securityIndication->value.choice.SecurityIndication
+       .maximumIntegrityProtectedDataRate_UL =
+      Ngap_MaximumIntegrityProtectedDataRate_bitrate64kbs;
+
+  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, securityIndication);
+  Logger::smf_n2().debug("Added Security Indication IE");
   // TODO: NetworkInstance
 
   // QosFlowSetupRequestList
