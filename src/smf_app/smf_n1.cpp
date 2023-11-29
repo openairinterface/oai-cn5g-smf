@@ -207,7 +207,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   } else {
     sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_LENGTH;
   }
-  sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_AND_MAPPEDHPLMNSST_AND_MAPPEDHPLMNSD_LENGTH;
+  //sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_AND_MAPPEDHPLMNSST_AND_MAPPEDHPLMNSD_LENGTH;
 
   sm_msg->pdu_session_establishment_accept.snssai.sst =
       sm_context_res.get_snssai().sst;
