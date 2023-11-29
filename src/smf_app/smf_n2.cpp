@@ -205,6 +205,12 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   securityIndication =
       (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
           1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+
+  securityIndication->id = Ngap_ProtocolIE_ID_id_SecurityIndication;
+  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
+  qosFlowSetupRequestList->value.present =
+		  Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_SecurityIndication;
+
   securityIndication->value.choice.SecurityIndication
       .integrityProtectionIndication =
       Ngap_IntegrityProtectionIndication_not_needed;
@@ -285,7 +291,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       qos_flow.qos_profile.arp.preempt_vuln.c_str());
 
   // encode
-  size_t buffer_size = BUF_LEN;
+  size_t buffer_size = 1024;
   char* buffer       = (char*) calloc(1, buffer_size);
 
   ssize_t encoded_size = aper_encode_to_new_buffer(
