@@ -154,9 +154,9 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   }
 
   sm_msg->pdu_session_establishment_accept.presence =
-      0x029a;  // Update Presence when adding a new IE
+      0x028a;  // Update Presence when adding a new IE
   if (static_cast<uint8_t>(sm_cause) > 0) {
-    sm_msg->pdu_session_establishment_accept.presence = 0x029b;
+    sm_msg->pdu_session_establishment_accept.presence = 0x028b;
     sm_msg->pdu_session_establishment_accept._5gsmcause =
         static_cast<uint8_t>(sm_cause);
     Logger::smf_n1().debug(
@@ -207,6 +207,8 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   } else {
     sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_LENGTH;
   }
+  sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_AND_MAPPEDHPLMNSST_AND_MAPPEDHPLMNSD_LENGTH;
+
   sm_msg->pdu_session_establishment_accept.snssai.sst =
       sm_context_res.get_snssai().sst;
   sm_msg->pdu_session_establishment_accept.snssai.sd =

@@ -1139,7 +1139,7 @@ void smf_context::get_default_qos_rule(
         .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
     // qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0].packetfiltercontents.component_value
     // = bfromcstralloc(2, "\0");
-    qos_rule.qosruleprecedence = 0x01;
+    qos_rule.qosruleprecedence = 0xff;
   }
 
   if (pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
