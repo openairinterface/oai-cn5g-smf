@@ -99,39 +99,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
   asn_set_empty(&ngap_IEs->protocolIEs.list);
-
-  // SessionAMBR
-  supi_t supi                     = sm_context_res.get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
-  std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
-    sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
-  } else {
-    Logger::smf_n2().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-    return false;
-  }
-
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
 
   // UPTransportLayerInformation
   pfcp::fteid_t ul_fteid = {};
@@ -230,6 +198,40 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   Logger::smf_n2().debug("Added Security Indication IE");
 
   // TODO: NetworkInstance
+
+  // PDUSessionAggregateMaximumBitRate
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
+      pduSessionAggregateMaximumBitRate = nullptr;
+  pduSessionAggregateMaximumBitRate =
+      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  pduSessionAggregateMaximumBitRate->id =
+      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
+  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
+  pduSessionAggregateMaximumBitRate->value.present =
+      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
+
+  // SessionAMBR
+  supi_t supi                     = sm_context_res.get_supi();
+  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::shared_ptr<smf_context> sc = {};
+  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
+    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
+    sc = smf_app_inst->supi_2_smf_context(supi64);
+    sc.get()->get_session_ambr(
+        pduSessionAggregateMaximumBitRate->value.choice
+            .PDUSessionAggregateMaximumBitRate,
+        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+  } else {
+    Logger::smf_n2().warn(
+        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+    return false;
+  }
+
+  ASN_SEQUENCE_ADD(
+      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
+
 
   // QosFlowSetupRequestList
   Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
