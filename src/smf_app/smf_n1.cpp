@@ -259,15 +259,14 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   sc.get()->get_plmn(plmn);
   std::string gprs = EPC::Utility::home_network_gprs(plmn);
   std::string full_dnn =
-      sm_context_res.get_dnn() + gprs;  //".mnc011.mcc110.gprs";
+      sm_context_res.get_dnn();  //".mnc011.mcc110.gprs";
   std::string dotted;
   util::string_to_dotted(full_dnn, dotted);
   Logger::smf_n1().debug(
       "Full DNN %s, dotted DNN %s", full_dnn.c_str(), dotted.c_str());
   sm_msg->pdu_session_establishment_accept.dnn =
       bfromcstralloc(dotted.length() + 1, "\0");
-  std::string tmp = sm_context_res.get_dnn();
-  util::string_to_dnn(tmp, sm_msg->pdu_session_establishment_accept.dnn);
+  util::string_to_dnn(dotted, sm_msg->pdu_session_establishment_accept.dnn);
 
   Logger::smf_n1().info("Encode PDU Session Establishment Accept");
   // Encode NAS message
