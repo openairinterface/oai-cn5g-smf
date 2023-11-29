@@ -211,9 +211,14 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   securityIndication->value.choice.SecurityIndication
       .confidentialityProtectionIndication =
       Ngap_ConfidentialityProtectionIndication_not_needed;
+  securityIndication->value.choice.SecurityIndication
+         .maximumIntegrityProtectedDataRate_UL =
+        		 (Ngap_MaximumIntegrityProtectedDataRate_t*) calloc(
+        		           1, sizeof(Ngap_MaximumIntegrityProtectedDataRate_t));
   *securityIndication->value.choice.SecurityIndication
        .maximumIntegrityProtectedDataRate_UL =
       Ngap_MaximumIntegrityProtectedDataRate_bitrate64kbs;
+
 
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, securityIndication);
   Logger::smf_n2().debug("Added Security Indication IE");
