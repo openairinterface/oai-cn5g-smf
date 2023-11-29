@@ -175,8 +175,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
           1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
 
   securityIndication->id = Ngap_ProtocolIE_ID_id_SecurityIndication;
-  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowSetupRequestList->value.present =
+  securityIndication->criticality = Ngap_Criticality_reject;
+  securityIndication->value.present =
 		  Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_SecurityIndication;
 
   securityIndication->value.choice.SecurityIndication
