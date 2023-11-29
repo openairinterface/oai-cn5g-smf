@@ -257,7 +257,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       .choice.nonDynamic5QI->fiveQI = (uint8_t) DEFAULT_5QI;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
       .allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.arp.priority_level;
+      1;
   if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
     ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
         .allocationAndRetentionPriority.pre_emptionCapability =
