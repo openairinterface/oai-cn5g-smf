@@ -71,9 +71,9 @@ int encode_snssai(SNSSAI snssai, uint8_t iei, uint8_t* buffer, uint32_t len) {
   }
   if (ielen == SST_AND_SD_AND_MAPPEDHPLMNSST_AND_MAPPEDHPLMNSD_LENGTH) {
     bit32Stream = snssai.mappedhplmnsd;
-    ENCODE_U8(buffer + encoded, (uint8_t) bit32Stream, encoded);
-    ENCODE_U8(buffer + encoded, (uint8_t) (bit32Stream >> 8), encoded);
     ENCODE_U8(buffer + encoded, (uint8_t) (bit32Stream >> 16), encoded);
+    ENCODE_U8(buffer + encoded, (uint8_t) (bit32Stream >> 8), encoded);
+    ENCODE_U8(buffer + encoded, (uint8_t) bit32Stream, encoded);
   }
 
   return encoded;
