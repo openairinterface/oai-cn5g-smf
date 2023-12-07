@@ -740,23 +740,6 @@ class event_notification {
   // bool m_MaxWaitTimeIsSet;
 };
 
-class data_notification_msg {
- public:
-  void set_notification_event_type(const std::string& type);
-  void get_notification_event_type(std::string& type) const;
-  void set_nf_instance_uri(const std::string& uri);
-  void get_nf_instance_uri(std::string& uri) const;
-  void set_profile(const std::shared_ptr<nf_profile>& p);
-  void get_profile(std::shared_ptr<nf_profile>& p) const;
-
- private:
-  std::string notification_event_type;
-  std::string nf_instance_uri;
-  std::shared_ptr<nf_profile> profile;
-  // bool m_NfProfileIsSet;
-  // std::vector<ChangeItem> m_ProfileChanges;
-  // bool m_ProfileChangesIsSet;
-};
 }  // namespace smf
 
 #endif

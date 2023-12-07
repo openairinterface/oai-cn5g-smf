@@ -50,6 +50,7 @@
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 #include "ProblemDetails.h"
+#include "UpfInfo.h"
 
 namespace smf {
 
@@ -722,15 +723,7 @@ class smf_app {
    * @param [const pfcp::node_id_t] node_id: UPF Node ID
    * @return void
    */
-  void start_upf_association(const pfcp::node_id_t& node_id);
-
-  /*
-   * To start an association with a UPF (SMF-initiated association)
-   * @param [const pfcp::node_id_t] node_id: UPF Node ID
-   * @return void
-   */
-  void start_upf_association(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+  void start_upf_association(oai::config::smf::upf& upf_cfg);
 
   /*
    * To start NF registration with NRF and subscribe to UPF event notification

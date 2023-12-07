@@ -466,29 +466,6 @@ void xgpp_conv::sm_context_release_from_openapi(
 }
 
 //------------------------------------------------------------------------------
-void xgpp_conv::data_notification_from_openapi(
-    const oai::smf_server::model::NotificationData& nd,
-    smf::data_notification_msg& dn_msg) {
-  Logger::smf_app().debug(
-      "Convert NotificationData (OpenAPI) to "
-      "Data Notification Msg");
-
-  dn_msg.set_notification_event_type(nd.getEvent());
-  dn_msg.set_nf_instance_uri(nd.getNfInstanceUri());
-
-  std::shared_ptr<smf::nf_profile> p = {};
-
-  // Only support UPF for now
-  if (nd.getNfProfile().getNfType() == "UPF")
-    p = std::make_shared<smf::upf_profile>();
-
-  nlohmann::json pj = {};
-  to_json(pj, nd.getNfProfile());
-  p.get()->from_json(pj);
-  dn_msg.set_profile(p);
-}
-
-//------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
     const oai::smf_server::model::NsmfEventExposure& nee,
     smf::event_exposure_msg& eem) {

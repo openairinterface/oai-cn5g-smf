@@ -166,9 +166,6 @@ class smf_config : public config {
   // all the calling classes
   void to_smf_config();
 
-  // TODO only temporary, we should not resolve on startup in the config
-  static in_addr resolve_nf(const std::string& host);
-
   void update_used_nfs() override;
 
  public:
@@ -184,38 +181,10 @@ class smf_config : public config {
 
   bool force_push_pco;
 
-  bool register_nrf;
-  bool discover_upf;
   bool discover_pcf;
   bool use_local_subscription_info;
   bool use_local_pcc_rules;
   unsigned int http_version;
-  bool enable_ur;
-  bool enable_dl_pdr_in_pfcp_sess_estab;
-  std::string local_n3_addr;
-
-  std::vector<pfcp::node_id_t> upfs;
-
-  // Network instance
-  // bool network_instance_configuration;
-  struct upf_nwi_list_s {
-    pfcp::node_id_t upf_id;
-    std::string domain_access;
-    std::string domain_core;
-    //      std::string domain_sgi_lan;
-
-    nlohmann::json to_json() const {
-      nlohmann::json json_data   = {};
-      json_data["upf_id"]        = upf_id.toString();
-      json_data["domain_access"] = domain_access;
-      json_data["domain_core"]   = domain_core;
-
-      return json_data;
-    }
-  };
-  typedef struct upf_nwi_list_s upf_nwi_list_t;
-
-  std::vector<upf_nwi_list_t> upf_nwi_list;
 
   smf_config(const std::string& configPath, bool logStdout, bool logRotFile);
 
@@ -224,26 +193,6 @@ class smf_config : public config {
   bool is_dotted_dnn_handled(
       const std::string& dnn, const pdu_session_type_t& pdn_session_type);
   std::string get_default_dnn();
-
-  /**
-   * Returns network instance of iface_type typ. If not found, empty string is
-   * returned
-   * @param node_id IP address or FQDN to match against configuration
-   * @return NWI or empty string
-   */
-  std::string get_nwi(
-      const pfcp::node_id_t& node_id, const ::smf::iface_type& type) const;
-
-  /**
-   * Returns configured UPF based on node_id.
-   * Compares UPF host config value with node_id FQDN and IPv4 address in this
-   * order
-   * @param node_id PFCP node id, FQDN, IPv4 address must be set
-   * @throws std::invalid_argument  in case UPF is not to be found or type is
-   * IPv6
-   * @return upf
-   */
-  const oai::config::smf::upf& get_upf(const pfcp::node_id_t& node_id) const;
 
   /**
    * Returns SMF configuration pointer which stores SMF-specific configuration

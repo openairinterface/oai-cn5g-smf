@@ -29,6 +29,8 @@
 
 #pragma once
 
+#include <regex>
+#include "config.hpp"
 #include "config_types.hpp"
 #include "3gpp_29.571.h"
 #include "3gpp_24.501.h"
@@ -36,6 +38,8 @@
 #include "SmfInfo.h"
 #include "Snssai.h"
 #include "UpfInfo.h"
+#include "NFProfile.h"
+#include "3gpp_29.244.h"
 
 namespace oai::config::smf {
 
@@ -76,6 +80,9 @@ class upf : public config_type {
   string_config_value m_local_n3_ipv4;
   oai::model::nrf::UpfInfo m_upf_info;
   bool m_upf_info_is_set = true;
+  pfcp::node_id_t m_node_id;
+
+  void generate_node_id();
 
  public:
   explicit upf(
@@ -99,6 +106,10 @@ class upf : public config_type {
   [[nodiscard]] bool enable_dl_pdr_in_session_establishment() const;
   [[nodiscard]] const std::string& get_local_n3_ip() const;
   [[nodiscard]] const oai::model::nrf::UpfInfo& get_upf_info() const;
+  [[nodiscard]] const pfcp::node_id_t& get_node_id() const;
+  void set_node_id(const pfcp::node_id_t& node_id);
+  void set_upf_info(const oai::model::nrf::UpfInfo& upf_info);
+
   void enable_upf_info(bool val);
 };
 

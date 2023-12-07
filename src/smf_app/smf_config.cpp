@@ -52,8 +52,7 @@ smf_config::smf_config(
     : config(configPath, oai::config::SMF_CONFIG_NAME, logStdout, logRotFile),
       n4(),
       sbi(),
-      itti(),
-      upfs() {
+      itti() {
   m_used_config_values = {LOG_LEVEL_CONFIG_NAME, REGISTER_NF_CONFIG_NAME,
                           NF_LIST_CONFIG_NAME,   SMF_CONFIG_NAME,
                           DNNS_CONFIG_NAME,      NF_CONFIG_HTTP_NAME};
@@ -175,42 +174,6 @@ std::string smf_config::get_default_dnn() {
   return "default";  // default DNN
 }
 
-//------------------------------------------------------------------------------
-std::string smf_config::get_nwi(
-    const pfcp::node_id_t& node_id, const iface_type& type) const {
-  try {
-    upf used_upf = get_upf(node_id);
-    UPInterfaceType type_to_check;
-
-    switch (type) {
-      case iface_type::N3:
-        type_to_check.setEnumValue(
-            UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
-        break;
-      case iface_type::N6:
-        type_to_check.setEnumValue(
-            UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
-        break;
-      case iface_type::N9:
-        Logger::smf_app().warn(
-            "N9 interface type not supported for locally configured NWI");
-        return "";
-      default:
-        Logger::smf_app().error("Unsupported enum parameter in get_nwi");
-        return "";
-    }
-    for (const auto& iface :
-         used_upf.get_upf_info().getInterfaceUpfInfoList()) {
-      if (iface.getInterfaceType() == type_to_check) {
-        return iface.getNetworkInstance();
-      }
-    }
-
-  } catch (invalid_argument&) {
-  }
-  return "";
-}
-
 void smf_config::to_smf_config() {
   log_level    = spdlog::level::from_str(config::log_level());
   auto smf_cfg = smf();
@@ -220,10 +183,8 @@ void smf_config::to_smf_config() {
   use_local_pcc_rules =
       smf_cfg->get_smf_support_features().use_local_pcc_rules();
 
-  register_nrf = config::register_nrf();
   // TODO discover PCF is not implemented
   discover_pcf = false;
-  discover_upf = config::register_nrf();
 
   local_interface _n4 = smf()->get_n4();
 
@@ -251,28 +212,6 @@ void smf_config::to_smf_config() {
   sbi_api_version = smf_cfg->get_sbi().get_api_version();
   http_version    = get_http_version();
 
-  // UPF configuration
-  // NWI is handled in get_nwi function directly from new configuration
-  for (const auto& upf : smf_cfg->get_upfs()) {
-    if (!discover_upf) {
-      pfcp::node_id_t node_id;
-      // Here we resolve the IP so that the Node ID Type is always V4
-      in_addr ip              = resolve_nf(upf.get_host());
-      node_id.u1.ipv4_address = ip;
-      node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
-      // Stefan: smf_app already checks if the UPF is present in configuration
-      // and does not start association when receiving an NRF notification. WHY?
-      // that should better be handled by the PFCP associations
-      upfs.push_back(node_id);
-    }
-
-    // TODO here we just take the enable UR and enable DL in PFCP session
-    // establishment from the last UPF we have to refactor PFCP association to
-    // fix this
-    enable_ur = upf.enable_usage_reporting();
-    enable_dl_pdr_in_pfcp_sess_estab =
-        upf.enable_dl_pdr_in_session_establishment();
-  }
   logger::logger_registry::get_logger(LOGGER_NAME)
       .warn(
           "Enable UR and enable DL PDR in PFCP Session Establishment per UPF "
@@ -298,52 +237,6 @@ void smf_config::to_smf_config() {
     dnn.paa_pool6_prefix_len = cfg_dnn.get_ipv6_prefix_length();
     dnns[dnn.dnn]            = dnn;
   }
-}
-
-in_addr smf_config::resolve_nf(const std::string& host) {
-  // we remove use_fqdn_dns towards the user, if it is an IPv4 we don't resolve
-  std::regex re(IPV4_ADDRESS_VALIDATOR_REGEX);
-  if (!std::regex_match(host, re)) {
-    logger::logger_registry::get_logger(LOGGER_NAME)
-        .info("Configured host %s is an FQDN. Resolve on SMF startup", host);
-    std::string ip_address;
-    // we ignore the port for now
-    uint32_t port;
-    uint8_t addr_type;
-    fqdn::resolve(host, ip_address, port, addr_type);
-    if (addr_type != 0) {
-      // TODO:
-      throw std::invalid_argument(fmt::format(
-          "IPv6 is not supported at the moment. Please provide a valid IPv4 "
-          "address in your DNS configuration for the host {}.",
-          host));
-    }
-    return conv::fromString(ip_address);
-  }
-  return conv::fromString(host);
-}
-
-const upf& smf_config::get_upf(const pfcp::node_id_t& node_id) const {
-  auto smf_cfg = smf();
-
-  for (const auto& upf : smf_cfg->get_upfs()) {
-    if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN &&
-        node_id.fqdn == upf.get_host()) {
-      return upf;
-    } else if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS) {
-      in_addr configured_v4_address = conv::fromString(upf.get_host());
-      if (configured_v4_address.s_addr &&
-          configured_v4_address.s_addr == node_id.u1.ipv4_address.s_addr) {
-        return upf;
-      }
-    } else if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV6_ADDRESS) {
-      in6_addr configured_v6_address = conv::fromStringV6(upf.get_host());
-      if (!IN6_IS_ADDR_UNSPECIFIED(&configured_v6_address)) {
-        return upf;
-      }
-    }
-  }
-  throw std::invalid_argument("UPF could not be found in configuration");
 }
 
 bool smf_config::init() {

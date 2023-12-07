@@ -78,7 +78,8 @@ pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
 
 //------------------------------------------------------------------------------
 pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
-    pfcp::fteid_t& fteid, const bool& ftup_supported) {
+    pfcp::fteid_t& fteid, const bool& ftup_supported,
+    const oai::config::smf::upf& cfg) {
   pfcp::fteid_t local_fteid;
   if (!ftup_supported) {
     Logger::smf_app().info(
@@ -87,7 +88,7 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     local_fteid.ch           = 0;
     local_fteid.v4           = 1;
     local_fteid.chid         = 0;
-    local_fteid.ipv4_address = conv::fromString(smf_cfg->local_n3_addr);
+    local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
     sps->generate_teid(local_fteid);
     fteid = local_fteid;
     Logger::smf_app().info(
@@ -108,7 +109,7 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
 
 //------------------------------------------------------------------------------
 pfcp::create_far smf_session_procedure::pfcp_create_far(
-    edge& edge, const qfi_t& qfi) {
+    edge& edge, const qfi_t& qfi, const oai::config::smf::upf& cfg) {
   // When we have a FAR and edge is uplink we know we are in an uplink procedure
   //  e.g. FAR from N3 to N6, N6 is uplink edge -> uplink procedure
 
@@ -145,7 +146,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
       flow->far_id_dl.first = true;
     }
     far_id = flow->far_id_dl.second;
-    if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+    if (cfg.enable_dl_pdr_in_session_establishment()) {
       apply_action.forw = 0;
       apply_action.drop = 1;
       create_far.set(flow->far_id_dl.second);
@@ -238,7 +239,8 @@ void smf_session_procedure::synch_ul_dl_edges(
 //------------------------------------------------------------------------------
 pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     edge& edge, const qfi_t& qfi,
-    const pfcp::up_function_features_s up_features) {
+    const pfcp::up_function_features_s up_features,
+    const oai::config::smf::upf& cfg) {
   // When we have a PDR and edge is uplink we know we are in a downlink
   // procedure, e.g. PDR from N6 to N3 -> N6 is uplink edge, so downlink
   // procedure
@@ -303,10 +305,10 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   if (edge.type != iface_type::N6) {
     // in UPLINK always choose ID
     if (edge.uplink) {
-      local_fteid      = pfcp_prepare_fteid(flow->dl_fteid, up_features.ftup);
+      local_fteid = pfcp_prepare_fteid(flow->dl_fteid, up_features.ftup, cfg);
       local_fteid.chid = 0;
     } else {
-      local_fteid      = pfcp_prepare_fteid(flow->ul_fteid, up_features.ftup);
+      local_fteid = pfcp_prepare_fteid(flow->ul_fteid, up_features.ftup, cfg);
       std::string ipv4 = conv::toString(edge.ip_addr);
       if (!ipv4.empty() && !up_features.ftup) {
         local_fteid.ipv4_address    = edge.ip_addr;
@@ -358,7 +360,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
 
   create_pdr.set(far_id);
 
-  if (smf_cfg->enable_ur) {
+  if (cfg.enable_usage_reporting()) {
     create_pdr.set(flow->urr_id);
   }
 
@@ -569,12 +571,13 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   n4_triggered->seid = sps->seid;
   n4_triggered->pfcp_ies.set(cp_fseid);
 
-  edge dl_edge = dl_edges[0];
+  edge dl_edge                  = dl_edges[0];
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   //-------------------
   // IE CREATE_URR ( Usage Reporting Rules)
   //-------------------
-  if (smf_cfg->enable_ur) {
+  if (current_upf->get_upf_config().enable_usage_reporting()) {
     pfcp::create_urr create_urr = pfcp_create_urr(dl_edge, current_flow.qfi);
     n4_triggered->pfcp_ies.set(create_urr);
 
@@ -591,7 +594,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     //-------------------
     // IE CREATE_FAR
     //-------------------
-    pfcp::create_far create_far = pfcp_create_far(ul_edge, current_flow.qfi);
+    pfcp::create_far create_far =
+        pfcp_create_far(ul_edge, current_flow.qfi, upf_cfg);
     // copy created FAR ID to DL edge for PDR
     synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
 
@@ -605,7 +609,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     // IE CREATE_PDR
     //-------------------
     pfcp::create_pdr create_pdr = pfcp_create_pdr(
-        dl_edge, current_flow.qfi, current_upf->function_features.second);
+        dl_edge, current_flow.qfi, current_upf->function_features.second,
+        upf_cfg);
     synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
 
     // ADD IEs to message
@@ -613,17 +618,15 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     n4_triggered->pfcp_ies.set(create_pdr);
     n4_triggered->pfcp_ies.set(create_far);
 
-    if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+    if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
       pfcp::create_far create_far_dl =
-          pfcp_create_far(dl_edge, current_flow.qfi);
+          pfcp_create_far(dl_edge, current_flow.qfi, upf_cfg);
       pfcp::create_pdr create_pdr_dl =
           pfcp_create_pdr_dl(dl_edge, current_flow.qfi);
       n4_triggered->pfcp_ies.set(create_pdr_dl);
       n4_triggered->pfcp_ies.set(create_far_dl);
-    }
-    // Handle PDR and FAR for downlink if thid feature is enabled
-    if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
-      Logger::smf_app().info("Adding DL PDR and FAR start");
+      Logger::smf_app().info(
+          "Adding DL PDR and FAR during PFCP session establishment");
     }
   }
 
@@ -773,9 +776,10 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
       smf_procedure_code::OK) {
     return smf_procedure_code::ERROR;
   }
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   std::shared_ptr<smf_qos_flow> default_qos_flow = {};
-  if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab &&
+  if (upf_cfg.enable_dl_pdr_in_session_establishment() &&
       resp.pfcp_ies.created_pdrs.empty()) {
     pfcp::pdr_id_t pdr_id_tmp;
     // we use qos flow for 1st PDR for the moment
@@ -908,6 +912,8 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
     return smf_procedure_code::ERROR;
   }
 
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
+
   n4_triggered = std::make_shared<itti_n4_session_modification_request>(
       TASK_SMF_APP, TASK_SMF_N4);
   n4_triggered->seid    = sps->up_fseid.seid;
@@ -926,12 +932,14 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
     }
     flow_dl->pdr_id_dl = 0;
 
-    pfcp::create_far create_far = pfcp_create_far(dl_edge, current_flow.qfi);
+    pfcp::create_far create_far =
+        pfcp_create_far(dl_edge, current_flow.qfi, upf_cfg);
 
     ul_flow->far_id_dl = create_far.far_id;
 
     pfcp::create_pdr create_pdr = pfcp_create_pdr(
-        ul_edge, current_flow.qfi, current_upf->function_features.second);
+        ul_edge, current_flow.qfi, current_upf->function_features.second,
+        upf_cfg);
 
     // Add IEs to message
     n4_triggered->pfcp_ies.set(create_far);
@@ -1013,6 +1021,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
     Logger::smf_app().error("DL Procedure Error: No UPF to select");
     return smf_procedure_code::ERROR;
   }
+
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   //-------------------
   n11_trigger           = sm_context_req;
@@ -1130,7 +1140,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
             auto flow_dl       = dl_edge.get_qos_flow(flow->qfi);
             flow_dl->pdr_id_dl = 0;
 
-            pfcp::create_far create_far = pfcp_create_far(dl_edge, flow->qfi);
+            pfcp::create_far create_far =
+                pfcp_create_far(dl_edge, flow->qfi, upf_cfg);
 
             synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi, false);
             // Add IEs to message
@@ -1154,7 +1165,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
             // IE create_pdr
             //-------------------
             pfcp::create_pdr create_pdr = pfcp_create_pdr(
-                ul_edge, ul_flow->qfi, current_upf->function_features.second);
+                ul_edge, ul_flow->qfi, current_upf->function_features.second,
+                upf_cfg);
             n4_triggered->pfcp_ies.set(create_pdr);
             synch_ul_dl_edges(dl_edges, ul_edges, ul_flow->qfi, false);
             Logger::smf_app().debug(
@@ -1217,7 +1229,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
             pdi.set(source_interface);
             pdi.set(ue_ip_address);
 
-            if (smf_cfg->enable_ur) {
+            if (upf_cfg.enable_usage_reporting()) {
               pfcp::urr_id_t urr_Id = ul_flow->urr_id;
               update_pdr.set(urr_Id);
             }
@@ -1307,7 +1319,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
           //-------------------
           // IE CREATE_FAR
           //-------------------
-          pfcp::create_far create_far = pfcp_create_far(ul_edge, flow->qfi);
+          pfcp::create_far create_far =
+              pfcp_create_far(ul_edge, flow->qfi, upf_cfg);
           // copy created FAR ID to DL edge for PDR
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi, true);
 
@@ -1323,7 +1336,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
           // CREATE_PDR
           pfcp::create_pdr create_pdr = pfcp_create_pdr(
-              dl_edge, flow->qfi, current_upf->function_features.second);
+              dl_edge, flow->qfi, current_upf->function_features.second,
+              upf_cfg);
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi, true);
 
           // ADD IEs to message

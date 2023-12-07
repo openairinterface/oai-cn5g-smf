@@ -92,11 +92,13 @@ class smf_session_procedure : public smf_procedure {
 
   std::shared_ptr<smf_pdu_session> sps;
 
-  pfcp::create_far pfcp_create_far(edge& edge, const pfcp::qfi_t& qfi);
+  pfcp::create_far pfcp_create_far(
+      edge& edge, const pfcp::qfi_t& qfi, const oai::config::smf::upf& cfg);
 
   pfcp::create_pdr pfcp_create_pdr(
       edge& edge, const pfcp::qfi_t& qfi,
-      const pfcp::up_function_features_s up_features);
+      const pfcp::up_function_features_s up_features,
+      const oai::config::smf::upf& cfg);
 
   pfcp::create_urr pfcp_create_urr(edge& edge, const pfcp::qfi_t& qfi);
 
@@ -109,7 +111,8 @@ class smf_session_procedure : public smf_procedure {
   pfcp::ue_ip_address_t pfcp_ue_ip_address(const edge& edge);
 
   pfcp::fteid_t pfcp_prepare_fteid(
-      pfcp::fteid_t& fteid, const bool& ftup_supported);
+      pfcp::fteid_t& fteid, const bool& ftup_supported,
+      const oai::config::smf::upf& cfg);
 
  protected:
   void synch_ul_dl_edges(
