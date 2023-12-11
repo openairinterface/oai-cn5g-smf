@@ -232,8 +232,47 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
 
   Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
+ 
+  /* Filling the Non GBR as default and another one for GBR */
   ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-      1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+      2, sizeof(Ngap_QosFlowSetupRequestItem_t));
+
+  /* Filling the Default qos Flow as a first qos flow Item 
+   * INFO: this implementation only for testing purpose if it is worked code needs to be reorgainze */
+  ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) DEFAULT_5QI;
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI->fiveQI = (uint8_t)DEFAULT_5QI;
+  
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.priorityLevelARP =
+      qos_flow.qos_profile.arp.priority_level;
+  if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+  } else {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
+  }
+  if (qos_flow.qos_profile.arp.preempt_vuln.compare("NOT_PREEMPTABLE") == 0) {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_not_pre_emptable;
+  } else {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_pre_emptable;
+  }
+ 
+ /*Increment the pointer to fill next block*/ 
+  ngap_QosFlowSetupRequestItem++;
+
   ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
       .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
