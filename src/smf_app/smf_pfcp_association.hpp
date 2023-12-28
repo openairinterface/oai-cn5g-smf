@@ -286,7 +286,8 @@ class smf_qos_flow {
   std::pair<bool, pfcp::far_id_t> far_id_dl;  // FAR ID, DL
   bool released{};  // finally seems necessary, TODO try to find heuristic ?
   pdu_session_id_t pdu_session_id{};
-  qos_profile_t qos_profile;  // QoS profile
+  qos_profile_t qos_profile;  // QoS non-GBR profile
+  qos_profile_gbr_t qos_profile_gbr; // QoS GBR profile
   uint8_t cause_value{};      // cause
 };
 

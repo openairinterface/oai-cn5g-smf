@@ -258,6 +258,7 @@ static const std::vector<std::string> sm_context_status_e2str = {"ACTIVE",
 typedef struct qos_profile_gbr_s {
   gfbr_t gfbr;  // Guaranteed Flow Bit Rate
   mfbr_t mfbr;  // Maximum Flow Bit Rate
+  uint8_t priority_level;
   // Notification Control
   // Maximum Packet Loss Rate (UL/DL)
 } qos_profile_gbr_t;

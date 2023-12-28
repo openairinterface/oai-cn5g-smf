@@ -541,9 +541,18 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   std::shared_ptr<pfcp_association> current_upf;
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
+  // Create separate vectors to handle GBR edges
+  std::vector<edge> dl_gbrEdges;
+  std::vector<edge> ul_gbrEdges;
+  // Obtain the current UPF associated with non-GBR DL and UL edges 
   smf_procedure_code res = get_current_upf(dl_edges, ul_edges, current_upf);
   if (res != smf_procedure_code::OK) {
     return res;
+  }
+  // Obtain the current UPF associated with GBR DL and UL edges 
+  smf_procedure_code gbrRes = get_current_upf(dl_gbrEdges, ul_gbrEdges, current_upf);
+  if (gbrRes != smf_procedure_code::OK) {
+    return gbrRes;
   }
 
   n4_triggered = std::make_shared<itti_n4_session_establishment_request>(
@@ -570,16 +579,21 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   n4_triggered->pfcp_ies.set(cp_fseid);
 
   edge dl_edge = dl_edges[0];
-
+  edge dl_gbrEdge = dl_gbrEdges[0];
   //-------------------
   // IE CREATE_URR ( Usage Reporting Rules)
   //-------------------
   if (smf_cfg->enable_ur) {
+    // Non-GBR flow
     pfcp::create_urr create_urr = pfcp_create_urr(dl_edge, current_flow.qfi);
     n4_triggered->pfcp_ies.set(create_urr);
+    // GBR flow
+    pfcp::create_urr create_gbrUrr = pfcp_create_urr(dl_gbrEdge, current_gbrFlow.qfi);
+    n4_triggered->pfcp_ies.set(create_gbrUrr);
 
     // set URR ID also for other edge
     synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
+    synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
   }
 
   // Here, we only consider an UL CL, so we create PDRs based on how many
@@ -587,6 +601,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
   // In UL CL case, we have 2 PDRs, but they have the same choose ID -> same
   // TEID We also set the same URR ID for all edges
+  // Loop through non-GBR UL edges. Create FARs for UL and PDRs for DL. Set PFCP IEs. 
   for (auto ul_edge : ul_edges) {
     //-------------------
     // IE CREATE_FAR
@@ -623,7 +638,48 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     }
     // Handle PDR and FAR for downlink if thid feature is enabled
     if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
-      Logger::smf_app().info("Adding DL PDR and FAR start");
+      Logger::smf_app().info("Adding non-GBR DL PDR and FAR start");
+    }
+  }
+
+  // Loop through GBR UL edges. Create FARs for UL and PDRs for DL. Set PFCP IEs.
+  for (auto ul_gbrEdge : ul_gbrEdges) {
+    //-------------------
+    // IE CREATE_FAR
+    //-------------------
+    pfcp::create_far create_far = pfcp_create_far(ul_gbrEdge, current_gbrFlow.qfi);
+    // copy created FAR ID to DL edge for PDR
+    synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
+
+    // copy values from UL edge, so we simulate two downlink edges for PFCP
+    auto gbrFlow                = dl_gbrEdge.get_qos_flow(current_gbrFlow.qfi);
+    gbrFlow->pdr_id_ul          = 0;
+    dl_gbrEdge.flow_description = ul_gbrEdge.flow_description;
+    dl_gbrEdge.precedence       = ul_gbrEdge.precedence;
+
+    //-------------------
+    // IE CREATE_PDR
+    //-------------------
+    pfcp::create_pdr create_pdr = pfcp_create_pdr(
+        dl_gbrEdge, current_gbrFlow.qfi, current_upf->function_features.second);
+    synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
+
+    // ADD IEs to message
+    //-------------------
+    n4_triggered->pfcp_ies.set(create_pdr);
+    n4_triggered->pfcp_ies.set(create_far);
+
+    if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+      pfcp::create_far create_far_dl =
+          pfcp_create_far(dl_gbrEdge, current_gbrFlow.qfi);
+      pfcp::create_pdr create_pdr_dl =
+          pfcp_create_pdr_dl(dl_gbrEdge, current_gbrFlow.qfi);
+      n4_triggered->pfcp_ies.set(create_pdr_dl);
+      n4_triggered->pfcp_ies.set(create_far_dl);
+    }
+    // Handle PDR and FAR for downlink if thid feature is enabled
+    if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+      Logger::smf_app().info("Adding GBR DL PDR and FAR start");
     }
   }
 
@@ -704,42 +760,84 @@ smf_procedure_code session_create_sm_context_procedure::run(
   // for finding procedure when receiving response
   smf_app_inst->set_seid_2_smf_context(seid, sc);
 
-  // get the default QoS profile
+  
   subscribed_default_qos_t default_qos                = {};
+  subscribed_default_qos_t default_gbrQos             = {};
   std::shared_ptr<session_management_subscription> ss = {};
+  // get the default non-GBR QoS profile
   sc->get_default_qos(
       sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn(),
       default_qos);
+  // get the default GBR QoS profile
+  sc->get_default_qos(
+      sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn(),
+      default_gbrQos);
 
   // Create default QoS (Non-GBR) and associate far id and pdr id to this flow
+  // Create a non-gbr flow
   smf_qos_flow flow   = {};
+  // Create a gbr flow
+  smf_qos_flow gbrFlow = {};
   flow.pdu_session_id = sm_context_req->req.get_pdu_session_id();
-  // default QoS profile
+  // default non-GBR QoS profile
   flow.qfi.qfi                    = default_qos._5qi;
   flow.qos_profile._5qi           = default_qos._5qi;
   flow.qos_profile.arp            = default_qos.arp;
   flow.qos_profile.priority_level = default_qos.priority_level;
 
-  // assign default QoS rule for this flow
+  // GBR QoS profile
+  gbrFlow.qfi.qfi = 1;
+  gbrFlow.qos_profile._5qi = 1;
+  gbrFlow.qos_profile.arp = default_qos.arp;
+  gbrFlow.qos_profile.priority_level = 1; 
+
+  // assign default QoS rule for this non-GBR flow
   QOSRulesIE qos_rule = {};
+  // assign default QoS rule for this GBR flow
+  QOSRulesIE gbrQosRule = {};
+  // get the default non-GBR QoS rule
   sc->get_default_qos_rule(
       qos_rule, sm_context_req->req.get_pdu_session_type());
+  // get the default GBR QoS rule
+  sc->get_default_qos_rule(
+      gbrQosRule, sm_context_req->req.get_pdu_session_type());
+  // Generate and assign identifiers for a non-GBR QoS rule, associating it with a non-GBR QoS flow.
   uint8_t rule_id = {0};
   sps->generate_qos_rule_id(rule_id);
   qos_rule.qosruleidentifer = rule_id;
   qos_rule.qosflowidentifer = flow.qfi.qfi;
   sps->add_qos_rule(qos_rule);
+  // Generate and assign identifiers for a GBR QoS rule, associating it with a GBR QoS flow.
+  uint8_t gbrRule_id = {0};
+  sps->generate_qos_rule_id(gbrRule_id);
+  gbrQosRule.qosruleidentifer = gbrRule_id;
+  gbrQosRule.qosflowidentifer = gbrFlow.qfi.qfi;
+  sps->add_qos_rule(gbrQosRule);
 
+  // Non-GBR flow
   sps->add_qos_flow(flow);
   sps->set_default_qos_flow(flow.qfi);
   current_flow = flow;
   graph->start_asynch_dfs_procedure(true, flow);
 
+  // GBR flow
+  sps->add_qos_flow(gbrFlow);
+  sps->set_default_qos_flow(gbrFlow.qfi);
+  current_gbrFlow = gbrFlow;
+  graph->start_asynch_dfs_procedure(true, gbrFlow);
+
+  // For non-GBR flow
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
   std::shared_ptr<pfcp_association> upf = {};
   // Get next UPF for the first N4 session establishment
   get_next_upf(dl_edges, ul_edges, upf);
+
+  // For GBR flow
+  std::vector<edge> dl_gbrEdges;
+  std::vector<edge> ul_gbrEdges;
+  // Get next UPF for the first N4 session establishment
+  get_next_upf(dl_gbrEdges, ul_gbrEdges, upf);
 
   return send_n4_session_establishment_request();
 }
@@ -767,13 +865,25 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   std::shared_ptr<pfcp_association> current_upf = {};
+  // Fetch the current UPF related to the given DL and UL non-GBR edges
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
   if (get_current_upf(dl_edges, ul_edges, current_upf) !=
       smf_procedure_code::OK) {
     return smf_procedure_code::ERROR;
   }
-
+  // Fetch the current UPF related to the given DL and UL GBR edges
+  std::vector<edge> dl_gbrEdges;
+  std::vector<edge> ul_gbrEdges;
+  if (get_current_upf(dl_gbrEdges, ul_gbrEdges, current_upf) !=
+      smf_procedure_code::OK) {
+    return smf_procedure_code::ERROR;
+  }
+  
+  // Non-GBR flow
+  // Handle the selection of a default QoS flow for DL traffic based on certain conditions related to 
+  // the configuration and the response received, including the presence of created PDRs and the use of
+  // the first DL edge's QoS flow when certain criteria are met.
   std::shared_ptr<smf_qos_flow> default_qos_flow = {};
   if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab &&
       resp.pfcp_ies.created_pdrs.empty()) {
@@ -787,6 +897,20 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     }
   }
 
+  // GBR flow
+  std::shared_ptr<smf_qos_flow> default_gbrQos_flow = {};
+  if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab &&
+      resp.pfcp_ies.created_pdrs.empty()) {
+    pfcp::pdr_id_t gbrPdr_id_tmp;
+    // Assign a different rule ID for GBR flow
+    gbrPdr_id_tmp.rule_id = 2;
+    auto gbrFlow          = dl_gbrEdges[0].get_qos_flow(gbrPdr_id_tmp);
+    if (gbrFlow) {
+      default_gbrQos_flow = gbrFlow;
+    }
+  }
+  
+  // Non-GBR flow
   for (const auto& it : resp.pfcp_ies.created_pdrs) {
     pfcp::pdr_id_t pdr_id = {};
     pfcp::far_id_t far_id = {};
@@ -814,7 +938,32 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     }
   }
 
+  // GBR flow
+  for (const auto& it : resp.pfcp_ies.created_pdrs) {
+    pfcp::pdr_id_t gbrPdr_id = {};
+    pfcp::far_id_t gbrFar_id = {};
+    if (it.get(gbrPdr_id)) {
+      // even in UL CL scenario, taking the TEID from one PDR is enough
+      auto gbrFlow = dl_gbrEdges[0].get_qos_flow(gbrPdr_id);
+      if (gbrFlow) {
+        if (gbrFlow->pdr_id_ul == gbrPdr_id && it.get(gbrFlow->ul_fteid)) {
+          default_gbrQos_flow = gbrFlow;
+        }
+      } else {
+        Logger::smf_app().debug(
+            "Could not get QoS Flow for created_pdr %d", gbrPdr_id.rule_id);
+      }
+    } else {
+      Logger::smf_app().error(
+          "Could not get pdr_id for created_pdr in %s",
+          resp.pfcp_ies.get_msg_name());
+    }
+  }
+
+  // Synchronize DL and UL edges within the context of a specific QFI
+  // The boolean flag "false" indicates that the PDRs for the UL are not being synchronized. 
   synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
+  synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
 
   // covers the case that UL CL is returned from algorithm, but not all TEIDs
   // have been set (not all paths explored yet)
@@ -822,6 +971,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   bool search_upf                = true;
   bool send_n4                   = true;
   smf_procedure_code send_n4_res = smf_procedure_code::ERROR;
+  // For non-GBR flow
   while (search_upf) {
     std::vector<edge> next_dl_edges;
     std::vector<edge> next_ul_edges;
@@ -851,11 +1001,42 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
       search_upf = !send_n4;
     }
   }
+  // For GBR flow
+  while (search_upf) {
+    std::vector<edge> next_dl_gbrEdges;
+    std::vector<edge> next_ul_gbrEdges;
+    std::shared_ptr<pfcp_association> next_upf = {};
+    send_n4_res = get_next_upf(next_dl_gbrEdges, next_ul_gbrEdges, next_upf);
+    if (send_n4_res != smf_procedure_code::CONTINUE) {
+      search_upf = false;
+      send_n4    = false;
+    } else {
+      Logger::smf_app().debug(
+          "Try to send N4 to UPF %s", next_upf->get_printable_name().c_str());
+      // update FTEID for forward tunnel info for this edge
+      send_n4 = true;
+      for (auto ul_gbrEdge : next_ul_gbrEdges) {
+        auto gbrFlow = ul_gbrEdge.get_qos_flow(current_gbrFlow.qfi);
+        if (!gbrFlow) {
+          send_n4 = false;
+        }
+        if (ul_gbrEdge.type == iface_type::N9 && gbrFlow->ul_fteid.is_zero()) {
+          Logger::smf_app().debug(
+              "UPF %s has unvisited UL edges",
+              next_upf->get_printable_name().c_str());
+          send_n4 = false;
+        }
+      }
+      // if we found UPF to send N4, we don't need to search UPF anymore
+      search_upf = !send_n4;
+    }
+  }
   if (send_n4) {
     return send_n4_session_establishment_request();
   }
 
   // flow_updated info will be used to construct N1,N2 container
+  // Non-GBR flow
   qos_flow_context_updated flow_updated = {};
   QOSRulesIE qos_rule                   = {};
 
@@ -891,6 +1072,48 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     return smf_procedure_code::ERROR;
   }
 
+  // GBR flow
+  qos_flow_context_updated gbrFlow_updated = {};
+  QOSRulesIE gbrQosRule                    = {};
+
+  gbrFlow_updated.set_cause(
+      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  if (!default_gbrQos_flow) {
+    gbrFlow_updated.set_cause(static_cast<uint8_t>(
+        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+  } else {
+    if (default_gbrQos_flow->ul_fteid.is_zero()) {
+      gbrFlow_updated.set_cause(static_cast<uint8_t>(
+          cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    } else {
+      gbrFlow_updated.set_ul_fteid(default_gbrQos_flow->ul_fteid);  // tunnel info
+    }
+    if (sps->get_default_qos_rule(gbrQosRule)) {
+      gbrFlow_updated.add_qos_rule(gbrQosRule);
+    }
+    gbrFlow_updated.set_qfi(default_gbrQos_flow->qfi); 
+
+    qos_profile_t gbrProfile = {};
+    gbrProfile.parameter.qos_profile_gbr = default_gbrQos_flow->qos_profile_gbr;
+    gbrFlow_updated.set_qos_profile(gbrProfile);
+    gbrFlow_updated.set_priority_level(gbrProfile.priority_level); 
+
+    /*
+    qos_profile_gbr_t gbrProfile = {};
+    gbrProfile               = default_gbrQos_flow->qos_profile_gbr;
+    gbrFlow_updated.set_qos_profile(gbrProfile);
+    gbrFlow_updated.set_priority_level(
+        default_gbrQos_flow->qos_profile_gbr.priority_level);
+    */
+  }
+
+  n11_triggered_pending->res.set_qos_flow_context(gbrFlow_updated);
+
+  if (gbrFlow_updated.cause_value !=
+      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+    return smf_procedure_code::ERROR;
+  }
+
   return smf_procedure_code::OK;
 }
 
@@ -900,10 +1123,20 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
   Logger::smf_app().debug("Send N4 Session Modification Request");
 
   std::shared_ptr<pfcp_association> current_upf = {};
+  // Declare vectors to store edges related to the DL and UL that are specific to non-GBR flows.
   std::vector<edge> dl_edges{};
   std::vector<edge> ul_edges{};
+  // Declare vectors to store edges related to the DL and UL that are specific to GBR flows.
+  std::vector<edge> dl_gbrEdges{};
+  std::vector<edge> ul_gbrEdges{};
 
+  // Check for the current UPF associated with non-GBR edges 
   if (get_current_upf(dl_edges, ul_edges, current_upf) !=
+      smf_procedure_code::OK) {
+    return smf_procedure_code::ERROR;
+  }
+  // Check for the current UPF associated with GBR edges
+  if (get_current_upf(dl_gbrEdges, ul_gbrEdges, current_upf) !=
       smf_procedure_code::OK) {
     return smf_procedure_code::ERROR;
   }
@@ -915,6 +1148,7 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
   n4_triggered->r_endpoint =
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
+  // Non-GBR flow
   edge dl_edge = dl_edges[0];
   for (auto& ul_edge : ul_edges) {
     // we set PDR ID UL to 0, so we create new ones
@@ -937,12 +1171,50 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
     n4_triggered->pfcp_ies.set(create_far);
     n4_triggered->pfcp_ies.set(create_pdr);
   }
+
   synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
 
   Logger::smf_app().info(
       "Sending ITTI message %s to task TASK_SMF_N4",
       n4_triggered->get_msg_name());
   int ret = itti_inst->send_msg(n4_triggered);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        n4_triggered->get_msg_name());
+    return smf_procedure_code::ERROR;
+  }
+  
+  // GBR flow
+  edge dl_gbrEdge = dl_gbrEdges[0];
+  for (auto& ul_gbrEdge : ul_gbrEdges) {
+    // we set PDR ID UL to 0, so we create new ones
+    auto gbrFlow_dl = dl_gbrEdge.get_qos_flow(current_gbrFlow.qfi);
+    auto ul_gbrFlow = ul_gbrEdge.get_qos_flow(current_gbrFlow.qfi);
+    if (!gbrFlow_dl || !ul_gbrFlow) {
+      Logger::smf_app().error("Could not get the QOS Flow for DL procedure");
+      continue;
+    }
+    gbrFlow_dl->pdr_id_dl = 0;
+
+    pfcp::create_far create_far = pfcp_create_far(dl_gbrEdge, current_gbrFlow.qfi);
+
+    ul_gbrFlow->far_id_dl = create_far.far_id;
+
+    pfcp::create_pdr create_pdr = pfcp_create_pdr(
+        ul_gbrEdge, current_gbrFlow.qfi, current_upf->function_features.second);
+
+    // Add IEs to message
+    n4_triggered->pfcp_ies.set(create_far);
+    n4_triggered->pfcp_ies.set(create_pdr);
+  }
+
+  synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
+
+  Logger::smf_app().info(
+      "Sending ITTI message %s to task TASK_SMF_N4",
+      n4_triggered->get_msg_name());
+      ret = itti_inst->send_msg(n4_triggered);
   if (RETURNok != ret) {
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_N4",

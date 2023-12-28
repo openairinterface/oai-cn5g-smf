@@ -89,6 +89,7 @@ class qos_flow_context_updated {
   pfcp::fteid_t dl_fteid;
   std::map<uint8_t, QOSRulesIE> qos_rules;
   qos_profile_t qos_profile;
+  qos_profile_gbr_t qos_profile_gbr;
   bool to_be_removed;
 };
 
