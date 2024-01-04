@@ -594,66 +594,75 @@ void smf_sbi::register_nf_instance(
       "Send NF Instance Registration to NRF, msg body: \n %s (bytes %d)",
       body.c_str(), body.size());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  int i = 0;
+  while (i < NRF_REGISTRATION_RETRY) {
+    std::string response_data = {};
+    // Generate a promise and associate this promise to the curl handle
+    uint32_t promise_id = generate_promise_id();
+    Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
+    uint32_t* pid_ptr = &promise_id;
+    boost::shared_ptr<boost::promise<uint32_t>> p =
+        boost::make_shared<boost::promise<uint32_t>>();
+    boost::shared_future<uint32_t> f;
+    f = p->get_future();
+    add_promise(promise_id, p);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          url, body, response_data, pid_ptr, "PUT", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
-  Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
-
-  if (static_cast<http_response_codes_e>(httpCode) ==
-      http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) {
-    json response_json = {};
-    try {
-      response_json = json::parse(response_data);
-    } catch (json::exception& e) {
-      Logger::smf_sbi().warn(
-          "NF Instance Registration, could not parse json from the NRF "
-          "response");
+    // Create a new curl easy handle and add to the multi handle
+    if (!curl_create_handle(
+            url, body, response_data, pid_ptr, "PUT", msg->http_version)) {
+      Logger::smf_sbi().warn("Could not create a new handle to send message");
+      remove_promise(promise_id);
+      return;
     }
+
+    // Wait for the response back
+    uint32_t httpCode = get_available_response(f);
+
+    Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
+    Logger::smf_sbi().debug("Response data %s", response_data.c_str());
     Logger::smf_sbi().debug(
-        "NF Instance Registration, response from NRF, json data: \n %s",
-        response_json.dump().c_str());
+        "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-    // Send response to APP to process
-    std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg =
-        std::make_shared<itti_n11_register_nf_instance_response>(
-            TASK_SMF_SBI, TASK_SMF_APP);
-    itti_msg->http_response_code = httpCode;
-    itti_msg->http_version       = msg->http_version;
-    Logger::smf_app().debug("Registered SMF profile (from NRF)");
-    itti_msg->profile.from_json(response_json);
+    if (static_cast<http_response_codes_e>(httpCode) ==
+        http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) {
+      json response_json = {};
+      try {
+        response_json = json::parse(response_data);
+      } catch (json::exception& e) {
+        Logger::smf_sbi().warn(
+            "NF Instance Registration, could not parse json from the NRF "
+            "response");
+      }
+      Logger::smf_sbi().debug(
+          "NF Instance Registration, response from NRF, json data: \n %s",
+          response_json.dump().c_str());
 
-    int ret = itti_inst->send_msg(itti_msg);
-    if (RETURNok != ret) {
-      Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
-          itti_msg->get_msg_name());
+      // Send response to APP to process
+      std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg =
+          std::make_shared<itti_n11_register_nf_instance_response>(
+              TASK_SMF_SBI, TASK_SMF_APP);
+      itti_msg->http_response_code = httpCode;
+      itti_msg->http_version       = msg->http_version;
+      Logger::smf_app().debug("Registered SMF profile (from NRF)");
+      itti_msg->profile.from_json(response_json);
+
+      int ret = itti_inst->send_msg(itti_msg);
+      if (RETURNok != ret) {
+        Logger::smf_sbi().error(
+            "Could not send ITTI message %s to task TASK_SMF_APP",
+            itti_msg->get_msg_name());
+      }
+      return;
+    } else {
+      Logger::smf_sbi().warn(
+          "NF Instance Registration, could not get response from NRF, try "
+          "again ...");
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      i++;
     }
-  } else {
-    Logger::smf_sbi().warn(
-        "NF Instance Registration, could not get response from NRF");
   }
+  Logger::smf_sbi().warn(
+      "NF Instance Registration, could not get response from NRF");
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -790,44 +799,51 @@ void smf_sbi::subscribe_upf_status_notify(
   std::string body = msg->json_data.dump();
   Logger::smf_sbi().debug("Message body: %s", body.c_str());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  int i = 0;
+  while (i < NRF_REGISTRATION_RETRY) {
+    std::string response_data = {};
+    // Generate a promise and associate this promise to the curl handle
+    uint32_t promise_id = generate_promise_id();
+    Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
+    uint32_t* pid_ptr = &promise_id;
+    boost::shared_ptr<boost::promise<uint32_t>> p =
+        boost::make_shared<boost::promise<uint32_t>>();
+    boost::shared_future<uint32_t> f;
+    f = p->get_future();
+    add_promise(promise_id, p);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          msg->url, body, response_data, pid_ptr, "POST", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
+    // Create a new curl easy handle and add to the multi handle
+    if (!curl_create_handle(
+            msg->url, body, response_data, pid_ptr, "POST",
+            msg->http_version)) {
+      Logger::smf_sbi().warn("Could not create a new handle to send message");
+      remove_promise(promise_id);
+      return;
+    }
 
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
+    // Wait for the response back
+    uint32_t httpCode = get_available_response(f);
 
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
-  Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
-
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+    Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
+    Logger::smf_sbi().debug("Response data %s", response_data.c_str());
     Logger::smf_sbi().debug(
-        "NFSubscribeNotify, got successful response from NRF");
+        "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  } else {
-    Logger::smf_sbi().warn(
-        "NFSubscribeNotify, could not get response from NRF");
+    if ((static_cast<http_response_codes_e>(httpCode) ==
+         http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
+        (static_cast<http_response_codes_e>(httpCode) ==
+         http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+      Logger::smf_sbi().debug(
+          "NFSubscribeNotify, got successful response from NRF");
+      return;
+    } else {
+      Logger::smf_sbi().warn(
+          "NFSubscribeNotify, could not get response from NRF, try again ...");
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      i++;
+    }
   }
+  Logger::smf_sbi().warn("NFSubscribeNotify, could not get response from NRF");
 }
 
 //------------------------------------------------------------------------------

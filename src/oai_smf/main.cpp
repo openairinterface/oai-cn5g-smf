@@ -152,6 +152,10 @@ int main(int argc, char** argv) {
     // smf_api_server_1->start();
     std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
     // Register to NRF and discover appropriate UPFs
+
+    // Quick fix: without sleep, http server is not ready for nr registration
+    std::this_thread::sleep_for(1000ms);
+
     smf_app_inst->start_nf_registration_discovery();
     smf_http1_manager.join();
   } else if (smf_cfg->get_http_version() == 2) {
@@ -162,6 +166,10 @@ int main(int argc, char** argv) {
     // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
     // Register to NRF and discover appropriate UPFs
+
+    // Quick fix: without sleep, http server is not ready for nr registration
+    std::this_thread::sleep_for(1000ms);
+
     smf_app_inst->start_nf_registration_discovery();
     smf_http2_manager.join();
   }
