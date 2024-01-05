@@ -59,6 +59,7 @@ namespace smf {
 #define TASK_SMF_APP_TIMEOUT_T3592 (3)
 #define TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT (4)
 #define TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION (5)
+#define TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION (6)
 
 // Table 10.3.2 @3GPP TS 24.501 V16.1.0 (2019-06)
 #define T3591_TIMER_VALUE_SEC 16
@@ -708,6 +709,14 @@ class smf_app {
    * @return void
    */
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
+
+  /*
+   * will be executed when NRF Registration timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
+    void timer_nrf_registration(timer_id_t timer_id, uint64_t arg2_user);
 
   /*
    * will be executed when NRF Deregistration timer expires
