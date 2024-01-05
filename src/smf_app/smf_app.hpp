@@ -60,6 +60,7 @@ namespace smf {
 #define TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT (4)
 #define TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION (5)
 #define TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION (6)
+#define TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY (7)
 
 // Table 10.3.2 @3GPP TS 24.501 V16.1.0 (2019-06)
 #define T3591_TIMER_VALUE_SEC 16
@@ -396,6 +397,12 @@ class smf_app {
   void handle_itti_msg(itti_n11_update_nf_instance_response& u);
 
   /*
+  * Handle ITTI message from N11 (NFSubscribeNotify Response)
+  * @param [itti_n11_subscribe_upf_status_notify_response&] u
+  * @return void
+  */
+  void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
+  /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
    * @return void
@@ -717,6 +724,14 @@ class smf_app {
    * @return void
    */
     void timer_nrf_registration(timer_id_t timer_id, uint64_t arg2_user);
+
+    /*
+   * will be executed when NRF subscribe NF notify timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
+    void timer_nrf_subscribe_notify(timer_id_t timer_id, uint64_t arg2_user);
 
   /*
    * will be executed when NRF Deregistration timer expires

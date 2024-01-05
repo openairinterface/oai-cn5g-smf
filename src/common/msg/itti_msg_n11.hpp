@@ -456,4 +456,15 @@ class itti_n11_subscribe_upf_status_notify : public itti_n11_msg {
   uint8_t http_version;
 };
 
+//-----------------------------------------------------------------------------
+class itti_n11_subscribe_upf_status_notify_response : public itti_n11_msg {
+public:
+    itti_n11_subscribe_upf_status_notify_response(
+            const task_id_t orig, const task_id_t dest)
+            : itti_n11_msg(N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE, orig, dest) {}
+    const char* get_msg_name() { return "N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE"; };
+
+    uint8_t http_response_code;
+};
+
 #endif /* ITTI_MSG_N11_HPP_INCLUDED_ */

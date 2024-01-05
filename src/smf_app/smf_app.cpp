@@ -290,6 +290,13 @@ void smf_app_task(void*) {
         }
         break;
 
+      case N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE:
+        if (itti_n11_subscribe_upf_status_notify_response* m =
+                    dynamic_cast<itti_n11_subscribe_upf_status_notify_response*>(msg)) {
+          smf_app_inst->handle_itti_msg(std::ref(*m));
+        }
+        break;
+
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::smf_app().info("TIME-OUT event timer id %d", to->timer_id);
@@ -308,6 +315,10 @@ void smf_app_task(void*) {
               break;
             case TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION:
               smf_app_inst->timer_nrf_registration(
+                      to->timer_id, to->arg2_user);
+              break;
+            case TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY:
+              smf_app_inst->timer_nrf_subscribe_notify(
                       to->timer_id, to->arg2_user);
               break;
             default:;
@@ -808,6 +819,20 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
   //  timer_nrf_heartbeat = itti_inst->timer_setup(
   //      nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
   //      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0); //TODO arg2_user
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r) {
+  Logger::smf_app().debug("NFSubscribeNotify response");
+
+  if (r.http_response_code !=
+      static_cast<uint32_t>(
+              http_response_codes_e::HTTP_RESPONSE_CODE_CREATED)) {
+    // Set timer to try again with subscribe NF status notify
+    itti_inst->timer_setup(
+            5, 0, TASK_SMF_APP, TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY,
+            0);  // TODO arg2_user
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -2001,6 +2026,12 @@ void smf_app::timer_nrf_deregistration(
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to trigger NRF Deregistration");
   trigger_nf_deregistration();
+}
+
+//---------------------------------------------------------------------------------------------
+void smf_app::timer_nrf_subscribe_notify(
+        timer_id_t timer_id, uint64_t arg2_user) {
+  trigger_upf_status_notification_subscribe();
 }
 
 //---------------------------------------------------------------------------------------------
