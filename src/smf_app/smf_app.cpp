@@ -292,7 +292,8 @@ void smf_app_task(void*) {
 
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE:
         if (itti_n11_subscribe_upf_status_notify_response* m =
-                    dynamic_cast<itti_n11_subscribe_upf_status_notify_response*>(msg)) {
+                dynamic_cast<itti_n11_subscribe_upf_status_notify_response*>(
+                    msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
@@ -314,12 +315,11 @@ void smf_app_task(void*) {
                   to->timer_id, to->arg2_user);
               break;
             case TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION:
-              smf_app_inst->timer_nrf_registration(
-                      to->timer_id, to->arg2_user);
+              smf_app_inst->timer_nrf_registration(to->timer_id, to->arg2_user);
               break;
             case TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY:
               smf_app_inst->timer_nrf_subscribe_notify(
-                      to->timer_id, to->arg2_user);
+                  to->timer_id, to->arg2_user);
               break;
             default:;
           }
@@ -783,21 +783,21 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 
   if (r.http_response_code ==
       static_cast<uint32_t>(
-              http_response_codes_e::HTTP_RESPONSE_CODE_CREATED)) {
+          http_response_codes_e::HTTP_RESPONSE_CODE_CREATED)) {
     nf_instance_profile = r.profile;
     // Set heartbeat timer
     Logger::smf_app().debug(
-            "Set value of NRF Heartbeat timer to %d",
-            r.profile.get_nf_heartBeat_timer());
+        "Set value of NRF Heartbeat timer to %d",
+        r.profile.get_nf_heartBeat_timer());
     timer_nrf_heartbeat = itti_inst->timer_setup(
-            r.profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
-            TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
-            0);  // TODO arg2_user
+        r.profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
+        TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
+        0);  // TODO arg2_user
   } else {
     // Set timer to try again with NF Registration
     itti_inst->timer_setup(
-            5, 0, TASK_SMF_APP, TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION,
-            0);  // TODO arg2_user
+        5, 0, TASK_SMF_APP, TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION,
+        0);  // TODO arg2_user
   }
 
   /*  //Set timer to send NF Deregistration (for testing purpose)
@@ -822,16 +822,17 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r) {
+void smf_app::handle_itti_msg(
+    itti_n11_subscribe_upf_status_notify_response& r) {
   Logger::smf_app().debug("NFSubscribeNotify response");
 
   if (r.http_response_code !=
       static_cast<uint32_t>(
-              http_response_codes_e::HTTP_RESPONSE_CODE_CREATED)) {
+          http_response_codes_e::HTTP_RESPONSE_CODE_CREATED)) {
     // Set timer to try again with subscribe NF status notify
     itti_inst->timer_setup(
-            5, 0, TASK_SMF_APP, TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY,
-            0);  // TODO arg2_user
+        5, 0, TASK_SMF_APP, TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY,
+        0);  // TODO arg2_user
   }
 }
 
@@ -2013,10 +2014,9 @@ void smf_app::timer_nrf_heartbeat_timeout(
 }
 
 //---------------------------------------------------------------------------------------------
-void smf_app::timer_nrf_registration(
-        timer_id_t timer_id, uint64_t arg2_user) {
+void smf_app::timer_nrf_registration(timer_id_t timer_id, uint64_t arg2_user) {
   Logger::smf_app().debug(
-  "Send ITTI msg to N11 task to trigger NRF Registration");
+      "Send ITTI msg to N11 task to trigger NRF Registration");
   register_to_nrf();
 }
 
@@ -2030,7 +2030,7 @@ void smf_app::timer_nrf_deregistration(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::timer_nrf_subscribe_notify(
-        timer_id_t timer_id, uint64_t arg2_user) {
+    timer_id_t timer_id, uint64_t arg2_user) {
   trigger_upf_status_notification_subscribe();
 }
 

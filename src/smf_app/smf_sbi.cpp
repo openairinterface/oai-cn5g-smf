@@ -594,8 +594,8 @@ void smf_sbi::register_nf_instance(
       "Send NF Instance Registration to NRF, msg body: \n %s (bytes %d)",
       body.c_str(), body.size());
 
-  //int i = 0;
-  //while (i < NRF_REGISTRATION_RETRY) {
+  // int i = 0;
+  // while (i < NRF_REGISTRATION_RETRY) {
   std::string response_data = {};
   // Generate a promise and associate this promise to the curl handle
   uint32_t promise_id = generate_promise_id();
@@ -623,10 +623,9 @@ void smf_sbi::register_nf_instance(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-
   std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
-          std::make_shared<itti_n11_register_nf_instance_response>(
-                  TASK_SMF_SBI, TASK_SMF_APP);
+      std::make_shared<itti_n11_register_nf_instance_response>(
+          TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code = httpCode;
   itti_msg_response->http_version       = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
@@ -655,8 +654,8 @@ void smf_sbi::register_nf_instance(
   int ret = itti_inst->send_msg(itti_msg_response);
   if (RETURNok != ret) {
     Logger::smf_sbi().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
-            itti_msg_response->get_msg_name());
+        "Could not send ITTI message %s to task TASK_SMF_APP",
+        itti_msg_response->get_msg_name());
   }
 }
 
@@ -807,8 +806,7 @@ void smf_sbi::subscribe_upf_status_notify(
 
   // Create a new curl easy handle and add to the multi handle
   if (!curl_create_handle(
-          msg->url, body, response_data, pid_ptr, "POST",
-          msg->http_version)) {
+          msg->url, body, response_data, pid_ptr, "POST", msg->http_version)) {
     Logger::smf_sbi().warn("Could not create a new handle to send message");
     remove_promise(promise_id);
     return;
@@ -822,9 +820,10 @@ void smf_sbi::subscribe_upf_status_notify(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  std::shared_ptr<itti_n11_subscribe_upf_status_notify_response> itti_msg_response =
+  std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
+      itti_msg_response =
           std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
-                  TASK_SMF_SBI, TASK_SMF_APP);
+              TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code = httpCode;
 
   if ((static_cast<http_response_codes_e>(httpCode) ==
@@ -843,8 +842,8 @@ void smf_sbi::subscribe_upf_status_notify(
   int ret = itti_inst->send_msg(itti_msg_response);
   if (RETURNok != ret) {
     Logger::smf_sbi().error(
-            "Could not send ITTI message %s to task TASK_SMF_APP",
-            itti_msg_response->get_msg_name());
+        "Could not send ITTI message %s to task TASK_SMF_APP",
+        itti_msg_response->get_msg_name());
   }
 }
 
