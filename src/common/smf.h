@@ -37,7 +37,6 @@ typedef uint64_t supi64_t;
 
 #define SUPI_DIGITS_MAX 15
 
-#define NRF_REGISTRATION_RETRY 100
 
 const uint32_t SD_NO_VALUE               = 0xFFFFFF;
 const std::string SD_NO_VALUE_STR        = "0xFFFFFF";
