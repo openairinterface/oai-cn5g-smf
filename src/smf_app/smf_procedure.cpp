@@ -310,10 +310,6 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     } else {
       local_fteid = pfcp_prepare_fteid(flow->ul_fteid, up_features.ftup, cfg);
       std::string ipv4 = conv::toString(edge.ip_addr);
-      if (!ipv4.empty() && !up_features.ftup) {
-        local_fteid.ipv4_address    = edge.ip_addr;
-        flow->dl_fteid.ipv4_address = edge.ip_addr;
-      }
     }
     pdi.set(local_fteid);
   }
