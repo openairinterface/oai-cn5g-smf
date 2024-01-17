@@ -259,55 +259,64 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   // Hardcoded 2. Flow for RAN tests
   Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem2 = nullptr;
   ngap_QosFlowSetupRequestItem2 = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-          1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+      1, sizeof(Ngap_QosFlowSetupRequestItem_t));
 
   ngap_QosFlowSetupRequestItem2->qosFlowIdentifier = (uint8_t) 2;
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
-          .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
-          .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
-          .choice.nonDynamic5QI->fiveQI = (uint8_t) 1;
+      .choice.nonDynamic5QI->fiveQI = (uint8_t) 1;
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
-          .allocationAndRetentionPriority.priorityLevelARP = 1;
+      .allocationAndRetentionPriority.priorityLevelARP = 1;
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
-          .allocationAndRetentionPriority.pre_emptionCapability =
-          Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+      .allocationAndRetentionPriority.pre_emptionCapability =
+      Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
-          .allocationAndRetentionPriority.pre_emptionVulnerability =
-          Ngap_Pre_emptionVulnerability_not_pre_emptable;
+      .allocationAndRetentionPriority.pre_emptionVulnerability =
+      Ngap_Pre_emptionVulnerability_not_pre_emptable;
 
   ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation =
-          (Ngap_GBR_QosInformation_t*) (calloc(1, sizeof(Ngap_GBR_QosInformation_t)));
+      (Ngap_GBR_QosInformation_t*) (calloc(
+          1, sizeof(Ngap_GBR_QosInformation_t)));
 
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.size = 4;
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.buf =
-          (uint8_t*) calloc(4, sizeof(uint8_t));
-  int32_t m_bit_rate_ul = {20000000};
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateUL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateUL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t m_bit_rate_ul          = {20000000};
   INT32_TO_BUFFER(
-          m_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.buf);
+      m_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->maximumFlowBitRateUL.buf);
 
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.size = 4;
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.buf =
-          (uint8_t*) calloc(4, sizeof(uint8_t));
-  int32_t m_bit_rate_dl = {60000000};
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateDL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateDL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t m_bit_rate_dl          = {60000000};
   INT32_TO_BUFFER(
-          m_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.buf);
+      m_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->maximumFlowBitRateDL.buf);
 
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.size = 4;
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.buf =
-          (uint8_t*) calloc(4, sizeof(uint8_t));
-  int32_t g_bit_rate_ul = {15000000};
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateUL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateUL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t g_bit_rate_ul             = {15000000};
   INT32_TO_BUFFER(
-          g_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.buf);
+      g_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->guaranteedFlowBitRateUL.buf);
 
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.size = 4;
-  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.buf =
-          (uint8_t*) calloc(4, sizeof(uint8_t));
-  int32_t g_bit_rate_dl = {15000000};
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateDL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateDL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t g_bit_rate_dl             = {15000000};
   INT32_TO_BUFFER(
-          g_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.buf);
+      g_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->guaranteedFlowBitRateDL.buf);
 
   asn_set_empty(
       &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);

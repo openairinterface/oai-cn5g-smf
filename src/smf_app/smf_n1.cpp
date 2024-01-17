@@ -231,14 +231,27 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
     sm_msg->pdu_session_establishment_accept.qosflowdescriptions
-        .qosflowdescriptionsnumber = 1;
+        .qosflowdescriptionsnumber = 2;
     sm_msg->pdu_session_establishment_accept.qosflowdescriptions
         .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        1, sizeof(QOSFlowDescriptionsContents));
+        2, sizeof(QOSFlowDescriptionsContents));
     sc.get()->get_default_qos_flow_description(
         sm_msg->pdu_session_establishment_accept.qosflowdescriptions
             .qosflowdescriptionscontents[0],
         sm_context_res.get_pdu_session_type(), qos_flow.qfi);
+
+    // Hardcoded 2. qos_flow_description
+    sc.get()->get_default_qos_flow_description(
+        sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+            .qosflowdescriptionscontents[1],
+        sm_context_res.get_pdu_session_type(), qos_flow.qfi);
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+        .qosflowdescriptionscontents[1]
+        .qfi = 2;
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+        .qosflowdescriptionscontents[1]
+        .parameterslist[0]
+        .parametercontents._5qi = 2;
   }
 
   // TODO: ExtendedProtocolConfigurationOptions

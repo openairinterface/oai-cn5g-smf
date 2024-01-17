@@ -858,7 +858,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   // flow_updated info will be used to construct N1,N2 container
   qos_flow_context_updated flow_updated = {};
   QOSRulesIE qos_rule                   = {};
-  QOSRulesIE qos_rule2                   = {}; // Hardcoded 2. rule for RAN tests
+  QOSRulesIE qos_rule2 = {};  // Hardcoded 2. rule for RAN tests
 
   flow_updated.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
