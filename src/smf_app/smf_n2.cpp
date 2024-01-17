@@ -224,6 +224,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
   ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
       1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+
   ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
       .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
@@ -254,11 +255,36 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         Ngap_Pre_emptionVulnerability_pre_emptable;
   }
 
+  // Hardcoded 2. Flow for RAN tests
+  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem2 = nullptr;
+  ngap_QosFlowSetupRequestItem2 = (Ngap_QosFlowSetupRequestItem_t*) calloc(
+          1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+
+  ngap_QosFlowSetupRequestItem2->qosFlowIdentifier = (uint8_t) 2;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+          .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+          .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+          .choice.nonDynamic5QI->fiveQI = (uint8_t) 1;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+          .allocationAndRetentionPriority.priorityLevelARP = 1;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+          .allocationAndRetentionPriority.pre_emptionCapability =
+          Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+          .allocationAndRetentionPriority.pre_emptionVulnerability =
+          Ngap_Pre_emptionVulnerability_not_pre_emptable;
+
   asn_set_empty(
       &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
   ASN_SEQUENCE_ADD(
       &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
       ngap_QosFlowSetupRequestItem);
+  ASN_SEQUENCE_ADD(
+      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
+      ngap_QosFlowSetupRequestItem2);
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
 
   Logger::smf_n2().info(

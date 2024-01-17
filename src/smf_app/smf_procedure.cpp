@@ -715,7 +715,7 @@ smf_procedure_code session_create_sm_context_procedure::run(
   smf_qos_flow flow   = {};
   flow.pdu_session_id = sm_context_req->req.get_pdu_session_id();
   // default QoS profile
-  flow.qfi.qfi                    = default_qos._5qi;
+  flow.qfi.qfi                    = 1;
   flow.qos_profile._5qi           = default_qos._5qi;
   flow.qos_profile.arp            = default_qos.arp;
   flow.qos_profile.priority_level = default_qos.priority_level;
@@ -858,6 +858,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   // flow_updated info will be used to construct N1,N2 container
   qos_flow_context_updated flow_updated = {};
   QOSRulesIE qos_rule                   = {};
+  QOSRulesIE qos_rule2                   = {}; // Hardcoded 2. rule for RAN tests
 
   flow_updated.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
@@ -873,6 +874,12 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     }
     if (sps->get_default_qos_rule(qos_rule)) {
       flow_updated.add_qos_rule(qos_rule);
+    }
+    // Hardcoded 2. rule for RAN tests
+    if (sps->get_default_qos_rule(qos_rule2)) {
+      qos_rule2.qosruleidentifer = 2;
+      qos_rule2.qosflowidentifer = 2;
+      flow_updated.add_qos_rule(qos_rule2);
     }
     flow_updated.set_qfi(default_qos_flow->qfi);
     qos_profile_t profile = {};
