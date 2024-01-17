@@ -144,6 +144,14 @@ uint64_t smf_app::generate_seid() {
   return seid;
 }
 
+uint32_t smf_app::generate_teid() {
+  return teid_generator.get_uid();
+}
+
+void smf_app::free_teid(const uint32_t& teid) {
+  teid_generator.free_uid(teid);
+}
+
 //------------------------------------------------------------------------------
 void smf_app::generate_smf_context_ref(std::string& smf_ref) {
   smf_ref = std::to_string(sm_context_ref_generator.get_uid());

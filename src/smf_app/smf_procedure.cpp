@@ -97,9 +97,9 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     } else {
       local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
     }
-
-    sps->generate_teid(local_fteid);
-    fteid = local_fteid;
+    // TODO upon session release, we have to free this F-TEID again
+    local_fteid.teid = smf_app_inst->generate_teid();
+    fteid            = local_fteid;
     Logger::smf_app().info(
         "    UL F-TEID 0x%" PRIx32 " allocated for N3 IPv4 Addr : %s",
         local_fteid.teid, conv::toString(local_fteid.ipv4_address).c_str());

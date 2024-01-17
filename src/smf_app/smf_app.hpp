@@ -105,6 +105,8 @@ class smf_app {
   util::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
 
+  util::uint_generator<uint32_t> teid_generator;
+
   util::uint_generator<uint32_t> evsub_id_generator;
   std::map<
       std::pair<evsub_id_t, smf_event_t>, std::shared_ptr<smf_subscription>>
@@ -408,6 +410,19 @@ class smf_app {
    * @return uint64_t: Return Seid generated
    */
   uint64_t generate_seid();
+
+  /**
+   * Generate an TEID
+   * @param s
+   * @return
+   */
+  uint32_t generate_teid();
+
+  /**
+   * Free a TEID
+   * @param fteid
+   */
+  void free_teid(const uint32_t& teid);
 
   /*
    * Verify whether a session with a given ID exist

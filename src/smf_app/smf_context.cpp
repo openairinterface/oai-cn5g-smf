@@ -317,11 +317,6 @@ void smf_pdu_session::set_seid(const uint64_t& s) {
 }
 
 //------------------------------------------------------------------------------
-void smf_pdu_session::generate_teid(pfcp::fteid_t& local_fteid) {
-  local_fteid.teid = teid_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
 // TODO check if urr_id should be unique in the UPF or in the context of a pdn
 // connection
 void smf_pdu_session::generate_urr_id(pfcp::urr_id_t& urr_id) {
