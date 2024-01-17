@@ -85,10 +85,19 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     Logger::smf_app().info(
         "Generating N3-UL TEID since current UPF does not support TEID "
         "Creation");
-    local_fteid.ch           = 0;
-    local_fteid.v4           = 1;
-    local_fteid.chid         = 0;
-    local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
+    local_fteid.ch   = 0;
+    local_fteid.v4   = 1;
+    local_fteid.chid = 0;
+    if (cfg.get_local_n3_ip().empty()) {
+      Logger::smf_app().warn(
+          "The UPF %s does not support F-TEID creation, but you did not "
+          "configure the N3 host IP. We will try with the UPF hostname",
+          cfg.get_host());
+      local_fteid.ipv4_address = cfg.get_node_id().u1.ipv4_address;
+    } else {
+      local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
+    }
+
     sps->generate_teid(local_fteid);
     fteid = local_fteid;
     Logger::smf_app().info(
@@ -309,7 +318,6 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
       local_fteid.chid = 0;
     } else {
       local_fteid = pfcp_prepare_fteid(flow->ul_fteid, up_features.ftup, cfg);
-      std::string ipv4 = conv::toString(edge.ip_addr);
     }
     pdi.set(local_fteid);
   }

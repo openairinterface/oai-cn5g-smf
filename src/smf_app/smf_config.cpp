@@ -212,11 +212,6 @@ void smf_config::to_smf_config() {
   sbi_api_version = smf_cfg->get_sbi().get_api_version();
   http_version    = get_http_version();
 
-  logger::logger_registry::get_logger(LOGGER_NAME)
-      .warn(
-          "Enable UR and enable DL PDR in PFCP Session Establishment per UPF "
-          "is not supported currently, we use the same values for all UPFs.");
-
   // DNNs
   for (const auto& cfg_dnn : get_dnns()) {
     dnn_t dnn;
