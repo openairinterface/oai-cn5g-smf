@@ -11,31 +11,31 @@
  * the class manually.
  */
 
-#include "NotificationEventType.h"
+#include "ConditionEventType.h"
 #include "Helpers.h"
 
 #include <sstream>
 
 namespace oai::smf_server::model {
 
-NotificationEventType::NotificationEventType() {}
+ConditionEventType::ConditionEventType() {}
 
-void NotificationEventType::validate() const {
+void ConditionEventType::validate() const {
   std::stringstream msg;
   if (!validate(msg)) {
     throw oai::model::common::helpers::ValidationException(msg.str());
   }
 }
 
-bool NotificationEventType::validate(std::stringstream& msg) const {
+bool ConditionEventType::validate(std::stringstream& msg) const {
   return validate(msg, "");
 }
 
-bool NotificationEventType::validate(
+bool ConditionEventType::validate(
     std::stringstream& msg, const std::string& pathPrefix) const {
   bool success = true;
   const std::string _pathPrefix =
-      pathPrefix.empty() ? "NotificationEventType" : pathPrefix;
+      pathPrefix.empty() ? "ConditionEventType" : pathPrefix;
 
   if (!m_value.validate(msg)) {
     success = false;
@@ -43,40 +43,40 @@ bool NotificationEventType::validate(
   return success;
 }
 
-bool NotificationEventType::operator==(const NotificationEventType& rhs) const {
+bool ConditionEventType::operator==(const ConditionEventType& rhs) const {
   return
 
       getValue() == rhs.getValue();
 }
 
-bool NotificationEventType::operator!=(const NotificationEventType& rhs) const {
+bool ConditionEventType::operator!=(const ConditionEventType& rhs) const {
   return !(*this == rhs);
 }
 
-void to_json(nlohmann::json& j, const NotificationEventType& o) {
+void to_json(nlohmann::json& j, const ConditionEventType& o) {
   j = nlohmann::json();
   to_json(j, o.m_value);
 }
 
-void from_json(const nlohmann::json& j, NotificationEventType& o) {
+void from_json(const nlohmann::json& j, ConditionEventType& o) {
   from_json(j, o.m_value);
 }
 
-NotificationEventType_anyOf NotificationEventType::getValue() const {
+ConditionEventType_anyOf ConditionEventType::getValue() const {
   return m_value;
 }
 
-void NotificationEventType::setValue(NotificationEventType_anyOf value) {
+void ConditionEventType::setValue(ConditionEventType_anyOf value) {
   m_value = value;
 }
 
-NotificationEventType_anyOf::eNotificationEventType_anyOf
-NotificationEventType::getEnumValue() const {
+ConditionEventType_anyOf::eConditionEventType_anyOf
+ConditionEventType::getEnumValue() const {
   return m_value.getValue();
 }
 
-void NotificationEventType::setEnumValue(
-    NotificationEventType_anyOf::eNotificationEventType_anyOf value) {
+void ConditionEventType::setEnumValue(
+    ConditionEventType_anyOf::eConditionEventType_anyOf value) {
   m_value.setValue(value);
 }
 

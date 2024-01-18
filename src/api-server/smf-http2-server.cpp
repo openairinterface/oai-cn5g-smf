@@ -326,8 +326,7 @@ void smf_http2_server::start() {
           std::string msg((char*) data, len);
           try {
             if (request.method().compare("POST") == 0 && len > 0) {
-              smf::data_notification_msg notification_msg = {};
-              NotificationData notificationData           = {};
+              NotificationData notificationData = {};
               nlohmann::json::parse(msg.c_str()).get_to(notificationData);
               this->nf_status_notify_handler(notificationData, response);
             }
@@ -659,17 +658,13 @@ void smf_http2_server::nf_status_notify_handler(
   Logger::smf_api_server().info(
       "NFStatusNotifyApiImpl, received a NF status notification...");
 
-  smf::data_notification_msg notification_msg = {};
-  nlohmann::json json_data                    = {};
-  std::string content_type                    = "application/problem+json";
-
-  // convert from NotificationData to data_notification_msg
-  xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
+  nlohmann::json json_data = {};
+  std::string content_type = "application/problem+json";
 
   // Handle the message in smf_app
-  std::shared_ptr<itti_sbi_notification_data> itti_msg =
+  auto itti_msg =
       std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg->notification_msg = notification_msg;
+  itti_msg->notification_msg = notificationData;
   itti_msg->http_version     = 2;
 
   ProblemDetails problem_details = {};

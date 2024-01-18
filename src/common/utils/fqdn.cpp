@@ -88,11 +88,14 @@ bool fqdn::resolve(pfcp::node_id_t& node_id) {
       uint32_t port            = {0};
       uint8_t addr_type        = {0};
       struct in_addr ipv4_addr = {};
-
-      if (!fqdn::resolve(node_id.fqdn, ip_addr_str, port, addr_type)) {
-        Logger::smf_app().warn(
-            "Resolve FQDN %s: cannot resolve the hostname!",
-            node_id.fqdn.c_str());
+      try {
+        if (!fqdn::resolve(node_id.fqdn, ip_addr_str, port, addr_type)) {
+          Logger::smf_app().warn(
+              "Resolve FQDN %s: cannot resolve the hostname!",
+              node_id.fqdn.c_str());
+          return false;
+        }
+      } catch (std::runtime_error&) {
         return false;
       }
       switch (addr_type) {

@@ -76,9 +76,7 @@ struct policy_association {
       const std::string& dnn, const snssai_t& snssai, const plmn_t& plmn,
       const uint8_t pdu_session_id,
       const pdu_session_type_t& pdu_session_type) {
-    oai::model::common::Snssai snssai_model;
-    snssai_model.setSst(snssai.sst);
-    snssai_model.setSd(std::to_string(snssai.sd));
+    oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
     std::string mnc_string = std::to_string(plmn.mnc_digit1) +
                              std::to_string(plmn.mnc_digit2) +

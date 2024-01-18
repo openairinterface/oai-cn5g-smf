@@ -40,12 +40,17 @@
 #include "smf_profile.hpp"
 #include "SmPolicyDecision.h"
 #include "3gpp_24.007.h"
+#include "UpfInfo.h"
+#include "smf.h"
+#include "smf_config_types.hpp"
 
 namespace smf {
 
-#define PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC 10
-#define PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES 2
-#define PFCP_ASSOCIATION_GRACEFUL_RELEASE_PERIOD 5
+const int PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC  = 10;
+const int PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES   = 2;
+const int PFCP_ASSOCIATION_GRACEFUL_RELEASE_PERIOD = 5;
+
+const int PFCP_MAX_ASSOCIATIONS = 16;
 
 struct edge;
 
@@ -62,86 +67,38 @@ class pfcp_association {
   mutable std::mutex m_sessions;
   std::set<pfcp::fseid_t> sessions;
   //
-  timer_id_t timer_heartbeat;
-  int num_retries_timer_heartbeat;
-  uint64_t trxn_id_heartbeat;
+  timer_id_t timer_heartbeat      = ITTI_INVALID_TIMER_ID;
+  int num_retries_timer_heartbeat = 0;
+  uint64_t trxn_id_heartbeat      = 0;
 
-  bool is_restore_sessions_pending;
+  bool is_restore_sessions_pending = false;
 
-  timer_id_t timer_association;
-  timer_id_t timer_graceful_release;
+  timer_id_t timer_association      = ITTI_INVALID_TIMER_ID;
+  timer_id_t timer_graceful_release = ITTI_INVALID_TIMER_ID;
 
-  upf_profile upf_node_profile;
-  bool upf_profile_is_set;
-
-  explicit pfcp_association(const pfcp::node_id_t& node_id)
-      : node_id(node_id),
-        recovery_time_stamp(),
-        function_features(),
-        m_sessions(),
-        sessions(),
-        upf_node_profile(),
-        upf_profile_is_set(false) {
-    hash_node_id                = std::hash<pfcp::node_id_t>{}(node_id);
-    timer_heartbeat             = ITTI_INVALID_TIMER_ID;
-    num_retries_timer_heartbeat = 0;
-    trxn_id_heartbeat           = 0;
-    is_restore_sessions_pending = false;
-    timer_association           = ITTI_INVALID_TIMER_ID;
-    timer_graceful_release      = ITTI_INVALID_TIMER_ID;
+  explicit pfcp_association(const oai::config::smf::upf& upf_cfg)
+      : recovery_time_stamp(), m_upf_cfg(upf_cfg) {
+    node_id      = m_upf_cfg.get_node_id();
+    hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
 
   pfcp_association(
-      const pfcp::node_id_t& node_id,
-      pfcp::recovery_time_stamp_t& recovery_time_stamp)
-      : node_id(node_id),
-        recovery_time_stamp(recovery_time_stamp),
-        function_features(),
-        m_sessions(),
-        sessions(),
-        upf_node_profile(),
-        upf_profile_is_set(false) {
-    hash_node_id                = std::hash<pfcp::node_id_t>{}(node_id);
-    timer_heartbeat             = ITTI_INVALID_TIMER_ID;
-    num_retries_timer_heartbeat = 0;
-    trxn_id_heartbeat           = 0;
-    timer_association           = ITTI_INVALID_TIMER_ID;
-    is_restore_sessions_pending = false;
-    timer_graceful_release      = ITTI_INVALID_TIMER_ID;
+      const oai::config::smf::upf& upf_cfg,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp)
+      : recovery_time_stamp(recovery_time_stamp), m_upf_cfg(upf_cfg) {
+    node_id      = m_upf_cfg.get_node_id();
+    hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
   pfcp_association(
-      const pfcp::node_id_t& ni, pfcp::recovery_time_stamp_t& rts,
-      pfcp::up_function_features_s& uff)
-      : node_id(ni),
-        recovery_time_stamp(rts),
-        m_sessions(),
-        sessions(),
-        upf_node_profile(),
-        upf_profile_is_set(false) {
-    hash_node_id                = std::hash<pfcp::node_id_t>{}(node_id);
-    function_features.first     = true;
-    function_features.second    = uff;
-    timer_heartbeat             = ITTI_INVALID_TIMER_ID;
-    num_retries_timer_heartbeat = 0;
-    trxn_id_heartbeat           = 0;
-    is_restore_sessions_pending = false;
-    timer_association           = ITTI_INVALID_TIMER_ID;
-    timer_graceful_release      = ITTI_INVALID_TIMER_ID;
+      const oai::config::smf::upf& upf_cfg,
+      const pfcp::recovery_time_stamp_t& rts,
+      const pfcp::up_function_features_s& uff)
+      : recovery_time_stamp(rts), m_upf_cfg(upf_cfg) {
+    node_id                  = m_upf_cfg.get_node_id();
+    hash_node_id             = std::hash<pfcp::node_id_t>{}(node_id);
+    function_features.first  = true;
+    function_features.second = uff;
   }
-
-  pfcp_association(pfcp_association const& p)
-      : node_id(p.node_id),
-        hash_node_id(p.hash_node_id),
-        recovery_time_stamp(p.recovery_time_stamp),
-        function_features(p.function_features),
-        timer_heartbeat(p.timer_heartbeat),
-        num_retries_timer_heartbeat(p.num_retries_timer_heartbeat),
-        trxn_id_heartbeat(p.trxn_id_heartbeat),
-        is_restore_sessions_pending(p.is_restore_sessions_pending),
-        timer_association(0),
-        timer_graceful_release(0),
-        upf_node_profile(p.upf_node_profile),
-        upf_profile_is_set(p.upf_profile_is_set) {}
 
   void notify_add_session(const pfcp::fseid_t& cp_fseid);
   bool has_session(const pfcp::fseid_t& cp_fseid);
@@ -152,15 +109,8 @@ class pfcp_association {
     function_features.first  = true;
     function_features.second = ff;
   };
-  void set_upf_node_profile(const upf_profile& profile) {
-    upf_node_profile   = profile;
-    upf_profile_is_set = true;
-  };
-  bool is_upf_profile_set() { return upf_profile_is_set; }
-  void get_upf_node_profile(upf_profile& profile) const {
-    profile = upf_node_profile;
-  };
-  upf_profile get_upf_node_profile() const { return upf_node_profile; };
+
+  [[nodiscard]] oai::model::nrf::UpfInfo get_upf_info() const;
 
   size_t operator()(const pfcp_association&) const { return hash_node_id; }
 
@@ -185,18 +135,17 @@ class pfcp_association {
    * @param other_upf
    * @param out_edge info of the found edge
    * @return true    when one FQDN or IP address of this interface list matches
-   * with FQDN and profile is set in other_upf
+   * with FQDN
    */
   bool find_upf_edge(
       const std::shared_ptr<pfcp_association>& other_upf, edge& out_edge);
 
   /**
-   * @brief Get the readble name of the UPF associated with this association
-   * @param void
+   * @brief Get the readable name of the UPF associated with this association
    * @return string representing the name of the UPF associated with this
    * association
    */
-  std::string get_printable_name();
+  std::string get_printable_name() const;
 
   /*
    * Print related-information for this association
@@ -205,7 +154,13 @@ class pfcp_association {
    */
   void display();
 
+  const oai::config::smf::upf& get_upf_config() const;
+
+  bool serves_network(
+      const oai::model::common::Snssai& snssai, const std::string& dnn) const;
+
  private:
+  oai::config::smf::upf m_upf_cfg;
   bool find_interface_edge(
       const iface_type& type_match, std::vector<edge>& edges);
 };
@@ -317,9 +272,10 @@ struct edge {
       snssai_dnns;
 
   static edge from_upf_info(
-      const upf_info_t& upf_info, const interface_upf_info_item_t& interface);
+      const oai::model::nrf::UpfInfo& upf_info,
+      const oai::model::nrf::InterfaceUpfInfoItem& interface);
 
-  static edge from_upf_info(const upf_info_t& upf_info);
+  static edge from_upf_info(const oai::model::nrf::UpfInfo& upf_info);
 
   bool serves_network(const std::string& dnn, const snssai_t& snssai) const;
 
@@ -400,12 +356,12 @@ class upf_graph {
    * @param edge_info_src_dst
    */
   void add_upf_graph_edge(
-      const std::shared_ptr<pfcp_association>& source, edge& edge_info_src_dst);
+      const std::shared_ptr<pfcp_association>& source,
+      const edge& edge_info_src_dst);
 
   /**
    * @brief Adds an edge to the graph in both direction, adds node if it does
    * not exist
-   * @pre UPF profile needs to be set for both
    *
    * @param source
    * @param dest
@@ -628,12 +584,10 @@ class upf_graph {
   [[nodiscard]] std::string to_string(const std::string& indent) const;
 };
 
-#define PFCP_MAX_ASSOCIATIONS 16
-
 class pfcp_associations {
  private:
   std::vector<std::shared_ptr<pfcp_association>> pending_associations;
-  mutable std::mutex m_mutex;
+  mutable std::shared_mutex m_mutex;
 
   upf_graph associations_graph;
 
@@ -643,15 +597,29 @@ class pfcp_associations {
       std::shared_ptr<pfcp_association>& s);
 
   std::shared_ptr<pfcp_association> check_association_on_add(
-      pfcp::node_id_t& node_id,
-      pfcp::recovery_time_stamp_t& recovery_time_stamp,
-      bool& restore_n4_sessions, const bool use_function_features,
-      pfcp::up_function_features_s& function_features);
+      const pfcp::node_id_t& node_id,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+      bool& restore_n4_sessions, bool use_function_features,
+      const pfcp::up_function_features_s& function_features);
 
   bool resolve_upf_hostname(pfcp::node_id_t& node_id);
 
-  void associate_with_upf_profile(
-      std::shared_ptr<pfcp_association>& sa, const pfcp::node_id_t& node_id);
+  /**
+   * Finds UPF configuration from pending associations (for SMF-initiated PFCP
+   * associations) or from config (for UPF-initiated associations). In case
+   * nothing can be found, the default configuration is taken
+   * @param node_id
+   * @return
+   */
+  oai::config::smf::upf get_upf_config(const pfcp::node_id_t& node_id) const;
+
+  bool add_association(
+      pfcp::node_id_t& node_id,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+      bool& restore_n4_sessions,
+      const pfcp::up_function_features_s& function_feature,
+      const pfcp::enterprise_specific_s& enterprise_specific,
+      bool use_function_features = false, bool use_enterprise_specific = false);
 
  public:
   static pfcp_associations& get_instance() {
@@ -664,18 +632,18 @@ class pfcp_associations {
 
   bool add_association(
       pfcp::node_id_t& node_id,
-      pfcp::recovery_time_stamp_t& recovery_time_stamp,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp,
       bool& restore_n4_sessions);
   bool add_association(
       pfcp::node_id_t& node_id,
-      pfcp::recovery_time_stamp_t& recovery_time_stamp,
-      pfcp::up_function_features_s& function_features,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+      const pfcp::up_function_features_s& function_features,
       bool& restore_n4_sessions);
   bool add_association(
       pfcp::node_id_t& node_id,
-      pfcp::recovery_time_stamp_t& recovery_time_stamp,
-      pfcp::up_function_features_s& function_features,
-      pfcp::enterprise_specific_s& enterprise_specific,
+      const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+      const pfcp::up_function_features_s& function_features,
+      const pfcp::enterprise_specific_s& enterprise_specific,
       bool& restore_n4_sessions);
   bool update_association(
       pfcp::node_id_t& node_id,
@@ -697,7 +665,6 @@ class pfcp_associations {
   void timeout_release_request(timer_id_t timer_id, uint64_t arg2_user);
   void handle_receive_heartbeat_response(const uint64_t trxn_id);
 
-  std::shared_ptr<upf_graph> select_up_node(const int node_selection_criteria);
   std::shared_ptr<upf_graph> select_up_node(
       const snssai_t& snssai, const std::string& dnn);
 
@@ -705,9 +672,7 @@ class pfcp_associations {
       const oai::model::pcf::SmPolicyDecision& decision, const snssai_t& snssai,
       const std::string& dnn);
 
-  bool add_peer_candidate_node(const pfcp::node_id_t& node_id);
-  bool add_peer_candidate_node(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+  bool add_peer_candidate_node(const oai::config::smf::upf& upf_cfg);
   bool remove_association(const std::string& node_instance_id);
   bool remove_association(const int32_t& hash_node_id);
 };

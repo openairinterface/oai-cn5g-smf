@@ -1268,38 +1268,6 @@ void event_notification::get_custom_info(nlohmann::json& c) const {
 }
 
 //-----------------------------------------------------------------------------
-void data_notification_msg::set_notification_event_type(
-    const std::string& type) {
-  notification_event_type = type;
-}
-
-//-----------------------------------------------------------------------------
-void data_notification_msg::get_notification_event_type(
-    std::string& type) const {
-  type = notification_event_type;
-}
-
-//-----------------------------------------------------------------------------
-void data_notification_msg::set_nf_instance_uri(const std::string& uri) {
-  nf_instance_uri = uri;
-}
-
-//-----------------------------------------------------------------------------
-void data_notification_msg::get_nf_instance_uri(std::string& uri) const {
-  uri = nf_instance_uri;
-}
-
-//-----------------------------------------------------------------------------
-void data_notification_msg::set_profile(const std::shared_ptr<nf_profile>& p) {
-  profile = p;
-}
-
-//-----------------------------------------------------------------------------
-void data_notification_msg::get_profile(std::shared_ptr<nf_profile>& p) const {
-  p = profile;
-}
-
-//-----------------------------------------------------------------------------
 void event_notification::set_dnn(std::string const& value) {
   m_dnn        = value;
   m_dnn_is_set = true;

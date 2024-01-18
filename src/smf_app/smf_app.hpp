@@ -50,6 +50,7 @@
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 #include "ProblemDetails.h"
+#include "UpfInfo.h"
 
 namespace smf {
 
@@ -105,6 +106,8 @@ class smf_app {
 
   util::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
+
+  util::uint_generator<uint32_t> teid_generator;
 
   util::uint_generator<uint32_t> evsub_id_generator;
   std::map<
@@ -415,6 +418,19 @@ class smf_app {
    * @return uint64_t: Return Seid generated
    */
   uint64_t generate_seid();
+
+  /**
+   * Generate an TEID
+   * @param s
+   * @return
+   */
+  uint32_t generate_teid();
+
+  /**
+   * Free a TEID
+   * @param fteid
+   */
+  void free_teid(const uint32_t& teid);
 
   /*
    * Verify whether a session with a given ID exist
@@ -746,15 +762,7 @@ class smf_app {
    * @param [const pfcp::node_id_t] node_id: UPF Node ID
    * @return void
    */
-  void start_upf_association(const pfcp::node_id_t& node_id);
-
-  /*
-   * To start an association with a UPF (SMF-initiated association)
-   * @param [const pfcp::node_id_t] node_id: UPF Node ID
-   * @return void
-   */
-  void start_upf_association(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+  void start_upf_association(oai::config::smf::upf& upf_cfg);
 
   /*
    * To start NF registration with NRF and subscribe to UPF event notification

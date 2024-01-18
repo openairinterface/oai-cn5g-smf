@@ -11,26 +11,34 @@
  * the class manually.
  */
 /*
- * NotificationEventType.h
+ * ConditionEventType_anyOf.h
  *
- * Types of events sent in notifications from NRF to subscribed NF Instances
+ *
  */
 
-#ifndef NotificationEventType_H_
-#define NotificationEventType_H_
+#ifndef ConditionEventType_anyOf_H_
+#define ConditionEventType_anyOf_H_
 
-#include "NotificationEventType_anyOf.h"
 #include <nlohmann/json.hpp>
 
 namespace oai::smf_server::model {
 
 /// <summary>
-/// Types of events sent in notifications from NRF to subscribed NF Instances
+///
 /// </summary>
-class NotificationEventType {
+class ConditionEventType_anyOf {
  public:
-  NotificationEventType();
-  virtual ~NotificationEventType() = default;
+  ConditionEventType_anyOf();
+  virtual ~ConditionEventType_anyOf() = default;
+
+  enum class eConditionEventType_anyOf {
+    // To have a valid default value.
+    // Avoiding name clashes with user defined
+    // enum values
+    INVALID_VALUE_OPENAPI_GENERATED = 0,
+    ADDED,
+    REMOVED
+  };
 
   /// <summary>
   /// Validate the current data in the model. Throws a ValidationException on
@@ -50,28 +58,24 @@ class NotificationEventType {
   /// </summary>
   bool validate(std::stringstream& msg, const std::string& pathPrefix) const;
 
-  bool operator==(const NotificationEventType& rhs) const;
-  bool operator!=(const NotificationEventType& rhs) const;
+  bool operator==(const ConditionEventType_anyOf& rhs) const;
+  bool operator!=(const ConditionEventType_anyOf& rhs) const;
 
   /////////////////////////////////////////////
-  /// NotificationEventType members
+  /// ConditionEventType_anyOf members
 
-  NotificationEventType_anyOf getValue() const;
-  void setValue(NotificationEventType_anyOf value);
-  NotificationEventType_anyOf::eNotificationEventType_anyOf getEnumValue()
-      const;
-  void setEnumValue(
-      NotificationEventType_anyOf::eNotificationEventType_anyOf value);
-  friend void to_json(nlohmann::json& j, const NotificationEventType& o);
-  friend void from_json(const nlohmann::json& j, NotificationEventType& o);
-  friend void to_json(nlohmann::json& j, const NotificationEventType_anyOf& o);
-  friend void from_json(
-      const nlohmann::json& j, NotificationEventType_anyOf& o);
+  ConditionEventType_anyOf::eConditionEventType_anyOf getValue() const;
+  void setValue(ConditionEventType_anyOf::eConditionEventType_anyOf value);
+
+  friend void to_json(nlohmann::json& j, const ConditionEventType_anyOf& o);
+  friend void from_json(const nlohmann::json& j, ConditionEventType_anyOf& o);
 
  protected:
-  NotificationEventType_anyOf m_value;
+  ConditionEventType_anyOf::eConditionEventType_anyOf m_value =
+      ConditionEventType_anyOf::eConditionEventType_anyOf::
+          INVALID_VALUE_OPENAPI_GENERATED;
 };
 
 }  // namespace oai::smf_server::model
 
-#endif /* NotificationEventType_H_ */
+#endif /* ConditionEventType_anyOf_H_ */

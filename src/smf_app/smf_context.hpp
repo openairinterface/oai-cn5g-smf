@@ -287,12 +287,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void set_seid(const uint64_t& seid);
 
   /*
-   * Generate a value for TEID
-   * @return uint32_t
-   */
-  void generate_teid(pfcp::fteid_t& local_fteid);
-
-  /*
    * Generate a PDR ID
    * @param [pfcp::pdr_id_t &]: pdr_id: PDR ID generated
    * @return void
@@ -545,7 +539,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   util::uint_generator<uint32_t> far_id_generator;
   util::uint_generator<uint32_t> urr_id_generator;
 
-  util::uint_generator<uint32_t> teid_generator;
   // Shared lock
   mutable std::shared_mutex m_pdu_session_mutex;
 

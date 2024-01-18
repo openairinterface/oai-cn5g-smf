@@ -218,6 +218,7 @@ upf::upf(
   m_upf_info.setInterfaceUpfInfoList(
       std::vector<InterfaceUpfInfoItem>{item_n3, item_n6});
   m_set = true;
+  generate_node_id();
 }
 
 void upf::from_yaml(const YAML::Node& node) {
@@ -244,6 +245,7 @@ void upf::from_yaml(const YAML::Node& node) {
         oai::utils::conversions::yaml_to_json(node["upf_info"], false);
     nlohmann::from_json(j, m_upf_info);
   }
+  generate_node_id();
 }
 
 nlohmann::json upf::to_json() {
@@ -364,6 +366,32 @@ const oai::model::nrf::UpfInfo& upf::get_upf_info() const {
 
 void upf::enable_upf_info(bool val) {
   m_upf_info_is_set = val;
+}
+
+void upf::set_upf_info(const oai::model::nrf::UpfInfo& upf_info) {
+  m_upf_info        = upf_info;
+  m_upf_info_is_set = true;
+}
+
+void upf::set_node_id(const pfcp::node_id_t& node_id) {
+  m_node_id = node_id;
+}
+
+const pfcp::node_id_t& upf::get_node_id() const {
+  return m_node_id;
+}
+
+void upf::generate_node_id() {
+  m_node_id = {};
+  std::regex re(IPV4_ADDRESS_VALIDATOR_REGEX);
+  if (std::regex_match(m_host.get_value(), re)) {
+    m_node_id.u1.ipv4_address = conv::fromString(m_host.get_value());
+    m_node_id.node_id_type =
+        pfcp::node_id_type_value_e::NODE_ID_TYPE_IPV4_ADDRESS;
+  } else {
+    m_node_id.fqdn         = m_host.get_value();
+    m_node_id.node_id_type = pfcp::node_id_type_value_e::NODE_ID_TYPE_FQDN;
+  }
 }
 
 ims_config::ims_config(

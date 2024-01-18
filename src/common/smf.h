@@ -31,6 +31,7 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.274.h"
 #include "3gpp_29.571.h"
+#include "Snssai.h"
 
 typedef uint64_t supi64_t;
 #define SUPI_64_FMT "%" SCNu64
@@ -152,6 +153,14 @@ typedef struct s_nssai  // section 28.4, TS23.003
     json_data["sst"]         = sst;
     json_data["sd"]          = sd;
     return json_data;
+  }
+  // TODO remove, only temporary, in the future only use model SNSSAI
+  oai::model::common::Snssai to_model_snssai() const {
+    oai::model::common::Snssai snssai;
+    snssai.setSst(sst);
+    // TODO this puts a decimal string but SD should be a hex string
+    snssai.setSd(std::to_string(sd));
+    return snssai;
   }
 
   void from_json(nlohmann::json& json_data) {

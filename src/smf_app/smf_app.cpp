@@ -34,6 +34,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 
 #include "3gpp_24.007.h"
@@ -72,6 +73,8 @@ extern "C" {
 
 using namespace smf;
 using namespace oai::config::smf;
+using namespace oai::model::nrf;
+using namespace oai::smf_server::model;
 
 #define PFCP_ASSOC_RETRY_COUNT 10
 #define PFCP_ASSOC_RESP_WAIT 2
@@ -139,6 +142,14 @@ uint64_t smf_app::generate_seid() {
   set_seid_n4.insert(seid);
   ls.unlock();
   return seid;
+}
+
+uint32_t smf_app::generate_teid() {
+  return teid_generator.get_uid();
+}
+
+void smf_app::free_teid(const uint32_t& teid) {
+  teid_generator.free_uid(teid);
 }
 
 //------------------------------------------------------------------------------
@@ -383,19 +394,16 @@ smf_app::~smf_app() {
 
 //------------------------------------------------------------------------------
 void smf_app::start_nf_registration_discovery() {
-  if (smf_cfg->discover_upf) {
+  if (smf_cfg->register_nrf()) {
     trigger_upf_status_notification_subscribe();
   } else {
-    // TODO: should be done when SMF select UPF for a particular UE (should be
-    // verified)
-    for (std::vector<pfcp::node_id_t>::const_iterator it =
-             smf_cfg->upfs.begin();
-         it != smf_cfg->upfs.end(); ++it) {
+    for (auto upf : smf_cfg->smf()->get_upfs()) {
       for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
-        start_upf_association(*it);
+        start_upf_association(upf);
         sleep(PFCP_ASSOC_RESP_WAIT);
         std::shared_ptr<pfcp_association> sa = {};
-        if (not pfcp_associations::get_instance().get_association(*it, sa))
+        if (!pfcp_associations::get_instance().get_association(
+                upf.get_node_id(), sa))
           Logger::smf_app().warn(
               "Failed to receive PFCP Association Response, Retrying .....!!");
         else
@@ -405,7 +413,7 @@ void smf_app::start_nf_registration_discovery() {
   }
 
   // Register to NRF (if this option is enabled)
-  if (smf_cfg->register_nrf) {
+  if (smf_cfg->register_nrf()) {
     unsigned int microsecond = 10000;  // 10ms
     usleep(microsecond);
     register_to_nrf();
@@ -413,61 +421,23 @@ void smf_app::start_nf_registration_discovery() {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::start_upf_association(const pfcp::node_id_t& node_id) {
+void smf_app::start_upf_association(oai::config::smf::upf& upf_cfg) {
   Logger::smf_app().debug("Start a PFCP Association procedure with an UPF");
   std::time_t time_epoch = std::time(nullptr);
   uint64_t tv_ntp        = time_epoch + SECONDS_SINCE_FIRST_EPOCH;
 
-  pfcp::node_id_t node_id_tmp = node_id;
-  fqdn::resolve(node_id_tmp);  // Resolve FQDN/IP addr if necessary
-  pfcp_associations::get_instance().add_peer_candidate_node(node_id_tmp);
-  std::shared_ptr<itti_n4_association_setup_request> n4_asc =
-      std::shared_ptr<itti_n4_association_setup_request>(
-          new itti_n4_association_setup_request(TASK_SMF_APP, TASK_SMF_N4));
-
-  // n4_asc->trxn_id = smf_n4_inst->generate_trxn_id();
-  pfcp::cp_function_features_s cp_function_features;
-  cp_function_features      = {};
-  cp_function_features.load = 1;
-  cp_function_features.ovrl = 1;
-
-  pfcp::node_id_t this_node_id = {};
-  if (smf_cfg->get_pfcp_node_id(this_node_id) == RETURNok) {
-    n4_asc->pfcp_ies.set(this_node_id);
-    pfcp::recovery_time_stamp_t r = {.recovery_time_stamp = (uint32_t) tv_ntp};
-    n4_asc->pfcp_ies.set(r);
-
-    n4_asc->pfcp_ies.set(cp_function_features);
-    if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS) {
-      n4_asc->r_endpoint =
-          endpoint(node_id.u1.ipv4_address, pfcp::default_port);
-      int ret = itti_inst->send_msg(n4_asc);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_N4",
-            n4_asc.get()->get_msg_name());
-      }
-    } else {
-      Logger::smf_app().warn("Start_association() node_id IPV6, FQDN!");
-    }
+  pfcp::node_id_t node_id_tmp = upf_cfg.get_node_id();
+  // Resolve FQDN/IP addr if necessary
+  if (!fqdn::resolve(node_id_tmp)) {
+    Logger::smf_app().warn(
+        "Resolving of PFCP Node ID not possible. Do not send UPF association");
+    return;
   }
-}
+  upf_cfg.set_node_id(node_id_tmp);
+  pfcp_associations::get_instance().add_peer_candidate_node(upf_cfg);
+  auto n4_asc = std::make_shared<itti_n4_association_setup_request>(
+      TASK_SMF_APP, TASK_SMF_N4);
 
-//------------------------------------------------------------------------------
-void smf_app::start_upf_association(
-    const pfcp::node_id_t& node_id, const upf_profile& profile) {
-  Logger::smf_app().debug("Start a PFCP Association procedure with an UPF");
-  std::time_t time_epoch = std::time(nullptr);
-  uint64_t tv_ntp        = time_epoch + SECONDS_SINCE_FIRST_EPOCH;
-
-  pfcp::node_id_t node_id_tmp = node_id;
-  fqdn::resolve(node_id_tmp);  // Resolve FQDN/IP addr if necessary
-  pfcp_associations::get_instance().add_peer_candidate_node(node_id, profile);
-  std::shared_ptr<itti_n4_association_setup_request> n4_asc =
-      std::shared_ptr<itti_n4_association_setup_request>(
-          new itti_n4_association_setup_request(TASK_SMF_APP, TASK_SMF_N4));
-
-  // n4_asc->trxn_id = smf_n4_inst->generate_trxn_id();
   pfcp::cp_function_features_s cp_function_features;
   cp_function_features      = {};
   cp_function_features.load = 1;
@@ -478,18 +448,11 @@ void smf_app::start_upf_association(
     n4_asc->pfcp_ies.set(this_node_id);
     pfcp::recovery_time_stamp_t r = {.recovery_time_stamp = (uint32_t) tv_ntp};
     n4_asc->pfcp_ies.set(r);
-
     n4_asc->pfcp_ies.set(cp_function_features);
-    if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS) {
-      n4_asc->r_endpoint =
-          endpoint(node_id.u1.ipv4_address, pfcp::default_port);
-      int ret = itti_inst->send_msg(n4_asc);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_N4",
-            n4_asc.get()->get_msg_name());
-      }
-    } else if (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
+    pfcp::node_id_t node_id = upf_cfg.get_node_id();
+
+    if (node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS ||
+        node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {
       n4_asc->r_endpoint =
           endpoint(node_id.u1.ipv4_address, pfcp::default_port);
       int ret = itti_inst->send_msg(n4_asc);
@@ -499,21 +462,21 @@ void smf_app::start_upf_association(
             n4_asc.get()->get_msg_name());
       }
     } else {
-      Logger::smf_app().warn("Start_association() node_id IPV6!");
+      Logger::smf_app().warn("Start_association() node_id IPV6! Not supported");
     }
   }
 }
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(std::shared_ptr<itti_n4_association_retry> snar) {
-  pfcp::node_id_t node_id = snar->node_id;
-  upf_profile profile     = snar->profile;
+  oai::config::smf::upf upf_cfg = snar->upf_cfg;
 
   for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
-    smf_app_inst->start_upf_association(node_id, profile);
+    smf_app_inst->start_upf_association(upf_cfg);
     sleep(PFCP_ASSOC_RESP_WAIT);
     std::shared_ptr<pfcp_association> sa = {};
-    if (not pfcp_associations::get_instance().get_association(node_id, sa))
+    if (not pfcp_associations::get_instance().get_association(
+            upf_cfg.get_node_id(), sa))
       Logger::smf_app().warn(
           "Failed to receive PFCP Association Response, Retrying "
           ".....!!");
@@ -1412,151 +1375,92 @@ bool smf_app::handle_nf_status_notification(
       "%d)",
       msg->http_version);
 
-  data_notification_msg notification_msg = msg.get()->notification_msg;
-  std::string event_type;
-  notification_msg.get_notification_event_type(event_type);
-  if (event_type.compare("NF_REGISTERED") == 0) {
-    std::shared_ptr<nf_profile> profile = {};
-    notification_msg.get_profile(profile);
-    if (profile.get() != nullptr) {
-      std::string nf_type = profile.get()->get_nf_type();
-      if (nf_type.compare("UPF") == 0) {  // UPF
-        upf_info_t upf_info = {};
-        std::static_pointer_cast<upf_profile>(profile).get()->get_upf_info(
-            upf_info);
-        // Verify if the UPF is already exist
-        // if not, add to the DB and send Association request
-        // UPF N4 ipv4 address/FQDN
-        std::string upf_fqdn = profile.get()->get_fqdn();
+  NotificationData notification = msg->notification_msg;
 
-        std::vector<struct in_addr> ipv4_addrs = {};
-        profile.get()->get_nf_ipv4_addresses(ipv4_addrs);
+  switch (notification.getEvent().getEnumValue()) {
+    case NotificationEventType_anyOf::eNotificationEventType_anyOf::
+        INVALID_VALUE_OPENAPI_GENERATED:
+      Logger::smf_app().warn(
+          "Invalid value in NF status notification from NRF");
+      return false;
+    case NotificationEventType_anyOf::eNotificationEventType_anyOf::
+        REGISTERED: {
+      // TODO also update NFProfile in SMF, this should also be an ENUM
+      NFProfile profile = notification.getNfProfile();
+      if (profile.getNfType() != "UPF") {
+        Logger::smf_app().warn(
+            "Received status notification for NF type %s. It is ignored",
+            profile.getNfType());
+        return false;
+      }
+      if (!profile.upfInfoIsSet()) {
+        Logger::smf_app().error(
+            "UPF Profile needs to be set in NRF status notification");
+        return false;
+      }
 
-        pfcp::node_id_t n = {};
-        n.node_id_type    = pfcp::NODE_ID_TYPE_UNKNOWN;
+      std::string host;
 
-        // Use FQDN if available
-        if (!upf_fqdn.empty()) {
-          uint8_t addr_type            = {0};
-          std::string address          = {};
-          uint32_t upf_port            = {0};
-          struct in_addr upf_ipv4_addr = {};
-
-          fqdn::resolve(upf_fqdn, address, upf_port, addr_type);
-          if (addr_type != 0) {  // IPv6
-            // TODO:
-            Logger::smf_app().debug("Do not support IPv6 addr for UPF");
-            return false;
-          } else {  // IPv4
-            if (inet_aton(util::trim(address).c_str(), &upf_ipv4_addr) == 0) {
-              Logger::smf_app().debug("Bad IPv4 Addr format for UPF");
-              return false;
-            }
-          }
-          bool found = false;
-          for (auto node : smf_cfg->upfs) {
-            if ((node.u1.ipv4_address.s_addr == upf_ipv4_addr.s_addr) or
-                (upf_fqdn.compare(node.fqdn) == 0)) {
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            // Add a new UPF node
-            Logger::smf_app().debug(
-                "Add a new UPF node with FQDN: %s", upf_fqdn.c_str());
-            // pfcp::node_id_t n = {};
-            n.node_id_type = pfcp::NODE_ID_TYPE_FQDN;
-            n.fqdn         = upf_fqdn;
-            n.u1.ipv4_address.s_addr =
-                upf_ipv4_addr
-                    .s_addr;  // Normally we should not do that, but ok since we
-                              // keep both fqdn and IPv4 at the same time
-          } else {
-            Logger::smf_app().debug(
-                "UPF node already exist (%s)", address.c_str());
-          }
-        }
-
-        if (ipv4_addrs.size() >= 1) {  // Use IP address if it's available
-          bool found = false;
-          for (auto node : smf_cfg->upfs) {
-            if (node.u1.ipv4_address.s_addr == ipv4_addrs[0].s_addr) {
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            // Add a new UPF node
-            Logger::smf_app().debug(
-                "Add a new UPF node with Ipv4 Addr: %s",
-                inet_ntoa(ipv4_addrs[0]));
-            if (n.node_id_type == pfcp::NODE_ID_TYPE_UNKNOWN)
-              n.node_id_type = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
-            n.u1.ipv4_address.s_addr = ipv4_addrs[0].s_addr;
-            // Do reserve_resolve to find FQDN if not available
-            if (n.fqdn.empty()) {
-              std::string hostname = {};
-              std::string ip_str   = conv::toString(n.u1.ipv4_address);
-              if (!fqdn::reverse_resolve(ip_str, hostname)) {
-                Logger::smf_app().debug(
-                    "Could not resolve hostname for IP address %s",
-                    ip_str.c_str());
-              } else {
-                n.fqdn = hostname;
-              }
-            }
-          } else {
-            Logger::smf_app().debug(
-                "UPF node already exist (%s)", inet_ntoa(ipv4_addrs[0]));
-          }
-        }
-
-        if (n.node_id_type != pfcp::NODE_ID_TYPE_UNKNOWN) {
-          smf_cfg->upfs.push_back(n);
-          upf_profile* upf_node_profile =
-              dynamic_cast<upf_profile*>(profile.get());
-
-          // Trigger N4 association request with retry if needed
-          std::shared_ptr<itti_n4_association_retry> itti_msg =
-              std::make_shared<itti_n4_association_retry>(
-                  TASK_SMF_APP, TASK_SMF_APP);
-          itti_msg->node_id = n;
-          itti_msg->profile = std::ref(*upf_node_profile);
-          int ret           = itti_inst->send_msg(itti_msg);
-          if (RETURNok != ret) {
-            Logger::smf_n4().error(
-                "Could not send ITTI message %s to task TASK_SMF_N4",
-                itti_msg->get_msg_name());
-          }
-        } else {
-          Logger::smf_app().debug(
-              "No IP Addr/FQDN found or UPF node already exist");
-          return false;
+      if (profile.fqdnIsSet()) {
+        host = profile.getFqdn();
+      } else if (profile.ipv4AddressesIsSet()) {
+        for (const auto& ipv4 : profile.getIpv4Addresses()) {
+          host = ipv4;
         }
       }
-    } else {
-      return false;
-    }
-  }
-  if (event_type.compare("NF_DEREGISTERED") == 0) {
-    Logger::smf_app().debug(
-        "This event (%s) has not been supported yet!", event_type);
-    // TODO: Remove UPF from the list UPFs if received DE-REGISTERED Event
-    /*    std::string nf_instance_uri = {};
-        notification_msg.get_nf_instance_uri(nf_instance_uri);
-        std::vector<std::string> split_result;
-
-        boost::split(
-            split_result, nf_instance_uri, boost::is_any_of("/"));
-        if (split_result.size() > 0) {
-          std::string instance_id = split_result[split_result.size() -1];
-          pfcp_associations::get_instance().remove_association(instance_id);
+      upf local_upf_cfg = DEFAULT_UPF;
+      bool found        = false;
+      for (const auto& upf_cfg : smf_cfg->smf()->get_upfs()) {
+        if (upf_cfg.get_host() == host) {
+          found = true;
+          Logger::smf_app().debug(
+              "Found NRF UPF with host name %s in configuration, take config "
+              "from there",
+              host);
+          local_upf_cfg = upf_cfg;
         }
-     */
-  }
+      }
+      if (!found) {
+        Logger::smf_app().debug(
+            "NRF UPF with host name %s was not found in configuration, take "
+            "default configuration",
+            host);
+        // we use the same default behavior for locally configured and
+        // NRF-received UPF
+        local_upf_cfg =
+            upf(host, local_upf_cfg.get_port(),
+                local_upf_cfg.enable_usage_reporting(),
+                local_upf_cfg.enable_dl_pdr_in_session_establishment(),
+                local_upf_cfg.get_local_n3_ip());
+      }
+      local_upf_cfg.set_upf_info(profile.getUpfInfo());
 
-  return true;
+      // Trigger N4 association request with retry if needed
+      auto itti_msg = std::make_shared<itti_n4_association_retry>(
+          TASK_SMF_APP, TASK_SMF_APP);
+      itti_msg->upf_cfg = local_upf_cfg;
+      int ret           = itti_inst->send_msg(itti_msg);
+      if (RETURNok != ret) {
+        Logger::smf_n4().error(
+            "Could not send ITTI message %s to task TASK_SMF_N4",
+            itti_msg->get_msg_name());
+        return false;
+      }
+      return true;
+    }
+    case NotificationEventType_anyOf::eNotificationEventType_anyOf::
+        DEREGISTERED:
+      // TODO support this case
+      Logger::smf_app().error(
+          "Received NF status de-registration, this is not yet supported");
+      return false;
+    case NotificationEventType_anyOf::eNotificationEventType_anyOf::
+        PROFILE_CHANGED:
+      Logger::smf_app().error(
+          "Received NF status profile change, this is not yet supported");
+      return false;
+  }
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -1613,7 +1517,7 @@ void smf_app::handle_sbi_update_configuration(
 
     // Update SMF profile (complete replacement of the existing profile by a new
     // one)
-    if (smf_cfg->register_nrf) register_to_nrf();
+    if (smf_cfg->register_nrf()) register_to_nrf();
 
   } else {
     response_data["httpResponseCode"] = static_cast<uint32_t>(
@@ -2471,7 +2375,7 @@ void smf_app::trigger_nf_registration_request() {
 
 //------------------------------------------------------------------------------
 void smf_app::trigger_nf_deregistration() {
-  if (!smf_cfg->register_nrf) return;
+  if (!smf_cfg->register_nrf()) return;
 
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to trigger the deregistration request to "
