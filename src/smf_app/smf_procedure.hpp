@@ -137,7 +137,7 @@ class smf_session_procedure : public smf_procedure {
    */
   smf_procedure_code get_next_upf(
       std::vector<edge>& dl_edges, std::vector<edge>& ul_edges,
-      std::shared_ptr<pfcp_association>& next_upf);
+      std::shared_ptr<pfcp_association>& next_upf, bool isGBR);
 };
 
 //------------------------------------------------------------------------------

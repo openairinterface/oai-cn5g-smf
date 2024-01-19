@@ -210,13 +210,33 @@ std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::pdr_id_t& pdr_id) {
 }
 
 //---------------------------------------------------------------------------------------------
+/*
 std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::qfi_t& qfi) {
   for (auto& flow_it : qos_flows) {
+    uint8_t flow_qfi = flow_it->qfi.qfi;
+    uint8_t qfi_value = qfi.qfi;
+    Logger::smf_app().debug("QoS Flow QFI: %d, %d", flow_qfi, qfi_value);
     if (flow_it->qfi == qfi) {
       return flow_it;
     }
   }
   return {};
+}
+*/
+
+#include <algorithm>
+std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::qfi_t& qfi) {
+ // Find the QFI in the map
+    auto it = std::find_if(qos_flows.begin(), qos_flows.end(), [&](const auto& elem) {
+        return elem->get()->get_qfi() == qfi;
+    });
+ if (it != qos_flows.end()) {
+    // QFI found, return the first flow associated with that QFI
+    return *it;
+ } else {
+    // QFI not found, return nullptr
+    return nullptr;
+ }
 }
 
 //---------------------------------------------------------------------------------------------
@@ -1139,13 +1159,21 @@ void upf_graph::print_graph() {
 //------------------------------------------------------------------------------
 void upf_graph::dfs_next_upf(
     std::vector<edge>& info_dl, std::vector<edge>& info_ul,
-    std::shared_ptr<pfcp_association>& upf) {
+    std::shared_ptr<pfcp_association>& upf, bool isGBR) {
   // we need unique lock as visited array and stack is written
   std::unique_lock lock_graph(graph_mutex);
 
-  if (!stack_asynch.empty()) {
-    std::shared_ptr<pfcp_association> association = stack_asynch.top();
-    stack_asynch.pop();
+  if (!stack_asynch.empty() || !gbrStack_asynch.empty()) {
+    std::shared_ptr<pfcp_association> association = nullptr;
+
+    if (!stack_asynch.empty()) {
+            association = stack_asynch.top();
+            stack_asynch.pop();
+    } else if (!gbrStack_asynch.empty()) {
+            association = gbrStack_asynch.top();
+            gbrStack_asynch.pop();
+    }
+
 
     auto node_it = adjacency_list.find(association);
     if (node_it == adjacency_list.end()) {
@@ -1192,7 +1220,11 @@ void upf_graph::dfs_next_upf(
         // first add all neighbors to the stack
         if (edge_it.association) {
           if (!visited_asynch[edge_it.association]) {
-            stack_asynch.push(edge_it.association);
+            if (isGBR){
+            	gbrStack_asynch.push(edge_it.association);
+            } else {
+                stack_asynch.push(edge_it.association);
+	    }
           }
         }
       }
@@ -1226,9 +1258,9 @@ void upf_graph::dfs_next_upf(
               edge_edge.association == node_it->first) {
             if (edge_edge.type == iface_type::N9 && edge_edge.uplink) {
               // downlink direction
-              edge_it.qos_flows[0]->dl_fteid = edge_edge.qos_flows[0]->dl_fteid;
+              edge_it.qos_flows.back()->dl_fteid = edge_edge.qos_flows.back()->dl_fteid;
             } else if (edge_edge.type == iface_type::N9) {
-              edge_it.qos_flows[0]->ul_fteid = edge_edge.qos_flows[0]->ul_fteid;
+              edge_it.qos_flows.back()->ul_fteid = edge_edge.qos_flows.back()->ul_fteid;  
             }
           }
         }
@@ -1283,6 +1315,34 @@ void upf_graph::start_asynch_dfs_procedure(
     }
   }
 }
+
+//------------------------------------------------------------------------------
+void upf_graph::start_asynch_gbr_dfs_procedure(
+    bool uplink, smf_qos_flow& qos_flow) {
+  std::unique_lock graph_lock(graph_mutex);
+  if (!gbrStack_asynch.empty()) {
+    Logger::smf_app().error(
+        "Started GBR DFS procedure, but old stack is not empty. Failure");
+  }
+  // clear the stack and visited array
+  gbrStack_asynch    = {};
+  visited_asynch  = {};
+  qos_flow_asynch = qos_flow;
+  uplink_asynch   = uplink;
+
+  // uplink start at the exit nodes, downlink start at access nodes, do not
+  // actually do DFS but put them on the stack
+  for (auto& it : adjacency_list) {
+    for (auto& edge : it.second) {
+      if ((uplink && edge.type == iface_type::N6) ||
+          (!uplink && edge.type == iface_type::N3)) {
+        gbrStack_asynch.push(it.first);
+        break;
+      }
+    }
+  }
+}
+
 
 //---------------------------------------------------------------------------------------------
 edge upf_graph::get_access_edge() const {

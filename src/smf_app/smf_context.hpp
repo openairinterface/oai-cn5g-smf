@@ -523,7 +523,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   timer_id_t timer_T3592;
 
   pfcp::qfi_t default_qfi;                    // Default QFI for this session
-  std::map<uint8_t, smf_qos_flow> qos_flows;  // QFI <-> QoS Flow
+  //std::map<uint8_t, smf_qos_flow> qos_flows;  // QFI <-> QoS Flow
+  std::map<uint8_t, std::vector<smf_qos_flow>> qos_flows; 
   std::map<uint8_t, QOSRulesIE> qos_rules;    // QRI <-> QoS Rules
   std::vector<uint8_t> qos_rules_to_be_synchronised;
   std::vector<uint8_t> qos_rules_to_be_removed;

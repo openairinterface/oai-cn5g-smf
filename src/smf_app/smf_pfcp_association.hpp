@@ -377,6 +377,7 @@ class upf_graph {
   mutable std::shared_mutex graph_mutex;
 
   std::stack<std::shared_ptr<pfcp_association>> stack_asynch;
+  std::stack<std::shared_ptr<pfcp_association>> gbrStack_asynch;
   std::unordered_map<
       std::shared_ptr<pfcp_association>, bool,
       std::hash<std::shared_ptr<pfcp_association>>>
@@ -573,7 +574,7 @@ class upf_graph {
    */
   void dfs_next_upf(
       std::vector<edge>& info_dl, std::vector<edge>& info_ul,
-      std::shared_ptr<pfcp_association>& upf);
+      std::shared_ptr<pfcp_association>& upf, bool isGBR);
 
   /**
    * @brief Gives the information from the UPF which has previously been
@@ -593,7 +594,7 @@ class upf_graph {
    * @param qos_flow SMF flow to be used for this procedure
    */
   void start_asynch_dfs_procedure(bool uplink, smf_qos_flow& qos_flow);
-
+  void start_asynch_gbr_dfs_procedure(bool uplink, smf_qos_flow& qos_flow);
   /**
    * @brief Returns the access edge of this graph. If multiple exist, first is
    * returned (random order)

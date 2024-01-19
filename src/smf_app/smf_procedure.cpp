@@ -125,7 +125,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
 
   auto flow = edge.get_qos_flow(qfi);
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error("pfcp_create_far: Could not find QOS flow for this QFI.");
     return create_far;
   }
 
@@ -264,7 +264,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   auto flow = edge.get_qos_flow(qfi);
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error("pfcp_create_pdr: Could not find QOS flow for this QFI.");
     return create_pdr;
   }
 
@@ -385,7 +385,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr_dl(
   auto flow = edge.get_qos_flow(qfi);
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error("pfcp_create_pdr_dl: Could not find QOS flow for this QFI.");
     return create_pdr;
   }
   far_id = flow->far_id_dl.second;
@@ -424,7 +424,7 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
   pfcp::time_threshold_t time_threshold         = {};
 
   if (!flow) {
-    Logger::smf_app().error("Could not find QOS flow for this QFI.");
+    Logger::smf_app().error("pfcp_create_urr: Could not find QOS flow for this QFI.");
     return create_urr;
   }
 
@@ -477,14 +477,14 @@ smf_procedure_code smf_session_procedure::get_current_upf(
 //------------------------------------------------------------------------------
 smf_procedure_code smf_session_procedure::get_next_upf(
     std::vector<edge>& dl_edges, std::vector<edge>& ul_edges,
-    std::shared_ptr<pfcp_association>& next_upf) {
+    std::shared_ptr<pfcp_association>& next_upf, bool isGBR) {
   std::shared_ptr<upf_graph> graph = sps->get_sessions_graph();
   if (!graph) {
     Logger::smf_app().warn("UPF graph does not exist. Abort PFCP procedure");
     return smf_procedure_code::ERROR;
   }
 
-  graph->dfs_next_upf(dl_edges, ul_edges, next_upf);
+  graph->dfs_next_upf(dl_edges, ul_edges, next_upf, isGBR);
   if (!next_upf) {
     Logger::smf_app().debug("UPF graph in SMF finished");
     return smf_procedure_code::OK;
@@ -606,6 +606,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     //-------------------
     // IE CREATE_FAR
     //-------------------
+    Logger::smf_app().info("send_n4_session_establishment_request 1");
     pfcp::create_far create_far = pfcp_create_far(ul_edge, current_flow.qfi);
     // copy created FAR ID to DL edge for PDR
     synch_ul_dl_edges(dl_edges, ul_edges, current_flow.qfi, false);
@@ -629,6 +630,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     n4_triggered->pfcp_ies.set(create_far);
 
     if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+      Logger::smf_app().info("send_n4_session_establishment_request 2");
       pfcp::create_far create_far_dl =
           pfcp_create_far(dl_edge, current_flow.qfi);
       pfcp::create_pdr create_pdr_dl =
@@ -647,6 +649,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     //-------------------
     // IE CREATE_FAR
     //-------------------
+    Logger::smf_app().info("send_n4_session_establishment_request 3");
     pfcp::create_far create_far = pfcp_create_far(ul_gbrEdge, current_gbrFlow.qfi);
     // copy created FAR ID to DL edge for PDR
     synch_ul_dl_edges(dl_gbrEdges, ul_gbrEdges, current_gbrFlow.qfi, false);
@@ -670,6 +673,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     n4_triggered->pfcp_ies.set(create_far);
 
     if (smf_cfg->enable_dl_pdr_in_pfcp_sess_estab) {
+      Logger::smf_app().info("send_n4_session_establishment_request 4");
       pfcp::create_far create_far_dl =
           pfcp_create_far(dl_gbrEdge, current_gbrFlow.qfi);
       pfcp::create_pdr create_pdr_dl =
@@ -776,8 +780,6 @@ smf_procedure_code session_create_sm_context_procedure::run(
   // Create default QoS (Non-GBR) and associate far id and pdr id to this flow
   // Create a non-gbr flow
   smf_qos_flow flow   = {};
-  // Create a gbr flow
-  smf_qos_flow gbrFlow = {};
   flow.pdu_session_id = sm_context_req->req.get_pdu_session_id();
   // default non-GBR QoS profile
   flow.qfi.qfi                    = default_qos._5qi;
@@ -785,6 +787,8 @@ smf_procedure_code session_create_sm_context_procedure::run(
   flow.qos_profile.arp            = default_qos.arp;
   flow.qos_profile.priority_level = default_qos.priority_level;
 
+  // Create a gbr flow
+  smf_qos_flow gbrFlow = {};
   // GBR QoS profile
   gbrFlow.qfi.qfi = 1;
   gbrFlow.qos_profile._5qi = 1;
@@ -822,22 +826,24 @@ smf_procedure_code session_create_sm_context_procedure::run(
 
   // GBR flow
   sps->add_qos_flow(gbrFlow);
-  sps->set_default_qos_flow(gbrFlow.qfi);
+  //sps->set_default_qos_flow(gbrFlow.qfi);
   current_gbrFlow = gbrFlow;
-  graph->start_asynch_dfs_procedure(true, gbrFlow);
+  graph->start_asynch_gbr_dfs_procedure(true, gbrFlow);
 
   // For non-GBR flow
+  bool isGBR = false; // Flag indicating GBR or non-GBR flow
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
   std::shared_ptr<pfcp_association> upf = {};
-  // Get next UPF for the first N4 session establishment
-  get_next_upf(dl_edges, ul_edges, upf);
+  // Get next UPF for the first N4 session establishment for non-GBR flow
+  get_next_upf(dl_edges, ul_edges, upf, isGBR);
 
   // For GBR flow
+  isGBR = true; // Set flag for GBR flow
   std::vector<edge> dl_gbrEdges;
   std::vector<edge> ul_gbrEdges;
-  // Get next UPF for the first N4 session establishment
-  get_next_upf(dl_gbrEdges, ul_gbrEdges, upf);
+  // Get next UPF for the first N4 session establishment for GBR flow
+  get_next_upf(dl_gbrEdges, ul_gbrEdges, upf, isGBR);
 
   return send_n4_session_establishment_request();
 }
@@ -970,13 +976,14 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   //  we go through until no UPF is left or until we find one to send N4 to
   bool search_upf                = true;
   bool send_n4                   = true;
+  bool isGBR                     = false;
   smf_procedure_code send_n4_res = smf_procedure_code::ERROR;
   // For non-GBR flow
   while (search_upf) {
     std::vector<edge> next_dl_edges;
     std::vector<edge> next_ul_edges;
     std::shared_ptr<pfcp_association> next_upf = {};
-    send_n4_res = get_next_upf(next_dl_edges, next_ul_edges, next_upf);
+    send_n4_res = get_next_upf(next_dl_edges, next_ul_edges, next_upf, isGBR);
     if (send_n4_res != smf_procedure_code::CONTINUE) {
       search_upf = false;
       send_n4    = false;
@@ -1002,11 +1009,12 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     }
   }
   // For GBR flow
+  isGBR = true;
   while (search_upf) {
     std::vector<edge> next_dl_gbrEdges;
     std::vector<edge> next_ul_gbrEdges;
     std::shared_ptr<pfcp_association> next_upf = {};
-    send_n4_res = get_next_upf(next_dl_gbrEdges, next_ul_gbrEdges, next_upf);
+    send_n4_res = get_next_upf(next_dl_gbrEdges, next_ul_gbrEdges, next_upf, isGBR);
     if (send_n4_res != smf_procedure_code::CONTINUE) {
       search_upf = false;
       send_n4    = false;
@@ -1159,7 +1167,8 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
       continue;
     }
     flow_dl->pdr_id_dl = 0;
-
+    Logger::smf_app().info("send_n4_session_modification_request 1");
+    Logger::smf_app().info("Current QFI: {}", current_flow.qfi.qfi);
     pfcp::create_far create_far = pfcp_create_far(dl_edge, current_flow.qfi);
 
     ul_flow->far_id_dl = create_far.far_id;
@@ -1197,6 +1206,7 @@ session_update_sm_context_procedure::send_n4_session_modification_request() {
     }
     gbrFlow_dl->pdr_id_dl = 0;
 
+    Logger::smf_app().info("send_n4_session_modification_request 2");
     pfcp::create_far create_far = pfcp_create_far(dl_gbrEdge, current_gbrFlow.qfi);
 
     ul_gbrFlow->far_id_dl = create_far.far_id;
@@ -1235,6 +1245,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
   // forwarding rules
 
   bool send_n4 = false;
+  bool isGBR   = false;
   Logger::smf_app().info("Perform a procedure - Update SM Context Request");
   // TODO check if compatible with ongoing procedures if any
   // Get UPF node
@@ -1280,7 +1291,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
 
-  if (get_next_upf(dl_edges, ul_edges, current_upf) !=
+  if (get_next_upf(dl_edges, ul_edges, current_upf, isGBR) !=
       smf_procedure_code::CONTINUE) {
     Logger::smf_app().error("DL Procedure Error: No UPF to select");
     return smf_procedure_code::ERROR;
@@ -1401,7 +1412,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
             // we set PDR ID UL to 0, so we create new ones
             auto flow_dl       = dl_edge.get_qos_flow(flow->qfi);
             flow_dl->pdr_id_dl = 0;
-
+            
+            Logger::smf_app().info("session_update_sm_context_procedure::run 1");
             pfcp::create_far create_far = pfcp_create_far(dl_edge, flow->qfi);
 
             synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi, false);
@@ -1579,6 +1591,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           //-------------------
           // IE CREATE_FAR
           //-------------------
+          Logger::smf_app().info("session_update_sm_context_procedure::run 2");
           pfcp::create_far create_far = pfcp_create_far(ul_edge, flow->qfi);
           // copy created FAR ID to DL edge for PDR
           synch_ul_dl_edges(dl_edges, ul_edges, flow->qfi, true);
@@ -1733,6 +1746,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
   pfcp::cause_t cause = {};
   resp.pfcp_ies.get(cause);
+  bool isGBR = false;
 
   n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
@@ -2036,7 +2050,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   std::vector<edge> next_dl_edges{};
   std::vector<edge> next_ul_edges{};
 
-  if (continue_n4 && get_next_upf(next_dl_edges, next_ul_edges, next_upf) ==
+  if (continue_n4 && get_next_upf(next_dl_edges, next_ul_edges, next_upf, isGBR) ==
                          smf_procedure_code::CONTINUE) {
     return send_n4_session_modification_request();
   }
@@ -2087,6 +2101,7 @@ smf_procedure_code session_release_sm_context_procedure::run(
   Logger::smf_app().info("Release SM Context Request");
   // TODO check if compatible with ongoing procedures if any
   pfcp::node_id_t up_node_id = {};
+  bool isGBR = false;
   // Get UPF node
   std::shared_ptr<smf_context_ref> scf = {};
   scid_t scid                          = {};
@@ -2127,7 +2142,7 @@ smf_procedure_code session_release_sm_context_procedure::run(
   std::vector<edge> dl_edges;
   std::vector<edge> ul_edges;
   std::shared_ptr<pfcp_association> current_upf = {};
-  if (get_next_upf(dl_edges, ul_edges, current_upf) ==
+  if (get_next_upf(dl_edges, ul_edges, current_upf, isGBR) ==
       smf_procedure_code::ERROR) {
     return smf_procedure_code::ERROR;
   }
@@ -2156,7 +2171,8 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
   std::vector<edge> ul_edges;
   std::shared_ptr<pfcp_association> current_upf = {};
   bool continue_n4                              = false;
-  if (get_next_upf(dl_edges, ul_edges, current_upf) ==
+  bool isGBR = false;
+  if (get_next_upf(dl_edges, ul_edges, current_upf, isGBR) ==
       smf_procedure_code::CONTINUE) {
     // If we have to continue, we ignore the PFCP error code, because we
     // should at least remove other UPF sessions

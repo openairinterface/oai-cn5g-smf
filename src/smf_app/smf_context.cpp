@@ -174,12 +174,18 @@ void smf_pdu_session::get_paa(paa_t& paa) {
 void smf_pdu_session::add_qos_flow(const smf_qos_flow& flow) {
   if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
       (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    Logger::smf_app().trace(
+    Logger::smf_app().info(
         "QoS Flow (flow Id %d) has been added successfully", flow.qfi.qfi);
     std::unique_lock lock(m_pdu_session_mutex);
-    qos_flows.erase(flow.qfi.qfi);
-    qos_flows.insert(
-        std::pair<uint8_t, smf_qos_flow>((uint8_t) flow.qfi.qfi, flow));
+    // Check if the QFI already exists in the map
+    auto it = qos_flows.find(flow.qfi.qfi);
+    if (it != qos_flows.end()) {
+      // QFI already exists, add the new flow to the existing vector
+      it->second.push_back(flow);
+    } else {
+      // QFI doesn't exist, create a new entry in the map
+      qos_flows[flow.qfi.qfi] = std::vector<smf_qos_flow>{flow};
+    }
   } else {
     Logger::smf_app().error(
         "Failed to add QoS flow (flow Id %d), invalid QFI", flow.qfi.qfi);
@@ -190,15 +196,13 @@ void smf_pdu_session::add_qos_flow(const smf_qos_flow& flow) {
 bool smf_pdu_session::get_qos_flow(
     const pfcp::pdr_id_t& pdr_id, smf_qos_flow& q) {
   std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.pdr_id_ul.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
-    if (it.second.pdr_id_dl.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
+  for (const auto& it : qos_flows) {
+        for (const auto& flow : it.second) {
+            if (flow.pdr_id_ul.rule_id == pdr_id.rule_id || flow.pdr_id_dl.rule_id == pdr_id.rule_id) {
+                q = flow; // Assign the found flow to q
+                return true;
+            }
+        }
   }
   return false;
 }
@@ -207,17 +211,17 @@ bool smf_pdu_session::get_qos_flow(
 bool smf_pdu_session::get_qos_flow(
     const pfcp::far_id_t& far_id, smf_qos_flow& q) {
   std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if ((it.second.far_id_ul.first) &&
-        (it.second.far_id_ul.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
-    if ((it.second.far_id_dl.first) &&
-        (it.second.far_id_dl.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
+  for (auto& it : qos_flows) {
+        for (auto& flow : it.second) {
+            if ((flow.far_id_ul.first) && (flow.far_id_ul.second.far_id == far_id.far_id)) {
+                q = flow;
+                return true;
+            }
+            if ((flow.far_id_dl.first) && (flow.far_id_dl.second.far_id == far_id.far_id)) {
+                q = flow;
+                return true;
+            }
+        }
   }
   return false;
 }
@@ -225,11 +229,13 @@ bool smf_pdu_session::get_qos_flow(
 //------------------------------------------------------------------------------
 bool smf_pdu_session::get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& q) {
   std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.qfi == qfi) {
-      q = it.second;
-      return true;
-    }
+  for (auto& it : qos_flows) {
+        for (auto& flow : it.second) {
+            if (flow.qfi == qfi) {
+                q = flow;
+                return true;
+            }
+        }
   }
   return false;
 }
@@ -249,8 +255,10 @@ bool smf_pdu_session::get_default_qos_flow(smf_qos_flow& flow) {
 void smf_pdu_session::get_qos_flows(std::vector<smf_qos_flow>& flows) {
   std::shared_lock lock(m_pdu_session_mutex);
   flows.clear();
-  for (auto it : qos_flows) {
-    flows.push_back(it.second);
+  for (auto& entry : qos_flows) {
+    for (auto& flow : entry.second) {
+      flows.push_back(flow);
+    }
   }
 }
 
@@ -258,11 +266,12 @@ void smf_pdu_session::get_qos_flows(std::vector<smf_qos_flow>& flows) {
 bool smf_pdu_session::find_qos_flow(
     const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow) {
   std::shared_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    if ((it->second.pdr_id_ul == pdr_id) || (it->second.pdr_id_dl == pdr_id)) {
-      flow = it->second;
-      return true;
+  for (auto& entry : qos_flows) {
+    for (auto& qos_flow : entry.second) {
+      if ((qos_flow.pdr_id_ul == pdr_id) || (qos_flow.pdr_id_dl == pdr_id)) {
+        flow = qos_flow;
+        return true;
+      }
     }
   }
   return false;
@@ -271,9 +280,22 @@ bool smf_pdu_session::find_qos_flow(
 //------------------------------------------------------------------------------
 void smf_pdu_session::remove_qos_flow(const pfcp::qfi_t& qfi) {
   std::unique_lock lock(m_pdu_session_mutex);
-  smf_qos_flow& flow = qos_flows[qfi.qfi];
-  flow.deallocate_ressources();
-  qos_flows.erase(qfi.qfi);
+  // Check if the qfi exists in the map
+  auto it = qos_flows.find(qfi.qfi);
+  if (it != qos_flows.end()) {
+    // Access the vector of smf_qos_flow for the given qfi.qfi
+    std::vector<smf_qos_flow>& flows = it->second;
+
+    // Here you might iterate through 'flows' if needed or perform actions directly
+
+    // Clear resources for all flows in the vector
+    for (auto& flow : flows) {
+      flow.deallocate_ressources();
+    }
+
+    // Remove the entry from the map
+    qos_flows.erase(it);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -288,24 +310,23 @@ void smf_pdu_session::remove_qos_flow(smf_qos_flow& flow) {
 //------------------------------------------------------------------------------
 void smf_pdu_session::remove_qos_flows() {
   std::unique_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    it->second.deallocate_ressources();
+  for (auto& entry : qos_flows) {
+    // 'entry.second' represents the vector of smf_qos_flow for each QFI
+    for (auto& flow : entry.second) {
+      flow.deallocate_ressources();
+    }
   }
   qos_flows.clear();
 }
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    // TODO: release FAR_ID, PDR_ID
-    // release_pdr_id(it->second.pdr_id_dl);
-    // release_pdr_id(it->second.pdr_id_ul);
-    // release_far_id(it->second.far_id_dl.second);
-    // release_far_id(it->second.far_id_ul.second);
-    it->second.deallocate_ressources();
+  for (auto& entry : qos_flows) {
+    for (auto& qos_flow : entry.second) {
+      qos_flow.deallocate_ressources();
+    }
   }
+
   if (ipv4) {
     paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
   }
