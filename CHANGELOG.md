@@ -1,5 +1,14 @@
 # RELEASE NOTES: #
 
+## v2.0.1 -- January 2024 ##
+
+* Features
+  - Add N1/N2 info in the message response to AMF if available
+* Fixes
+  - Remove NRF dependency from SMF
+* Tech debt
+  - Refactor SMF PFCP associations to always use UPF info
+
 ## v2.0.0 -- December 2023 ##
 
 * Features
