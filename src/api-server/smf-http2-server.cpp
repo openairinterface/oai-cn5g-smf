@@ -456,6 +456,7 @@ void smf_http2_server::create_sm_contexts_handler(
   nlohmann::json json_data = {};
   std::string json_format  = {};
   bool n1_sm_msg_is_set    = false;
+  bool n2_sm_info_is_set   = false;
   int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
 
   if (sm_context_response.find("http_code") != sm_context_response.end()) {
@@ -474,8 +475,49 @@ void smf_http2_server::create_sm_contexts_handler(
     n1_sm_msg_is_set = true;
   }
 
+  if (sm_context_response.find("n2_sm_information") !=
+      sm_context_response.end()) {
+    n2_sm_info_is_set = true;
+  }
+
+  std::string body = {};
+
   // Add header
   header_map h;
+
+  if (n1_sm_msg_is_set and n2_sm_info_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n1_sm_message"].get<std::string>(),
+        sm_context_response["n2_sm_information"].get<std::string>(),
+        json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else if (n1_sm_msg_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n1_sm_message"].get<std::string>(),
+        multipart_related_content_part_e::NAS, json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else if (n2_sm_info_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n2_sm_information"].get<std::string>(),
+        multipart_related_content_part_e::NGAP, json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else {
+    h.emplace("content-type", header_value{json_format});
+    body = json_data.dump().c_str();
+  }
+
   // Location header
   if (sm_context_response.find("smf_context_uri") !=
       sm_context_response.end()) {
@@ -487,11 +529,15 @@ void smf_http2_server::create_sm_contexts_handler(
         header_value{
             sm_context_response["smf_context_uri"].get<std::string>().c_str()});
   }
-  // content-type header
-  h.emplace("content-type", header_value{json_format});
-  response.write_head(http_code, h);
 
-  response.end(json_data.dump().c_str());
+  // content-type header
+  //  h.emplace("content-type", header_value{json_format});
+  //  response.write_head(http_code, h);
+
+  // response.end(json_data.dump().c_str());
+
+  response.write_head(http_code, h);
+  response.end(body);
 }
 
 //------------------------------------------------------------------------------
