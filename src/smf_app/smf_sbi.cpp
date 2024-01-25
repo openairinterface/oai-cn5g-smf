@@ -594,8 +594,6 @@ void smf_sbi::register_nf_instance(
       "Send NF Instance Registration to NRF, msg body: \n %s (bytes %d)",
       body.c_str(), body.size());
 
-  // int i = 0;
-  // while (i < NRF_REGISTRATION_RETRY) {
   std::string response_data = {};
   // Generate a promise and associate this promise to the curl handle
   uint32_t promise_id = generate_promise_id();
