@@ -309,9 +309,6 @@ void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
       "Resources associated with this PDU Session have been released");
 }
 
-//------------------------------------------------------------------------------
-void smf_pdu_session::generate_seid() {}
-
 void smf_pdu_session::set_seid(const uint64_t& s) {
   seid = s;
 }

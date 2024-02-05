@@ -93,11 +93,6 @@ class smf_app {
   std::thread::id thread_id;
   std::thread thread;
 
-  // seid generator
-  uint64_t seid_n4_generator;
-  std::mutex m_seid_n4_generator;
-  std::set<uint64_t> set_seid_n4;
-
   std::map<seid_t, std::shared_ptr<smf_context>> seid2smf_context;
   mutable std::shared_mutex m_seid2smf_context;
 
@@ -106,6 +101,8 @@ class smf_app {
 
   util::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
+
+  util::uint_generator<uint64_t> seid_generator;
 
   util::uint_generator<uint32_t> teid_generator;
 
