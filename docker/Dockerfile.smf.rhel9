@@ -21,14 +21,14 @@
 #---------------------------------------------------------------------
 #
 # Dockerfile for the Open-Air-Interface SMF service
-#   Valid for UBI 8.6 | RHEL 8.6
+#   Valid for UBI 9.x | RHEL 9.x
 #
 #---------------------------------------------------------------------
 
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi8/ubi:latest AS oai-smf-builder
+FROM registry.access.redhat.com/ubi9/ubi:latest AS oai-smf-builder
 
 ENV IS_DOCKERFILE=1
 
@@ -40,11 +40,11 @@ COPY ./rhsm-conf /etc/rhsm
 COPY ./rhsm-ca /etc/rhsm/ca
 
 RUN rm -f /etc/rhsm-host && \
-    yum repolist --disablerepo=* && \
-    subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms && \
-    yum update -y && \
+    subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
+    dnf update -y && \
+    # here just to display the current version
     cat /etc/os-release && \
-    yum install -y \
+    dnf install -y \
         psmisc \
         git \
         diffutils \
@@ -89,7 +89,7 @@ FROM mikefarah/yq:latest as yq-source
 #---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as oai-smf
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as oai-smf
 ENV TZ=Europe/Paris
 
 # Copy the entitlements
