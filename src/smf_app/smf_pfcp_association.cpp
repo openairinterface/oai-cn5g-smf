@@ -34,7 +34,6 @@
 #include "smf_procedure.hpp"
 #include "smf_config.hpp"
 #include "fqdn.hpp"
-#include <arpa/inet.h>
 
 using namespace smf;
 using namespace std;
@@ -45,30 +44,28 @@ extern smf_n4* smf_n4_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 //---------------------------------------------------------------------------------------------
-edge edge::from_upf_info(const upf_info_t& upf_info) {
+edge edge::from_upf_info(const oai::model::nrf::UpfInfo& upf_info) {
   edge e                             = {};
   snssai_upf_info_item_s snssai_item = {};
 
-  Logger::smf_app().debug("UPF info: %s", upf_info.to_string().c_str());
+  Logger::smf_app().debug(
+      "Adding edge for UPF with UPF Info: \n %s", upf_info.to_string(0));
+  // TODO temporary refactor, this is not really necessary anymore
 
-  for (auto& snssai : upf_info.snssai_upf_info_list) {
-    snssai_item.snssai            = snssai.snssai;
-    snssai_item.dnn_upf_info_list = snssai.dnn_upf_info_list;
-    bool found                    = false;
-    for (auto& item : e.snssai_dnns) {
-      if (item.snssai == snssai.snssai) {
-        // Update item if exist
-        found = true;
-        snssai_item.dnn_upf_info_list.insert(
-            item.dnn_upf_info_list.begin(), item.dnn_upf_info_list.end());
-        item.dnn_upf_info_list = snssai_item.dnn_upf_info_list;
-        // Logger::smf_app().debug(
-        //    "Updated item info: %s", snssai_item.to_string().c_str());
-        break;
+  for (auto& snssai : upf_info.getSNssaiUpfInfoList()) {
+    snssai_item.snssai =
+        snssai_t(snssai.getSNssai().getSst(), snssai.getSNssai().getSd());
+    for (const auto& dnn_item : snssai.getDnnUpfInfoList()) {
+      dnn_upf_info_item_t dnn_info_item;
+      dnn_info_item.dnn = dnn_item.getDnn();
+      for (const auto& dnai : dnn_item.getDnaiList()) {
+        dnn_info_item.dnai_list.insert(dnai);
       }
+      dnn_info_item.dnai_nw_instance_list = dnn_item.getDnaiNwInstanceList();
+      snssai_item.dnn_upf_info_list.insert(dnn_info_item);
     }
-    // Insert a new item otherwise
-    if (!found) e.snssai_dnns.insert(snssai_item);
+
+    e.snssai_dnns.insert(snssai_item);
   }
 
   if (!e.snssai_dnns.empty()) {
@@ -84,27 +81,33 @@ edge edge::from_upf_info(const upf_info_t& upf_info) {
 
 //---------------------------------------------------------------------------------------------
 edge edge::from_upf_info(
-    const upf_info_t& upf_info, const interface_upf_info_item_t& interface) {
+    const oai::model::nrf::UpfInfo& upf_info,
+    const oai::model::nrf::InterfaceUpfInfoItem& interface) {
   // TODO: Bring updates from the previous funtion to this one
   edge e = {};
-  e.type = pfcp_association::iface_type_from_string(interface.interface_type);
-  e.ip_addr.s_addr = interface.ipv4_addresses[0].s_addr;
+  // TODO temporary refactor, this is not really necessary anymore
+  e.type = pfcp_association::iface_type_from_string(
+      interface.getInterfaceType().getEnumString());
+  if (interface.ipv4EndpointAddressesIsSet()) {
+    e.ip_addr = conv::fromString(interface.getIpv4EndpointAddresses()[0]);
+  }
   // e.ip6_addr    = interface.ipv6_addresses[0];
-  e.nw_instance = interface.network_instance;
+  e.nw_instance = interface.getNetworkInstance();
 
   // we filter out the DNAIs which do not map to the given NW interface
-  for (const auto& snssai_item : upf_info.snssai_upf_info_list) {
+  for (const auto& snssai_item : upf_info.getSNssaiUpfInfoList()) {
     snssai_upf_info_item_s new_snssai_item;
-    new_snssai_item.snssai = snssai_item.snssai;
+    new_snssai_item.snssai = snssai_t(
+        snssai_item.getSNssai().getSst(), snssai_item.getSNssai().getSd());
 
-    for (const auto& dnn_item : snssai_item.dnn_upf_info_list) {
+    for (const auto& dnn_item : snssai_item.getDnnUpfInfoList()) {
       dnn_upf_info_item_s new_dnn_item;
-      new_dnn_item.dnn = dnn_item.dnn;
-      if (!dnn_item.dnai_list.empty() &&
-          !dnn_item.dnai_nw_instance_list.empty()) {
-        for (const auto& dnai : dnn_item.dnai_list) {
-          auto dnai_it = dnn_item.dnai_nw_instance_list.find(dnai);
-          if (dnai_it != dnn_item.dnai_nw_instance_list.end()) {
+      new_dnn_item.dnn           = dnn_item.getDnn();
+      auto dnai_nw_instance_list = dnn_item.getDnaiNwInstanceList();
+      if (!dnn_item.getDnaiList().empty() && !dnai_nw_instance_list.empty()) {
+        for (const auto& dnai : dnn_item.getDnaiList()) {
+          auto dnai_it = dnai_nw_instance_list.find(dnai);
+          if (dnai_it != dnai_nw_instance_list.end()) {
             if (dnai_it->second == e.nw_instance) {
               new_dnn_item.dnai_list.insert(dnai);
               break;
@@ -369,25 +372,21 @@ void pfcp_association::restore_n4_sessions() {
 //---------------------------------------------------------------------------------------------
 bool pfcp_association::find_interface_edge(
     const iface_type& type_match, std::vector<edge>& edges) {
-  if (!is_upf_profile_set()) {
-    return false;
-  }
-  upf_info_t upf_info = {};
-
-  upf_node_profile.get_upf_info(upf_info);
-  for (const auto& iface : upf_info.interface_upf_info_list) {
-    iface_type type = iface_type_from_string(iface.interface_type);
+  for (const auto& iface : m_upf_cfg.get_upf_info().getInterfaceUpfInfoList()) {
+    iface_type type =
+        iface_type_from_string(iface.getInterfaceType().getEnumString());
     if (type == type_match) {
-      edges.emplace_back(edge::from_upf_info(upf_info, iface));
+      edges.emplace_back(edge::from_upf_info(m_upf_cfg.get_upf_info(), iface));
     }
   }
   // Because interfaceUpfInfoList is optional in TS 29.510 (why even?), we
   // just guess that this UPF has a N3 or N6 interface
-  if (upf_info.interface_upf_info_list.empty()) {
+  if (!m_upf_cfg.get_upf_info().interfaceUpfInfoListIsSet() ||
+      m_upf_cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
     Logger::smf_app().info(
         "UPF Interface list is empty: Assume that the UPF has a N3 and a N6 "
         "interface.");
-    edge e = edge::from_upf_info(upf_info);
+    edge e = edge::from_upf_info(m_upf_cfg.get_upf_info());
     e.type = type_match;
     edges.emplace_back(e);
   }
@@ -414,26 +413,20 @@ bool pfcp_association::find_n6_edge(std::vector<edge>& edges) {
 //------------------------------------------------------------------------------
 bool pfcp_association::find_upf_edge(
     const std::shared_ptr<pfcp_association>& other_upf, edge& out_edge) {
-  if (!is_upf_profile_set() || !other_upf->is_upf_profile_set()) {
+  if (!m_upf_cfg.get_upf_info().interfaceUpfInfoListIsSet() ||
+      !other_upf->get_upf_info().interfaceUpfInfoListIsSet()) {
     return false;
   }
 
-  upf_info_t upf_info;
-
-  upf_node_profile.get_upf_info(upf_info);
-  for (const auto& iface : upf_info.interface_upf_info_list) {
-    if (iface.endpoint_fqdn == other_upf->get_upf_node_profile().get_fqdn()) {
-      out_edge = edge::from_upf_info(upf_info, iface);
+  for (const auto& iface : m_upf_cfg.get_upf_info().getInterfaceUpfInfoList()) {
+    if (iface.getEndpointFqdn() == other_upf->m_upf_cfg.get_host()) {
+      out_edge = edge::from_upf_info(m_upf_cfg.get_upf_info(), iface);
       return true;
     }
-    for (auto current_ip : iface.ipv4_addresses) {
-      std::vector<in_addr> other_ips;
-      other_upf->get_upf_node_profile().get_nf_ipv4_addresses(other_ips);
-      for (auto other_ip : other_ips) {
-        if (current_ip.s_addr == other_ip.s_addr) {
-          out_edge = edge::from_upf_info(upf_info, iface);
-          return true;
-        }
+    for (const auto& current_ip : iface.getIpv4EndpointAddresses()) {
+      if (current_ip == other_upf->m_upf_cfg.get_host()) {
+        out_edge = edge::from_upf_info(m_upf_cfg.get_upf_info(), iface);
+        return true;
       }
     }
   }
@@ -441,35 +434,64 @@ bool pfcp_association::find_upf_edge(
 }
 
 //------------------------------------------------------------------------------
-std::string pfcp_association::get_printable_name() {
-  if (upf_profile_is_set) {
-    if (!upf_node_profile.get_fqdn().empty()) {
-      return upf_node_profile.get_fqdn();
-    }
-    std::vector<in_addr> ipv4_addresses;
-    upf_node_profile.get_nf_ipv4_addresses(ipv4_addresses);
-    if (!ipv4_addresses.empty()) {
-      std::string addresses;
-      for (auto add : ipv4_addresses) {
-        addresses.append(conv::toString(add));
-        addresses.append(";");
-      }
-      return addresses;
-    }
-    return std::to_string(hash_node_id);
-  } else {
-    return std::to_string(hash_node_id);
-  }
+std::string pfcp_association::get_printable_name() const {
+  return m_upf_cfg.get_host();
 }
 
 //------------------------------------------------------------------------------
 void pfcp_association::display() {
-  Logger::smf_app().debug("\tUPF Node Id: %s", node_id.toString().c_str());
+  std::string title_fmt = oai::config::get_title_formatter(2);
+  std::string value_fmt = oai::config::get_value_formatter(3);
 
-  if (upf_profile_is_set) {
-    Logger::smf_app().debug("\tUPF Node profile:");
-    upf_node_profile.display();
+  std::string out = fmt::format(title_fmt, "PFCP Association");
+  out.append(fmt::format(value_fmt, "Node ID: ", node_id.toString()));
+  out.append(fmt::format(title_fmt, "UPF Profile"));
+  out.append(m_upf_cfg.to_string("  "));
+
+  std::stringstream ss(out);
+  std::string line;
+
+  while (std::getline(ss, line)) {
+    Logger::smf_app().debug(line);
   }
+}
+
+//------------------------------------------------------------------------------
+oai::model::nrf::UpfInfo pfcp_association::get_upf_info() const {
+  return m_upf_cfg.get_upf_info();
+}
+
+//------------------------------------------------------------------------------
+const oai::config::smf::upf& pfcp_association::get_upf_config() const {
+  return m_upf_cfg;
+}
+
+//------------------------------------------------------------------------------
+bool pfcp_association::serves_network(
+    const oai::model::common::Snssai& snssai, const std::string& dnn) const {
+  Logger::smf_app().info(
+      "Verifying if UPF %s serves DNN %s and SNSSAI \n %s",
+      get_printable_name(), dnn, snssai.to_string(0));
+  for (const auto& snssai_item : get_upf_info().getSNssaiUpfInfoList()) {
+    if (snssai_item.getSNssai() == snssai) {
+      Logger::smf_app().debug(
+          "UPF %s serves SNSSAI\n %s", get_printable_name(),
+          snssai.to_string(0));
+      for (const auto& dnn_item : snssai_item.getDnnUpfInfoList()) {
+        if (dnn_item.getDnn() == dnn) {
+          return true;
+        }
+        Logger::smf_app().debug(
+            "UPF %s does NOT serve DNN %s", get_printable_name(), dnn);
+      }
+    } else {
+      Logger::smf_app().debug(
+          "UPF %s does NOT serve SNSSAI\n %s", get_printable_name(),
+          snssai.to_string(0));
+    }
+  }
+
+  return false;
 }
 
 /******************************************************************************/
@@ -477,9 +499,10 @@ void pfcp_association::display() {
 /******************************************************************************/
 
 std::shared_ptr<pfcp_association> pfcp_associations::check_association_on_add(
-    pfcp::node_id_t& node_id, pfcp::recovery_time_stamp_t& recovery_time_stamp,
-    bool& restore_n4_sessions, const bool use_function_features,
-    pfcp::up_function_features_s& function_features) {
+    const pfcp::node_id_t& node_id,
+    const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+    bool& restore_n4_sessions, bool use_function_features,
+    const pfcp::up_function_features_s& function_features) {
   std::shared_ptr<pfcp_association> sa = {};
   if (get_association(node_id, sa)) {
     itti_inst->timer_remove(sa->timer_heartbeat);
@@ -539,116 +562,82 @@ bool pfcp_associations::resolve_upf_hostname(pfcp::node_id_t& node_id) {
   return true;  // no FQDN so we just continue
 }
 
-//---------------------------------------------------------------------------------------------
-void pfcp_associations::associate_with_upf_profile(
-    std::shared_ptr<pfcp_association>& sa, const pfcp::node_id_t& node_id) {
-  // TODO wouldn't it be better to use a shared lock? because here we have only
-  // read access
-  std::lock_guard<std::mutex> lck(m_mutex);
-  // Associate with UPF profile if exist
-  for (const auto& it : pending_associations) {
-    if (it->is_upf_profile_set() && ((it->node_id.fqdn == node_id.fqdn) ||
-                                     (it->node_id.u1.ipv4_address.s_addr ==
-                                      node_id.u1.ipv4_address.s_addr))) {
-      Logger::smf_app().info("Associate with UPF profile");
-      sa->set_upf_node_profile(it->get_upf_node_profile());
-      return;
-    }
-  }
-}
-
 //------------------------------------------------------------------------------
 bool pfcp_associations::add_association(
-    pfcp::node_id_t& node_id, pfcp::recovery_time_stamp_t& recovery_time_stamp,
-    bool& restore_n4_sessions) {
-  pfcp::up_function_features_s tmp     = {};
+    pfcp::node_id_t& node_id,
+    const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+    bool& restore_n4_sessions,
+    const pfcp::up_function_features_s& function_feature,
+    const pfcp::enterprise_specific_s&, bool use_function_features, bool) {
+  // TODO enterprise_specific is unused, also before refactor
+
   std::shared_ptr<pfcp_association> sa = check_association_on_add(
-      node_id, recovery_time_stamp, restore_n4_sessions, false, tmp);
+      node_id, recovery_time_stamp, restore_n4_sessions, use_function_features,
+      function_feature);
+
   if (sa) return true;
 
   if (!resolve_upf_hostname(node_id)) return false;
 
   restore_n4_sessions = false;
-  sa = std::make_shared<pfcp_association>(node_id, recovery_time_stamp);
-  sa->recovery_time_stamp  = recovery_time_stamp;
-  std::size_t hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
 
-  associate_with_upf_profile(sa, node_id);
+  if (use_function_features) {
+    sa = std::make_shared<pfcp_association>(
+        get_upf_config(node_id), recovery_time_stamp, function_feature);
+  } else {
+    sa = std::make_shared<pfcp_association>(
+        get_upf_config(node_id), recovery_time_stamp);
+  }
 
   if (!associations_graph.full()) {
     associations_graph.insert_into_graph(sa);
     trigger_heartbeat_request_procedure(sa);
+    Logger::smf_app().debug(
+        "Added PFCP assocation with UPF config: \n %s",
+        sa->get_upf_config().to_string(""));
+    return true;
   } else {
-    Logger::smf_app().info("What do we do if too many associations?");
+    Logger::smf_app().error(
+        "PFCP Association limit of %d exceed! Node %s is not added",
+        node_id.toString(), PFCP_MAX_ASSOCIATIONS);
+    return false;
   }
-  return true;
 }
 
 //------------------------------------------------------------------------------
 bool pfcp_associations::add_association(
-    pfcp::node_id_t& node_id, pfcp::recovery_time_stamp_t& recovery_time_stamp,
-    pfcp::up_function_features_s& function_features,
+    pfcp::node_id_t& node_id,
+    const pfcp::recovery_time_stamp_t& recovery_time_stamp,
     bool& restore_n4_sessions) {
-  std::shared_ptr<pfcp_association> sa = check_association_on_add(
-      node_id, recovery_time_stamp, restore_n4_sessions, true,
-      function_features);
-  if (sa) return true;
-
-  if (!resolve_upf_hostname(node_id)) return false;
-
-  restore_n4_sessions = false;
-  sa                  = std::make_shared<pfcp_association>(
-      node_id, recovery_time_stamp, function_features);
-  sa->recovery_time_stamp      = recovery_time_stamp;
-  sa->function_features.first  = true;
-  sa->function_features.second = function_features;
-  std::size_t hash_node_id     = std::hash<pfcp::node_id_t>{}(node_id);
-
-  associate_with_upf_profile(sa, node_id);
-
-  if (!associations_graph.full()) {
-    associations_graph.insert_into_graph(sa);
-    // Display UPF Node profile
-    sa->get_upf_node_profile().display();
-    trigger_heartbeat_request_procedure(sa);
-  } else {
-    Logger::smf_app().info("What do we do if too many associations?");
-  }
-  return true;
+  pfcp::up_function_features_s tmp_function{};
+  pfcp::enterprise_specific_s tmp_enterprise{};
+  return add_association(
+      node_id, recovery_time_stamp, restore_n4_sessions, tmp_function,
+      tmp_enterprise, false, false);
 }
 
 //------------------------------------------------------------------------------
 bool pfcp_associations::add_association(
-    pfcp::node_id_t& node_id, pfcp::recovery_time_stamp_t& recovery_time_stamp,
-    pfcp::up_function_features_s& function_features,
-    pfcp::enterprise_specific_s& enterprise_specific,
+    pfcp::node_id_t& node_id,
+    const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+    const pfcp::up_function_features_s& function_features,
     bool& restore_n4_sessions) {
-  // TODO what is this enterprise_specfic, this is not used at all, even before
-  // the refactor
+  pfcp::enterprise_specific_s tmp{};
+  return add_association(
+      node_id, recovery_time_stamp, restore_n4_sessions, function_features, tmp,
+      true, false);
+}
 
-  std::shared_ptr<pfcp_association> sa = check_association_on_add(
-      node_id, recovery_time_stamp, restore_n4_sessions, true,
-      function_features);
-  if (sa) return true;
-
-  restore_n4_sessions = false;
-  sa                  = std::make_shared<pfcp_association>(
-      node_id, recovery_time_stamp, function_features);
-  sa->recovery_time_stamp      = recovery_time_stamp;
-  sa->function_features.first  = true;
-  sa->function_features.second = function_features;
-  std::size_t hash_node_id     = std::hash<pfcp::node_id_t>{}(node_id);
-
-  // TODO why don't we check the FQDN and associate with UPF profile here as
-  // well?
-
-  if (!associations_graph.full()) {
-    associations_graph.insert_into_graph(sa);
-    trigger_heartbeat_request_procedure(sa);
-  } else {
-    Logger::smf_app().info("What do we do if too many associations?");
-  }
-  return true;
+//------------------------------------------------------------------------------
+bool pfcp_associations::add_association(
+    pfcp::node_id_t& node_id,
+    const pfcp::recovery_time_stamp_t& recovery_time_stamp,
+    const pfcp::up_function_features_s& function_features,
+    const pfcp::enterprise_specific_s& enterprise_specific,
+    bool& restore_n4_sessions) {
+  return add_association(
+      node_id, recovery_time_stamp, restore_n4_sessions, function_features,
+      enterprise_specific, true, true);
 }
 
 //------------------------------------------------------------------------------
@@ -811,12 +800,6 @@ void pfcp_associations::handle_receive_heartbeat_response(
 
 //------------------------------------------------------------------------------
 std::shared_ptr<upf_graph> pfcp_associations::select_up_node(
-    const int node_selection_criteria) {
-  return associations_graph.select_upf_node(node_selection_criteria);
-}
-
-//------------------------------------------------------------------------------
-std::shared_ptr<upf_graph> pfcp_associations::select_up_node(
     const snssai_t& snssai, const std::string& dnn) {
   return associations_graph.select_upf_node(snssai, dnn);
 }
@@ -845,48 +828,20 @@ void pfcp_associations::notify_del_session(const pfcp::fseid_t& cp_fseid) {
   }
 }
 
-//------------------------------------------------------------------------------
 bool pfcp_associations::add_peer_candidate_node(
-    const pfcp::node_id_t& node_id) {
-  for (std::vector<std::shared_ptr<pfcp_association>>::iterator it =
-           pending_associations.begin();
-       it < pending_associations.end(); ++it) {
-    if ((*it)->node_id == node_id) {
-      // TODO purge sessions of this node
-      Logger::smf_app().info("TODO purge sessions of this node");
-      // Protect the deletion
-      std::lock_guard<std::mutex> lck(m_mutex);
-      pending_associations.erase(it);
-      break;
+    const oai::config::smf::upf& upf_cfg) {
+  std::unique_lock peer_lock(m_mutex);
+  for (const auto& association : pending_associations) {
+    if (association->node_id == upf_cfg.get_node_id()) {
+      Logger::smf_app().debug(
+          "UPF %s already exists on pending associations.",
+          association->get_printable_name());
+      return true;
     }
   }
 
-  std::shared_ptr<pfcp_association> s =
-      std::make_shared<pfcp_association>(node_id);
-  pending_associations.push_back(s);
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool pfcp_associations::add_peer_candidate_node(
-    const pfcp::node_id_t& node_id, const upf_profile& profile) {
-  for (std::vector<std::shared_ptr<pfcp_association>>::iterator it =
-           pending_associations.begin();
-       it < pending_associations.end(); ++it) {
-    if ((*it)->node_id == node_id) {
-      // TODO purge sessions of this node
-      Logger::smf_app().info("TODO purge sessions of this node");
-      pending_associations.erase(it);
-      break;
-    }
-  }
-
-  std::shared_ptr<pfcp_association> s =
-      std::make_shared<pfcp_association>(node_id);
-  s->set_upf_node_profile(profile);
-  pending_associations.push_back(s);
-  // Logger::smf_app().info("Added a pending association candidate");
-  // s->display();
+  pending_associations.emplace_back(
+      std::make_shared<pfcp_association>(upf_cfg));
   return true;
 }
 
@@ -903,6 +858,76 @@ bool pfcp_associations::remove_association(const int32_t& hash_node_id) {
   return associations_graph.remove_association(association);
 }
 
+//------------------------------------------------------------------------------
+oai::config::smf::upf pfcp_associations::get_upf_config(
+    const pfcp::node_id_t& node_id) const {
+  std::shared_lock peer_lock(m_mutex);
+  for (const auto& it : pending_associations) {
+    if (it->node_id == node_id) {
+      Logger::smf_app().debug(
+          "Found UPF config for pending PFCP association %s",
+          node_id.toString());
+      return it->get_upf_config();
+    }
+  }
+
+  for (const auto& upf : smf_cfg->smf()->get_upfs()) {
+    if (upf.get_node_id() == node_id) {
+      Logger::smf_app().debug(
+          "Found UPF config for UPF-associated association %s",
+          node_id.toString());
+      return upf;
+    }
+  }
+  Logger::smf_app().debug(
+      "Did not find a UPF config for UPF-associated association %s. Use empty "
+      "UPF profile with one assumed N3 and N6 interface.",
+      node_id.toString());
+  oai::model::nrf::UpfInfo info;
+  oai::model::nrf::InterfaceUpfInfoItem n3;
+  oai::model::nrf::InterfaceUpfInfoItem n6;
+  oai::model::nrf::UPInterfaceType n3_type;
+  n3_type.setEnumValue(
+      oai::model::nrf::UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
+  oai::model::nrf::UPInterfaceType n6_type;
+  n6_type.setEnumValue(
+      oai::model::nrf::UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+  n3.setInterfaceType(n3_type);
+  n6.setInterfaceType(n6_type);
+
+  info.setInterfaceUpfInfoList(
+      std::vector<oai::model::nrf::InterfaceUpfInfoItem>{n3, n6});
+
+  // we use the default UPF
+  auto upf_cfg = oai::config::smf::DEFAULT_UPF;
+  std::string host;
+
+  switch (node_id.node_id_type) {
+    case pfcp::NODE_ID_TYPE_FQDN:
+      host = node_id.fqdn;
+      break;
+    case pfcp::NODE_ID_TYPE_IPV4_ADDRESS:
+      host = conv::toString(node_id.u1.ipv4_address);
+      break;
+    case pfcp::NODE_ID_TYPE_IPV6_ADDRESS:
+      host = conv::toString(node_id.u1.ipv6_address);
+      break;
+    default:
+      Logger::smf_app().error(
+          "Wrong PFCP Node ID type. Use default Host %s", upf_cfg.get_host());
+      host = upf_cfg.get_host();
+      break;
+  }
+  upf_cfg = oai::config::smf::upf(
+      host, upf_cfg.get_port(), upf_cfg.enable_usage_reporting(),
+      upf_cfg.enable_dl_pdr_in_session_establishment(),
+      upf_cfg.get_local_n3_ip());
+
+  upf_cfg.set_upf_info(info);
+
+  return upf_cfg;
+}
+
 /******************************************************************************/
 /***************************** UPF GRAPH
  * **************************************/
@@ -910,79 +935,58 @@ bool pfcp_associations::remove_association(const int32_t& hash_node_id) {
 
 //------------------------------------------------------------------------------
 void upf_graph::insert_into_graph(const std::shared_ptr<pfcp_association>& sa) {
-  if (!sa->upf_profile_is_set) {
-    Logger::smf_app().info(
-        "Cannot connect UPF to other nodes in the graph as it has no "
-        "profile, "
-        "just add the node");
-    Logger::smf_app().info("Assume that the UPF has a N3 and a N6 interface.");
+  std::vector<std::shared_ptr<pfcp_association>> all_upfs;
+  std::vector<std::pair<edge, edge>> edges;
 
-    edge n3_edge        = {};
-    n3_edge.type        = iface_type::N3;
-    n3_edge.nw_instance = smf_cfg->get_nwi(sa->node_id, iface_type::N3);
-    n3_edge.uplink      = false;
-    edge n6_edge        = {};
-    n6_edge.type        = iface_type::N6;
-    n6_edge.nw_instance = smf_cfg->get_nwi(sa->node_id, iface_type::N6);
-    n6_edge.uplink      = true;
+  std::vector<edge> n3_edges;
+  std::vector<edge> n6_edges;
+  // iterate through all interfaces and see if the FQDN/IPv4 addresses of
+  // existing UPFs match
+  std::unique_lock graph_lock(graph_mutex);
 
-    add_upf_graph_edge(sa, n3_edge);
-    add_upf_graph_edge(sa, n6_edge);
-
-  } else {
-    std::vector<std::shared_ptr<pfcp_association>> all_upfs;
-    std::vector<std::pair<edge, edge>> edges;
-
-    std::vector<edge> n3_edges;
-    std::vector<edge> n6_edges;
-    // iterate through all interfaces and see if the FQDN/IPv4 addresses of
-    // existing UPFs match
-    std::unique_lock graph_lock(graph_mutex);
-
-    // Find N9 interfaces
-    for (const auto& it : adjacency_list) {
-      edge src_dst;
-      edge dst_src;
-      bool found = sa->find_upf_edge(it.first, src_dst);
+  // Find N9 interfaces
+  for (const auto& it : adjacency_list) {
+    edge src_dst;
+    edge dst_src;
+    bool found = sa->find_upf_edge(it.first, src_dst);
+    if (found) {
+      // now other direction
+      found = it.first->find_upf_edge(sa, dst_src);
       if (found) {
-        // now other direction
-        found = it.first->find_upf_edge(sa, dst_src);
-        if (found) {
-          all_upfs.push_back(it.first);
-          edges.emplace_back(src_dst, dst_src);
+        all_upfs.push_back(it.first);
+        edges.emplace_back(src_dst, dst_src);
 
-        } else {
-          Logger::smf_app().warn(
-              "Found edge from %s to %s, but not in the other direction. You "
-              "have an error in your UPF configuration. This UPF is not "
-              "added "
-              "to the graph",
-              sa->get_printable_name().c_str(),
-              it.first->get_printable_name().c_str());
-        }
+      } else {
+        Logger::smf_app().warn(
+            "Found edge from %s to %s, but not in the other direction. You "
+            "have an error in your UPF configuration. This UPF is not "
+            "added "
+            "to the graph",
+            sa->get_printable_name().c_str(),
+            it.first->get_printable_name().c_str());
       }
     }
-    // unlock as here we need unique locks
-    graph_lock.unlock();
-    // Find N6 or N3 edges
-    sa->find_n3_edge(n3_edges);
-    sa->find_n6_edge(n6_edges);
+  }
+  // unlock as here we need unique locks
+  graph_lock.unlock();
+  // Find N6 or N3 edges
+  sa->find_n3_edge(n3_edges);
+  sa->find_n6_edge(n6_edges);
 
-    if (all_upfs.empty()) {
-      Logger::smf_app().debug(
-          "Could not find other edges for UPF, just add UPF as a node");
-      add_upf_graph_node(sa);
-    } else {
-      for (int i = 0; i < all_upfs.size(); i++) {
-        add_upf_graph_edge(sa, all_upfs[i], edges[i].first, edges[i].second);
-      }
+  if (all_upfs.empty()) {
+    Logger::smf_app().debug(
+        "Could not find other edges for UPF, just add UPF as a node");
+    add_upf_graph_node(sa);
+  } else {
+    for (int i = 0; i < all_upfs.size(); i++) {
+      add_upf_graph_edge(sa, all_upfs[i], edges[i].first, edges[i].second);
     }
-    for (auto n3_edge : n3_edges) {
-      add_upf_graph_edge(sa, n3_edge);
-    }
-    for (auto n6_edge : n6_edges) {
-      add_upf_graph_edge(sa, n6_edge);
-    }
+  }
+  for (auto n3_edge : n3_edges) {
+    add_upf_graph_edge(sa, n3_edge);
+  }
+  for (auto n6_edge : n6_edges) {
+    add_upf_graph_edge(sa, n6_edge);
   }
   print_graph();
 }
@@ -1061,7 +1065,8 @@ bool upf_graph::remove_association(
 
 //---------------------------------------------------------------------------------------------
 void upf_graph::add_upf_graph_edge(
-    const std::shared_ptr<pfcp_association>& source, edge& edge_info_src_dst) {
+    const std::shared_ptr<pfcp_association>& source,
+    const edge& edge_info_src_dst) {
   add_upf_graph_node(source);
 
   std::unique_lock lock_graph(graph_mutex);
@@ -1081,8 +1086,7 @@ void upf_graph::add_upf_graph_edge(
     it_src->second.push_back((edge_info_src_dst));
     Logger::smf_app().debug(
         "Successfully added UPF graph edge for %s: %s",
-        source->get_upf_node_profile().get_fqdn().c_str(),
-        edge_info_src_dst.to_string().c_str());
+        source->get_printable_name(), edge_info_src_dst.to_string().c_str());
   }
 }
 
@@ -1109,8 +1113,8 @@ void upf_graph::add_upf_graph_node(
     adjacency_list.insert(std::make_pair(node, lst));
 
     Logger::smf_app().debug(
-        "Successfully added UPF node: %s, (%u)",
-        node->get_upf_node_profile().get_fqdn().c_str(), node->hash_node_id);
+        "Successfully added UPF node: %s, (%u)", node->get_printable_name(),
+        node->hash_node_id);
   }
 }
 
@@ -1322,60 +1326,54 @@ void upf_graph::update_edge_info(
 std::shared_ptr<upf_graph> upf_graph::select_upf_node(
     const snssai_t& snssai, const std::string& dnn) {
   Logger::smf_app().info("Select UPF Node");
-  std::shared_ptr<upf_graph> upf_graph_ptr = std::make_shared<upf_graph>();
+  auto upf_graph_ptr = std::make_shared<upf_graph>();
   std::shared_lock graph_lock(graph_mutex);
-  std::shared_ptr<pfcp_association> not_found = {};
+  std::shared_ptr<pfcp_association> used_upf = {};
   if (adjacency_list.empty()) {
-    Logger::smf_app().warn("No UPF available");
+    Logger::smf_app().warn("No UPF available. SMF selection failed");
   }
-  // First, only consider UPFs with profile ID set
-  for (const auto& it : adjacency_list) {
-    std::shared_ptr<pfcp_association> current_upf = it.first;
+  for (const auto& [current_upf, edges] : adjacency_list) {
     Logger::smf_app().debug("Current UPF info");
     current_upf->display();
-    if (current_upf->is_upf_profile_set()) {
-      upf_info_t upf_info           = {};
-      std::vector<snssai_t> snssais = {};
-      current_upf->get_upf_node_profile().get_upf_info(upf_info);
-      bool has_access  = false;
-      bool has_exit    = false;
-      edge access_edge = {};
-      edge exit_edge   = {};
-      for (const auto& edge : it.second) {
-        Logger::smf_app().debug("Verify Slice/DNN support");
-        // verify that UPF belongs to the same slice and supports this dnn
-        if (edge.serves_network(dnn, snssai)) {
-          if (edge.type == iface_type::N3) {
-            access_edge = edge;
-            has_access  = true;
-          } else if (edge.type == iface_type::N6) {
-            exit_edge = edge;
-            has_exit  = true;
-          }
-        }
-      }
-      if (has_access && has_exit) {
-        Logger::smf_app().info(
-            "Found UPF for this PDU session: %s",
-            current_upf->get_printable_name().c_str());
-        current_upf->get_upf_node_profile().display();
-        upf_graph_ptr->add_upf_graph_node(current_upf);
-        upf_graph_ptr->add_upf_graph_edge(current_upf, access_edge);
-        upf_graph_ptr->add_upf_graph_edge(current_upf, exit_edge);
-        return upf_graph_ptr;
-      }
+
+    if (current_upf->serves_network(snssai.to_model_snssai(), dnn)) {
+      used_upf = current_upf;
+      break;
     }
   }
-  // In case previous round did not produce anything, just return first UPF
-  // without profile (and just assume it has N3/N6)
-  for (const auto& it : adjacency_list) {
-    if (!it.first->is_upf_profile_set()) {
-      for (auto edge : it.second) {
-        if (edge.type != iface_type::N9) {
-          upf_graph_ptr->add_upf_graph_edge(it.first, edge);
-        }
-      }
+  if (!used_upf) {
+    // In case previous round did not produce anything, just return first UPF
+    used_upf = adjacency_list.begin()->first;
+    Logger::smf_app().warn(
+        "Did not find UPF that serves selected SNSSAI and DNN. We select any "
+        "UPF");
+  }
+  // TODO this is not very smart and not beautiful
+  // it would be better to integrate this into the DFS
+  // TBD when refactoring DFS
+  // null check is not necessary as it cannot be
+  const auto& it_upf = adjacency_list.find(used_upf);
+  bool has_access    = false;
+  bool has_exit      = false;
+  edge access_edge   = {};
+  edge exit_edge     = {};
+  for (const auto& edge : it_upf->second) {
+    if (edge.type == iface_type::N3) {
+      access_edge = edge;
+      has_access  = true;
     }
+    if (edge.type == iface_type::N6) {
+      exit_edge = edge;
+      has_exit  = true;
+    }
+  }
+  if (has_access && has_exit) {
+    Logger::smf_app().info(
+        "Found UPF for this PDU session: %s", used_upf->get_printable_name());
+    upf_graph_ptr->add_upf_graph_node(used_upf);
+    upf_graph_ptr->add_upf_graph_edge(used_upf, access_edge);
+    upf_graph_ptr->add_upf_graph_edge(used_upf, exit_edge);
+    return upf_graph_ptr;
   }
 
   if (upf_graph_ptr->adjacency_list.empty()) {
@@ -1692,12 +1690,6 @@ void upf_graph::create_subgraph_dfs(
     if (node_it == adjacency_list.end()) {
       Logger::smf_app().error(
           "DFS: node ID does not exist in UPF graph, this should not happen");
-      continue;
-    }
-
-    if (!node_it->first->is_upf_profile_set()) {
-      Logger::smf_app().debug(
-          "UPF without profile information is not considered in DFS");
       continue;
     }
 

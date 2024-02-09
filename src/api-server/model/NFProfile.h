@@ -57,6 +57,9 @@ class NFProfile {
 
   void validate();
 
+  bool operator==(const NFProfile& rhs) const;
+  bool operator!=(const NFProfile& rhs) const;
+
   /////////////////////////////////////////////
   /// NFProfile members
 

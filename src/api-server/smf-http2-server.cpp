@@ -332,8 +332,7 @@ void smf_http2_server::start() {
           std::string msg((char*) data, len);
           try {
             if (request.method().compare("POST") == 0 && len > 0) {
-              smf::data_notification_msg notification_msg = {};
-              NotificationData notificationData           = {};
+              NotificationData notificationData = {};
               nlohmann::json::parse(msg.c_str()).get_to(notificationData);
               this->nf_status_notify_handler(notificationData, response);
             }
@@ -463,6 +462,7 @@ void smf_http2_server::create_sm_contexts_handler(
   nlohmann::json json_data = {};
   std::string json_format  = {};
   bool n1_sm_msg_is_set    = false;
+  bool n2_sm_info_is_set   = false;
   int http_code            = static_cast<uint32_t>(
       oai::http::status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT);
 
@@ -482,8 +482,49 @@ void smf_http2_server::create_sm_contexts_handler(
     n1_sm_msg_is_set = true;
   }
 
+  if (sm_context_response.find("n2_sm_information") !=
+      sm_context_response.end()) {
+    n2_sm_info_is_set = true;
+  }
+
+  std::string body = {};
+
   // Add header
   header_map h;
+
+  if (n1_sm_msg_is_set and n2_sm_info_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n1_sm_message"].get<std::string>(),
+        sm_context_response["n2_sm_information"].get<std::string>(),
+        json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else if (n1_sm_msg_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n1_sm_message"].get<std::string>(),
+        multipart_related_content_part_e::NAS, json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else if (n2_sm_info_is_set) {
+    mime_parser::create_multipart_related_content(
+        body, json_data.dump(), CURL_MIME_BOUNDARY,
+        sm_context_response["n2_sm_information"].get<std::string>(),
+        multipart_related_content_part_e::NGAP, json_format);
+    h.emplace(
+        "content-type",
+        header_value{
+            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+  } else {
+    h.emplace("content-type", header_value{json_format});
+    body = json_data.dump().c_str();
+  }
+
   // Location header
   if (sm_context_response.find("smf_context_uri") !=
       sm_context_response.end()) {
@@ -495,11 +536,15 @@ void smf_http2_server::create_sm_contexts_handler(
         header_value{
             sm_context_response["smf_context_uri"].get<std::string>().c_str()});
   }
-  // content-type header
-  h.emplace("content-type", header_value{json_format});
-  response.write_head(http_code, h);
 
-  response.end(json_data.dump().c_str());
+  // content-type header
+  //  h.emplace("content-type", header_value{json_format});
+  //  response.write_head(http_code, h);
+
+  // response.end(json_data.dump().c_str());
+
+  response.write_head(http_code, h);
+  response.end(body);
 }
 
 //------------------------------------------------------------------------------
@@ -668,17 +713,13 @@ void smf_http2_server::nf_status_notify_handler(
   Logger::smf_api_server().info(
       "NFStatusNotifyApiImpl, received a NF status notification...");
 
-  smf::data_notification_msg notification_msg = {};
-  nlohmann::json json_data                    = {};
-  std::string content_type                    = "application/problem+json";
-
-  // convert from NotificationData to data_notification_msg
-  xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
+  nlohmann::json json_data = {};
+  std::string content_type = "application/problem+json";
 
   // Handle the message in smf_app
-  std::shared_ptr<itti_sbi_notification_data> itti_msg =
+  auto itti_msg =
       std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg->notification_msg = notification_msg;
+  itti_msg->notification_msg = notificationData;
   itti_msg->http_version     = 2;
 
   ProblemDetails problem_details = {};

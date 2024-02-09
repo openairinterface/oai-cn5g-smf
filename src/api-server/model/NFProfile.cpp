@@ -68,6 +68,288 @@ void NFProfile::validate() {
   // TODO: implement validation
 }
 
+// TODO move this whole class to NRF and implement == correctly
+bool NFProfile::operator==(const NFProfile& rhs) const {
+  return
+
+      (getNfInstanceId() == rhs.getNfInstanceId()) &&
+
+      ((!nfInstanceNameIsSet() && !rhs.nfInstanceNameIsSet()) ||
+       (nfInstanceNameIsSet() && rhs.nfInstanceNameIsSet() &&
+        getNfInstanceName() == rhs.getNfInstanceName())) &&
+
+      (getNfType() == rhs.getNfType()) &&
+
+      (getNfStatus() == rhs.getNfStatus()) &&
+
+      ((!heartBeatTimerIsSet() && !rhs.heartBeatTimerIsSet()) ||
+       (heartBeatTimerIsSet() && rhs.heartBeatTimerIsSet() &&
+        getHeartBeatTimer() == rhs.getHeartBeatTimer())) &&
+      /*
+      ((!plmnListIsSet() && !rhs.plmnListIsSet()) ||
+       (plmnListIsSet() && rhs.plmnListIsSet() &&
+        getPlmnList() == rhs.getPlmnList())) &&
+
+      ((!snpnListIsSet() && !rhs.snpnListIsSet()) ||
+       (snpnListIsSet() && rhs.snpnListIsSet() &&
+        getSnpnList() == rhs.getSnpnList())) &&
+      */
+      ((!sNssaisIsSet() && !rhs.sNssaisIsSet()) ||
+       (sNssaisIsSet() && rhs.sNssaisIsSet() &&
+        getSNssais() == rhs.getSNssais())) &&
+      /*
+      ((!perPlmnSnssaiListIsSet() && !rhs.perPlmnSnssaiListIsSet()) ||
+       (perPlmnSnssaiListIsSet() && rhs.perPlmnSnssaiListIsSet() &&
+        getPerPlmnSnssaiList() == rhs.getPerPlmnSnssaiList())) &&
+
+      ((!nsiListIsSet() && !rhs.nsiListIsSet()) ||
+       (nsiListIsSet() && rhs.nsiListIsSet() &&
+        getNsiList() == rhs.getNsiList())) &&
+*/
+
+      ((!fqdnIsSet() && !rhs.fqdnIsSet()) ||
+       (fqdnIsSet() && rhs.fqdnIsSet() && getFqdn() == rhs.getFqdn())) &&
+
+      ((!interPlmnFqdnIsSet() && !rhs.interPlmnFqdnIsSet()) ||
+       (interPlmnFqdnIsSet() && rhs.interPlmnFqdnIsSet() &&
+        getInterPlmnFqdn() == rhs.getInterPlmnFqdn())) &&
+
+      ((!ipv4AddressesIsSet() && !rhs.ipv4AddressesIsSet()) ||
+       (ipv4AddressesIsSet() && rhs.ipv4AddressesIsSet() &&
+        getIpv4Addresses() == rhs.getIpv4Addresses())) &&
+      /*
+      ((!ipv6AddressesIsSet() && !rhs.ipv6AddressesIsSet()) ||
+       (ipv6AddressesIsSet() && rhs.ipv6AddressesIsSet() &&
+        getIpv6Addresses() == rhs.getIpv6Addresses())) &&
+
+      ((!allowedPlmnsIsSet() && !rhs.allowedPlmnsIsSet()) ||
+       (allowedPlmnsIsSet() && rhs.allowedPlmnsIsSet() &&
+        getAllowedPlmns() == rhs.getAllowedPlmns())) &&
+
+      ((!allowedSnpnsIsSet() && !rhs.allowedSnpnsIsSet()) ||
+       (allowedSnpnsIsSet() && rhs.allowedSnpnsIsSet() &&
+        getAllowedSnpns() == rhs.getAllowedSnpns())) &&
+
+      ((!allowedNfTypesIsSet() && !rhs.allowedNfTypesIsSet()) ||
+       (allowedNfTypesIsSet() && rhs.allowedNfTypesIsSet() &&
+        getAllowedNfTypes() == rhs.getAllowedNfTypes())) &&
+
+      ((!allowedNfDomainsIsSet() && !rhs.allowedNfDomainsIsSet()) ||
+       (allowedNfDomainsIsSet() && rhs.allowedNfDomainsIsSet() &&
+        getAllowedNfDomains() == rhs.getAllowedNfDomains())) &&
+
+      ((!allowedNssaisIsSet() && !rhs.allowedNssaisIsSet()) ||
+       (allowedNssaisIsSet() && rhs.allowedNssaisIsSet() &&
+        getAllowedNssais() == rhs.getAllowedNssais())) &&
+*/
+
+      ((!priorityIsSet() && !rhs.priorityIsSet()) ||
+       (priorityIsSet() && rhs.priorityIsSet() &&
+        getPriority() == rhs.getPriority())) &&
+
+      ((!capacityIsSet() && !rhs.capacityIsSet()) ||
+       (capacityIsSet() && rhs.capacityIsSet() &&
+        getCapacity() == rhs.getCapacity())) &&
+
+      ((!loadIsSet() && !rhs.loadIsSet()) ||
+       (loadIsSet() && rhs.loadIsSet() && getLoad() == rhs.getLoad())) &&
+      /*
+      ((!loadTimeStampIsSet() && !rhs.loadTimeStampIsSet()) ||
+       (loadTimeStampIsSet() && rhs.loadTimeStampIsSet() &&
+        getLoadTimeStamp() == rhs.getLoadTimeStamp())) &&
+      */
+      ((!localityIsSet() && !rhs.localityIsSet()) ||
+       (localityIsSet() && rhs.localityIsSet() &&
+        getLocality() == rhs.getLocality())) &&
+      /*
+      ((!udrInfoIsSet() && !rhs.udrInfoIsSet()) ||
+       (udrInfoIsSet() && rhs.udrInfoIsSet() &&
+        getUdrInfo() == rhs.getUdrInfo())) &&
+
+      ((!udrInfoListIsSet() && !rhs.udrInfoListIsSet()) ||
+       (udrInfoListIsSet() && rhs.udrInfoListIsSet() &&
+        getUdrInfoList() == rhs.getUdrInfoList())) &&
+
+      ((!udmInfoIsSet() && !rhs.udmInfoIsSet()) ||
+       (udmInfoIsSet() && rhs.udmInfoIsSet() &&
+        getUdmInfo() == rhs.getUdmInfo())) &&
+
+      ((!udmInfoListIsSet() && !rhs.udmInfoListIsSet()) ||
+       (udmInfoListIsSet() && rhs.udmInfoListIsSet() &&
+        getUdmInfoList() == rhs.getUdmInfoList())) &&
+
+      ((!ausfInfoIsSet() && !rhs.ausfInfoIsSet()) ||
+       (ausfInfoIsSet() && rhs.ausfInfoIsSet() &&
+        getAusfInfo() == rhs.getAusfInfo())) &&
+
+      ((!ausfInfoListIsSet() && !rhs.ausfInfoListIsSet()) ||
+       (ausfInfoListIsSet() && rhs.ausfInfoListIsSet() &&
+        getAusfInfoList() == rhs.getAusfInfoList())) &&
+
+      ((!amfInfoIsSet() && !rhs.amfInfoIsSet()) ||
+       (amfInfoIsSet() && rhs.amfInfoIsSet() &&
+        getAmfInfo() == rhs.getAmfInfo())) &&
+
+      ((!amfInfoListIsSet() && !rhs.amfInfoListIsSet()) ||
+       (amfInfoListIsSet() && rhs.amfInfoListIsSet() &&
+        getAmfInfoList() == rhs.getAmfInfoList())) &&
+
+      ((!smfInfoIsSet() && !rhs.smfInfoIsSet()) ||
+       (smfInfoIsSet() && rhs.smfInfoIsSet() &&
+        getSmfInfo() == rhs.getSmfInfo())) &&
+
+      ((!smfInfoListIsSet() && !rhs.smfInfoListIsSet()) ||
+       (smfInfoListIsSet() && rhs.smfInfoListIsSet() &&
+        getSmfInfoList() == rhs.getSmfInfoList())) &&
+      */
+      ((!upfInfoIsSet() && !rhs.upfInfoIsSet()) ||
+       (upfInfoIsSet() && rhs.upfInfoIsSet() &&
+        getUpfInfo() == rhs.getUpfInfo())) &&
+      /*
+      ((!upfInfoListIsSet() && !rhs.upfInfoListIsSet()) ||
+       (upfInfoListIsSet() && rhs.upfInfoListIsSet() &&
+        getUpfInfoList() == rhs.getUpfInfoList())) &&
+
+      ((!pcfInfoIsSet() && !rhs.pcfInfoIsSet()) ||
+       (pcfInfoIsSet() && rhs.pcfInfoIsSet() &&
+        getPcfInfo() == rhs.getPcfInfo())) &&
+
+      ((!pcfInfoListIsSet() && !rhs.pcfInfoListIsSet()) ||
+       (pcfInfoListIsSet() && rhs.pcfInfoListIsSet() &&
+        getPcfInfoList() == rhs.getPcfInfoList())) &&
+
+      ((!bsfInfoIsSet() && !rhs.bsfInfoIsSet()) ||
+       (bsfInfoIsSet() && rhs.bsfInfoIsSet() &&
+        getBsfInfo() == rhs.getBsfInfo())) &&
+
+      ((!bsfInfoListIsSet() && !rhs.bsfInfoListIsSet()) ||
+       (bsfInfoListIsSet() && rhs.bsfInfoListIsSet() &&
+        getBsfInfoList() == rhs.getBsfInfoList())) &&
+
+      ((!chfInfoIsSet() && !rhs.chfInfoIsSet()) ||
+       (chfInfoIsSet() && rhs.chfInfoIsSet() &&
+        getChfInfo() == rhs.getChfInfo())) &&
+
+      ((!chfInfoListIsSet() && !rhs.chfInfoListIsSet()) ||
+       (chfInfoListIsSet() && rhs.chfInfoListIsSet() &&
+        getChfInfoList() == rhs.getChfInfoList())) &&
+
+      ((!nefInfoIsSet() && !rhs.nefInfoIsSet()) ||
+       (nefInfoIsSet() && rhs.nefInfoIsSet() &&
+        getNefInfo() == rhs.getNefInfo())) &&
+
+      ((!nrfInfoIsSet() && !rhs.nrfInfoIsSet()) ||
+       (nrfInfoIsSet() && rhs.nrfInfoIsSet() &&
+        getNrfInfo() == rhs.getNrfInfo())) &&
+
+      ((!udsfInfoIsSet() && !rhs.udsfInfoIsSet()) ||
+       (udsfInfoIsSet() && rhs.udsfInfoIsSet() &&
+        getUdsfInfo() == rhs.getUdsfInfo())) &&
+
+      ((!udsfInfoListIsSet() && !rhs.udsfInfoListIsSet()) ||
+       (udsfInfoListIsSet() && rhs.udsfInfoListIsSet() &&
+        getUdsfInfoList() == rhs.getUdsfInfoList())) &&
+
+      ((!nwdafInfoIsSet() && !rhs.nwdafInfoIsSet()) ||
+       (nwdafInfoIsSet() && rhs.nwdafInfoIsSet() &&
+        getNwdafInfo() == rhs.getNwdafInfo())) &&
+
+      ((!pcscfInfoListIsSet() && !rhs.pcscfInfoListIsSet()) ||
+       (pcscfInfoListIsSet() && rhs.pcscfInfoListIsSet() &&
+        getPcscfInfoList() == rhs.getPcscfInfoList())) &&
+
+      ((!hssInfoListIsSet() && !rhs.hssInfoListIsSet()) ||
+       (hssInfoListIsSet() && rhs.hssInfoListIsSet() &&
+        getHssInfoList() == rhs.getHssInfoList())) &&
+
+      ((!customInfoIsSet() && !rhs.customInfoIsSet()) ||
+       (customInfoIsSet() && rhs.customInfoIsSet() &&
+        getCustomInfo() == rhs.getCustomInfo())) &&
+      */
+      ((!recoveryTimeIsSet() && !rhs.recoveryTimeIsSet()) ||
+       (recoveryTimeIsSet() && rhs.recoveryTimeIsSet() &&
+        getRecoveryTime() == rhs.getRecoveryTime())) &&
+
+      ((!nfServicePersistenceIsSet() && !rhs.nfServicePersistenceIsSet()) ||
+       (nfServicePersistenceIsSet() && rhs.nfServicePersistenceIsSet() &&
+        isNfServicePersistence() == rhs.isNfServicePersistence())) &&
+      /*
+      ((!nfServicesIsSet() && !rhs.nfServicesIsSet()) ||
+       (nfServicesIsSet() && rhs.nfServicesIsSet() &&
+        getNfServices() == rhs.getNfServices())) &&
+
+      ((!nfServiceListIsSet() && !rhs.nfServiceListIsSet()) ||
+       (nfServiceListIsSet() && rhs.nfServiceListIsSet() &&
+        getNfServiceList() == rhs.getNfServiceList())) &&
+      */
+      ((!nfProfileChangesSupportIndIsSet() &&
+        !rhs.nfProfileChangesSupportIndIsSet()) ||
+       (nfProfileChangesSupportIndIsSet() &&
+        rhs.nfProfileChangesSupportIndIsSet() &&
+        isNfProfileChangesSupportInd() ==
+            rhs.isNfProfileChangesSupportInd())) &&
+
+      ((!nfProfileChangesIndIsSet() && !rhs.nfProfileChangesIndIsSet()) ||
+       (nfProfileChangesIndIsSet() && rhs.nfProfileChangesIndIsSet() &&
+        isNfProfileChangesInd() == rhs.isNfProfileChangesInd()))
+      /*
+      ((!defaultNotificationSubscriptionsIsSet() &&
+        !rhs.defaultNotificationSubscriptionsIsSet()) ||
+       (defaultNotificationSubscriptionsIsSet() &&
+        rhs.defaultNotificationSubscriptionsIsSet() &&
+        getDefaultNotificationSubscriptions() ==
+            rhs.getDefaultNotificationSubscriptions())) &&
+
+      ((!lmfInfoIsSet() && !rhs.lmfInfoIsSet()) ||
+       (lmfInfoIsSet() && rhs.lmfInfoIsSet() &&
+        getLmfInfo() == rhs.getLmfInfo())) &&
+
+      ((!gmlcInfoIsSet() && !rhs.gmlcInfoIsSet()) ||
+       (gmlcInfoIsSet() && rhs.gmlcInfoIsSet() &&
+        getGmlcInfo() == rhs.getGmlcInfo())) &&
+
+      ((!nfSetIdListIsSet() && !rhs.nfSetIdListIsSet()) ||
+       (nfSetIdListIsSet() && rhs.nfSetIdListIsSet() &&
+        getNfSetIdList() == rhs.getNfSetIdList())) &&
+
+      ((!servingScopeIsSet() && !rhs.servingScopeIsSet()) ||
+       (servingScopeIsSet() && rhs.servingScopeIsSet() &&
+        getServingScope() == rhs.getServingScope())) &&
+
+      ((!lcHSupportIndIsSet() && !rhs.lcHSupportIndIsSet()) ||
+       (lcHSupportIndIsSet() && rhs.lcHSupportIndIsSet() &&
+        isLcHSupportInd() == rhs.isLcHSupportInd())) &&
+
+      ((!olcHSupportIndIsSet() && !rhs.olcHSupportIndIsSet()) ||
+       (olcHSupportIndIsSet() && rhs.olcHSupportIndIsSet() &&
+        isOlcHSupportInd() == rhs.isOlcHSupportInd())) &&
+
+      ((!nfSetRecoveryTimeListIsSet() && !rhs.nfSetRecoveryTimeListIsSet()) ||
+       (nfSetRecoveryTimeListIsSet() && rhs.nfSetRecoveryTimeListIsSet() &&
+        getNfSetRecoveryTimeList() == rhs.getNfSetRecoveryTimeList())) &&
+
+      ((!serviceSetRecoveryTimeListIsSet() &&
+        !rhs.serviceSetRecoveryTimeListIsSet()) ||
+       (serviceSetRecoveryTimeListIsSet() &&
+        rhs.serviceSetRecoveryTimeListIsSet() &&
+        getServiceSetRecoveryTimeList() ==
+            rhs.getServiceSetRecoveryTimeList())) &&
+
+      ((!scpDomainsIsSet() && !rhs.scpDomainsIsSet()) ||
+       (scpDomainsIsSet() && rhs.scpDomainsIsSet() &&
+        getScpDomains() == rhs.getScpDomains())) &&
+
+      ((!scpInfoIsSet() && !rhs.scpInfoIsSet()) ||
+       (scpInfoIsSet() && rhs.scpInfoIsSet() &&
+        getScpInfo() == rhs.getScpInfo()))
+        */
+      ;
+}
+
+bool NFProfile::operator!=(const NFProfile& rhs) const {
+  return !(*this == rhs);
+}
+
 void to_json(nlohmann::json& j, const NFProfile& o) {
   j                 = nlohmann::json();
   j["nfInstanceId"] = o.m_NfInstanceId;

@@ -33,6 +33,8 @@
 #include "itti_msg.hpp"
 #include "msg_pfcp.hpp"
 #include "smf_profile.hpp"
+#include "smf_config_types.hpp"
+#include "smf_config.hpp"
 
 class itti_n4_msg : public itti_msg {
  public:
@@ -646,22 +648,18 @@ class itti_n4_association_retry : public itti_n4_msg {
       : itti_n4_msg(N4_ASSOCIATION_TRIGGER_WITH_RETRY, origin, destination) {}
   itti_n4_association_retry(const itti_n4_association_retry& i)
       : itti_n4_msg(i) {
-    node_id = i.node_id;
-    profile = i.profile;
+    upf_cfg = i.upf_cfg;
   }
   itti_n4_association_retry(
       const itti_n4_association_retry& i, const task_id_t orig,
       const task_id_t dest)
       : itti_n4_msg(i, orig, dest) {
-    node_id = i.node_id;
-    profile = i.profile;
+    upf_cfg = i.upf_cfg;
   }
   const char* get_msg_name() {
     return typeid(itti_n4_association_retry).name();
   };
-
-  pfcp::node_id_t node_id;
-  smf::upf_profile profile;
+  oai::config::smf::upf upf_cfg = oai::config::smf::DEFAULT_UPF;
 };
 //-----------------------------------------------------------------------------
 

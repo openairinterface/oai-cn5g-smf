@@ -130,17 +130,6 @@ void sm_context_release_from_openapi(
     smf::pdu_session_release_sm_context_request& prr);
 
 /*
- * Convert Data Notification from OpenAPI into Data Notification Msg
- * @param [const oai::smf_server::model::NotificationData&] nd: Data
- * Notification in OpenAPI
- * @param [smf::data_notification_msg&] dn_msg: Data Notification msg
- * @return void
- */
-void data_notification_from_openapi(
-    const oai::smf_server::model::NotificationData& nd,
-    smf::data_notification_msg& dn_msg);
-
-/*
  * Convert NsmfEventExposure from OpenAPI into Event Exposure Msg
  * @param [const oai::smf_server::model::NsmfEventExposure&] nee:
  * NsmfEventExposure in OpenAPI

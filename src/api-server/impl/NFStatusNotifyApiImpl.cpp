@@ -60,14 +60,10 @@ void NFStatusNotifyApiImpl::receive_nf_status_notification(
   Logger::smf_api_server().info(
       "NFStatusNotifyApiImpl, received a NF status notification...");
 
-  smf::data_notification_msg notification_msg = {};
-  // convert from NotificationData to data_notification_msg
-  xgpp_conv::data_notification_from_openapi(notificationData, notification_msg);
-
   // Handle the message in smf_app
-  std::shared_ptr<itti_sbi_notification_data> itti_msg =
+  auto itti_msg =
       std::make_shared<itti_sbi_notification_data>(TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg->notification_msg = notification_msg;
+  itti_msg->notification_msg = notificationData;
   itti_msg->http_version     = 1;
 
   ProblemDetails problem_details = {};

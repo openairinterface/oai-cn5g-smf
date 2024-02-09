@@ -1,5 +1,43 @@
 # RELEASE NOTES: #
 
+## v2.0.1 -- January 2024 ##
+
+* Features
+  - Add N1/N2 info in the message response to AMF if available
+* Fixes
+  - Remove NRF dependency from SMF
+* Tech debt
+  - Refactor SMF PFCP associations to always use UPF info
+
+## v2.0.0 -- December 2023 ##
+
+* Features
+  - Support YAML configuration file
+    * Yaml validation default value
+    * Make DNS configurable per DNN
+    * Add CIDR DNN configuration
+    * implement UpfInfo parsing for YAML config
+  - Support getting SMF configuration with the new SMF configuration API
+  - Handled traffic redirection PCF policy
+  - Giving users possibility to configure SMF info themselves
+  - Removed SBI DNS lookup upon start of SMF
+  - De-register to NRF on exit
+  - Enabled event exposure in HTTP/2 API server
+* Fixes
+  - Fixed ULCL support in SM context update procedure
+  - Fixed SEID assignment in N4 session establishment request
+  - Fixed Service Request handling
+  - Fixed YAML config issues
+  - Fixed Handle IE Usage Report in session deletion response
+  - Fixed SMF selection (NRF registration) when local subscription info is not used
+* Tech debt
+  - Updated common models to 3GPP TS 29.571 Release 16.13.0 and moved them to the shared common submodule
+  - Updated SMF-specific NRF models to Release 16.15.0 and moved them to the shared common submodule
+  - Updated PCF models to Release 16.17.0 and moved them to the shared common submodule
+  - Switching to clang-format-12
+  - Published image on Docker-Hub is using now Ubuntu-22 as base image
+    * Ubuntu-18 is no longer supported
+
 ## v1.5.1 -- May 2023 ##
 
 * Fix N1N2 Content message

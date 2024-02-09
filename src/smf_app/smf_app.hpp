@@ -50,6 +50,7 @@
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 #include "ProblemDetails.h"
+#include "UpfInfo.h"
 
 namespace smf {
 
@@ -59,6 +60,8 @@ namespace smf {
 #define TASK_SMF_APP_TIMEOUT_T3592 (3)
 #define TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT (4)
 #define TASK_SMF_APP_TIMEOUT_NRF_DEREGISTRATION (5)
+#define TASK_SMF_APP_TIMEOUT_NRF_REGISTRATION (6)
+#define TASK_SMF_APP_TIMEOUT_NRF_NF_SUBSCRIBE_NOTIFY (7)
 
 // Table 10.3.2 @3GPP TS 24.501 V16.1.0 (2019-06)
 #define T3591_TIMER_VALUE_SEC 16
@@ -103,6 +106,8 @@ class smf_app {
 
   oai::util::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
+
+  oai::util::uint_generator<uint32_t> teid_generator;
 
   oai::util::uint_generator<uint32_t> evsub_id_generator;
   std::map<
@@ -395,6 +400,12 @@ class smf_app {
   void handle_itti_msg(itti_n11_update_nf_instance_response& u);
 
   /*
+   * Handle ITTI message from N11 (NFSubscribeNotify Response)
+   * @param [itti_n11_subscribe_upf_status_notify_response&] u
+   * @return void
+   */
+  void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
+  /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
    * @return void
@@ -407,6 +418,19 @@ class smf_app {
    * @return uint64_t: Return Seid generated
    */
   uint64_t generate_seid();
+
+  /**
+   * Generate an TEID
+   * @param s
+   * @return
+   */
+  uint32_t generate_teid();
+
+  /**
+   * Free a TEID
+   * @param fteid
+   */
+  void free_teid(const uint32_t& teid);
 
   /*
    * Verify whether a session with a given ID exist
@@ -710,6 +734,22 @@ class smf_app {
   void timer_nrf_heartbeat_timeout(timer_id_t timer_id, uint64_t arg2_user);
 
   /*
+   * will be executed when NRF Registration timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
+  void timer_nrf_registration(timer_id_t timer_id, uint64_t arg2_user);
+
+  /*
+   * will be executed when NRF subscribe NF notify timer expires
+   * @param [timer_id_t] timer_id
+   * @param [uint64_t] arg2_user
+   * @return void
+   */
+  void timer_nrf_subscribe_notify(timer_id_t timer_id, uint64_t arg2_user);
+
+  /*
    * will be executed when NRF Deregistration timer expires
    * @param [timer_id_t] timer_id
    * @param [uint64_t] arg2_user
@@ -722,15 +762,7 @@ class smf_app {
    * @param [const pfcp::node_id_t] node_id: UPF Node ID
    * @return void
    */
-  void start_upf_association(const pfcp::node_id_t& node_id);
-
-  /*
-   * To start an association with a UPF (SMF-initiated association)
-   * @param [const pfcp::node_id_t] node_id: UPF Node ID
-   * @return void
-   */
-  void start_upf_association(
-      const pfcp::node_id_t& node_id, const upf_profile& profile);
+  void start_upf_association(oai::config::smf::upf& upf_cfg);
 
   /*
    * To start NF registration with NRF and subscribe to UPF event notification
