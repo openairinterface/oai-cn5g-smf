@@ -65,13 +65,9 @@ RUN git config --global https.postBuffer 123289600 && \
 
 # Copying source code
 WORKDIR /openair-smf
-# TODO: Remove this ugly patch later!
-#COPY ./build/scripts /openair-smf/build/scripts
-#COPY ./build/common-build /openair-smf/build/common-build
-#COPY ./build/smf/CMakeLists.txt /openair-smf/build/smf/CMakeLists.txt
-RUN git clone -b develop https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-smf.git . && \
-    cd /openair-smf && \
-    git submodule update --init
+COPY ./build/scripts /openair-smf/build/scripts
+COPY ./build/common-build /openair-smf/build/common-build
+COPY ./build/smf/CMakeLists.txt /openair-smf/build/smf/CMakeLists.txt
 
 # Installing all the needed libraries/packages to build and run SMF
 WORKDIR /openair-smf/build/scripts
@@ -79,8 +75,7 @@ RUN ./build_smf --install-deps --force
 
 # Building SMF
 WORKDIR /openair-smf/build/scripts
-# TODO: Remove this ugly patch later!
-#COPY . /openair-smf
+COPY . /openair-smf
 RUN ldconfig && \
     ./build_smf --clean --Verbose --build-type Release --jobs && \
     ldd /openair-smf/build/smf/build/smf && \
@@ -141,8 +136,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libspdlog.so \
     /usr/local/lib64/libfmt.so \
     /usr/local/lib64/libyaml-cpp.so.0.* \
-# TODO: Remove this ugly patch later!
-#    /usr/local/lib64/libcpr.so.1 \
+    /usr/local/lib64/libcpr.so.1 \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /usr/lib64/
 
