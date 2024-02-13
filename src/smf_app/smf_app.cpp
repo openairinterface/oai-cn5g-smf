@@ -134,14 +134,7 @@ int smf_app::apply_config() {
 
 //------------------------------------------------------------------------------
 uint64_t smf_app::generate_seid() {
-  std::unique_lock<std::mutex> ls(m_seid_n4_generator);
-  uint64_t seid = ++seid_n4_generator;
-  while ((is_seid_n4_exist(seid)) || (seid == UNASSIGNED_SEID)) {
-    seid = ++seid_n4_generator;
-  }
-  set_seid_n4.insert(seid);
-  ls.unlock();
-  return seid;
+  return seid_generator.get_uid();
 }
 
 uint32_t smf_app::generate_teid() {
@@ -168,15 +161,8 @@ evsub_id_t smf_app::generate_ev_subscription_id() {
 }
 
 //------------------------------------------------------------------------------
-bool smf_app::is_seid_n4_exist(const uint64_t& seid) const {
-  return bool{set_seid_n4.count(seid) > 0};
-}
-
-//------------------------------------------------------------------------------
 void smf_app::free_seid_n4(const uint64_t& seid) {
-  std::unique_lock<std::mutex> ls(m_seid_n4_generator);
-  set_seid_n4.erase(seid);
-  ls.unlock();
+  seid_generator.free_uid(seid);
 }
 
 //------------------------------------------------------------------------------
@@ -365,9 +351,7 @@ smf_app::smf_app(const std::string& config_file)
       Logger::smf_sbi(), HTTP_TIMEOUT_MS,
       smf_cfg->local().get_sbi().get_if_name(), smf_cfg->get_http_version());
 
-  supi2smf_context  = {};
-  set_seid_n4       = {};
-  seid_n4_generator = 0;
+  supi2smf_context = {};
 
   apply_config();
 

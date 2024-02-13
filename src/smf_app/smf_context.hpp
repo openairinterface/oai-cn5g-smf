@@ -274,13 +274,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   std::string toString() const;
 
   /*
-   * Generate a SEID to be used to communicate with UPF
-   * @param void
-   * @return void
-   */
-  void generate_seid();
-
-  /*
    * Set a value to SEID
    * @param [const uint64_t &] seid: value to be set
    * @return void

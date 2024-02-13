@@ -203,7 +203,7 @@ pipeline {
                   sh "oc delete -f openshift/build-config.yaml || true"
                   sh "sed -i -e 's@oai-smf:latest@oai-smf:${smf_tag}@g' openshift/build-config.yaml"
                   sh "oc create -f openshift/build-config.yaml"
-                  sh "oc start-build smf-build-cfg  --from-file=./"
+                  sh 'oc start-build smf-build-cfg  --from-dir=./ --exclude=""'
                   // need python to wait for pod smf-build-cfg-1-build to be Completed or Error
                   // it fails if it detects error or timeout at 20 minutes
                   sh "./ci-scripts/common/python/check_build_pod_status.py --pod-name smf-build-cfg-1-build --log-file archives/smf_rhel_image_build.log"
@@ -403,11 +403,11 @@ pipeline {
           }
         }
         // Home-made RAN emulator
-        stage ('NGAP-Tester') {
+        stage ('Robot-Test') {
           steps {
             script {
-              gitlabCommitStatus(name: "NGAP-Tester") {
-                localStatus = build job: 'OAI-CN5G-NGAP-Tester',
+              gitlabCommitStatus(name: "Robot-Test") {
+                localStatus = build job: 'OAI-CN5G-RobotTest',
                   parameters: [
                     string(name: 'SMF_TAG', value: String.valueOf(smf_tag)),
                     string(name: 'SMF_BRANCH', value: String.valueOf(smf_branch))
@@ -415,9 +415,9 @@ pipeline {
                 localResult = localStatus.getResult()
 
                 if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
-                  echo "NGAP-Tester is OK"
+                  echo "Robot-Test is OK"
                 } else {
-                  error "NGAP-Tester is is KO"
+                  error "Robot-Test is is KO"
                 }
               }
             }
@@ -425,8 +425,8 @@ pipeline {
           post {
             always {
               script {
-                copyArtifacts(projectName: 'OAI-CN5G-NGAP-Tester',
-                              filter: '*_results_oai_cn5g*.html',
+                copyArtifacts(projectName: 'OAI-CN5G-RobotTest',
+                              filter: '*.html',
                               selector: lastCompleted())
               }
             }

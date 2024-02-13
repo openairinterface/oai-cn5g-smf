@@ -553,7 +553,6 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
   n4_triggered = std::make_shared<itti_n4_session_establishment_request>(
       TASK_SMF_APP, TASK_SMF_N4);
-  n4_triggered->seid    = 0;
   n4_triggered->trxn_id = this->trxn_id;
   n4_triggered->r_endpoint =
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
@@ -1030,8 +1029,6 @@ smf_procedure_code session_update_sm_context_procedure::run(
   //-------------------
   n11_trigger           = sm_context_req;
   n11_triggered_pending = sm_context_resp;
-  uint64_t seid         = smf_app_inst->generate_seid();
-  sps->set_seid(seid);
 
   n4_triggered = std::make_shared<itti_n4_session_modification_request>(
       TASK_SMF_APP, TASK_SMF_N4);
@@ -1879,8 +1876,6 @@ smf_procedure_code session_release_sm_context_procedure::run(
 
   n11_trigger           = sm_context_req;
   n11_triggered_pending = sm_context_res;
-  uint64_t seid         = smf_app_inst->generate_seid();
-  sps->set_seid(seid);
   return send_n4_session_deletion_request();
 }
 
