@@ -2167,7 +2167,7 @@ void smf_app::trigger_update_context_error_response(
   sm_context_response.set_json_data(json_data);
   sm_context_response.set_json_format("application/problem+json");
   sm_context_response.set_n1_sm_message(n1_sm_msg);
-  sm_context_response.set_http_code(static_cast<int>(http_code));
+  sm_context_response.set_http_code(static_cast<uint32_t>(http_code));
   trigger_session_update_sm_context_response(sm_context_response, promise_id);
 }
 

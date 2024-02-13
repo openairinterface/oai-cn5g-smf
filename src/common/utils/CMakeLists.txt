@@ -37,20 +37,20 @@ include_directories(${SRC_TOP_DIR}/nas/sm/msg)
 #include_directories(${SRC_TOP_DIR}/nas/security)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 
 set(CN_UTILS_SRC STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/3gpp_conversions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async_shell_cmd.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/conversions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/epc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/if.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/pid_file.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/string.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/thread_sched.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mime_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fqdn.cpp

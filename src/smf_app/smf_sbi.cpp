@@ -478,7 +478,7 @@ void smf_sbi::register_nf_instance(
   std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
       std::make_shared<itti_n11_register_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = resp.status_code;
+  itti_msg_response->http_response_code = response_code;
   itti_msg_response->http_version       = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
@@ -620,10 +620,10 @@ void smf_sbi::subscribe_upf_status_notify(
       response_code);
 
   std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
-          itti_msg_response =
+      itti_msg_response =
           std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
-                  TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = httpCode;
+              TASK_SMF_SBI, TASK_SMF_APP);
+  itti_msg_response->http_response_code = response_code;
 
   if (resp.status_code == status_code_e::HTTP_STATUS_CODE_201_CREATED ||
       resp.status_code == status_code_e::HTTP_STATUS_CODE_204_NO_CONTENT) {
