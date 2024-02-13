@@ -58,10 +58,16 @@ extern "C" {
 #include "Ngap_HandoverCommandTransfer.h"
 #include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
 #include "dynamic_memory_check.h"
+#include "Ngap_GBR-QosInformation.h"
 }
 
 using namespace smf;
 extern smf_app* smf_app_inst;
+
+extern std::string gfbr_dl;
+extern std::string gfbr_ul;
+extern std::string mfbr_dl;
+extern std::string mfbr_ul;
 
 //------------------------------------------------------------------------------
 bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
@@ -71,6 +77,10 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
 
   bool result                                             = false;
+ 
+  //To encode the bit rate for GBR in UL and DL
+  uint32_t bit_rate_dl = {00000000};  
+  uint32_t bit_rate_ul = {00000000};
   Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
   ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
       1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
@@ -222,8 +232,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
 
   Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
+ 
+  /* Filling the Non GBR as default and another one for GBR */
   ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
       1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+
+  /* Filling the Default qos Flow as a first qos flow Item 
+   * INFO: this implementation only for testing purpose if it is worked code needs to be reorgainze */
   ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
       .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
@@ -231,7 +246,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
       1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI->fiveQI = (uint8_t) DEFAULT_5QI;
+      .choice.nonDynamic5QI->fiveQI = (uint8_t)DEFAULT_5QI;
+  
   ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
       .allocationAndRetentionPriority.priorityLevelARP =
       qos_flow.qos_profile.arp.priority_level;
@@ -253,12 +269,234 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         .allocationAndRetentionPriority.pre_emptionVulnerability =
         Ngap_Pre_emptionVulnerability_pre_emptable;
   }
+#if 0 
+ /*Increment the pointer to fill next block*/ 
+  ngap_QosFlowSetupRequestItem++;
+
+  ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI->fiveQI = (uint8_t)qos_flow.qfi.qfi;
+#endif
+
+#if 0
+  /* Temp: Currently we are filling the same GFBR&MFBR if 5QI is fall under GBR category.
+   * This need to be change once PCF implementation is done.[i.e. instead of filling from the yaml, it will be shared by PCF based on the 5QI.
+   * As of now if want to try with different rate for GFBR and MFBR, need to modify in the .yaml file */
+  switch(qos_flow.qfi.qfi) {
+    case 1 ... 4:
+    case 65 ... 67:
+    case 71 ... 76: {
+      // Filling the GBR info for the QOS
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation = (Ngap_GBR_QosInformation_t *)(calloc(1, sizeof(Ngap_GBR_QosInformation_t)));
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.size = 4;
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.buf= (uint8_t *) calloc(4, sizeof(uint8_t));
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.size = 4;
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.buf= (uint8_t *) calloc(4, sizeof(uint8_t));
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.size = 4;
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.buf= (uint8_t *) calloc(4, sizeof(uint8_t));
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.size = 4;
+      ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.buf= (uint8_t *) calloc(4, sizeof(uint8_t));
+      std::string bit_rate_unit;
+      size_t rate_len = gfbr_dl.length();
+
+      //Filling the GFBR DL Param
+      try {
+        bit_rate_dl = std::stoi(gfbr_dl.substr(0, rate_len - 4));
+        bit_rate_unit = gfbr_dl.substr(rate_len -4,rate_len);
+
+        if (bit_rate_unit.compare("Kbps") == 0)
+          bit_rate_dl *= 1000;
+
+        if (bit_rate_unit.compare("Mbps") == 0)
+          bit_rate_dl *= 1000000;
+
+        if (bit_rate_unit.compare("Gbps") == 0)
+          bit_rate_dl *= 1000000000;
+
+        INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL.buf);
+      } catch (const std::exception &e) {
+        Logger::smf_n2().error("GFBR DL param encode Fail: Invalid unit for format");
+        Logger::smf_app().warn("Undefined error: %s", e.what());
+        // assign default value
+        bit_rate_dl = 1;
+      }
+
+      //Filling the GFBR UL Param
+      rate_len = gfbr_ul.length();
+
+      try {
+        bit_rate_ul = std::stoi(gfbr_ul.substr(0, rate_len - 4));
+        bit_rate_unit = gfbr_ul.substr(rate_len -4,rate_len);
+
+        if (bit_rate_unit.compare("Kbps") == 0)
+          bit_rate_ul *= 1000;
+
+        if (bit_rate_unit.compare("Mbps") == 0)
+          bit_rate_ul *= 1000000;
+
+        if (bit_rate_unit.compare("Gbps") == 0)
+          bit_rate_ul *= 1000000000;
+
+        INT32_TO_BUFFER(bit_rate_ul,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL.buf);
+      } catch (const std::exception &e) {
+        Logger::smf_n2().error("GFBR UL param encode Fail: Invalid unit for format");
+        Logger::smf_app().warn("Undefined error: %s", e.what());
+        // assign default value
+        bit_rate_ul = 1;
+      }
+
+      //Filling the MFBR DL Param
+      rate_len = mfbr_dl.length();
+
+      try {
+        bit_rate_dl = std::stoi(mfbr_dl.substr(0, rate_len - 4));
+        bit_rate_unit = mfbr_dl.substr(rate_len -4,rate_len);
+
+        if (bit_rate_unit.compare("Kbps") == 0)
+          bit_rate_dl *= 1000;
+
+        if (bit_rate_unit.compare("Mbps") == 0)
+          bit_rate_dl *= 1000000;
+
+        if (bit_rate_unit.compare("Gbps") == 0)
+          bit_rate_dl *= 1000000000;
+
+        INT32_TO_BUFFER(bit_rate_dl,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL.buf);
+      } catch (const std::exception &e) {
+        Logger::smf_n2().error("MFBR DL param encode Fail: Invalid unit for format");
+        Logger::smf_app().warn("Undefined error: %s", e.what());
+        // assign default value
+        bit_rate_dl = 1;
+      }
+
+      //Filling the MFBR UL Param
+      rate_len = mfbr_ul.length();
+
+      try {
+        bit_rate_ul = std::stoi(mfbr_ul.substr(0, rate_len - 4));
+        bit_rate_unit = gfbr_ul.substr(rate_len -4,rate_len);
+
+        if (bit_rate_unit.compare("Kbps") == 0)
+          bit_rate_ul *= 1000;
+
+        if (bit_rate_unit.compare("Mbps") == 0)
+          bit_rate_ul *= 1000000;
+
+        if (bit_rate_unit.compare("Gbps") == 0)
+          bit_rate_ul *= 1000000000;
+
+        INT32_TO_BUFFER(bit_rate_ul,ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL.buf);
+      } catch (const std::exception &e) {
+        Logger::smf_n2().error("MFBR UL param encode Fail: Invalid unit for format");
+        Logger::smf_app().warn("Undefined error: %s", e.what());
+        // assign default value
+        bit_rate_ul = 1;
+      }
+    }
+    break;
+
+    default:
+      Logger::smf_n2().debug("Non-GBR 5QI Category");
+      break;
+  }
+
+  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.priorityLevelARP =
+      qos_flow.qos_profile.arp.priority_level;
+  if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+  } else {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
+  }
+  if (qos_flow.qos_profile.arp.preempt_vuln.compare("NOT_PREEMPTABLE") == 0) {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_not_pre_emptable;
+  } else {
+    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_pre_emptable;
+  }
+#endif
+  // Hardcoded 2. Flow for RAN tests
+  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem2 = nullptr;
+  ngap_QosFlowSetupRequestItem2 = (Ngap_QosFlowSetupRequestItem_t*) calloc(
+      1, sizeof(Ngap_QosFlowSetupRequestItem_t));
+
+  ngap_QosFlowSetupRequestItem2->qosFlowIdentifier = (uint8_t) 2;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI->fiveQI = (uint8_t) 1;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.priorityLevelARP = 1;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.pre_emptionCapability =
+      Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.pre_emptionVulnerability =
+      Ngap_Pre_emptionVulnerability_not_pre_emptable;
+
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation =
+      (Ngap_GBR_QosInformation_t*) (calloc(
+          1, sizeof(Ngap_GBR_QosInformation_t)));
+
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateUL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateUL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t m_bit_rate_ul          = {20000000};
+  INT32_TO_BUFFER(
+      m_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->maximumFlowBitRateUL.buf);
+
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateDL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->maximumFlowBitRateDL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t m_bit_rate_dl          = {60000000};
+  INT32_TO_BUFFER(
+      m_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->maximumFlowBitRateDL.buf);
+
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateUL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateUL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t g_bit_rate_ul             = {15000000};
+  INT32_TO_BUFFER(
+      g_bit_rate_ul, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->guaranteedFlowBitRateUL.buf);
+
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateDL.size = 4;
+  ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters.gBR_QosInformation
+      ->guaranteedFlowBitRateDL.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
+  int32_t g_bit_rate_dl             = {15000000};
+  INT32_TO_BUFFER(
+      g_bit_rate_dl, ngap_QosFlowSetupRequestItem2->qosFlowLevelQosParameters
+                         .gBR_QosInformation->guaranteedFlowBitRateDL.buf);
 
   asn_set_empty(
       &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
   ASN_SEQUENCE_ADD(
       &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
       ngap_QosFlowSetupRequestItem);
+  ASN_SEQUENCE_ADD(
+      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
+      ngap_QosFlowSetupRequestItem2);
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
 
   Logger::smf_n2().info(

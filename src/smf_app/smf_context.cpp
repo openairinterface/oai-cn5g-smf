@@ -86,6 +86,11 @@ extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+extern std::string gfbr_dl;
+extern std::string gfbr_ul;
+extern std::string mfbr_dl;
+extern std::string mfbr_ul;
+
 //------------------------------------------------------------------------------
 void smf_pdu_session::get_pdu_session_id(uint32_t& psi) const {
   psi = pdu_session_id;
@@ -1164,31 +1169,84 @@ void smf_context::get_default_qos_flow_description(
   Logger::smf_app().info(
       "Get default QoS Flow Description (PDU session type %d)",
       pdu_session_type);
+    //To encode the bit rate for GBR in UL and DL
+  uint32_t bit_rate_dl = {00000000};
+  uint32_t bit_rate_ul = {00000000};
+
   qos_flow_description.qfi                = qfi.qfi;
   qos_flow_description.operationcode      = CREATE_NEW_QOS_FLOW_DESCRIPTION;
   qos_flow_description.e                  = PARAMETERS_LIST_IS_INCLUDED;
   qos_flow_description.numberofparameters = 1;
   qos_flow_description.parameterslist =
-      (ParametersList*) calloc(3, sizeof(ParametersList));
+      (ParametersList*) calloc(5, sizeof(ParametersList));
   qos_flow_description.parameterslist[0].parameteridentifier =
       PARAMETER_IDENTIFIER_5QI;
-  qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
-  /*
-   qos_flow_description.parameterslist[1].parameteridentifier =
-   PARAMETER_IDENTIFIER_GFBR_UPLINK;
-   qos_flow_description.parameterslist[1].parametercontents
-   .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-   qos_flow_description.parameterslist[1].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
-   qos_flow_description.parameterslist[2].parameteridentifier =
-   PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
-   qos_flow_description.parameterslist[2].parametercontents
-   .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-   qos_flow_description.parameterslist[2].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
-   */
+  qos_flow_description.parameterslist[0].parametercontents._5qi = qfi.qfi;
+
+  /* Temp: Currently we are filling the same GFBR&MFBR if 5QI is fall under GBR category.
+  * This need to be change once PCF implementation is done.[i.e. instead of filling from the yaml, it will be shared by PCF based on the 5QI.
+  * As of now if want to try with different rate for GFBR and MFBR, need to modify in the .yaml file */
+  switch(qfi.qfi) {
+    case 1 ... 4:
+    case 65 ... 67:
+    case 71 ... 76: {
+      /* Currently unit is represented based on 16 Mbps.
+       * e.g bit rate is 32 Mbps; bit_rate_ul holds the int value alone [i.e.32]
+       * at UE end bitrate is computed as (unit * value) */
+      // Filling the GFBR UL
+      size_t rate_len = gfbr_ul.length();
+      bit_rate_ul = std::stoi(gfbr_ul.substr(0, rate_len - 4));
+      qos_flow_description.parameterslist[1].parameteridentifier =
+        PARAMETER_IDENTIFIER_GFBR_UPLINK;
+      qos_flow_description.parameterslist[1].parametercontents
+      .gfbrormfbr_uplinkordownlink.uint =
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+      qos_flow_description.parameterslist[1].parametercontents
+      .gfbrormfbr_uplinkordownlink.value =
+        bit_rate_ul/16;
+
+      // Filling the GFBR DL
+      rate_len = gfbr_dl.length();
+      bit_rate_dl = std::stoi(gfbr_dl.substr(0, rate_len - 4));
+      qos_flow_description.parameterslist[2].parameteridentifier =
+        PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
+      qos_flow_description.parameterslist[2].parametercontents
+      .gfbrormfbr_uplinkordownlink.uint =
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+      qos_flow_description.parameterslist[2].parametercontents
+      .gfbrormfbr_uplinkordownlink.value =
+        bit_rate_dl/16;
+
+      // Filling the MFBR UL
+      rate_len = mfbr_ul.length();
+      bit_rate_ul = std::stoi(mfbr_ul.substr(0, rate_len - 4));
+      qos_flow_description.parameterslist[3].parameteridentifier =
+        PARAMETER_IDENTIFIER_MFBR_UPLINK;
+      qos_flow_description.parameterslist[3].parametercontents
+      .gfbrormfbr_uplinkordownlink.uint =
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+      qos_flow_description.parameterslist[3].parametercontents
+      .gfbrormfbr_uplinkordownlink.value =
+        bit_rate_ul/16;
+
+      // Filling the MFBR DL
+      rate_len = mfbr_dl.length();
+      bit_rate_dl = std::stoi(mfbr_dl.substr(0, rate_len - 4));
+      qos_flow_description.parameterslist[4].parameteridentifier =
+        PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
+      qos_flow_description.parameterslist[4].parametercontents
+      .gfbrormfbr_uplinkordownlink.uint =
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS;
+      qos_flow_description.parameterslist[4].parametercontents
+      .gfbrormfbr_uplinkordownlink.value =
+        bit_rate_dl/16;
+    }
+    break;
+
+    default:
+      Logger::smf_app().debug("Non-GBR 5QI Category");
+      break;
+  }
 
   Logger::smf_app().debug(
       "Default Qos Flow Description: %x %x %x %x %x %x",

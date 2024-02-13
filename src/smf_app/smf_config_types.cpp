@@ -36,6 +36,18 @@ using namespace oai::config;
 using namespace oai::model::common;
 using namespace oai::model::nrf;
 
+
+/*TODO: As of now we are storing the GFBR and MFBR info from yaml file.
+ * This variables will be extended whereever GFBR and MFBR required.
+ * Once PCF integration done and GFBR,MFBR are configured by PCF this
+ * will be removed
+ * */
+
+std::string gfbr_ul;
+std::string gfbr_dl;
+std::string mfbr_ul;
+std::string mfbr_dl;
+
 smf_support_features::smf_support_features(
     bool local_subscription_info, bool local_pcc_rules) {
   set_config_name("supported_features");

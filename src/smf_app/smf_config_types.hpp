@@ -210,7 +210,12 @@ class smf_config_type : public nf {
   local_interface m_n4;
 
   int_config_value m_ue_mtu;
-
+  
+  string_config_value m_gfbr_ul;
+  string_config_value m_gfbr_dl;
+  string_config_value m_mfbr_ul;
+  string_config_value m_mfbr_dl;
+  
  public:
   explicit smf_config_type(
       const std::string& name, const std::string& host,
