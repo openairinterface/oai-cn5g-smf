@@ -186,6 +186,8 @@ class smf_qos_flow {
     pdr_id_ul   = {};
     pdr_id_dl   = {};
     precedence  = {};
+    qer_id_ul   = {};
+    qer_id_dl   = {};
     far_id_ul   = {};
     far_id_dl   = {};
     urr_id      = {};
@@ -202,6 +204,8 @@ class smf_qos_flow {
     dl_fteid  = {};
     pdr_id_dl = {};
     pdr_id_ul = {};
+    qer_id_dl = {};
+    qer_id_ul = {};
     far_id_dl = {};
     far_id_ul = {};
     urr_id    = {};
@@ -237,6 +241,8 @@ class smf_qos_flow {
   pfcp::pdr_id_t pdr_id_dl;  // Packet Detection Rule ID, DL
   pfcp::urr_id_t urr_id{};   // Usage reporting Rule, use same for UL and DL
   pfcp::precedence_t precedence{};
+  std::pair<bool, pfcp::qer_id_t> qer_id_ul;  // QER ID, UL
+  std::pair<bool, pfcp::qer_id_t> qer_id_dl;  // QER ID, DL
   std::pair<bool, pfcp::far_id_t> far_id_ul;  // FAR ID, UL
   std::pair<bool, pfcp::far_id_t> far_id_dl;  // FAR ID, DL
   bool released{};  // finally seems necessary, TODO try to find heuristic ?
@@ -293,6 +299,8 @@ struct edge {
   std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::qfi_t& qfi);
 
   std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::far_id_t& far_id);
+
+  std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::qer_id_t& qer_id);
 
   bool operator==(const edge& other) const {
     return nw_instance == other.nw_instance && type == other.type &&

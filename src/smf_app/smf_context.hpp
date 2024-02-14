@@ -152,6 +152,14 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   bool get_qos_flow(const pfcp::far_id_t& far_id, smf_qos_flow& flow);
 
   /*
+   * Find a QoS flow by a QER
+   * @param [const pfcp::qer_id_t &] qer_id: QER ID
+   * @param [const smf_qos_flow &] flow: flow to be assigned if found
+   * @return bool: Return True if found, otherwise return false
+   */
+  bool get_qos_flow(const pfcp::qer_id_t& qer_id, smf_qos_flow& flow);
+
+  /*
    * Find a QoS flow by its QFI
    * @param [const pfcp::qfi_t &] QFI
    * @param [const smf_qos_flow &] flow: flow to be assigned
@@ -313,11 +321,25 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void generate_far_id(pfcp::far_id_t& far_id);
 
   /*
+   * Generate a QER ID
+   * @param [pfcp::qer_id_t &]: qer_id: QER ID generated
+   * @return void
+   */
+  void generate_qer_id(pfcp::qer_id_t& qer_id);
+
+  /*
    * Release a FAR ID
    * @param [const pfcp::far_id_t &]: far_id: FAR ID to be released
    * @return void
    */
   void release_far_id(const pfcp::far_id_t& far_id);
+
+  /*
+   * Release a QER ID
+   * @param [const pfcp::qer_id_t &]: qer_id: QER ID to be released
+   * @return void
+   */
+  void release_qer_id(const pfcp::qer_id_t& qer_id);
 
   /*
    * Generate a QoS Rule ID
@@ -530,6 +552,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   //
   util::uint_generator<uint16_t> pdr_id_generator;
   util::uint_generator<uint32_t> far_id_generator;
+  util::uint_generator<uint32_t> qer_id_generator;
   util::uint_generator<uint32_t> urr_id_generator;
 
   // Shared lock

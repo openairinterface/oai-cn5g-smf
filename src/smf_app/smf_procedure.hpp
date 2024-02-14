@@ -60,6 +60,10 @@ class smf_procedure {
   }
 
  public:
+
+  static uint32_t generate_correlation_id() {
+    return static_cast<uint32_t>(util::uint_uid_generator<uint64_t>::get_instance().get_uid());
+  }
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
   explicit smf_procedure(uint64_t tx) { trxn_id = tx; }
@@ -94,6 +98,8 @@ class smf_session_procedure : public smf_procedure {
 
   pfcp::create_far pfcp_create_far(
       edge& edge, const pfcp::qfi_t& qfi, const oai::config::smf::upf& cfg);
+
+  pfcp::create_qer pfcp_create_qer(edge& edge, const pfcp::qfi_t& qfi);
 
   pfcp::create_pdr pfcp_create_pdr(
       edge& edge, const pfcp::qfi_t& qfi,

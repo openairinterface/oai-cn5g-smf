@@ -3032,7 +3032,7 @@ class create_qer : public pfcp::pfcp_ies_container {
         guaranteed_bitrate(),
         packet_rate(),
         dl_flow_level_marking(),
-        qos_flow_identifier(),
+        qos_flow_identifier(), 
         reflective_qos() {}
 
   create_qer(const create_qer& c)
@@ -3043,7 +3043,7 @@ class create_qer : public pfcp::pfcp_ies_container {
         guaranteed_bitrate(c.guaranteed_bitrate),
         packet_rate(c.packet_rate),
         dl_flow_level_marking(c.dl_flow_level_marking),
-        qos_flow_identifier(c.qos_flow_identifier),
+        qos_flow_identifier(c.qos_flow_identifier), 
         reflective_qos(c.reflective_qos) {}
 
   // virtual ~create_qer() {};
@@ -3080,10 +3080,10 @@ class create_qer : public pfcp::pfcp_ies_container {
     qos_flow_identifier.second = v;
   }
   void set(const pfcp::rqi_t& v) {
-    reflective_qos.first  = true;
+    reflective_qos.first  = false;
     reflective_qos.second = v;
   }
-
+  
   bool get(pfcp::qer_id_t& v) const {
     if (qer_id.first) {
       v = qer_id.second;
@@ -4104,10 +4104,10 @@ class update_qer : public pfcp::pfcp_ies_container {
     qos_flow_identifier.second = v;
   }
   void set(const pfcp::rqi_t& v) {
-    reflective_qos.first  = true;
+    reflective_qos.first  = false;
     reflective_qos.second = v;
   }
-
+  
   bool get(pfcp::qer_id_t& v) const {
     if (qer_id.first) {
       v = qer_id.second;
@@ -6542,6 +6542,17 @@ class pfcp_session_establishment_request : public pfcp_ies_container {
     return false;
   }
 
+  bool get(const pfcp::qer_id_t& fid, pfcp::create_qer& create_qer) const {
+    for (auto it : create_qers) {
+      pfcp::qer_id_t qer_id = {};
+      if ((it.get(qer_id)) && (fid.qer_id == qer_id.qer_id)) {
+        create_qer = it;
+        return true;
+      }
+    }
+    return false;
+  }
+
   void set(const pfcp::node_id_t& v) {
     node_id.first  = true;
     node_id.second = v;
@@ -6981,6 +6992,18 @@ class pfcp_session_modification_request : public pfcp_ies_container {
     }
     return false;
   }
+
+  bool get(const pfcp::qer_id_t& fid, pfcp::create_qer& create_qer) const {
+    for (auto it : create_qers) {
+      pfcp::qer_id_t qer_id = {};
+      if ((it.get(qer_id)) && (fid.qer_id == qer_id.qer_id)) {
+        create_qer = it;
+        return true;
+      }
+    }
+    return false;
+  }
+
   void set(const pfcp::fseid_t& v) {
     cp_fseid.first  = true;
     cp_fseid.second = v;

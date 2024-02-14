@@ -233,6 +233,17 @@ std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::far_id_t& far_id) {
   return {};
 }
 
+//---------------------------------------------------------------------------------------------
+std::shared_ptr<smf_qos_flow> edge::get_qos_flow(const pfcp::qer_id_t& qer_id) {
+  for (auto& flow_it : qos_flows) {
+    if (flow_it->qer_id_ul.second == qer_id ||
+        flow_it->qer_id_dl.second == qer_id) {
+      return flow_it;
+    }
+  }
+  return {};
+}
+
 //------------------------------------------------------------------------------
 void smf_qos_flow::mark_as_released() {
   released = true;
@@ -276,6 +287,18 @@ std::string smf_qos_flow::toString(const std::string& indent) const {
     s.append(indent)
         .append("\tFAR ID DL:\t")
         .append(std::to_string(far_id_dl.second.far_id))
+        .append("\n");
+  }
+  if (qer_id_ul.first) {
+    s.append(indent)
+        .append("\tQER ID UL:\t")
+        .append(std::to_string(qer_id_ul.second.qer_id))
+        .append("\n");
+  }
+  if (qer_id_dl.first) {
+    s.append(indent)
+        .append("\tQER ID DL:\t")
+        .append(std::to_string(qer_id_dl.second.qer_id))
         .append("\n");
   }
   if (urr_id.urr_id != 0) {

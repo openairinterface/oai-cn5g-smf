@@ -223,6 +223,25 @@ bool smf_pdu_session::get_qos_flow(
 }
 
 //------------------------------------------------------------------------------
+bool smf_pdu_session::get_qos_flow(
+    const pfcp::qer_id_t& qer_id, smf_qos_flow& q) {
+  std::shared_lock lock(m_pdu_session_mutex);
+  for (auto it : qos_flows) {
+    if ((it.second.qer_id_ul.first) &&
+        (it.second.qer_id_ul.second.qer_id == qer_id.qer_id)) {
+      q = it.second;
+      return true;
+    }
+    if ((it.second.qer_id_dl.first) &&
+        (it.second.qer_id_dl.second.qer_id == qer_id.qer_id)) {
+      q = it.second;
+      return true;
+    }
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
 bool smf_pdu_session::get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& q) {
   std::shared_lock lock(m_pdu_session_mutex);
   for (auto it : qos_flows) {
@@ -331,7 +350,19 @@ void smf_pdu_session::release_urr_id(const pfcp::urr_id_t& urr_id) {
 }
 
 //------------------------------------------------------------------------------
-// TODO check if far_id should be uniq in the UPF or in the context of a pdn
+// TODO check if qer_id should be unique in the UPF or in the context of a pdn
+// connection
+void smf_pdu_session::generate_qer_id(pfcp::qer_id_t& qer_id) {
+  qer_id.qer_id = qer_id_generator.get_uid();
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::release_qer_id(const pfcp::qer_id_t& qer_id) {
+  qer_id_generator.free_uid(qer_id.qer_id);
+}
+
+//------------------------------------------------------------------------------
+// TODO check if far_id should be unique in the UPF or in the context of a pdn
 // connection
 void smf_pdu_session::generate_far_id(pfcp::far_id_t& far_id) {
   far_id.far_id = far_id_generator.get_uid();

@@ -1490,11 +1490,19 @@ struct far_id_s {
   };
 };
 typedef struct far_id_s far_id_t;
+
 //-------------------------------------
 // 8.2.75 QER ID
 typedef struct qer_id_s {
-  uint32_t qer_id;
+    uint32_t qer_id;
+    qer_id_s() : qer_id(0) {}
+    qer_id_s(const uint8_t& q) : qer_id(q) {}
+    qer_id_s(const struct qer_id_s& q) : qer_id(q.qer_id) {}
+    bool operator==(const struct qer_id_s& i) const {
+        return (i.qer_id == qer_id);
+    };
 } qer_id_t;
+
 
 //-------------------------------------
 // 8.2.76 OCI Flags
