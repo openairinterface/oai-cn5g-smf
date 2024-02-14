@@ -60,15 +60,15 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     flow.qfi         = edge->qfi;
     flow.qos_profile = edge->qos_profile;
     flow.cause_value = static_cast<uint8_t>(m_cause_value);
-    flow.set_dl_fteid(edge->fteid);
-    flow.set_ul_fteid(edge->associated_edge->fteid);
+    flow.set_dl_fteid(edge->gnb_fteid);
+    flow.set_ul_fteid(edge->fteid);
 
     // add QoS rule to flow
     qos_rule_from_edge(edge);
     return flow;
   }
   Logger::smf_app().error(
-      "Cannot receive QoS flow for QFI %ud, it does not exist", qfi.qfi);
+      "Cannot receive QoS flow for QFI %u, it does not exist", qfi.qfi);
   qos_flow_context_updated flow;
   flow.cause_value = static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED);
@@ -78,6 +78,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 std::vector<::smf::qos_flow_context_updated>
 session_handler::get_qos_flows_context_updated() {
   std::vector<::smf::qos_flow_context_updated> flows;
+  flows.reserve(m_qfis_to_be_updated.size());
   for (const auto& qfi : m_qfis_to_be_updated) {
     flows.push_back(get_qos_flow_context_updated(qfi));
   }
@@ -101,7 +102,7 @@ void session_handler::set_nas_filter_from_edge(
   auto flow                      = edge->flow_information;
   qos_rule.numberofpacketfilters = 0;
 
-  if (!flow.flowDirectionIsSet() || !flow.isPacketFilterUsage()) {
+  if (!flow.flowDescriptionIsSet() || !flow.isPacketFilterUsage()) {
     return;
   }
   bool ue_rule;
@@ -173,22 +174,13 @@ QOSRulesIE session_handler::qos_rule_from_edge(
     qos_rule.numberofpacketfilters = 0;
   }
 
+  Logger::smf_n1().debug(
+      "Created new QoS rule with ID %u and %u packet filters",
+      edge->qos_rule_id, qos_rule.numberofpacketfilters);
+
   qos_rule.qosruleprecedence = edge->precedence;
   qos_rule.segregation       = SEGREGATION_NOT_REQUESTED;
   qos_rule.qosflowidentifer  = edge->qfi.qfi;
-
-  Logger::smf_app().debug(
-      "Default QoSRules: %x %x %x %x %x %x %x %x %x", qos_rule.qosruleidentifer,
-      qos_rule.ruleoperationcode, qos_rule.dqrbit,
-      qos_rule.numberofpacketfilters,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfilterdirection,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfilteridentifier,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfiltercontents.component_type,
-      qos_rule.qosruleprecedence, qos_rule.segregation,
-      qos_rule.qosflowidentifer);
 
   return qos_rule;
 }
@@ -404,7 +396,9 @@ std::vector<pfcp::qfi_t> session_handler::get_all_qfis() {
   for (const auto& edge : m_session_graph->get_access_edges()) {
     // in case of double edges with same QFI (e.g. UL CL or redundant
     // transport), set eliminates duplicates
-    qfis.insert(edge->qfi.qfi);
+    if (edge->qfi.qfi != 0) {
+      qfis.insert(edge->qfi.qfi);
+    }
   }
   for (const auto& qfi : qfis) {
     pfcp::qfi_t pfcp_qfi;

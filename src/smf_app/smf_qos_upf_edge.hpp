@@ -54,13 +54,14 @@ struct upf_selection_criteria {
       get_default_flow_information();
   oai::model::pcf::RedirectInformation redirect_information{};
   unsigned int precedence{};
-  uint8_t qfi;
+  uint8_t qfi{};
 
   [[nodiscard]] std::string to_string() const;
 
   static oai::model::pcf::FlowInformation get_default_flow_information() {
     oai::model::pcf::FlowInformation flow;
     flow.setFlowDescription(DEFAULT_FLOW_DESCRIPTION);
+    flow.setPacketFilterUsage(true);  // so that we send it to UE always
     return flow;
   }
 };
@@ -77,37 +78,39 @@ struct dnai_dnn_slice {
 class qos_upf_edge {
  public:
   // General infos, from PCF
-  unsigned int precedence;
-  oai::model::nrf::UPInterfaceType type;
-  oai::model::pcf::FlowInformation flow_information;
-  oai::model::pcf::RedirectInformation redirect_information;
-  std::string correlation_id;
+  unsigned int precedence{};
+  oai::model::nrf::UPInterfaceType type{};
+  oai::model::pcf::FlowInformation flow_information{};
+  oai::model::pcf::RedirectInformation redirect_information{};
+  std::string correlation_id{};
   // UPF/PFCP specific infos
-  pfcp::pdr_id_t pdr_id;
-  pfcp::far_id_t far_id;
-  pfcp::urr_id_t urr_id;
+  pfcp::pdr_id_t pdr_id{};
+  pfcp::far_id_t far_id{};
+  pfcp::urr_id_t urr_id{};
   uint8_t qos_rule_id{};
 
-  std::string nw_instance;
-  std::string used_dnai;
+  std::string nw_instance{};
+  std::string used_dnai{};
 
-  std::vector<dnai_dnn_slice> dnai_dnn_slices;
+  std::vector<dnai_dnn_slice> dnai_dnn_slices{};
 
   bool uplink              = false;
   bool n4_update_necessary = false;
   bool default_qos         = true;
 
   // QoS information
-  pfcp::qfi_t qfi;
+  pfcp::qfi_t qfi{};
   pfcp::fteid_t fteid{};
+  // only for N3, because we don't have info about gNB
+  pfcp::fteid_t gnb_fteid{};
   // TODO we could also use QoSData from models, but this qos_profile is really
   // used at many places
-  qos_profile_t qos_profile;  // QoS profile
+  qos_profile_t qos_profile{};  // QoS profile
 
   // TODO ???
-  std::shared_ptr<qos_upf_edge> associated_edge;
-  std::shared_ptr<pfcp_association> destination_upf;
-  std::shared_ptr<pfcp_association> source_upf;
+  std::shared_ptr<qos_upf_edge> associated_edge{};
+  std::shared_ptr<pfcp_association> destination_upf{};
+  std::shared_ptr<pfcp_association> source_upf{};
 
   bool operator==(const qos_upf_edge& other) const {
     return nw_instance == other.nw_instance && type == other.type &&

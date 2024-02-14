@@ -179,7 +179,6 @@ class session_handler {
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
-  std::vector<pfcp::qfi_t> m_all_qfis;
   cause_value_5gsm_e m_cause_value =
       cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED;  // for NGAP cause
   pdu_session_type_e m_pdu_session_type;

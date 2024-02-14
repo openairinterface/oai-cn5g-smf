@@ -2126,12 +2126,10 @@ bool smf_context::handle_an_release(
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   // Get QFIs associated with PDU session ID
-  std::vector<pfcp::qfi_t> qfis = sp->get_session_handler()->get_all_qfis();
-  for (const auto& qfi : qfis) {
-    sm_context_request->req.add_qfi(qfi.qfi);
-    qos_flow_context_updated qcu =
-        sp->get_session_handler()->get_qos_flow_context_updated(qfi);
-    sm_context_resp->res.add_qos_flow_context_updated(qcu);
+  auto qfus = sp->get_session_handler()->get_qos_flows_context_updated();
+  for (const auto& qfu : qfus) {
+    sm_context_request->req.add_qfi(qfu.qfi);
+    sm_context_resp->res.add_qos_flow_context_updated(qfu);
   }
 
   sm_context_resp->session_procedure_type =

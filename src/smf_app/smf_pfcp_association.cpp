@@ -939,7 +939,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   // this is the UPF selection without PCC rules so we always have only the
   // default QoS with only one QFI
   criteria.qfi = generate_qfi();
-  bool success = select_upf_nodes(base_criteria, graph, base_criteria);
+  bool success = select_upf_nodes(criteria, graph, criteria);
   if (success) {
     return graph;
   } else {
