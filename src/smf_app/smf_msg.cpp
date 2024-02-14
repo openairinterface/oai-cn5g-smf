@@ -772,6 +772,7 @@ void pdu_session_update_sm_context_request::set_target_id(
  * class: PDU Session Update SM Context Response
  */
 //-----------------------------------------------------------------------------
+// TODO refactor this duplicated code, remove
 void pdu_session_update_sm_context_response::add_qos_flow_context_updated(
     const qos_flow_context_updated& flow) {
   if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and

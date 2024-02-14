@@ -461,8 +461,8 @@ bool smf_n1::create_n1_pdu_session_modification_command(
 
   // QOSRules
   // Get the authorized QoS Rules
-  std::vector<QOSRulesIE> qos_rules;
-  sp.get()->get_qos_rules_to_be_synchronised(qos_rules);
+  std::vector<QOSRulesIE> qos_rules =
+      sp->get_session_handler()->get_qos_rules();
 
   if (qos_rules.size() == 0) {
     return false;
@@ -604,8 +604,8 @@ bool smf_n1::create_n1_pdu_session_modification_command(
 
   // QOSRules
   // Get the authorized QoS Rules
-  std::vector<QOSRulesIE> qos_rules;
-  sp.get()->get_qos_rules_to_be_synchronised(qos_rules);
+  std::vector<QOSRulesIE> qos_rules =
+      sp->get_session_handler()->get_qos_rules();
 
   if (qos_rules.size() == 0) {
     return false;

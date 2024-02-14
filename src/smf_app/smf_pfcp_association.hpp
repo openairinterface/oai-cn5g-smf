@@ -30,6 +30,7 @@
 
 #include <map>
 #include <mutex>
+#include <utility>
 #include <vector>
 #include <stack>
 #include <unordered_map>
@@ -43,6 +44,8 @@
 #include "UpfInfo.h"
 #include "smf.h"
 #include "smf_config_types.hpp"
+#include "smf_qos_upf_edge.hpp"
+#include "uint_generator.hpp"
 
 namespace smf {
 
@@ -52,13 +55,8 @@ const int PFCP_ASSOCIATION_GRACEFUL_RELEASE_PERIOD = 5;
 
 const int PFCP_MAX_ASSOCIATIONS = 16;
 
-struct edge;
-
 class pfcp_association {
  public:
-  static iface_type iface_type_from_string(const std::string& input);
-  static std::string string_from_iface_type(const iface_type& type);
-
   pfcp::node_id_t node_id;
   std::size_t hash_node_id;
   pfcp::recovery_time_stamp_t recovery_time_stamp;
@@ -76,24 +74,24 @@ class pfcp_association {
   timer_id_t timer_association      = ITTI_INVALID_TIMER_ID;
   timer_id_t timer_graceful_release = ITTI_INVALID_TIMER_ID;
 
-  explicit pfcp_association(const oai::config::smf::upf& upf_cfg)
-      : recovery_time_stamp(), m_upf_cfg(upf_cfg) {
+  explicit pfcp_association(oai::config::smf::upf upf_cfg)
+      : recovery_time_stamp(), m_upf_cfg(std::move(upf_cfg)) {
     node_id      = m_upf_cfg.get_node_id();
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
 
   pfcp_association(
-      const oai::config::smf::upf& upf_cfg,
+      oai::config::smf::upf upf_cfg,
       const pfcp::recovery_time_stamp_t& recovery_time_stamp)
-      : recovery_time_stamp(recovery_time_stamp), m_upf_cfg(upf_cfg) {
+      : recovery_time_stamp(recovery_time_stamp),
+        m_upf_cfg(std::move(upf_cfg)) {
     node_id      = m_upf_cfg.get_node_id();
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
   pfcp_association(
-      const oai::config::smf::upf& upf_cfg,
-      const pfcp::recovery_time_stamp_t& rts,
+      oai::config::smf::upf upf_cfg, const pfcp::recovery_time_stamp_t& rts,
       const pfcp::up_function_features_s& uff)
-      : recovery_time_stamp(rts), m_upf_cfg(upf_cfg) {
+      : recovery_time_stamp(rts), m_upf_cfg(std::move(upf_cfg)) {
     node_id                  = m_upf_cfg.get_node_id();
     hash_node_id             = std::hash<pfcp::node_id_t>{}(node_id);
     function_features.first  = true;
@@ -113,32 +111,6 @@ class pfcp_association {
   [[nodiscard]] oai::model::nrf::UpfInfo get_upf_info() const;
 
   size_t operator()(const pfcp_association&) const { return hash_node_id; }
-
-  /**
-   * @brief: Returns true and all the edges of N3 interfaces
-   * @param edges
-   * @return
-   */
-  bool find_n3_edge(std::vector<edge>& edges);
-
-  /**
-   * @brief: Returns true and all the edges of N6 interfaces
-   * @param nw_instance
-   * @return
-   */
-  bool find_n6_edge(std::vector<edge>& edges);
-
-  /**
-   * @brief Compares the FQDN or IP address value of all the interfaces of the
-   * current PFCP association with the FQDN/ip addresses of other_upf.
-   *
-   * @param other_upf
-   * @param out_edge info of the found edge
-   * @return true    when one FQDN or IP address of this interface list matches
-   * with FQDN
-   */
-  bool find_upf_edge(
-      const std::shared_ptr<pfcp_association>& other_upf, edge& out_edge);
 
   /**
    * @brief Get the readable name of the UPF associated with this association
@@ -161,162 +133,10 @@ class pfcp_association {
 
  private:
   oai::config::smf::upf m_upf_cfg;
-  bool find_interface_edge(
-      const iface_type& type_match, std::vector<edge>& edges);
 };
 
-enum node_selection_criteria_e {
-  NODE_SELECTION_CRITERIA_BEST_MAX_HEARBEAT_RTT = 0,
-  NODE_SELECTION_CRITERIA_MIN_PFCP_SESSIONS     = 1,
-  NODE_SELECTION_CRITERIA_MIN_UP_TIME           = 2,
-  NODE_SELECTION_CRITERIA_MAX_AVAILABLE_BW      = 3,
-  NODE_SELECTION_CRITERIA_NONE                  = 4
-};
-
-// TODO moved here from smf_context.hpp
-// this is not nice but otherwise we have circular dependencies
-// and forward declaration does not work as it is an incomplete type
-class smf_qos_flow {
- public:
-  smf_qos_flow() { clear(); }
-
-  void clear() {
-    ul_fteid    = {};
-    dl_fteid    = {};
-    pdr_id_ul   = {};
-    pdr_id_dl   = {};
-    precedence  = {};
-    far_id_ul   = {};
-    far_id_dl   = {};
-    urr_id      = {};
-    released    = false;
-    qos_profile = {};
-    cause_value = 0;
-  }
-
-  /**
-   * Remove all values associated with a PFCP session, but keep QoS profile
-   */
-  void clear_session() {
-    ul_fteid  = {};
-    dl_fteid  = {};
-    pdr_id_dl = {};
-    pdr_id_ul = {};
-    far_id_dl = {};
-    far_id_ul = {};
-    urr_id    = {};
-  }
-
-  /*
-   * Release resources associated with this flow
-   * @param void
-   * @return void
-   */
-  void deallocate_ressources();
-
-  /*
-   * Mark this flow as released
-   * @param void
-   * @return void
-   */
-  void mark_as_released();
-
-  /*
-   * Represent flow as string to be printed
-   * @param void
-   * @return void
-   */
-  std::string toString() const;
-
-  [[nodiscard]] std::string toString(const std::string& indent) const;
-
-  pfcp::qfi_t qfi;           // QoS Flow Identifier
-  pfcp::fteid_t ul_fteid{};  // fteid of UPF
-  pfcp::fteid_t dl_fteid{};  // fteid of AN
-  pfcp::pdr_id_t pdr_id_ul;  // Packet Detection Rule ID, UL
-  pfcp::pdr_id_t pdr_id_dl;  // Packet Detection Rule ID, DL
-  pfcp::urr_id_t urr_id{};   // Usage reporting Rule, use same for UL and DL
-  pfcp::precedence_t precedence{};
-  std::pair<bool, pfcp::far_id_t> far_id_ul;  // FAR ID, UL
-  std::pair<bool, pfcp::far_id_t> far_id_dl;  // FAR ID, DL
-  bool released{};  // finally seems necessary, TODO try to find heuristic ?
-  pdu_session_id_t pdu_session_id{};
-  qos_profile_t qos_profile;  // QoS profile
-  uint8_t cause_value{};      // cause
-};
-
-const std::string DEFAULT_FLOW_DESCRIPTION =
-    "permit out ip from any to assigned";
-
-struct edge {
-  // this might need to be replaced by FlowInformation model in the future, but
-  // for now we know this is always uplink
-  std::string used_dnai;
-  std::string flow_description;
-  pfcp::redirect_information_t redirect_information = {};
-  unsigned int precedence                           = 0;
-  std::string nw_instance;
-  iface_type type;
-  // Get first address from vector since multiple addresses on same interface
-  // type is not under scope for now
-  in_addr ip_addr;
-  in6_addr ip6_addr;
-  bool uplink = false;
-  std::vector<std::shared_ptr<smf_qos_flow>> qos_flows;
-  bool n4_sent = false;
-  std::shared_ptr<pfcp_association> association;
-  // we use parts of the upf_interface here
-  // the reason why we do is that all the info is split up into several parts
-  // in the API. It is more time-efficient to have all in one place
-  std::unordered_set<snssai_upf_info_item_s, snssai_upf_info_item_s>
-      snssai_dnns;
-
-  static edge from_upf_info(
-      const oai::model::nrf::UpfInfo& upf_info,
-      const oai::model::nrf::InterfaceUpfInfoItem& interface);
-
-  static edge from_upf_info(const oai::model::nrf::UpfInfo& upf_info);
-
-  bool serves_network(const std::string& dnn, const snssai_t& snssai) const;
-
-  bool serves_network(
-      const std::string& dnn, const snssai_t& snssai,
-      const std::unordered_set<std::string>& dnais,
-      std::string& found_dnai) const;
-
-  bool get_qos_flows(std::vector<std::shared_ptr<smf_qos_flow>>& flows);
-  bool get_qos_flows(
-      pdu_session_id_t pid, std::vector<std::shared_ptr<smf_qos_flow>>& flows);
-
-  std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::pdr_id_t& pdr_id);
-
-  std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::qfi_t& qfi);
-
-  std::shared_ptr<smf_qos_flow> get_qos_flow(const pfcp::far_id_t& far_id);
-
-  bool operator==(const edge& other) const {
-    return nw_instance == other.nw_instance && type == other.type &&
-           uplink == other.uplink && association == other.association;
-  }
-
-  [[nodiscard]] std::string to_string() const {
-    std::string output = pfcp_association::string_from_iface_type(type);
-    output.append("(").append(nw_instance).append(")");
-    // only print name of UPF when nw instance is empty
-    // otherwise output is too long and redundant
-    if (association && nw_instance.empty()) {
-      output.append("(").append(association->get_printable_name()).append(") ");
-    }
-    if (!snssai_dnns.empty()) {
-      output.append(", S-NSSAI UPF info list: { ");
-      for (const auto& s : snssai_dnns) {
-        output.append(" ").append(s.to_string()).append(", ");
-      }
-      output.append("}");
-    }
-    return output;
-  }
-};
+class qos_upf_edge;
+class upf_selection_criteria;
 
 class upf_graph {
  private:
@@ -325,30 +145,28 @@ class upf_graph {
   // use std::hash of shared_ptr so that hash function of pfcp_association is
   // called
   std::unordered_map<
-      std::shared_ptr<pfcp_association>, std::vector<edge>,
+      std::shared_ptr<pfcp_association>,
+      std::vector<std::shared_ptr<qos_upf_edge>>,
       std::hash<std::shared_ptr<pfcp_association>>>
       adjacency_list;
 
   mutable std::shared_mutex graph_mutex;
 
+  // State information for asynchronous DFS during PFCP procedures
   std::stack<std::shared_ptr<pfcp_association>> stack_asynch;
   std::unordered_map<
       std::shared_ptr<pfcp_association>, bool,
       std::hash<std::shared_ptr<pfcp_association>>>
       visited_asynch;
-  std::vector<edge> current_edges_ul_asynch;
-  std::vector<edge> current_edges_dl_asynch;
+  std::vector<std::shared_ptr<qos_upf_edge>> current_edges_ul_asynch;
+  std::vector<std::shared_ptr<qos_upf_edge>> current_edges_dl_asynch;
   std::shared_ptr<pfcp_association> current_upf_asynch;
   bool uplink_asynch = false;
-  smf_qos_flow qos_flow_asynch;
 
-  // normal DFS temporary values
-  std::unordered_set<std::string> dfs_all_dnais;
-  std::string dfs_flow_description;
-  pfcp::redirect_information_t dfs_redirect_information = {};
-  snssai_t dfs_snssai;
-  std::string dfs_dnn;
-  uint32_t dfs_precedence{};
+  // statistics which are useful for verifying the graph
+  unsigned int access_edge_count = 0;
+  unsigned int exit_edge_count   = 0;
+  std::unordered_set<std::string> served_dnais;
 
   /**
    * @brief Adds an edge in one direction, adds node if it does not exist
@@ -357,7 +175,7 @@ class upf_graph {
    */
   void add_upf_graph_edge(
       const std::shared_ptr<pfcp_association>& source,
-      const edge& edge_info_src_dst);
+      const std::shared_ptr<qos_upf_edge>& edge_info_src_dst);
 
   /**
    * @brief Adds an edge to the graph in both direction, adds node if it does
@@ -370,8 +188,9 @@ class upf_graph {
    */
   void add_upf_graph_edge(
       const std::shared_ptr<pfcp_association>& source,
-      const std::shared_ptr<pfcp_association>& dest, edge& edge_info_src_dest,
-      edge& edge_info_dst_src);
+      const std::shared_ptr<pfcp_association>& dest,
+      const std::shared_ptr<qos_upf_edge>& edge_info_src_dest,
+      const std::shared_ptr<qos_upf_edge>& edge_info_dst_src);
 
   /**
    * @brief Adds a UPF graph node
@@ -379,21 +198,6 @@ class upf_graph {
    * @param node
    */
   void add_upf_graph_node(const std::shared_ptr<pfcp_association>& node);
-
-  /**
-   * @brief Sets selection criteria for the subgraph_dfs function.
-   * @pre Not thread-safe, lock before
-   * @param all_dnais  All DNAIs that need to be present in the graph
-   * @param flow_description The flow description that is used for the edges
-   * @param precedence The precedence that is used for the edges
-   * @param snssai The SNSSAI info to match against
-   * @param dnn The DNN to match against
-   */
-  void set_dfs_selection_criteria(
-      const std::unordered_set<std::string>& all_dnais,
-      const std::string& flow_description, uint32_t precedence,
-      const snssai_t& snssai, const std::string& dnn,
-      const pfcp::redirect_information_t& redirect_information);
 
   /**
    * @brief Creates a subgraph based on all the UPFs in the current graph which
@@ -410,21 +214,22 @@ class upf_graph {
       const std::shared_ptr<pfcp_association>& start_node,
       std::unordered_map<
           std::shared_ptr<pfcp_association>, bool,
-          std::hash<std::shared_ptr<pfcp_association>>>& visited);
+          std::hash<std::shared_ptr<pfcp_association>>>& visited,
+      const upf_selection_criteria& selection_criteria);
 
   /**
    * @brief: Verifies this graph based on the selection criteria
-   * @pre Not thread-safe, lock before
    * @return true if graph is correct, false if not
    */
-  bool verify();
+  bool verify(const upf_selection_criteria& selection_criteria);
 
   /**
    * TODO
    * @param dnais
    * @return
    */
-  static std::string get_dnai_list(const std::unordered_set<string>& dnais);
+  static std::string get_dnai_list(
+      const std::unordered_set<std::string>& dnais);
 
   /**
    * Traverse the graph in BFS from start and generate info
@@ -435,6 +240,12 @@ class upf_graph {
   std::string to_string_from_start_node(
       const std::string& indent,
       const std::shared_ptr<pfcp_association>& start) const;
+
+  uint8_t generate_qfi();
+
+  void release_qfi(uint8_t qfi);
+
+  util::uint_generator<uint8_t> qfi_generator;
 
  public:
   upf_graph() : adjacency_list(), visited_asynch(){};
@@ -450,9 +261,10 @@ class upf_graph {
    * @brief Inserts a PFCP association into the UPF graph, based on the UPF
    * interface list and adds edges with other existing associations
    *
-   * @param sa pointer to the pfcp_association, cannot be null
+   * @param association_to_add pointer to the pfcp_association, cannot be null
    */
-  void insert_into_graph(const std::shared_ptr<pfcp_association>& sa);
+  void insert_into_graph(
+      const std::shared_ptr<pfcp_association>& association_to_add);
 
   /**
    * @brief Get Association from an UPF node id hash
@@ -487,21 +299,13 @@ class upf_graph {
 
   /**
    * @brief select one UPF node based on SNSSAI and DNAI. Returns a nullpointer
-   * if no suitable UPF is found. Does not consider the graph structure
+   * if no suitable UPF is found.
    *
-   * @param snssai
-   * @param dnn
-   * @return std::shared_ptr<pfcp_association>&
+   * @param criteria  DNN, SNSSAI and QoS Profile needs to be set
+   * @return std::shared_ptr<upf_graph>
    */
-  std::shared_ptr<upf_graph> select_upf_node(
-      const snssai_t& snssai, const std::string& dnn);
-
-  /**
-   * @brief Select UPF based on selection criteria. NOT IMPLEMENTED
-   * @param node_selection_criteria
-   * @return nullptr
-   */
-  std::shared_ptr<upf_graph> select_upf_node(int node_selection_criteria);
+  std::shared_ptr<upf_graph> select_upf_nodes(
+      const upf_selection_criteria& criteria);
 
   /**
    *  @brief Select UPF nodes based on the policy decision and especially on the
@@ -510,13 +314,29 @@ class upf_graph {
    * graph can be found, an empty pointer is returned
    *
    * @param policy_decision
-   * @param snssai
-   * @param dnn
+   * @param criteria DNN, SNSSAI must be set, the rest is inferred from PCC
+   * rules
    * @return std::shared_ptr<upf_graph>
    */
   std::shared_ptr<upf_graph> select_upf_nodes(
       const oai::model::pcf::SmPolicyDecision& policy_decision,
-      const snssai_t& snssai, const std::string& dnn);
+      const upf_selection_criteria& criteria);
+
+  /**
+   * @brief Select UPF nodes based on the selection criteria. This method is
+   * called by the other overloaded select_upf_nodes functions and is
+   * responsible for traversing the graph with a DFS. In case no graph can be
+   * found, an empty pointer is returned.
+   * @param criteria
+   * @param verify_criteria   Use different criteria to verify the graph (only
+   * relevant for DNAIs)
+   * @param sub_graph  Existing graph. may already contain nodes
+   * @return bool  true if a UPF graph can be selected
+   */
+  bool select_upf_nodes(
+      const upf_selection_criteria& criteria,
+      std::shared_ptr<upf_graph>& sub_graph,
+      const upf_selection_criteria& verify_criteria);
 
   /**
    * @brief Traverses the UPF asynch DFS procedure and returns the next UPF.
@@ -527,7 +347,8 @@ class upf_graph {
    * @param upf output_parameter: UPF
    */
   void dfs_next_upf(
-      std::vector<edge>& info_dl, std::vector<edge>& info_ul,
+      std::vector<std::shared_ptr<qos_upf_edge>>& info_dl,
+      std::vector<std::shared_ptr<qos_upf_edge>>& info_ul,
       std::shared_ptr<pfcp_association>& upf);
 
   /**
@@ -539,35 +360,27 @@ class upf_graph {
    * @param upf output_parameter: UPF
    */
   void dfs_current_upf(
-      std::vector<edge>& info_dl, std::vector<edge>& info_ul,
+      std::vector<std::shared_ptr<qos_upf_edge>>& info_dl,
+      std::vector<std::shared_ptr<qos_upf_edge>>& info_ul,
       std::shared_ptr<pfcp_association>& upf);
 
   /**
    * @brief Starts asynchronous DFS procedure,
    * @param uplink if uplink or downlink direction
-   * @param qos_flow SMF flow to be used for this procedure
    */
-  void start_asynch_dfs_procedure(bool uplink, smf_qos_flow& qos_flow);
+  void start_asynch_dfs_procedure(bool uplink);
 
   /**
-   * @brief Returns the access edge of this graph. If multiple exist, first is
-   * returned (random order)
+   * Get all the access edges for this graph, for each QFI there may be an
+   * access edge
    * @return
    */
-  edge get_access_edge() const;
-
-  /**
-   * Update edge information in the graph
-   * @param upf UPF for which edge info should be updated
-   * @param info info to update
-   */
-  void update_edge_info(
-      const std::shared_ptr<pfcp_association>& upf, const edge& info);
+  std::vector<std::shared_ptr<qos_upf_edge>> get_access_edges() const;
 
   /**
    * @brief: Debug-prints the current graph
    */
-  void print_graph();
+  void print_graph() const;
   /**
    * Returns true if graph exceeds MAX_PFCP_ASSOCIATIONS
    * @return
@@ -666,11 +479,11 @@ class pfcp_associations {
   void handle_receive_heartbeat_response(const uint64_t trxn_id);
 
   std::shared_ptr<upf_graph> select_up_node(
-      const snssai_t& snssai, const std::string& dnn);
+      const upf_selection_criteria& selection_criteria);
 
   std::shared_ptr<upf_graph> select_up_node(
-      const oai::model::pcf::SmPolicyDecision& decision, const snssai_t& snssai,
-      const std::string& dnn);
+      const oai::model::pcf::SmPolicyDecision& decision,
+      const upf_selection_criteria& selection_criteria);
 
   bool add_peer_candidate_node(const oai::config::smf::upf& upf_cfg);
   bool remove_association(const std::string& node_instance_id);
