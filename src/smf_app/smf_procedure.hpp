@@ -269,6 +269,9 @@ class session_update_sm_context_procedure : public smf_session_procedure {
    */
   smf_procedure_code send_n4_session_modification_request(
       const std::vector<pfcp::qfi_t>& list_of_qfis);
+
+  void remove_pdrs_and_fars(
+      const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
 };
 
 //------------------------------------------------------------------------------

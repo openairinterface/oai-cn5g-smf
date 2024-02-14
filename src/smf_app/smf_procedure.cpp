@@ -1144,24 +1144,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_RELEASE_AN_INITIATED: {
       Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
-
-      // we can get this request when we have only UL, so we have to check for 0
-      for (const auto& ul_edge : ul_edges_to_update) {
-        if (ul_edge->pdr_id.rule_id != 0) {
-          n4_triggered->pfcp_ies.set(pfcp_remove_pdr(ul_edge));
-        }
-        n4_triggered->pfcp_ies.set(pfcp_remove_far(ul_edge));
-        ul_edge->clear_session();
-      }
-
-      for (const auto& dl_edge : dl_edges_to_update) {
-        if (dl_edge->pdr_id.rule_id != 0) {
-          n4_triggered->pfcp_ies.set(pfcp_remove_pdr(dl_edge));
-        }
-        n4_triggered->pfcp_ies.set(pfcp_remove_far(dl_edge));
-        dl_edge->clear_session();
-      }
-
+      remove_pdrs_and_fars(ul_edges_to_update);
+      remove_pdrs_and_fars(dl_edges_to_update);
       send_n4 = true;
     } break;
 
@@ -1281,8 +1265,11 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
         PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
       std::vector<pfcp::qfi_t> used_qfis = associate_fteid_with_created_pdrs(
           resp.pfcp_ies.created_pdrs, ul_edges_to_update);
-
-      check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
+      // if it is not empty, we have created PDR with F-TEID in PDU session
+      // modification
+      if (!used_qfis.empty()) {
+        check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
+      }
       continue_n4 = true;
       /* the difference between normal PDU session establishment and HO is:
        * in PDU sess establishment, we have to make DL tunnels for all UPFs,
@@ -1294,7 +1281,9 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
       std::vector<pfcp::qfi_t> used_qfis = associate_fteid_with_created_pdrs(
           resp.pfcp_ies.created_pdrs, ul_edges_to_update);
-      check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
+      if (!used_qfis.empty()) {
+        check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
+      }
       continue_n4 = false;
     } break;
 
@@ -1356,6 +1345,19 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       http_status_code_e::HTTP_STATUS_CODE_200_OK);
 
   return smf_procedure_code::OK;
+}
+
+void session_update_sm_context_procedure::remove_pdrs_and_fars(
+    const vector<std::shared_ptr<qos_upf_edge>>& edges) {
+  for (const auto& edge : edges) {
+    if (edge->pdr_id.rule_id != 0) {
+      n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));
+    }
+    if (edge->far_id.far_id != 0) {
+      n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    }
+    edge->clear_session();
+  }
 }
 
 //------------------------------------------------------------------------------

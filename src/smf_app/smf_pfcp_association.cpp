@@ -938,12 +938,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   auto criteria = base_criteria;
   // this is the UPF selection without PCC rules so we always have only the
   // default QoS with only one QFI
-  criteria.qfi = generate_qfi();
   bool success = select_upf_nodes(criteria, graph, criteria);
   if (success) {
     return graph;
   } else {
-    release_qfi(criteria.qfi);
     return nullptr;
   }
 }
@@ -972,15 +970,12 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   std::shared_ptr<upf_graph> sub_graph_ptr = {};
   upf_selection_criteria verify_criteria;
 
-  uint8_t generated_qfi = generate_qfi();
-
   // run DFS for each PCC rule, get different graphs and merge them
 
   for (const auto& rule : pcc_rules) {
     upf_selection_criteria selection_criteria = base_criteria;
     // TODO without Qos we only have one QFI, we should include the QOS data
     // from PCF here and generate a QFI for each of the QoS flows
-    selection_criteria.qfi = generated_qfi;
 
     if (!rule.second.getRefTcData().empty()) {
       // we just take the first traffic control, as defined in the standard
@@ -1084,8 +1079,10 @@ bool upf_graph::select_upf_nodes(
       } else {
         sub_graph_ptr = std::make_shared<upf_graph>();
       }
+      auto graph_criteria = criteria;
+      graph_criteria.qfi  = sub_graph_ptr->generate_qfi();
 
-      create_subgraph_dfs(sub_graph_ptr, upf, visited, criteria);
+      create_subgraph_dfs(sub_graph_ptr, upf, visited, graph_criteria);
 
       if (!sub_graph_ptr->verify(verify_criteria)) {
         // in case copy is empty, new subgraph_ptr is also empty, and we
@@ -1204,13 +1201,14 @@ void upf_graph::create_subgraph_dfs(
         if (edge_it->type == n3_type) {
           sub_graph->access_edge_count++;
           edge_it->uplink = false;
-          n3_edge         = edge_it;
+          n3_edge         = std::make_shared<qos_upf_edge>(*edge_it);
+          sub_graph->add_upf_graph_edge(node_it->first, n3_edge);
         } else if (edge_it->type == n6_type) {
           edge_it->uplink = true;
           sub_graph->exit_edge_count++;
-          n6_edge = edge_it;
+          n6_edge = std::make_shared<qos_upf_edge>(*edge_it);
+          sub_graph->add_upf_graph_edge(node_it->first, n6_edge);
         }
-        sub_graph->add_upf_graph_edge(node_it->first, edge_it);
       } else if (!visited[edge_it->destination_upf]) {
         auto src_dst    = std::make_shared<qos_upf_edge>(*edge_it);
         src_dst->uplink = true;  // N9 uplink as we start at access
