@@ -153,7 +153,7 @@ class smf_session_procedure : public smf_procedure {
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges,
       std::vector<std::shared_ptr<qos_upf_edge>>& served_edges);
 
-  static std::vector<pfcp::qfi_t> associate_fteid_with_created_pdrs(
+  std::vector<pfcp::qfi_t> associate_fteid_with_created_pdrs(
       const std::vector<pfcp::created_pdr>& created_pdrs,
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
   void check_if_all_qfis_are_handled(

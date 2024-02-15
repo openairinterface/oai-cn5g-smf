@@ -60,11 +60,12 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     flow.qfi         = edge->qfi;
     flow.qos_profile = edge->qos_profile;
     flow.cause_value = static_cast<uint8_t>(m_cause_value);
-    flow.set_dl_fteid(edge->gnb_fteid);
+    flow.set_dl_fteid(edge->next_hop_fteid);
     flow.set_ul_fteid(edge->fteid);
 
     // add QoS rule to flow
-    qos_rule_from_edge(edge);
+    flow.add_qos_rule(qos_rule_from_edge(edge));
+
     return flow;
   }
   Logger::smf_app().error(
