@@ -99,10 +99,18 @@ std::vector<std::shared_ptr<qos_upf_edge>> qos_upf_edge::create_edges(
   upf this_upf_cfg = this_upf->get_upf_config();
   std::vector<std::shared_ptr<qos_upf_edge>> edges;
 
+  UPInterfaceType n9_type;
+  n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
+
   // Because interfaceUpfInfoList is optional in TS 29.510 (why even?), we
   // just guess that this UPF has a N3 or N6 interface
   if (!this_upf_cfg.get_upf_info().interfaceUpfInfoListIsSet() ||
       this_upf_cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
+    // We cannot just assume that we have an N9 interface, because we would make
+    // links where non are
+    if (type == n9_type) {
+      return edges;
+    }
     Logger::smf_app().debug(
         "UPF Interface list is empty: Assume that the UPF has an %s interface.",
         type.getEnumString());
