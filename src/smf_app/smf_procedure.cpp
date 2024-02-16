@@ -134,7 +134,8 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   oai::config::smf::upf cfg         = edge->source_upf->get_upf_config();
   pfcp::create_far create_far       = {};
   pfcp::apply_action_t apply_action = {};
-  pfcp::forwarding_parameters forwarding_parameters = {};
+  pfcp::forwarding_parameters forwarding_parameters   = {};
+  pfcp::outer_header_creation_t outer_header_creation = {};
 
   // forwarding_parameters IEs
   pfcp::destination_interface_t destination_interface = {};
@@ -180,16 +181,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
-  pfcp::fteid_t fteid_to_use{};
-  if (edge->type != n6_type) {
-    fteid_to_use = edge->next_hop_fteid;
-  }
-  if (!fteid_to_use.is_zero()) {
-    pfcp::outer_header_creation_t outer_header_creation = {};
-    outer_header_creation.outer_header_creation_description =
-        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
-    outer_header_creation.teid         = fteid_to_use.teid;
-    outer_header_creation.ipv4_address = fteid_to_use.ipv4_address;
+  if (pfcp_outer_header_creation(edge, outer_header_creation)) {
     forwarding_parameters.set(outer_header_creation);
   }
 
@@ -438,30 +430,41 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
   pfcp::apply_action_t apply_action                               = {};
   pfcp::update_forwarding_parameters update_forwarding_parameters = {};
   pfcp::destination_interface_t destination_interface             = {};
+  pfcp::outer_header_creation_t outer_header_creation             = {};
 
-  UPInterfaceType n6_type;
-  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
-
-  if (edge->type != n6_type) {
-    pfcp::outer_header_creation_t outer_header_creation = {};
-    outer_header_creation.outer_header_creation_description =
-        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
-    outer_header_creation.teid         = edge->fteid.teid;
-    outer_header_creation.ipv4_address = edge->fteid.ipv4_address;
-    update_forwarding_parameters.set(outer_header_creation);
-  }
   if (edge->uplink) {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   } else {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
   }
   update_forwarding_parameters.set(destination_interface);
+  if (pfcp_outer_header_creation(edge, outer_header_creation)) {
+    update_forwarding_parameters.set(outer_header_creation);
+  }
+
   update_far.set(update_forwarding_parameters);
   apply_action.forw = 1;  // forward the packets
 
+  update_far.set(edge->far_id);
   update_far.set(apply_action);
 
   return update_far;
+}
+
+bool smf_session_procedure::pfcp_outer_header_creation(
+    const shared_ptr<qos_upf_edge>& edge,
+    outer_header_creation_t& outer_header) {
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+
+  if (edge->type != n6_type) {
+    outer_header.outer_header_creation_description =
+        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
+    outer_header.teid         = edge->next_hop_fteid.teid;
+    outer_header.ipv4_address = edge->next_hop_fteid.ipv4_address;
+    return true;
+  }
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -539,6 +542,7 @@ bool smf_session_procedure::is_qfi_served_in_edges(
   return true;
 }
 
+//------------------------------------------------------------------------------
 std::vector<pfcp::qfi_t>
 smf_session_procedure::associate_fteid_with_created_pdrs(
     const vector<pfcp::created_pdr>& created_pdrs,
@@ -573,6 +577,8 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
 
   return used_qfis_pfcp;
 }
+
+//------------------------------------------------------------------------------
 void smf_session_procedure::check_if_all_qfis_are_handled(
     const vector<pfcp::qfi_t>& all_qfis_to_check,
     const vector<pfcp::qfi_t>& handled_qfis) {
@@ -1354,6 +1360,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   return smf_procedure_code::OK;
 }
 
+//------------------------------------------------------------------------------
 void session_update_sm_context_procedure::remove_pdrs_and_fars(
     const vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {
