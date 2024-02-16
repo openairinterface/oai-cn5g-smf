@@ -1018,6 +1018,23 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       continue;
     }
     if (rule.second.flowInfosIsSet() && !rule.second.getFlowInfos().empty()) {
+      auto flow_info = rule.second.getFlowInfos()[0];
+      if (!flow_info.flowDirectionIsSet()) {
+        Logger::smf_app().info(
+            "Flow direction is not set in PCC rules, use default "
+            "BIDIRECTIONAL");
+        FlowDirectionRm flow_direction;
+        flow_direction.setEnumValue(
+            FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL);
+        flow_info.setFlowDirection(flow_direction);
+      }
+      // TODO 29.512 defines this as false per default, but we take the filter
+      // here to build the NAS filter list we should take it from default QoS
+      // from session rules, if we don't set it to true here, COTS UEs will
+      // complain
+
+      flow_info.setPacketFilterUsage(true);
+
       selection_criteria.flow_information = rule.second.getFlowInfos()[0];
     } else {
       Logger::smf_app().warn(

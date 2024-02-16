@@ -61,6 +61,10 @@ struct upf_selection_criteria {
   static oai::model::pcf::FlowInformation get_default_flow_information() {
     oai::model::pcf::FlowInformation flow;
     flow.setFlowDescription(DEFAULT_FLOW_DESCRIPTION);
+    oai::model::pcf::FlowDirectionRm flow_direction;
+    flow_direction.setEnumValue(oai::model::pcf::FlowDirection_anyOf::
+                                    eFlowDirection_anyOf::BIDIRECTIONAL);
+    flow.setFlowDirection(flow_direction);
     flow.setPacketFilterUsage(true);  // so that we send it to UE always
     return flow;
   }
@@ -103,11 +107,10 @@ class qos_upf_edge {
   pfcp::fteid_t fteid{};
   // for N3 or N9
   pfcp::fteid_t next_hop_fteid{};
-  // TODO we could also use QoSData from models, but this qos_profile is really
-  // used at many places
+  // we could also use QoSData from models, but this qos_profile is really used
+  // at many places
   qos_profile_t qos_profile{};  // QoS profile
 
-  // TODO ???
   std::shared_ptr<qos_upf_edge> associated_edge{};
   std::shared_ptr<pfcp_association> destination_upf{};
   std::shared_ptr<pfcp_association> source_upf{};
