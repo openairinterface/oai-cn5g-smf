@@ -1132,6 +1132,12 @@ bool upf_graph::select_upf_nodes(
 
 //---------------------------------------------------------------------------------------------
 bool upf_graph::verify(const upf_selection_criteria& criteria) {
+  if (total_edge_count != associated_edge_count) {
+    Logger::smf_app().info(
+        "UPF graph selection could not associate links between all UPFs");
+    return false;
+  }
+
   if (access_edge_count == 0) {
     Logger::smf_app().info("UPF graph does not have an access (N3) node");
     return false;
@@ -1212,6 +1218,9 @@ void upf_graph::create_subgraph_dfs(
   std::stack<std::shared_ptr<pfcp_association>> stack;
   stack.push(start_node);
 
+  // if DNAIs are empty, we only search for the first N6 exit
+  bool simple_mode = selection_criteria.dnais.empty();
+
   while (!stack.empty()) {
     std::shared_ptr<pfcp_association> node = stack.top();
     stack.pop();
@@ -1229,6 +1238,8 @@ void upf_graph::create_subgraph_dfs(
     // DFS: Go through all edges and check if the UPF serves one of the DNAIs
     // from the PCC rule
     std::vector<std::shared_ptr<qos_upf_edge>> edges_to_connect;
+    unsigned int uplink_next_hop_edges = 0;
+    bool push_next_upf                 = false;
     // NOTE: As we use shared_ptrs here, we have to make a copy before changing
     // the object otherwise we change the edges also in the full graph and/or
     // for other PDU sessions
@@ -1245,21 +1256,43 @@ void upf_graph::create_subgraph_dfs(
       n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
       UPInterfaceType n6_type;
       n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+      UPInterfaceType n9_type;
+      n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
       if (edge_to_use->type == n3_type) {
+        if (simple_mode && sub_graph->access_edge_count == 1) {
+          continue;
+        }
         sub_graph->access_edge_count++;
         edge_to_use->uplink = false;
       } else if (edge_to_use->type == n6_type) {
         edge_to_use->uplink = true;
         sub_graph->exit_edge_count++;
+        uplink_next_hop_edges++;
+      } else if (edge_to_use->type == n9_type) {
+        // if next hop is not visited, it is uplink
+        if (edge_to_use->destination_upf &&
+            !visited[edge_to_use->destination_upf]) {
+          uplink_next_hop_edges++;
+          edge_to_use->uplink = true;
+          push_next_upf       = true;
+        }
       }
+
+      if (simple_mode && uplink_next_hop_edges > 1) {
+        Logger::smf_app().debug(
+            "UPF graph already has one UL edge and DNAIs are not supported, "
+            "skipping edge \n %s",
+            edge_to_use->to_string(0));
+        continue;
+      }
+
       edges_to_connect.push_back(edge_to_use);
       sub_graph->add_upf_graph_edge(node_it->first, edge_to_use);
+      sub_graph->total_edge_count++;
 
       // continue DFS with next UPF node if not visited
-      if (edge_to_use->destination_upf &&
-          !visited[edge_to_use->destination_upf]) {
-        edge_to_use->uplink = true;
+      if (push_next_upf) {
         stack.push(edge_to_use->destination_upf);
       }
     }
@@ -1269,6 +1302,7 @@ void upf_graph::create_subgraph_dfs(
     if (edges_to_connect.size() == 2) {
       edges_to_connect[0]->associated_edge = edges_to_connect[1];
       edges_to_connect[1]->associated_edge = edges_to_connect[0];
+      sub_graph->associated_edge_count += 2;
     }
   }
 }

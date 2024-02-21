@@ -164,8 +164,10 @@ class upf_graph {
   bool uplink_asynch = false;
 
   // statistics which are useful for verifying the graph
-  unsigned int access_edge_count = 0;
-  unsigned int exit_edge_count   = 0;
+  unsigned int access_edge_count     = 0;
+  unsigned int exit_edge_count       = 0;
+  unsigned int total_edge_count      = 0;
+  unsigned int associated_edge_count = 0;
   std::unordered_set<std::string> served_dnais;
 
   /**
