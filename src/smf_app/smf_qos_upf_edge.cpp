@@ -263,6 +263,7 @@ pfcp::redirect_information_t qos_upf_edge::get_pfcp_redirect_information() {
 
 void qos_upf_edge::clear_session() {
   pdr_id         = pfcp::pdr_id_t{};
+  qer_id         = pfcp::qer_id_t{};
   far_id         = pfcp::far_id_t{};
   urr_id         = pfcp::urr_id_t{};
   fteid          = pfcp::fteid_t{};

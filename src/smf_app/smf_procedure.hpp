@@ -61,6 +61,10 @@ class smf_procedure {
   }
 
  public:
+
+  static uint32_t generate_correlation_id() {
+    return static_cast<uint32_t>(util::uint_uid_generator<uint64_t>::get_instance().get_uid());
+  }
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
   explicit smf_procedure(uint64_t tx) { trxn_id = tx; }
@@ -92,6 +96,8 @@ class smf_session_procedure : public smf_procedure {
 
   std::shared_ptr<smf_pdu_session> sps;
 
+  pfcp::create_qer pfcp_create_qer(const std::shared_ptr<qos_upf_edge>& edge);
+
   pfcp::create_far pfcp_create_far(const std::shared_ptr<qos_upf_edge>& edge);
 
   pfcp::create_pdr pfcp_create_pdr(const std::shared_ptr<qos_upf_edge>& edge);
@@ -99,6 +105,9 @@ class smf_session_procedure : public smf_procedure {
   pfcp::create_urr pfcp_create_urr(const std::shared_ptr<qos_upf_edge>& edge);
 
   static pfcp::remove_pdr pfcp_remove_pdr(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  static pfcp::remove_qer pfcp_remove_qer(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   static pfcp::remove_far pfcp_remove_far(
@@ -271,7 +280,7 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   smf_procedure_code send_n4_session_modification_request(
       const std::vector<pfcp::qfi_t>& list_of_qfis);
 
-  void remove_pdrs_and_fars(
+  void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
 };
 
