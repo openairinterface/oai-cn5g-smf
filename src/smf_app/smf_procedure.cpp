@@ -127,7 +127,7 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   pfcp::gbr_t guaranteed_bitrate;
   pfcp::packet_rate_t packet_rate;
   pfcp::dl_flow_level_marking_t dl_flow_level_marking = {};
-  pfcp::qfi_t  qos_flow_identifier;			
+  pfcp::qfi_t  qos_flow_identifier = {};			
   pfcp::rqi_t reflective_qos;
 
   auto flow = edge.get_qos_flow(qfi);
@@ -162,12 +162,12 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   guaranteed_bitrate.dl_gbr = 15000; // Set DL MBR to 60 Mbps (60000 kbps)
   
   // Set UL/DL packet rate
-  packet_rate.ulpr = 0; // Set UL Packet Rate not present
-  packet_rate.dlpr = 0; // Set DL Packet Rate not present
+  packet_rate.ulpr = 1; // Set UL Packet Rate present
+  packet_rate.dlpr = 1; // Set DL Packet Rate present
   packet_rate.uplink_time_unit = 0; // Set UL Time Unit to minutes
   packet_rate.downlink_time_unit = 0; // Set DL Time Unit to minutes 
-  packet_rate.maximum_uplink_packet_rate = 500; // Set max UL Packet Rate to 500 packets
-  packet_rate.maximum_downlink_packet_rate = 1000; // Set max DL Packet Rate to 1000 packets
+  packet_rate.maximum_uplink_packet_rate = 50; // Set max UL Packet Rate to 500 packets
+  packet_rate.maximum_downlink_packet_rate = 100; // Set max DL Packet Rate to 1000 packets
 
   // Set DL Flow Level Marking
   dl_flow_level_marking.sci = 0; // Set Service Class Indicator field present
@@ -185,8 +185,9 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   // octet 2 set to 1 to indicate a standardized SCI, and both octet 2 and octet 3 set to spare (0x00)
   //dl_flow_level_marking.service_class_indicator = "\x80\x00";
   // The value "\x00" in each octet indicates that the SCI is an operator-specific value.
-  // dl_flow_level_marking.service_class_indicator = "\x00\x00";
+  //dl_flow_level_marking.service_class_indicator = "\x00\x00";
   qos_flow_identifier.qfi = 1;
+  reflective_qos.rqi = 0; // Set RQI flag to 0 (Reflective QoS activation not triggered)
 
   create_qer.set(qer_id);
   create_qer.set(qer_correlation_id);
@@ -197,7 +198,6 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   create_qer.set(dl_flow_level_marking);
   create_qer.set(reflective_qos);
   create_qer.set(qos_flow_identifier);
-
   return create_qer;
 }
 
@@ -1288,6 +1288,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
           dl_flow_level_marking.tos_traffic_class = std::string(1, tos_field) + std::string(1, mask_field);
           dl_flow_level_marking.service_class_indicator = "\x80\x00";
           qos_flow_identifier.qfi = 1;
+          reflective_qos.rqi = 0; // Set RQI flag to 0 (Reflective QoS activation not triggered)
 
           update_qer.set(flow->qer_id_dl.second);
           update_qer.set(gate_status);

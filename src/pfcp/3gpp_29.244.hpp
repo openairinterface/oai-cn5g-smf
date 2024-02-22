@@ -9457,15 +9457,8 @@ class pfcp_create_qer_ie : public pfcp_grouped_ie {
           std::make_shared<pfcp_packet_rate_ie>(b.packet_rate.second);
       add_ie(sie);
     }
-    if (b.dl_flow_level_marking.first) {
-      std::shared_ptr<pfcp_dl_flow_level_marking_ie> sie =
-          std::make_shared<pfcp_dl_flow_level_marking_ie>(
-              b.dl_flow_level_marking.second);
-      add_ie(sie);
-    }
     if (b.qos_flow_identifier.first) {
-      std::shared_ptr<pfcp_qfi_ie> sie =
-          std::make_shared<pfcp_qfi_ie>(b.qos_flow_identifier.second);
+      std::shared_ptr<pfcp_qfi_ie> sie(new pfcp_qfi_ie(b.qos_flow_identifier.second));
       add_ie(sie);
     }
     if (b.reflective_qos.first) {
@@ -9473,6 +9466,15 @@ class pfcp_create_qer_ie : public pfcp_grouped_ie {
           std::make_shared<pfcp_rqi_ie>(b.reflective_qos.second);
       add_ie(sie);
     }
+/*
+    if (b.dl_flow_level_marking.first) {
+      std::shared_ptr<pfcp_dl_flow_level_marking_ie> sie =
+          std::make_shared<pfcp_dl_flow_level_marking_ie>(
+              b.dl_flow_level_marking.second);
+      add_ie(sie);
+    }
+*/
+
   }
   //--------
   pfcp_create_qer_ie() : pfcp_grouped_ie(PFCP_IE_CREATE_QER) {}

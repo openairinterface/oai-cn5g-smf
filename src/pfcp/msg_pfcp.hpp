@@ -3080,7 +3080,7 @@ class create_qer : public pfcp::pfcp_ies_container {
     qos_flow_identifier.second = v;
   }
   void set(const pfcp::rqi_t& v) {
-    reflective_qos.first  = false;
+    reflective_qos.first  = true;
     reflective_qos.second = v;
   }
   
