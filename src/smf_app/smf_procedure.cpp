@@ -126,6 +126,65 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
 }
 
 //------------------------------------------------------------------------------
+pfcp::create_qer smf_session_procedure::pfcp_create_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+
+  oai::config::smf::upf cfg         = edge->source_upf->get_upf_config();
+  pfcp::create_qer create_qer       = {};
+  pfcp::qer_id_t qer_id;
+  pfcp::qer_correlation_id_t qer_correlation_id; 
+  pfcp::gate_status_t gate_status;  
+  pfcp::mbr_t maximum_bitrate; 
+  pfcp::gbr_t guaranteed_bitrate;
+  pfcp::packet_rate_t packet_rate;
+  pfcp::dl_flow_level_marking_t dl_flow_level_marking = {};
+  pfcp::qfi_t  qos_flow_identifier = {};			
+  pfcp::rqi_t reflective_qos;
+
+  if (edge->qer_id.qer_id == 0) {
+    edge->qer_id = sps->get_session_handler()->generate_qer_id();
+  }
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+    maximum_bitrate.ul_mbr = 20000;
+    guaranteed_bitrate.ul_gbr = 15000;
+    packet_rate.ulpr = 1;
+    packet_rate.uplink_time_unit = 0;
+    packet_rate.maximum_uplink_packet_rate = 50;
+  } else {
+    gate_status.dl_gate = OPEN;
+    maximum_bitrate.dl_mbr = 60000;
+    guaranteed_bitrate.dl_gbr = 15000;
+    packet_rate.dlpr = 1;
+    packet_rate.downlink_time_unit = 0;
+    packet_rate.maximum_downlink_packet_rate = 100;
+  }
+
+  qer_correlation_id.qer_correlation_id = generate_correlation_id();
+  dl_flow_level_marking.sci = 0;
+  dl_flow_level_marking.ttc = 0;
+  //uint8_t tos_field = 0x8A;
+  //uint8_t mask_field = 0x03;
+  //dl_flow_level_marking.tos_traffic_class = std::string(1, tos_field) + std::string(1, mask_field);
+  //dl_flow_level_marking.service_class_indicator = "\x00\x00";
+  qos_flow_identifier.qfi = 1;
+  reflective_qos.rqi = 0;
+
+  create_qer.set(edge->qer_id);
+  create_qer.set(qer_correlation_id);
+  create_qer.set(gate_status);
+  create_qer.set(maximum_bitrate);
+  create_qer.set(guaranteed_bitrate);
+  create_qer.set(packet_rate);
+  create_qer.set(reflective_qos);
+  create_qer.set(qos_flow_identifier);
+  //create_qer.set(dl_flow_level_marking);
+
+return create_qer;
+}
+
+//------------------------------------------------------------------------------
 pfcp::create_far smf_session_procedure::pfcp_create_far(
     const std::shared_ptr<qos_upf_edge>& edge) {
   // When we have a FAR and edge is uplink we know we are in an uplink procedure
@@ -361,6 +420,15 @@ pfcp::remove_pdr smf_session_procedure::pfcp_remove_pdr(
   pfcp::remove_pdr remove_pdr;
   remove_pdr.set(edge->pdr_id);
   return remove_pdr;
+}
+
+//------------------------------------------------------------------------------
+pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
+    const shared_ptr<qos_upf_edge>& edge) {
+  pfcp::remove_qer remove_qer;
+  remove_qer.set(edge->qer_id);
+
+  return remove_qer;
 }
 
 //------------------------------------------------------------------------------
@@ -1175,8 +1243,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_RELEASE_AN_INITIATED: {
       Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
-      remove_pdrs_and_fars(ul_edges_to_update);
-      remove_pdrs_and_fars(dl_edges_to_update);
+      remove_pdrs_fars_qers(ul_edges_to_update);
+      remove_pdrs_fars_qers(dl_edges_to_update);
       send_n4 = true;
     } break;
 
@@ -1379,7 +1447,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
-void session_update_sm_context_procedure::remove_pdrs_and_fars(
+void session_update_sm_context_procedure::remove_pdrs_fars_qers(
     const vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {
     if (edge->pdr_id.rule_id != 0) {
@@ -1387,6 +1455,9 @@ void session_update_sm_context_procedure::remove_pdrs_and_fars(
     }
     if (edge->far_id.far_id != 0) {
       n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    }
+    if (edge->qer_id.qer_id != 0) {
+      n4_triggered->pfcp_ies.set(pfcp_remove_qer(edge));
     }
     edge->clear_session();
   }

@@ -153,6 +153,18 @@ class session_handler {
   void release_urr_id(const pfcp::urr_id_t& urr_id);
 
   /**
+   * Generates a unique QER ID
+   * @return QER ID
+   */
+  pfcp::qer_id_t generate_qer_id();
+
+  /**
+   * Releases QER ID so that it can be re-used
+   * @param qer_id
+   */
+  void release_qer_id(const pfcp::qer_id_t& qer_id);
+
+  /**
    * Generates a unique FAR ID
    * @return FAR ID
    */
@@ -186,6 +198,7 @@ class session_handler {
   util::uint_generator<uint32_t> m_qfi_generator;
 
   util::uint_generator<uint16_t> m_pdr_id_generator;
+  util::uint_generator<uint32_t> m_qer_id_generator;
   util::uint_generator<uint32_t> m_far_id_generator;
   util::uint_generator<uint32_t> m_urr_id_generator;
 

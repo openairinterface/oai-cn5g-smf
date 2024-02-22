@@ -439,6 +439,18 @@ void session_handler::release_urr_id(const pfcp::urr_id_t& urr_id) {
 }
 
 //------------------------------------------------------------------------------
+pfcp::qer_id_t session_handler::generate_qer_id() {
+  pfcp::qer_id_t qer_id;
+  qer_id.qer_id = m_qer_id_generator.get_uid();
+  return qer_id;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::release_qer_id(const pfcp::qer_id_t& qer_id) {
+  m_qer_id_generator.free_uid(qer_id.qer_id);
+}
+
+//------------------------------------------------------------------------------
 pfcp::far_id_t session_handler::generate_far_id() {
   pfcp::far_id_t far_id;
   far_id.far_id = m_far_id_generator.get_uid();
@@ -631,6 +643,7 @@ std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
 void session_handler::deallocate_resources() {
   for (const auto& edge : m_session_graph->get_access_edges()) {
     release_pdr_id(edge->pdr_id);
+    release_qer_id(edge->qer_id);
     release_far_id(edge->far_id);
     release_urr_id(edge->urr_id);
     release_qos_rule_id(edge->qos_rule_id);
