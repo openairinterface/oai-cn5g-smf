@@ -134,7 +134,8 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   oai::config::smf::upf cfg         = edge->source_upf->get_upf_config();
   pfcp::create_far create_far       = {};
   pfcp::apply_action_t apply_action = {};
-  pfcp::forwarding_parameters forwarding_parameters = {};
+  pfcp::forwarding_parameters forwarding_parameters   = {};
+  pfcp::outer_header_creation_t outer_header_creation = {};
 
   // forwarding_parameters IEs
   pfcp::destination_interface_t destination_interface = {};
@@ -177,23 +178,10 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
               eRedirectAddressType_anyOf::URL) {
     forwarding_parameters.set(edge->get_pfcp_redirect_information());
   }
-  UPInterfaceType n3_type;
-  n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
-  UPInterfaceType n9_type;
-  n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
-  pfcp::fteid_t fteid_to_use{};
-  if (edge->type == n3_type) {
-    fteid_to_use = edge->gnb_fteid;
-  } else if (edge->type == n9_type) {
-    fteid_to_use = edge->fteid;
-  }
-  if (!fteid_to_use.is_zero()) {
-    pfcp::outer_header_creation_t outer_header_creation = {};
-    outer_header_creation.outer_header_creation_description =
-        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
-    outer_header_creation.teid         = fteid_to_use.teid;
-    outer_header_creation.ipv4_address = fteid_to_use.ipv4_address;
+  if (pfcp_outer_header_creation(edge, outer_header_creation)) {
     forwarding_parameters.set(outer_header_creation);
   }
 
@@ -442,30 +430,41 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
   pfcp::apply_action_t apply_action                               = {};
   pfcp::update_forwarding_parameters update_forwarding_parameters = {};
   pfcp::destination_interface_t destination_interface             = {};
+  pfcp::outer_header_creation_t outer_header_creation             = {};
 
-  UPInterfaceType n6_type;
-  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
-
-  if (edge->type != n6_type) {
-    pfcp::outer_header_creation_t outer_header_creation = {};
-    outer_header_creation.outer_header_creation_description =
-        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
-    outer_header_creation.teid         = edge->fteid.teid;
-    outer_header_creation.ipv4_address = edge->fteid.ipv4_address;
-    update_forwarding_parameters.set(outer_header_creation);
-  }
   if (edge->uplink) {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   } else {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
   }
   update_forwarding_parameters.set(destination_interface);
+  if (pfcp_outer_header_creation(edge, outer_header_creation)) {
+    update_forwarding_parameters.set(outer_header_creation);
+  }
+
   update_far.set(update_forwarding_parameters);
   apply_action.forw = 1;  // forward the packets
 
+  update_far.set(edge->far_id);
   update_far.set(apply_action);
 
   return update_far;
+}
+
+bool smf_session_procedure::pfcp_outer_header_creation(
+    const shared_ptr<qos_upf_edge>& edge,
+    outer_header_creation_t& outer_header) {
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+
+  if (edge->type != n6_type) {
+    outer_header.outer_header_creation_description =
+        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
+    outer_header.teid         = edge->next_hop_fteid.teid;
+    outer_header.ipv4_address = edge->next_hop_fteid.ipv4_address;
+    return true;
+  }
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -543,11 +542,14 @@ bool smf_session_procedure::is_qfi_served_in_edges(
   return true;
 }
 
+//------------------------------------------------------------------------------
 std::vector<pfcp::qfi_t>
 smf_session_procedure::associate_fteid_with_created_pdrs(
     const vector<pfcp::created_pdr>& created_pdrs,
     const vector<std::shared_ptr<qos_upf_edge>>& edges) {
-  std::vector<pfcp::qfi_t> used_qfis;
+  // using set to eliminate duplicates (e.g. for UL CL scenario)
+  std::set<uint8_t> used_qfis;
+  std::vector<pfcp::qfi_t> used_qfis_pfcp;
   for (const auto& it : created_pdrs) {
     pfcp::pdr_id_t pdr_id = {};
     if (it.get(pdr_id)) {
@@ -556,7 +558,10 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
           Logger::smf_app().debug(
               "Successfully associate PDR %u with %s", edge->pdr_id.rule_id,
               to_string_fteid(edge->fteid));
-          used_qfis.push_back(edge->qfi);
+          used_qfis.insert(edge->qfi.qfi);
+          sps->get_session_handler()
+              ->get_session_graph()
+              ->update_next_hop_fteid(edge, edge->fteid);
         }
       }
     } else {
@@ -564,8 +569,16 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
     }
   }
 
-  return used_qfis;
+  for (const auto& qfi : used_qfis) {
+    pfcp::qfi_t pfcp_qfi;
+    pfcp_qfi.qfi = qfi;
+    used_qfis_pfcp.push_back(pfcp_qfi);
+  }
+
+  return used_qfis_pfcp;
 }
+
+//------------------------------------------------------------------------------
 void smf_session_procedure::check_if_all_qfis_are_handled(
     const vector<pfcp::qfi_t>& all_qfis_to_check,
     const vector<pfcp::qfi_t>& handled_qfis) {
@@ -859,7 +872,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
       // update FTEID for forward tunnel info for this edge
       send_n4 = true;
       for (const auto& ul_edge : next_ul_edges) {
-        if (ul_edge->type == n9_type && ul_edge->fteid.is_zero()) {
+        if (ul_edge->type == n9_type && ul_edge->next_hop_fteid.is_zero()) {
           Logger::smf_app().debug(
               "UPF %s has unvisited UL edges", next_upf->get_printable_name());
           send_n4 = false;
@@ -1057,12 +1070,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
       for (const auto& dl_edge : dl_edges_to_update) {
-        if (gnb_fteid == dl_edge->gnb_fteid) {
+        if (gnb_fteid == dl_edge->next_hop_fteid) {
           Logger::smf_app().debug(
               "QFI %d dl_fteid unchanged", dl_edge->qfi.qfi);
           return smf_procedure_code::OK;
         } else {
-          dl_edge->gnb_fteid = gnb_fteid;
+          dl_edge->next_hop_fteid = gnb_fteid;
         }
       }
       return send_n4_session_modification_request(list_of_qfis_to_be_modified);
@@ -1071,19 +1084,19 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::HO_PATH_SWITCH_REQ:
     case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
       for (const auto& dl_edge : dl_edges_to_update) {
-        if (gnb_fteid == dl_edge->gnb_fteid) {
+        if (gnb_fteid == dl_edge->next_hop_fteid) {
           Logger::smf_app().debug(
               "QFI %d dl_fteid unchanged", dl_edge->qfi.qfi);
           return smf_procedure_code::OK;
         } else if (dl_edge->far_id.far_id != 0) {
           // Update DL F-TEID because of new info from gNB after handover
           // then tell it to UPF with Update FAR
-          dl_edge->gnb_fteid = gnb_fteid;
+          dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
           send_n4 = true;
         } else {
           // handover, but FAR ID is not existing yet, we create new one
-          dl_edge->gnb_fteid = gnb_fteid;
+          dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
           send_n4 = true;
         }
@@ -1106,7 +1119,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
       // here we only have to update first UPF, as we get new F-TEID from gNB,
       // basically just make new PDRs / FARs in DL
       for (const auto& dl_edge : dl_edges) {
-        dl_edge->gnb_fteid = gnb_fteid;
+        dl_edge->next_hop_fteid = gnb_fteid;
       }
       // At this stage, is the list of QFIs from NGAP always sent and should we
       // honor it? here we just update everything regardless of QFI
@@ -1346,6 +1359,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   return smf_procedure_code::OK;
 }
 
+//------------------------------------------------------------------------------
 void session_update_sm_context_procedure::remove_pdrs_and_fars(
     const vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {

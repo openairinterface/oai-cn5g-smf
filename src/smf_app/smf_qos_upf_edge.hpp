@@ -56,11 +56,15 @@ struct upf_selection_criteria {
   unsigned int precedence{};
   uint8_t qfi{};
 
-  [[nodiscard]] std::string to_string() const;
+  [[nodiscard]] std::string to_string(int level) const;
 
   static oai::model::pcf::FlowInformation get_default_flow_information() {
     oai::model::pcf::FlowInformation flow;
     flow.setFlowDescription(DEFAULT_FLOW_DESCRIPTION);
+    oai::model::pcf::FlowDirectionRm flow_direction;
+    flow_direction.setEnumValue(oai::model::pcf::FlowDirection_anyOf::
+                                    eFlowDirection_anyOf::BIDIRECTIONAL);
+    flow.setFlowDirection(flow_direction);
     flow.setPacketFilterUsage(true);  // so that we send it to UE always
     return flow;
   }
@@ -101,13 +105,12 @@ class qos_upf_edge {
   // QoS information
   pfcp::qfi_t qfi{};
   pfcp::fteid_t fteid{};
-  // only for N3, because we don't have info about gNB
-  pfcp::fteid_t gnb_fteid{};
-  // TODO we could also use QoSData from models, but this qos_profile is really
-  // used at many places
+  // for N3 or N9
+  pfcp::fteid_t next_hop_fteid{};
+  // we could also use QoSData from models, but this qos_profile is really used
+  // at many places
   qos_profile_t qos_profile{};  // QoS profile
 
-  // TODO ???
   std::shared_ptr<qos_upf_edge> associated_edge{};
   std::shared_ptr<pfcp_association> destination_upf{};
   std::shared_ptr<pfcp_association> source_upf{};
@@ -118,7 +121,7 @@ class qos_upf_edge {
            source_upf == other.source_upf && qfi == other.qfi;
   }
 
-  [[nodiscard]] std::string to_string() const;
+  [[nodiscard]] std::string to_string(int level) const;
 
   [[nodiscard]] bool serves_network(const upf_selection_criteria& criteria);
 

@@ -36,9 +36,9 @@ using namespace oai::model::pcf;
 using namespace smf;
 
 //------------------------------------------------------------------------------
-std::string upf_selection_criteria::to_string() const {
-  std::string fmt_title = oai::config::get_title_formatter(0);
-  std::string fmt_value = oai::config::get_value_formatter(1);
+std::string upf_selection_criteria::to_string(int level) const {
+  std::string fmt_title = oai::config::get_title_formatter(level);
+  std::string fmt_value = oai::config::get_value_formatter(level + 1);
 
   std::string output = fmt::format(fmt_title, "UPF Selection Criteria");
   output.append(snssai.to_string(1));
@@ -50,13 +50,14 @@ std::string upf_selection_criteria::to_string() const {
 }
 
 //------------------------------------------------------------------------------
-std::string qos_upf_edge::to_string() const {
-  std::string fmt_title = oai::config::get_title_formatter(0);
-  std::string fmt_value = oai::config::get_value_formatter(1);
+std::string qos_upf_edge::to_string(int level) const {
+  std::string fmt_title = oai::config::get_title_formatter(level);
+  std::string fmt_value = oai::config::get_value_formatter(level + 1);
 
   std::string output = fmt::format(fmt_title, "UPF Graph Edge");
   output.append(fmt::format(fmt_value, "Interface Type", type.getEnumString()));
   output.append(fmt::format(fmt_value, "NWI", nw_instance));
+  output.append(fmt::format(fmt_value, "Uplink", uplink ? "Yes" : "No"));
   // TODO DNAI
   if (destination_upf) {
     output.append(fmt::format(
@@ -98,10 +99,18 @@ std::vector<std::shared_ptr<qos_upf_edge>> qos_upf_edge::create_edges(
   upf this_upf_cfg = this_upf->get_upf_config();
   std::vector<std::shared_ptr<qos_upf_edge>> edges;
 
+  UPInterfaceType n9_type;
+  n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
+
   // Because interfaceUpfInfoList is optional in TS 29.510 (why even?), we
   // just guess that this UPF has a N3 or N6 interface
   if (!this_upf_cfg.get_upf_info().interfaceUpfInfoListIsSet() ||
       this_upf_cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
+    // We cannot just assume that we have an N9 interface, because we would make
+    // links where non are
+    if (type == n9_type) {
+      return edges;
+    }
     Logger::smf_app().debug(
         "UPF Interface list is empty: Assume that the UPF has an %s interface.",
         type.getEnumString());
@@ -144,16 +153,28 @@ std::vector<std::shared_ptr<qos_upf_edge>> qos_upf_edge::create_edges(
 //------------------------------------------------------------------------------
 bool qos_upf_edge::find_upf_edge_from_interface(
     const InterfaceUpfInfoItem& iface, const upf& other_upf_cfg) {
+  Logger::smf_app().debug(
+      "Check if UPF %s has N9 connections to existing UPFs",
+      other_upf_cfg.get_host());
+
   if (!other_upf_cfg.get_upf_info().interfaceUpfInfoListIsSet() ||
-      !other_upf_cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
+      other_upf_cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
+    Logger::smf_app().debug(
+        "Did not find N9 connection: UPF interface list is empty");
     return false;
   }
 
   if (iface.getEndpointFqdn() == other_upf_cfg.get_host()) {
+    Logger::smf_app().debug(
+        "Successfully found N9 connection for UPF %s",
+        other_upf_cfg.get_host());
     return true;
   }
   for (const auto& current_ip : iface.getIpv4EndpointAddresses()) {
     if (current_ip == other_upf_cfg.get_host()) {
+      Logger::smf_app().debug(
+          "Successfully found N9 connection for UPF %s",
+          other_upf_cfg.get_host());
       return true;
     }
   }
@@ -180,8 +201,8 @@ void qos_upf_edge::associate_dnai(const upf& upf_cfg) {
 //------------------------------------------------------------------------------
 bool qos_upf_edge::serves_network(const upf_selection_criteria& criteria) {
   Logger::smf_app().info("Verifying if UPF edge serves network");
-  Logger::smf_app().debug("UPF Edge: %s", to_string());
-  Logger::smf_app().debug("Selection Criteria: %s", criteria.to_string());
+  Logger::smf_app().debug("UPF Edge: %s", to_string(0));
+  Logger::smf_app().debug("Selection Criteria: %s", criteria.to_string(0));
 
   bool serves = source_upf->serves_network(criteria.snssai, criteria.dnn);
   // we set the filter independently of success
@@ -241,8 +262,10 @@ pfcp::redirect_information_t qos_upf_edge::get_pfcp_redirect_information() {
 }
 
 void qos_upf_edge::clear_session() {
-  pdr_id      = pfcp::pdr_id_t{};
-  far_id      = pfcp::far_id_t{};
-  urr_id      = pfcp::urr_id_t{};
-  qos_rule_id = 0;
+  pdr_id         = pfcp::pdr_id_t{};
+  far_id         = pfcp::far_id_t{};
+  urr_id         = pfcp::urr_id_t{};
+  fteid          = pfcp::fteid_t{};
+  next_hop_fteid = pfcp::fteid_t{};
+  qos_rule_id    = 0;
 }

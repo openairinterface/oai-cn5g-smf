@@ -164,8 +164,10 @@ class upf_graph {
   bool uplink_asynch = false;
 
   // statistics which are useful for verifying the graph
-  unsigned int access_edge_count = 0;
-  unsigned int exit_edge_count   = 0;
+  unsigned int access_edge_count     = 0;
+  unsigned int exit_edge_count       = 0;
+  unsigned int total_edge_count      = 0;
+  unsigned int associated_edge_count = 0;
   std::unordered_set<std::string> served_dnais;
 
   /**
@@ -334,8 +336,7 @@ class upf_graph {
    * @return bool  true if a UPF graph can be selected
    */
   bool select_upf_nodes(
-      const upf_selection_criteria& criteria,
-      std::shared_ptr<upf_graph>& sub_graph,
+      upf_selection_criteria& criteria, std::shared_ptr<upf_graph>& sub_graph,
       const upf_selection_criteria& verify_criteria);
 
   /**
@@ -395,6 +396,15 @@ class upf_graph {
    *
    */
   [[nodiscard]] std::string to_string(const std::string& indent) const;
+
+  /**
+   * Updates the next hop F-TEID for the next hope from the src_edge
+   * @param src_edge
+   * @param fteid
+   */
+  void update_next_hop_fteid(
+      const std::shared_ptr<qos_upf_edge>& src_edge,
+      const pfcp::fteid_t& fteid);
 };
 
 class pfcp_associations {

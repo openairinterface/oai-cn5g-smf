@@ -607,6 +607,10 @@ void upf_graph::insert_into_graph(
   // Find N9 interfaces
   std::shared_lock graph_lock(graph_mutex);
   for (const auto& [other_upf, edges] : adjacency_list) {
+    if (other_upf == association_to_add) {
+      continue;
+    }
+
     auto n9_edges_src_dst =
         qos_upf_edge::create_n9_edges(association_to_add, other_upf);
     auto n9_edges_dst_src =
@@ -732,7 +736,7 @@ void upf_graph::add_upf_graph_edge(
     it_src->second.push_back(edge_info_src_dst);
     Logger::smf_app().debug(
         "Successfully added UPF graph edge for %s: %s",
-        source->get_printable_name(), edge_info_src_dst->to_string().c_str());
+        source->get_printable_name(), edge_info_src_dst->to_string(0).c_str());
   }
 }
 
@@ -771,16 +775,23 @@ void upf_graph::print_graph() const {
     return;
   }
 
+  std::string fmt_value = oai::config::get_value_formatter(0);
+  std::string fmt_title = oai::config::get_title_formatter(1);
+
   for (const auto& it : adjacency_list) {
-    output.append("* ").append(it.first->get_printable_name()).append(" --> ");
+    output.append(
+        fmt::format(fmt_value, "Node", it.first->get_printable_name()));
+    output.append(fmt::format(fmt_title, "Edges"));
+
     for (const auto& edge : it.second) {
-      output.append(edge->to_string()).append(", ");
+      output.append(edge->to_string(2));
     }
-    output.append("\n");
   }
 
-  Logger::smf_app().debug("UPF graph ");
-  Logger::smf_app().debug("%s", output.c_str());
+  Logger::smf_app().debug("UPF graph");
+  // TODO we should have a log_line function in common-src so that we split it
+  // (similar like we do for the config)
+  Logger::smf_app().debug("\n %s", output);
 }
 
 //------------------------------------------------------------------------------
@@ -952,8 +963,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
 std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     const SmPolicyDecision& policy_decision,
     const upf_selection_criteria& base_criteria) {
-  // TODO move this maybe
-  std::unique_lock graph_lock(graph_mutex);
+  std::shared_lock graph_lock(graph_mutex);
 
   // TODO also allow for QoS rules only without traffic rules
   if (!policy_decision.pccRulesIsSet() ||
@@ -972,8 +982,9 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
 
   // run DFS for each PCC rule, get different graphs and merge them
 
+  upf_selection_criteria selection_criteria = base_criteria;
   for (const auto& rule : pcc_rules) {
-    upf_selection_criteria selection_criteria = base_criteria;
+    selection_criteria.dnais.clear();
     // TODO without Qos we only have one QFI, we should include the QOS data
     // from PCF here and generate a QFI for each of the QoS flows
 
@@ -1000,10 +1011,30 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
         }
       }
       // TODO at this point add and convert QoS information from PCC rules
+      // TODO if we want the graph function to generate a new QFI, we have to
+      // set qfi to 0 here
+
     } else {
       continue;
     }
     if (rule.second.flowInfosIsSet() && !rule.second.getFlowInfos().empty()) {
+      auto flow_info = rule.second.getFlowInfos()[0];
+      if (!flow_info.flowDirectionIsSet()) {
+        Logger::smf_app().info(
+            "Flow direction is not set in PCC rules, use default "
+            "BIDIRECTIONAL");
+        FlowDirectionRm flow_direction;
+        flow_direction.setEnumValue(
+            FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL);
+        flow_info.setFlowDirection(flow_direction);
+      }
+      // TODO 29.512 defines this as false per default, but we take the filter
+      // here to build the NAS filter list we should take it from default QoS
+      // from session rules, if we don't set it to true here, COTS UEs will
+      // complain
+
+      flow_info.setPacketFilterUsage(true);
+
       selection_criteria.flow_information = rule.second.getFlowInfos()[0];
     } else {
       Logger::smf_app().warn(
@@ -1046,8 +1077,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
 }
 
 bool upf_graph::select_upf_nodes(
-    const upf_selection_criteria& criteria,
-    std::shared_ptr<upf_graph>& sub_graph_ptr,
+    upf_selection_criteria& criteria, std::shared_ptr<upf_graph>& sub_graph_ptr,
     const upf_selection_criteria& verify_criteria) {
   std::shared_lock graph_lock(graph_mutex);
 
@@ -1079,15 +1109,17 @@ bool upf_graph::select_upf_nodes(
       } else {
         sub_graph_ptr = std::make_shared<upf_graph>();
       }
-      auto graph_criteria = criteria;
-      graph_criteria.qfi  = sub_graph_ptr->generate_qfi();
+      if (criteria.qfi == 0) {
+        criteria.qfi = sub_graph_ptr->generate_qfi();
+      }
 
-      create_subgraph_dfs(sub_graph_ptr, upf, visited, graph_criteria);
+      create_subgraph_dfs(sub_graph_ptr, upf, visited, criteria);
 
       if (!sub_graph_ptr->verify(verify_criteria)) {
         // in case copy is empty, new subgraph_ptr is also empty, and we
         // create a new upf graph
         sub_graph_ptr = sub_graph_copy_ptr;
+        criteria.qfi  = 0;
       } else {
         return true;
       }
@@ -1100,10 +1132,9 @@ bool upf_graph::select_upf_nodes(
 
 //---------------------------------------------------------------------------------------------
 bool upf_graph::verify(const upf_selection_criteria& criteria) {
-  if (access_edge_count > 1) {
+  if (total_edge_count != associated_edge_count) {
     Logger::smf_app().info(
-        "UPF graph has more than one access node, this is not supported. "
-        "Please check your PCC rules and UPF configuration");
+        "UPF graph selection could not associate links between all UPFs");
     return false;
   }
 
@@ -1155,6 +1186,27 @@ std::string upf_graph::get_dnai_list(const std::unordered_set<string>& dnais) {
   return out;
 }
 
+void upf_graph::update_next_hop_fteid(
+    const std::shared_ptr<qos_upf_edge>& src_edge, const pfcp::fteid_t& fteid) {
+  std::shared_lock graph_lock(graph_mutex);
+  if (!src_edge->destination_upf) {
+    return;
+  }
+  auto node_it = adjacency_list.find(src_edge->destination_upf);
+  if (node_it == adjacency_list.end()) {
+    Logger::smf_app().error(
+        "Update F-TEID: node ID does not exist in UPF graph, this should not "
+        "happen");
+    return;
+  }
+  for (const auto& edge_it : node_it->second) {
+    if (edge_it->destination_upf &&
+        edge_it->destination_upf == src_edge->source_upf) {
+      edge_it->next_hop_fteid = fteid;
+    }
+  }
+}
+
 //---------------------------------------------------------------------------------------------
 void upf_graph::create_subgraph_dfs(
     std::shared_ptr<upf_graph>& sub_graph,
@@ -1165,6 +1217,9 @@ void upf_graph::create_subgraph_dfs(
     const upf_selection_criteria& selection_criteria) {
   std::stack<std::shared_ptr<pfcp_association>> stack;
   stack.push(start_node);
+
+  // if DNAIs are empty, we only search for the first N6 exit
+  bool simple_mode = selection_criteria.dnais.empty();
 
   while (!stack.empty()) {
     std::shared_ptr<pfcp_association> node = stack.top();
@@ -1177,77 +1232,77 @@ void upf_graph::create_subgraph_dfs(
           "DFS: node ID does not exist in UPF graph, this should not happen");
       continue;
     }
+    Logger::smf_app().debug(
+        "UPF selection DFS: Handle UPF %s", node->get_printable_name());
 
     // DFS: Go through all edges and check if the UPF serves one of the DNAIs
     // from the PCC rule
-    std::shared_ptr<qos_upf_edge> n3_edge;
-    std::shared_ptr<qos_upf_edge> n6_edge;
-
+    std::vector<std::shared_ptr<qos_upf_edge>> edges_to_connect;
+    unsigned int uplink_next_hop_edges = 0;
+    bool push_next_upf                 = false;
+    // NOTE: As we use shared_ptrs here, we have to make a copy before changing
+    // the object otherwise we change the edges also in the full graph and/or
+    // for other PDU sessions
     for (const auto& edge_it : node_it->second) {
-      if (!edge_it->serves_network(selection_criteria)) {
+      auto edge_to_use = std::make_shared<qos_upf_edge>(*edge_it);
+      if (!edge_to_use->serves_network(selection_criteria)) {
         continue;  // do not consider this edge, does not serve DNN or SNSSAI or
                    // any DNAI
       }
-      if (!edge_it->used_dnai.empty()) {
-        sub_graph->served_dnais.insert(edge_it->used_dnai);
+      if (!edge_to_use->used_dnai.empty()) {
+        sub_graph->served_dnais.insert(edge_to_use->used_dnai);
       }
       UPInterfaceType n3_type;
       n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
       UPInterfaceType n6_type;
       n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+      UPInterfaceType n9_type;
+      n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
-      // N3 or N6 edge, just add
-      if (!edge_it->destination_upf) {
-        if (edge_it->type == n3_type) {
-          sub_graph->access_edge_count++;
-          edge_it->uplink = false;
-          n3_edge         = std::make_shared<qos_upf_edge>(*edge_it);
-          sub_graph->add_upf_graph_edge(node_it->first, n3_edge);
-        } else if (edge_it->type == n6_type) {
-          edge_it->uplink = true;
-          sub_graph->exit_edge_count++;
-          n6_edge = std::make_shared<qos_upf_edge>(*edge_it);
-          sub_graph->add_upf_graph_edge(node_it->first, n6_edge);
+      if (edge_to_use->type == n3_type) {
+        if (simple_mode && sub_graph->access_edge_count == 1) {
+          continue;
         }
-      } else if (!visited[edge_it->destination_upf]) {
-        auto src_dst    = std::make_shared<qos_upf_edge>(*edge_it);
-        src_dst->uplink = true;  // N9 uplink as we start at access
-        std::shared_ptr<qos_upf_edge> dst_src;
-
-        // for the other direction we need to find this element in the
-        // graph and find the original node; direct access is safe as we know
-        // this element exists in graph as we have double lists
-
-        // Note: We could also remove this step as this node is evaluated
-        // anyway, but then we need to somehow track the visited
-        // This is O(#edges_per_upf) so quite small
-        auto edge_node = adjacency_list[edge_it->destination_upf];
-        for (const auto& edge_edge : edge_node) {
-          if (edge_edge->destination_upf == node_it->first) {
-            dst_src         = std::make_shared<qos_upf_edge>(*edge_edge);
-            dst_src->uplink = false;
-            src_dst->associated_edge = dst_src;
-            dst_src->associated_edge = src_dst;
-            if (!edge_edge->serves_network(selection_criteria)) {
-              Logger::smf_app().error(
-                  "Back-Edge in DFS does not serve network. check your "
-                  "configuration");
-              break;
-            }
-          }
+        sub_graph->access_edge_count++;
+        edge_to_use->uplink = false;
+      } else if (edge_to_use->type == n6_type) {
+        edge_to_use->uplink = true;
+        sub_graph->exit_edge_count++;
+        uplink_next_hop_edges++;
+      } else if (edge_to_use->type == n9_type) {
+        // if next hop is not visited, it is uplink
+        if (edge_to_use->destination_upf &&
+            !visited[edge_to_use->destination_upf]) {
+          uplink_next_hop_edges++;
+          edge_to_use->uplink = true;
+          push_next_upf       = true;
         }
-        sub_graph->add_upf_graph_edge(
-            node_it->first, edge_it->destination_upf, src_dst, dst_src);
-        stack.push(edge_it->destination_upf);
+      }
+
+      if (simple_mode && uplink_next_hop_edges > 1) {
+        Logger::smf_app().debug(
+            "UPF graph already has one UL edge and DNAIs are not supported, "
+            "skipping edge \n %s",
+            edge_to_use->to_string(0));
+        continue;
+      }
+
+      edges_to_connect.push_back(edge_to_use);
+      sub_graph->add_upf_graph_edge(node_it->first, edge_to_use);
+      sub_graph->total_edge_count++;
+
+      // continue DFS with next UPF node if not visited
+      if (push_next_upf) {
+        stack.push(edge_to_use->destination_upf);
       }
     }
-    // set the associated edges for N3/N6
-    if (n3_edge) {
-      n3_edge->associated_edge = n6_edge;
-    }
 
-    if (n6_edge) {
-      n6_edge->associated_edge = n3_edge;
+    // if we have a clear association between N3 and N6, N3 and N9, N9 and N9 or
+    // N9 and N6, we connect the edges
+    if (edges_to_connect.size() == 2) {
+      edges_to_connect[0]->associated_edge = edges_to_connect[1];
+      edges_to_connect[1]->associated_edge = edges_to_connect[0];
+      sub_graph->associated_edge_count += 2;
     }
   }
 }
@@ -1319,7 +1374,7 @@ std::string upf_graph::to_string_from_start_node(
       if (!edge->nw_instance.empty()) {
         iface.append(": ").append(edge->nw_instance);
       }
-      output_per_iface_type[iface].append(edge->to_string());
+      output_per_iface_type[iface].append(edge->to_string(0));
     }
   }
 
