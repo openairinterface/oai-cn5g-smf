@@ -289,30 +289,30 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
               1, sizeof(Ngap_GBR_QosInformation_t)));
 
       set_ngap_bit_rate(
-          &ngap_QosFlowSetupRequestItem[i]
-               .qosFlowLevelQosParameters.gBR_QosInformation
-               ->maximumFlowBitRateUL,
+          ngap_QosFlowSetupRequestItem[i]
+              .qosFlowLevelQosParameters.gBR_QosInformation
+              ->maximumFlowBitRateUL,
           qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
           qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
 
       set_ngap_bit_rate(
-          &ngap_QosFlowSetupRequestItem[i]
-               .qosFlowLevelQosParameters.gBR_QosInformation
-               ->maximumFlowBitRateDL,
+          ngap_QosFlowSetupRequestItem[i]
+              .qosFlowLevelQosParameters.gBR_QosInformation
+              ->maximumFlowBitRateDL,
           qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
           qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
 
       set_ngap_bit_rate(
-          &ngap_QosFlowSetupRequestItem[i]
-               .qosFlowLevelQosParameters.gBR_QosInformation
-               ->guaranteedFlowBitRateUL,
+          ngap_QosFlowSetupRequestItem[i]
+              .qosFlowLevelQosParameters.gBR_QosInformation
+              ->guaranteedFlowBitRateUL,
           qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
           qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
 
       set_ngap_bit_rate(
-          &ngap_QosFlowSetupRequestItem[i]
-               .qosFlowLevelQosParameters.gBR_QosInformation
-               ->guaranteedFlowBitRateDL,
+          ngap_QosFlowSetupRequestItem[i]
+              .qosFlowLevelQosParameters.gBR_QosInformation
+              ->guaranteedFlowBitRateDL,
           qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
           qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
     }
@@ -1676,18 +1676,18 @@ int smf_n2::decode_n2_sm_information(
 }
 
 void smf_n2::set_ngap_bit_rate(
-    Ngap_BitRate_t* bit_rate, uint16_t value, uint8_t unit) {
-  bit_rate->size = 4;
-  bit_rate->buf  = (uint8_t*) calloc(4, sizeof(uint8_t));
+    Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit) {
+  bit_rate.size = 4;
+  bit_rate.buf  = (uint8_t*) calloc(4, sizeof(uint8_t));
   uint32_t bit_rate_value;
   if (unit > 0) {
     // 3GPP TS 24.501 Table 9.11.4.12.1: QoS flow descriptions information
     // element
-    // TODO: not 4 to the power of x-1 because 1 Mps is 1000 kps and not 1024
-    // kps -> find another solution
+    // TODO: not 4 to the power of x-1 because 1 Mps is 1000 kps
+    //  and not 1024 kps -> find another solution
     bit_rate_value = (uint32_t) pow(4, (unit - 1)) * 1000 * value;
   } else {
     bit_rate_value = value;
   }
-  INT32_TO_BUFFER(bit_rate_value, bit_rate->buf);
+  INT32_TO_BUFFER(bit_rate_value, bit_rate.buf);
 }
