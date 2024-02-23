@@ -66,7 +66,6 @@ void qos_flow_context_updated::add_qos_rule(const QOSRulesIE& rule) {
 }
 
 //-----------------------------------------------------------------------------
-
 void qos_flow_context_updated::set_qos_profile(const qos_profile_t& profile) {
   qos_profile = profile;
 }
@@ -75,6 +74,12 @@ void qos_flow_context_updated::set_qos_profile(const qos_profile_t& profile) {
 void qos_flow_context_updated::set_priority_level(uint8_t p) {
   // priority_level = p;
   qos_profile.priority_level = p;
+}
+
+//-----------------------------------------------------------------------------
+void qos_flow_context_updated::set_qos_flow_descriptions(
+    const QOSFlowDescriptionsContents& flow_description_content) {
+  qos_flow_description_content = flow_description_content;
 }
 
 /*
@@ -511,15 +516,19 @@ paa_t pdu_session_create_sm_context_response::get_paa() const {
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_create_sm_context_response::set_qos_flow_context(
+void pdu_session_create_sm_context_response::add_qos_flow_context(
     const qos_flow_context_updated& qos_flow) {
-  m_qos_flow_context = qos_flow;
+  pdu_session_sm_context_response::add_qos_flow_to_list(
+      m_qos_flow_context, qos_flow);
 }
 
 //-----------------------------------------------------------------------------
-qos_flow_context_updated
-pdu_session_create_sm_context_response::get_qos_flow_context() const {
-  return m_qos_flow_context;
+void pdu_session_create_sm_context_response::get_all_qos_flow_context_created(
+    std::map<uint8_t, qos_flow_context_updated>& all_flows) {
+  for (auto it : m_qos_flow_context) {
+    all_flows.insert(std::pair<uint8_t, qos_flow_context_updated>(
+        (uint8_t) it.first, it.second));
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -772,22 +781,10 @@ void pdu_session_update_sm_context_request::set_target_id(
  * class: PDU Session Update SM Context Response
  */
 //-----------------------------------------------------------------------------
-// TODO refactor this duplicated code, remove
 void pdu_session_update_sm_context_response::add_qos_flow_context_updated(
     const qos_flow_context_updated& flow) {
-  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
-      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    qos_flow_context_updateds.erase(flow.qfi.qfi);
-    qos_flow_context_updateds.insert(
-        std::pair<uint8_t, qos_flow_context_updated>(
-            (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
-        "A QoS Flow Context (QFI %d) has been added successfully",
-        flow.qfi.qfi);
-  } else {
-    Logger::smf_app().error(
-        "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
-  }
+  pdu_session_sm_context_response::add_qos_flow_to_list(
+      qos_flow_context_updateds, flow);
 }
 
 //-----------------------------------------------------------------------------
@@ -923,19 +920,8 @@ void pdu_session_modification_network_requested::get_json_format(
 //-----------------------------------------------------------------------------
 void pdu_session_modification_network_requested::add_qos_flow_context_updated(
     const qos_flow_context_updated& flow) {
-  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
-      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    qos_flow_context_updateds.erase(flow.qfi.qfi);
-    qos_flow_context_updateds.insert(
-        std::pair<uint8_t, qos_flow_context_updated>(
-            (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
-        "A QoS Flow Context (QFI %d) has been added successfully",
-        flow.qfi.qfi);
-  } else {
-    Logger::smf_app().error(
-        "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
-  }
+  pdu_session_sm_context_response::add_qos_flow_to_list(
+      qos_flow_context_updateds, flow);
 }
 
 //-----------------------------------------------------------------------------
@@ -966,19 +952,8 @@ std::string pdu_session_report_response::get_amf_url() const {
 //-----------------------------------------------------------------------------
 void pdu_session_report_response::add_qos_flow_context_updated(
     const qos_flow_context_updated& flow) {
-  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
-      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    qos_flow_context_updateds.erase(flow.qfi.qfi);
-    qos_flow_context_updateds.insert(
-        std::pair<uint8_t, qos_flow_context_updated>(
-            (uint8_t) flow.qfi.qfi, flow));
-    Logger::smf_app().trace(
-        "A QoS Flow Context (QFI %d) has been added successfully",
-        flow.qfi.qfi);
-  } else {
-    Logger::smf_app().error(
-        "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
-  }
+  pdu_session_sm_context_response::add_qos_flow_to_list(
+      qos_flow_context_updateds, flow);
 }
 
 //-----------------------------------------------------------------------------
@@ -1330,4 +1305,22 @@ std::string event_notification::get_pdu_session_type() const {
 //-----------------------------------------------------------------------------
 bool event_notification::is_pdu_session_type_set() const {
   return m_pdu_session_type_is_set;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_msg::add_qos_flow_to_list(
+    std::map<uint8_t, qos_flow_context_updated>& flow_list,
+    const qos_flow_context_updated& flow) {
+  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
+      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
+    flow_list.erase(flow.qfi.qfi);
+    flow_list.insert(std::pair<uint8_t, qos_flow_context_updated>(
+        (uint8_t) flow.qfi.qfi, flow));
+    Logger::smf_app().trace(
+        "A QoS Flow Context (QFI %d) has been added successfully",
+        flow.qfi.qfi);
+  } else {
+    Logger::smf_app().error(
+        "Failed to add a QoS Flow Context (QFI %d), invalid QFI", flow.qfi.qfi);
+  }
 }

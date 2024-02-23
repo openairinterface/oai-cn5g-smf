@@ -64,7 +64,11 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     flow.set_ul_fteid(edge->fteid);
 
     // add QoS rule to flow
-    qos_rule_from_edge(edge);
+    flow.add_qos_rule(qos_rule_from_edge(edge));
+
+    // add flow_description_content
+    flow.set_qos_flow_descriptions(qos_flow_description_from_edge(edge));
+
     return flow;
   }
   Logger::smf_app().error(
@@ -82,6 +86,73 @@ session_handler::get_qos_flows_context_updated() {
   for (const auto& qfi : m_qfis_to_be_updated) {
     flows.push_back(get_qos_flow_context_updated(qfi));
   }
+
+  //-----------------------------------------------------------------------------------------------------------------
+  // Hardcoded second flow TODO remove after smf-pcf communication is done
+  //
+  auto flow             = get_qos_flow_context_updated(m_qfis_to_be_updated[0]);
+  flow.qfi.qfi          = 2;
+  flow.qos_profile._5qi = 2;
+  flow.qos_profile.arp.priority_level = 1;
+  flow.qos_profile.profile_type       = qos_profile_type_e::NON_GBR;
+  flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value   = 20;
+  flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit    = 6;
+  flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value = 60;
+  flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit  = 6;
+  flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value   = 15;
+  flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit    = 6;
+  flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value = 15;
+  flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit  = 5;
+
+  flow.qos_rules.clear();
+  QOSRulesIE qos_rule;
+  qos_rule.qosruleidentifer      = 2;
+  qos_rule.ruleoperationcode     = CREATE_NEW_QOS_RULE;
+  qos_rule.dqrbit                = THE_QOS_RULE_IS_NOT_THE_DEFAULT_QOS_RULE;
+  qos_rule.numberofpacketfilters = 0;
+  qos_rule.qosruleprecedence     = 0;
+  qos_rule.segregation           = SEGREGATION_NOT_REQUESTED;
+  qos_rule.qosflowidentifer      = 2;
+  flow.qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(2, qos_rule));
+
+  flow.qos_flow_description_content.qfi = 2;
+  /* flow.qos_flow_description_content.numberofparameters = 5;
+   flow.qos_flow_description_content.parameterslist =
+           (ParametersList*) calloc(15, sizeof(ParametersList));
+   flow.qos_flow_description_content.parameterslist[0].parameteridentifier =
+   PARAMETER_IDENTIFIER_5QI;
+   flow.qos_flow_description_content.parameterslist[0].parametercontents._5qi =
+   2;
+
+   flow.qos_flow_description_content.parameterslist[1].parameteridentifier =
+   PARAMETER_IDENTIFIER_GFBR_UPLINK;
+   flow.qos_flow_description_content.parameterslist[1].parametercontents.gfbrormfbr_uplinkordownlink.uint
+   = flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
+   flow.qos_flow_description_content.parameterslist[1].parametercontents.gfbrormfbr_uplinkordownlink.value
+   = flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
+
+   flow.qos_flow_description_content.parameterslist[2].parameteridentifier =
+   PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
+   flow.qos_flow_description_content.parameterslist[2].parametercontents.gfbrormfbr_uplinkordownlink.uint
+   = flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
+   flow.qos_flow_description_content.parameterslist[2].parametercontents.gfbrormfbr_uplinkordownlink.value
+   = flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value;
+
+   flow.qos_flow_description_content.parameterslist[3].parameteridentifier =
+   PARAMETER_IDENTIFIER_MFBR_UPLINK;
+   flow.qos_flow_description_content.parameterslist[3].parametercontents.gfbrormfbr_uplinkordownlink.uint
+   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit;
+   flow.qos_flow_description_content.parameterslist[3].parametercontents.gfbrormfbr_uplinkordownlink.value
+   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value;
+
+   flow.qos_flow_description_content.parameterslist[4].parameteridentifier =
+   PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
+   flow.qos_flow_description_content.parameterslist[4].parametercontents.gfbrormfbr_uplinkordownlink.uint
+   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
+   flow.qos_flow_description_content.parameterslist[4].parametercontents.gfbrormfbr_uplinkordownlink.value
+   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;*/
+  flows.push_back(flow);
+  //------------------------------------------------------------------------------------------------------------------
 
   return flows;
 }
@@ -185,6 +256,72 @@ QOSRulesIE session_handler::qos_rule_from_edge(
   return qos_rule;
 }
 
+//------------------------------------------------------------------------------
+QOSFlowDescriptionsContents session_handler::qos_flow_description_from_edge(
+    const shared_ptr<qos_upf_edge>& edge) {
+  QOSFlowDescriptionsContents flow_description_content;
+
+  flow_description_content.qfi           = edge->qfi.qfi;
+  flow_description_content.operationcode = CREATE_NEW_QOS_FLOW_DESCRIPTION;
+  flow_description_content.e             = PARAMETERS_LIST_IS_INCLUDED;
+  if (edge->qos_profile.profile_type == qos_profile_type_e::GBR) {
+    flow_description_content.numberofparameters = 5;
+    flow_description_content.parameterslist     = (ParametersList*) calloc(
+        7, sizeof(ParametersList));  // TODO: is 7 right?
+    flow_description_content.parameterslist[0].parameteridentifier =
+        PARAMETER_IDENTIFIER_5QI;
+    flow_description_content.parameterslist[0].parametercontents._5qi =
+        edge->qos_profile._5qi;
+
+    flow_description_content.parameterslist[1].parameteridentifier =
+        PARAMETER_IDENTIFIER_GFBR_UPLINK;
+    flow_description_content.parameterslist[1]
+        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
+        edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
+    flow_description_content.parameterslist[1]
+        .parametercontents.gfbrormfbr_uplinkordownlink.value =
+        edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
+
+    flow_description_content.parameterslist[2].parameteridentifier =
+        PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
+    flow_description_content.parameterslist[2]
+        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
+        edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
+    flow_description_content.parameterslist[2]
+        .parametercontents.gfbrormfbr_uplinkordownlink.value =
+        edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value;
+
+    flow_description_content.parameterslist[3].parameteridentifier =
+        PARAMETER_IDENTIFIER_MFBR_UPLINK;
+    flow_description_content.parameterslist[3]
+        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
+        edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit;
+    flow_description_content.parameterslist[3]
+        .parametercontents.gfbrormfbr_uplinkordownlink.value =
+        edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value;
+
+    flow_description_content.parameterslist[4].parameteridentifier =
+        PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
+    flow_description_content.parameterslist[4]
+        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
+        edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
+    flow_description_content.parameterslist[4]
+        .parametercontents.gfbrormfbr_uplinkordownlink.value =
+        edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
+  } else {
+    flow_description_content.numberofparameters = 1;
+    flow_description_content.parameterslist =
+        (ParametersList*) calloc(3, sizeof(ParametersList));  // TODO: Why 3?
+    flow_description_content.parameterslist[0].parameteridentifier =
+        PARAMETER_IDENTIFIER_5QI;
+    flow_description_content.parameterslist[0].parametercontents._5qi =
+        edge->qos_profile._5qi;
+  }
+
+  return flow_description_content;
+}
+
+//------------------------------------------------------------------------------
 pfcp::urr_id_t session_handler::generate_urr_id() {
   pfcp::urr_id_t urr_id;
   urr_id.urr_id = m_urr_id_generator.get_uid();

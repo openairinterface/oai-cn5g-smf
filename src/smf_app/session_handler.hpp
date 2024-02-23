@@ -215,6 +215,9 @@ class session_handler {
 
   QOSRulesIE qos_rule_from_edge(const std::shared_ptr<qos_upf_edge>& edge);
 
+  QOSFlowDescriptionsContents qos_flow_description_from_edge(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
 };
 

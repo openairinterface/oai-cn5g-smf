@@ -52,6 +52,9 @@ namespace smf {
 
 class smf_n2 {
  private:
+  static void set_ngap_bit_rate(
+      Ngap_BitRate_t* bit_rate, uint16_t value, uint8_t unit);
+
  public:
   smf_n2(){};
   smf_n2(smf_n2 const&) = delete;
