@@ -141,9 +141,12 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   pfcp::qfi_t  qos_flow_identifier = {};			
   pfcp::rqi_t reflective_qos;
 
+  // Check if the qer_id in edge is 0, if so, generate a new qer_id using the session handler 
+  // and assign it to edge->qer_id. Set the new QER ID in the create_qer object.
   if (edge->qer_id.qer_id == 0) {
     edge->qer_id = sps->get_session_handler()->generate_qer_id();
   }
+  create_qer.set(edge->qer_id);
 
   if (edge->uplink) {
     gate_status.ul_gate = OPEN;
@@ -171,7 +174,6 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   qos_flow_identifier.qfi = 1;
   reflective_qos.rqi = 0;
 
-  create_qer.set(edge->qer_id);
   create_qer.set(qer_correlation_id);
   create_qer.set(gate_status);
   create_qer.set(maximum_bitrate);
@@ -368,6 +370,11 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // from the same path for UL CL
   create_pdr.set(edge->associated_edge->far_id);
 
+  // Assign the QER ID from the associated edge to the PDR object. Establish a relationship 
+  // between the PDR and a specific QER that dictates how QoS policies should be enforced for 
+  // traffic handled by this PDR.
+  create_pdr.set(edge->associated_edge->qer_id);
+
   if (cfg.enable_usage_reporting()) {
     create_pdr.set(edge->urr_id);
   }
@@ -489,6 +496,51 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
 
   return update_pdr;
 }
+
+pfcp::update_qer smf_session_procedure::pfcp_update_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  
+  // Retrieve the existing QER associated with the edge for updating
+  pfcp::update_qer update_qer = {};
+  
+  // Retrieve the existing QER ID from the edge
+  pfcp::qer_id_t qer_id = edge->qer_id;
+
+  // Update QER attributes based on edge properties
+  pfcp::gate_status_t gate_status;
+  pfcp::mbr_t maximum_bitrate;
+  pfcp::gbr_t guaranteed_bitrate;
+  pfcp::packet_rate_t packet_rate;
+  pfcp::qfi_t qos_flow_identifier;
+  pfcp::rqi_t reflective_qos;
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+    maximum_bitrate.ul_mbr = 25000; // Updated maximum bitrate for uplink
+    guaranteed_bitrate.ul_gbr = 18000; // Updated guaranteed bitrate for uplink
+    packet_rate.ulpr = 1;
+    packet_rate.uplink_time_unit = 0;
+    packet_rate.maximum_uplink_packet_rate = 60; // Updated maximum uplink packet rate
+  } else {
+    gate_status.dl_gate = OPEN;
+    maximum_bitrate.dl_mbr = 70000; // Updated maximum bitrate for downlink
+    guaranteed_bitrate.dl_gbr = 18000; // Updated guaranteed bitrate for downlink
+    packet_rate.dlpr = 1;
+    packet_rate.downlink_time_unit = 0;
+    packet_rate.maximum_downlink_packet_rate = 120; // Updated maximum downlink packet rate
+  }
+
+  update_qer.set(qer_id);
+  update_qer.set(gate_status);
+  update_qer.set(maximum_bitrate);
+  update_qer.set(guaranteed_bitrate);
+  update_qer.set(packet_rate);
+  update_qer.set(reflective_qos);
+  update_qer.set(qos_flow_identifier);
+
+  return update_qer;
+}
+
 
 pfcp::update_far smf_session_procedure::pfcp_update_far(
     const shared_ptr<qos_upf_edge>& edge) {
@@ -742,6 +794,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   }
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+    n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
   }
   for (const auto& dl_edge : dl_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
@@ -750,9 +803,11 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
     }
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
     }
 
     Logger::smf_app().info(
@@ -1003,6 +1058,7 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
   for (const auto& dl_edge : dl_edges_to_use) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+    n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
   }
 
   for (const auto& ul_edge : ul_edges_to_use) {
@@ -1162,11 +1218,13 @@ smf_procedure_code session_update_sm_context_procedure::run(
           // then tell it to UPF with Update FAR
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
+          n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
           send_n4 = true;
         } else {
           // handover, but FAR ID is not existing yet, we create new one
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+          n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
           send_n4 = true;
         }
       }
@@ -1209,6 +1267,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
       // confuse UPF?
       for (const auto& ul_edge : ul_edges_to_update) {
         n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
         ul_edge->precedence += 1;
       }
       for (const auto& dl_edge : dl_edges_to_update) {

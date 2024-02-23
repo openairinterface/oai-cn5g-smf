@@ -115,6 +115,9 @@ class smf_session_procedure : public smf_procedure {
 
   pfcp::update_pdr pfcp_update_pdr(const std::shared_ptr<qos_upf_edge>& edge);
 
+  static pfcp::update_qer pfcp_update_qer(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
   static pfcp::update_far pfcp_update_far(
       const std::shared_ptr<qos_upf_edge>& edge);
 
