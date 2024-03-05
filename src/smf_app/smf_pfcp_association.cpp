@@ -795,7 +795,7 @@ void upf_graph::print_graph() const {
 }
 
 //------------------------------------------------------------------------------
-void upf_graph::dfs_next_upf(
+bool upf_graph::dfs_next_upf(
     std::vector<std::shared_ptr<qos_upf_edge>>& info_dl,
     std::vector<std::shared_ptr<qos_upf_edge>>& info_ul,
     std::shared_ptr<pfcp_association>& upf) {
@@ -817,7 +817,7 @@ void upf_graph::dfs_next_upf(
       Logger::smf_app().error(
           "DFS Asynch: node ID does not exist in UPF graph, this should not "
           "happen");
-      return;
+      return false;
     }
 
     // here we need to check if we have more than one unvisited N9_UL edge
@@ -838,7 +838,7 @@ void upf_graph::dfs_next_upf(
               Logger::smf_app().debug(
                   "UL CL scenario: We have a node with an unvisited N9_UL "
                   "node.");
-              break;
+              return false;
             }
           }
         }
@@ -874,6 +874,7 @@ void upf_graph::dfs_next_upf(
       current_edges_ul_asynch = info_ul;
     }
   }
+  return true;
 }
 
 //------------------------------------------------------------------------------

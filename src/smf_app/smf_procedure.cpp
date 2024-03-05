@@ -500,7 +500,10 @@ smf_procedure_code smf_session_procedure::get_next_upf(
     return smf_procedure_code::ERROR;
   }
 
-  graph->dfs_next_upf(dl_edges, ul_edges, next_upf);
+  // at some point the graph has to return true, otherwise we are done
+  while (!graph->dfs_next_upf(dl_edges, ul_edges, next_upf))
+    ;
+
   if (!next_upf) {
     Logger::smf_app().debug("UPF graph in SMF finished");
     return smf_procedure_code::OK;
