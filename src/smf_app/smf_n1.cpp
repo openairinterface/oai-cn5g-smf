@@ -71,7 +71,6 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // PDU Session Identity
   sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
 
-  // get default QoS value
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_created(qos_flows);
 
@@ -226,7 +225,6 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // TODO: MappedEPSBearerContexts
   // TODO: EAPMessage
-  Logger::smf_n1().debug("SIZE OF QOSFLOWDESRIPTIONS: %d", qos_flows.size());
   // authorized QoS flow descriptions IE: QoSFlowDescriptions
   // TODO: we may not need this IE (see section 6.4.1.3 @3GPP TS 24.501)
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
@@ -432,19 +430,19 @@ bool smf_n1::create_n1_pdu_session_modification_command(
     return false;
   }
 
-  if (!sc.get()->find_pdu_session(sm_context_res.get_pdu_session_id(), sp)) {
+  if (!sc->find_pdu_session(sm_context_res.get_pdu_session_id(), sp)) {
     Logger::smf_n1().warn("PDU session context does not exist!");
     return false;
   }
 
-  std::string dnn = sp.get()->get_dnn();
+  std::string dnn = sp->get_dnn();
   if (dnn.compare(sm_context_res.get_dnn()) != 0) {
     // error
     Logger::smf_n1().warn("DNN doesn't matched with this session!");
     return false;
   }
 
-  if (!(sp.get()->get_snssai() == sm_context_res.get_snssai())) {
+  if (!(sp->get_snssai() == sm_context_res.get_snssai())) {
     // error
     Logger::smf_n1().warn("SNSSAI doesn't matched with this session!");
     return false;
@@ -458,7 +456,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   sm_msg->pdu_session_modification_command._5gsmcause =
       static_cast<uint8_t>(sm_cause);
   // SessionAMBR (default)
-  sc.get()->get_session_ambr(
+  sc->get_session_ambr(
       sm_msg->pdu_session_modification_command.sessionambr,
       sm_context_res.get_snssai(), sm_context_res.get_dnn());
 
@@ -490,19 +488,20 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // TODO: MappedEPSBearerContexts
 
   // QOSFlowDescriptions
+  auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
   // TODO: get authorized QoS flow descriptions IE
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionsnumber = 1;
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
+  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+        .qosflowdescriptionsnumber = qos_flows.size();
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
         .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        1, sizeof(QOSFlowDescriptionsContents));
-    sc.get()->get_default_qos_flow_description(
-        sm_msg->pdu_session_modification_command.qosflowdescriptions
-            .qosflowdescriptionscontents[0],
-        sm_context_res.get_pdu_session_type(), qos_rules[0].qosflowidentifer);
+        qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
+
+    for (int i = 0; i < qos_flows.size(); i++) {
+      sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+          .qosflowdescriptionscontents[i] =
+          qos_flows[i].qos_flow_description_content;
+    }
   }
 
   // Encode NAS message
@@ -574,12 +573,12 @@ bool smf_n1::create_n1_pdu_session_modification_command(
     return false;
   }
 
-  if (!sc.get()->find_pdu_session(msg.get_pdu_session_id(), sp)) {
+  if (!sc->find_pdu_session(msg.get_pdu_session_id(), sp)) {
     Logger::smf_n1().warn("PDU session context does not exist!");
     return false;
   }
 
-  std::string dnn = sp.get()->get_dnn();
+  std::string dnn = sp->get_dnn();
   if (dnn.compare(msg.get_dnn()) != 0) {
     // error
     Logger::smf_n1().warn("DNN doesn't matched with this session!");
@@ -601,7 +600,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   sm_msg->pdu_session_modification_command._5gsmcause =
       static_cast<uint8_t>(sm_cause);
   // SessionAMBR (default)
-  sc.get()->get_session_ambr(
+  sc->get_session_ambr(
       sm_msg->pdu_session_modification_command.sessionambr, msg.get_snssai(),
       msg.get_dnn());
 
@@ -632,19 +631,23 @@ bool smf_n1::create_n1_pdu_session_modification_command(
 
   // TODO: MappedEPSBearerContexts
 
-  // QOSFlowDescriptions, TODO: get authorized QoS flow descriptions IE
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
+  // QOSFlowDescriptions
+  auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
+
+  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionsnumber = 1;
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+        .qosflowdescriptionsnumber = qos_flows.size();
+    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
         .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        1, sizeof(QOSFlowDescriptionsContents));
-    sc.get()->get_default_qos_flow_description(
-        sm_msg->pdu_session_modification_command.qosflowdescriptions
-            .qosflowdescriptionscontents[0],
-        msg.get_pdu_session_type(), qos_rules[0].qosflowidentifer);
+        qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
+
+    for (int i = 0; i < qos_flows.size(); i++) {
+      sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+          .qosflowdescriptionscontents[i] =
+          qos_flows[i].qos_flow_description_content;
+    }
   }
 
   // Encode NAS message

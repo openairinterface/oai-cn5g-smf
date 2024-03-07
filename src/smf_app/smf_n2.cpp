@@ -138,18 +138,257 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
 
   // UPTransportLayerInformation
   pfcp::fteid_t ul_fteid = {};
-  // TODO: THIS IS A WORKAROUND
   // STEFAN: is a tunnel, you have one tunnel per pdusession (--> to be set only
   // once)
-  for (const auto& qos_flow_pair :
-       qos_flows) {  // TODO Check if I have to add one fteid per qos flow or
-                     // one in general
-    auto qos_flow = qos_flow_pair.second;
-    ul_fteid.v4   = qos_flow.ul_fteid.v4;
+  ul_fteid.v4           = qos_flows.begin()->second.ul_fteid.v4;
+  ul_fteid.teid         = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.ipv4_address = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
-    ul_fteid.teid         = htonl(qos_flow.ul_fteid.teid);
-    ul_fteid.ipv4_address = qos_flow.ul_fteid.ipv4_address;
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
+      upTransportLayerInformation = nullptr;
+  upTransportLayerInformation =
+      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  upTransportLayerInformation->id =
+      Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLInformation;
+  upTransportLayerInformation->criticality = Ngap_Criticality_reject;
+  upTransportLayerInformation->value.present =
+      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_UPTransportLayerInformation;
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation
+      .present = Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel = (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel->transportLayerAddress.size = sizeof(struct in_addr);
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel->transportLayerAddress.buf =
+      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
+  memcpy(
+      upTransportLayerInformation->value.choice.UPTransportLayerInformation
+          .choice.gTPTunnel->transportLayerAddress.buf,
+      &ul_fteid.ipv4_address, sizeof(struct in_addr));
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel->transportLayerAddress.bits_unused = 0;
+
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
+  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
+      .gTPTunnel->gTP_TEID.buf =
+      (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
+  memcpy(
+      upTransportLayerInformation->value.choice.UPTransportLayerInformation
+          .choice.gTPTunnel->gTP_TEID.buf,
+      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
+
+  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, upTransportLayerInformation);
+
+  // TODO: DataForwardingNotPossible
+
+  // PDUSessionType
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* pduSessionType = nullptr;
+  pduSessionType = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  pduSessionType->id          = Ngap_ProtocolIE_ID_id_PDUSessionType;
+  pduSessionType->criticality = Ngap_Criticality_reject;
+  pduSessionType->value.present =
+      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
+  pduSessionType->value.choice.PDUSessionType =
+      sm_context_res.get_pdu_session_type() -
+      1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
+          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
+          // TS 24.501)
+  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
+  Logger::smf_n2().debug(
+      "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
+
+  // SecurityIndication
+  // TODO: should get from UDM
+  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
+  //    nullptr;
+  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
+  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
+  //   = Ngap_IntegrityProtectionIndication_not_needed;
+  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
+  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
+
+  // TODO: NetworkInstance
+
+  // QosFlowSetupRequestList
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
+      nullptr;
+  qosFlowSetupRequestList =
+      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+          qos_flows.size(),  // TODO: check if it should be 1 here
+          sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  qosFlowSetupRequestList->id = Ngap_ProtocolIE_ID_id_QosFlowSetupRequestList;
+  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
+  qosFlowSetupRequestList->value.present =
+      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
+
+  asn_set_empty(
+      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
+
+  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
+  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
+      qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
+  int i = 0;
+  for (const auto& qos_flow_pair : qos_flows) {
+    auto qos_flow = qos_flow_pair.second;
+
+    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
+
+    ASN_SEQUENCE_ADD(
+        &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
+        &ngap_QosFlowSetupRequestItem[i]);
+
+    Logger::smf_n2().info(
+        "QoS parameters: QFI %d, ARP priority level %d, "
+        "qos_flow.qos_profile.arp.preempt_cap %s, "
+        "qos_flow.qos_profile.arp.preempt_vuln %s",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
+        qos_flow.qos_profile.arp.preempt_cap.c_str(),
+        qos_flow.qos_profile.arp.preempt_vuln.c_str());
+
+    i++;
   }
+
+  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
+
+  // encode
+  size_t buffer_size = BUF_LEN;
+  char* buffer       = (char*) calloc(1, buffer_size);
+
+  ssize_t encoded_size = aper_encode_to_new_buffer(
+      &asn_DEF_Ngap_PDUSessionResourceSetupRequestTransfer, nullptr, ngap_IEs,
+      (void**) &buffer);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Resource Setup Request Transfer encode failed "
+        "(encode size %d)",
+        encoded_size);
+    result = false;
+  } else {
+    Logger::smf_n2().debug("N2 SM buffer data: ");
+    if (Logger::should_log(spdlog::level::debug)) {
+      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
+      printf(" (%d bytes)\n", (int) encoded_size);
+    }
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+  // free memory
+  //  free_wrapper((void**)
+  //  &ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+  //          .qosCharacteristics.choice.nonDynamic5QI);
+  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
+  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+  free_wrapper((void**) &upTransportLayerInformation->value.choice
+                   .UPTransportLayerInformation.choice.gTPTunnel
+                   ->transportLayerAddress.buf);
+  free_wrapper((void**) &upTransportLayerInformation->value.choice
+                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
+  free_wrapper((void**) &upTransportLayerInformation->value.choice
+                   .UPTransportLayerInformation.choice.gTPTunnel);
+  free_wrapper((void**) &upTransportLayerInformation);
+  free_wrapper((void**) &pduSessionType);
+  free_wrapper((void**) &qosFlowSetupRequestList);
+  free_wrapper((void**) &ngap_IEs);
+  free_wrapper((void**) &buffer);
+
+  return result;
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
+    pdu_session_update_sm_context_response& sm_context_res,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  Logger::smf_n2().info(
+      "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
+
+  bool result                                             = false;
+  Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
+  ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
+      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
+
+  // get QoS flows
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
+
+  for (std::map<uint8_t, qos_flow_context_updated>::iterator it =
+           qos_flows.begin();
+       it != qos_flows.end(); ++it)
+    Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
+
+  if (qos_flows.empty()) {
+    free_wrapper((void**) &ngap_IEs);
+    return false;
+  }
+
+  for (const auto& qos_flow_pair : qos_flows) {
+    auto qos_flow = qos_flow_pair.second;
+    Logger::smf_n2().debug(
+        "UL F-TEID, TEID "
+        "0x%" PRIx32 ", IP Address %s",
+        qos_flow.ul_fteid.teid,
+        conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
+    Logger::smf_n2().info(
+        "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.priority_level,
+        qos_flow.qos_profile.arp.priority_level);
+
+    // check the QoS Flow
+    if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
+        (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
+      // error
+      Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
+      free_wrapper((void**) &ngap_IEs);
+      return false;
+    }
+  }
+
+  // PDUSessionAggregateMaximumBitRate
+  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
+      pduSessionAggregateMaximumBitRate = nullptr;
+  pduSessionAggregateMaximumBitRate =
+      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
+          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
+  pduSessionAggregateMaximumBitRate->id =
+      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
+  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
+  pduSessionAggregateMaximumBitRate->value.present =
+      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
+  asn_set_empty(&ngap_IEs->protocolIEs.list);
+
+  // SessionAMBR
+  supi_t supi                     = sm_context_res.get_supi();
+  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::shared_ptr<smf_context> sc = {};
+  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
+    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
+    sc = smf_app_inst->supi_2_smf_context(supi64);
+    sc.get()->get_session_ambr(
+        pduSessionAggregateMaximumBitRate->value.choice
+            .PDUSessionAggregateMaximumBitRate,
+        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+  } else {
+    Logger::smf_n2().warn(
+        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+    return false;
+  }
+
+  ASN_SEQUENCE_ADD(
+      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
+
+  // UPTransportLayerInformation
+  pfcp::fteid_t ul_fteid = {};
+  ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
+  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
   Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
       upTransportLayerInformation = nullptr;
@@ -244,78 +483,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
 
-    ngap_QosFlowSetupRequestItem[i].qosFlowIdentifier =
-        (uint8_t) qos_flow.qfi.qfi;
-    ngap_QosFlowSetupRequestItem[i]
-        .qosFlowLevelQosParameters.qosCharacteristics.present =
-        Ngap_QosCharacteristics_PR_nonDynamic5QI;
-    ngap_QosFlowSetupRequestItem[i]
-        .qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI =
-        (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-            1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-    ngap_QosFlowSetupRequestItem[i]
-        .qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->fiveQI = qos_flow.qos_profile._5qi;
-    ngap_QosFlowSetupRequestItem[i]
-        .qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .priorityLevelARP = qos_flow.qos_profile.arp.priority_level;
-    if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
-      ngap_QosFlowSetupRequestItem[i]
-          .qosFlowLevelQosParameters.allocationAndRetentionPriority
-          .pre_emptionCapability =
-          Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
-    } else {
-      ngap_QosFlowSetupRequestItem[i]
-          .qosFlowLevelQosParameters.allocationAndRetentionPriority
-          .pre_emptionCapability =
-          Ngap_Pre_emptionCapability_may_trigger_pre_emption;
-    }
-    if (qos_flow.qos_profile.arp.preempt_vuln.compare("NOT_PREEMPTABLE") == 0) {
-      ngap_QosFlowSetupRequestItem[i]
-          .qosFlowLevelQosParameters.allocationAndRetentionPriority
-          .pre_emptionVulnerability =
-          Ngap_Pre_emptionVulnerability_not_pre_emptable;
-    } else {
-      ngap_QosFlowSetupRequestItem[i]
-          .qosFlowLevelQosParameters.allocationAndRetentionPriority
-          .pre_emptionVulnerability =
-          Ngap_Pre_emptionVulnerability_pre_emptable;
-    }
-
-    if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
-      ngap_QosFlowSetupRequestItem[i]
-          .qosFlowLevelQosParameters.gBR_QosInformation =
-          (Ngap_GBR_QosInformation_t*) (calloc(
-              1, sizeof(Ngap_GBR_QosInformation_t)));
-
-      set_ngap_bit_rate(
-          ngap_QosFlowSetupRequestItem[i]
-              .qosFlowLevelQosParameters.gBR_QosInformation
-              ->maximumFlowBitRateUL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowSetupRequestItem[i]
-              .qosFlowLevelQosParameters.gBR_QosInformation
-              ->maximumFlowBitRateDL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowSetupRequestItem[i]
-              .qosFlowLevelQosParameters.gBR_QosInformation
-              ->guaranteedFlowBitRateUL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowSetupRequestItem[i]
-              .qosFlowLevelQosParameters.gBR_QosInformation
-              ->guaranteedFlowBitRateDL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
-    }
+    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
 
     ASN_SEQUENCE_ADD(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
@@ -333,270 +501,6 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   }
 
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceSetupRequestTransfer, nullptr, ngap_IEs,
-      (void**) &buffer);
-  if (encoded_size < 0) {
-    Logger::smf_n2().warn(
-        "NGAP PDU Session Resource Setup Request Transfer encode failed "
-        "(encode size %d)",
-        encoded_size);
-    result = false;
-  } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      printf(" (%d bytes)\n", (int) encoded_size);
-    }
-
-    std::string ngap_message((char*) buffer, encoded_size);
-    ngap_msg_str = ngap_message;
-    result       = true;
-  }
-  // free memory
-  //  free_wrapper((void**)
-  //  &ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-  //          .qosCharacteristics.choice.nonDynamic5QI);
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel
-                   ->transportLayerAddress.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel);
-  free_wrapper((void**) &upTransportLayerInformation);
-  free_wrapper((void**) &pduSessionType);
-  free_wrapper((void**) &qosFlowSetupRequestList);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
-
-  return result;
-}
-
-//------------------------------------------------------------------------------
-bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
-    pdu_session_update_sm_context_response& sm_context_res,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
-  Logger::smf_n2().info(
-      "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
-
-  bool result                                             = false;
-  Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
-  ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
-  qos_flow_context_updated qos_flow = {};
-
-  // get default QoS value
-  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
-  sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
-  for (std::map<uint8_t, qos_flow_context_updated>::iterator it =
-           qos_flows.begin();
-       it != qos_flows.end(); ++it)
-    Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
-
-  if (qos_flows.empty()) {
-    free_wrapper((void**) &ngap_IEs);
-    return false;
-  }
-  // TODO: support only 1 qos flow
-  qos_flow = qos_flows.begin()->second;
-
-  Logger::smf_n2().debug(
-      "UL F-TEID, TEID "
-      "0x%" PRIx32 ", IP Address %s",
-      qos_flow.ul_fteid.teid,
-      conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
-  Logger::smf_n2().info(
-      "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
-      qos_flow.qfi.qfi, qos_flow.qos_profile.priority_level,
-      qos_flow.qos_profile.arp.priority_level);
-
-  // check the QoS Flow
-  if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
-      (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
-    // error
-    Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-    free_wrapper((void**) &ngap_IEs);
-    return false;
-  }
-
-  // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
-  asn_set_empty(&ngap_IEs->protocolIEs.list);
-
-  // SessionAMBR
-  supi_t supi                     = sm_context_res.get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
-  std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
-    sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
-  } else {
-    Logger::smf_n2().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-    return false;
-  }
-
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
-
-  // UPTransportLayerInformation
-  pfcp::fteid_t ul_fteid = {};
-  ul_fteid.v4            = qos_flow.ul_fteid.v4;
-
-  ul_fteid.teid         = htonl(qos_flow.ul_fteid.teid);
-  ul_fteid.ipv4_address = qos_flow.ul_fteid.ipv4_address;
-
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      upTransportLayerInformation = nullptr;
-  upTransportLayerInformation =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  upTransportLayerInformation->id =
-      Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLInformation;
-  upTransportLayerInformation->criticality = Ngap_Criticality_reject;
-  upTransportLayerInformation->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_UPTransportLayerInformation;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation
-      .present = Ngap_UPTransportLayerInformation_PR_gTPTunnel;
-
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel = (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.size = sizeof(struct in_addr);
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.bits_unused = 0;
-
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.buf =
-      (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, upTransportLayerInformation);
-
-  // TODO: DataForwardingNotPossible
-
-  // PDUSessionType
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* pduSessionType = nullptr;
-  pduSessionType = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionType->id          = Ngap_ProtocolIE_ID_id_PDUSessionType;
-  pduSessionType->criticality = Ngap_Criticality_reject;
-  pduSessionType->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
-  pduSessionType->value.choice.PDUSessionType =
-      sm_context_res.get_pdu_session_type() -
-      1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
-  Logger::smf_n2().debug(
-      "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
-
-  // SecurityIndication
-  // TODO: should get from UDM
-  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
-  //    nullptr;
-  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
-  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
-  //   = Ngap_IntegrityProtectionIndication_not_needed;
-  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
-  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
-
-  // TODO: NetworkInstance
-
-  // QosFlowSetupRequestList
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
-      nullptr;
-  qosFlowSetupRequestList =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  qosFlowSetupRequestList->id = Ngap_ProtocolIE_ID_id_QosFlowSetupRequestList;
-  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowSetupRequestList->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
-
-  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
-  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-      1, sizeof(Ngap_QosFlowSetupRequestItem_t));
-  ngap_QosFlowSetupRequestItem->qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
-  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
-      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
-  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI->fiveQI = (uint8_t) qos_flow.qfi.qfi;
-  ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-      .allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.arp.priority_level;
-  if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
-    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionCapability =
-        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
-  } else {
-    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionCapability =
-        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
-  }
-  if (qos_flow.qos_profile.arp.preempt_vuln.compare("NOT_PREEMPTABLE") == 0) {
-    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_not_pre_emptable;
-  } else {
-    ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_pre_emptable;
-  }
-
-  asn_set_empty(
-      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
-  ASN_SEQUENCE_ADD(
-      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
-      ngap_QosFlowSetupRequestItem);
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
-
-  Logger::smf_n2().info(
-      "QoS parameters: QFI %d, ARP priority level %d, "
-      "qos_flow.qos_profile.arp.preempt_cap %s, "
-      "qos_flow.qos_profile.arp.preempt_vuln %s",
-      qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
-      qos_flow.qos_profile.arp.preempt_cap.c_str(),
-      qos_flow.qos_profile.arp.preempt_vuln.c_str());
 
   // encode
   size_t buffer_size = BUF_LEN;
@@ -656,32 +560,30 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   // get default QoS info
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
-  for (std::map<uint8_t, qos_flow_context_updated>::iterator it =
-           qos_flows.begin();
-       it != qos_flows.end(); ++it)
+  for (const auto& qos_flow_pair : qos_flows) {
+    auto qos_flow = qos_flow_pair.second;
     Logger::smf_n2().debug(
-        "QoS flow context to be updated with QFI %d", it->first);
-  // TODO: support only 1 qos flow
-  qos_flow_context_updated qos_flow = qos_flows.begin()->second;
+        "QoS flow context to be updated with QFI %d", qos_flow.qfi.qfi);
 
-  // check the QoS Flow
-  if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
-      (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
-    // error
-    Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-    return false;
+    // check the QoS Flow
+    if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
+        (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
+      // error
+      Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
+      return false;
+    }
+
+    Logger::smf_n2().debug(
+        "QoS Flow, UL F-TEID ID "
+        "0x%" PRIx32 ", IP Address %s ",
+        qos_flow.ul_fteid.teid,
+        conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
+    Logger::smf_n2().debug(
+        "QoS Flow, DL F-TEID ID"
+        "0x%" PRIx32 ", IP Address %s",
+        qos_flow.dl_fteid.teid,
+        conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
   }
-
-  Logger::smf_n2().debug(
-      "QoS Flow, UL F-TEID ID "
-      "0x%" PRIx32 ", IP Address %s ",
-      qos_flow.ul_fteid.teid,
-      conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
-  Logger::smf_n2().debug(
-      "QoS Flow, DL F-TEID ID"
-      "0x%" PRIx32 ", IP Address %s",
-      qos_flow.dl_fteid.teid,
-      conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
 
   Ngap_PDUSessionResourceModifyRequestTransfer_t* ngap_IEs = nullptr;
   ngap_IEs = (Ngap_PDUSessionResourceModifyRequestTransfer_t*) calloc(
@@ -721,14 +623,14 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   // was requested by the UE for a  PDU Session that has no established User
   // Plane resources)
   pfcp::fteid_t ul_fteid = {};
-  ul_fteid.v4            = qos_flow.ul_fteid.v4;
-  ul_fteid.teid          = htonl(qos_flow.ul_fteid.teid);
-  ul_fteid.ipv4_address  = qos_flow.ul_fteid.ipv4_address;
+  ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
+  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
   pfcp::fteid_t dl_fteid = {};
-  dl_fteid.v4            = qos_flow.dl_fteid.v4;
-  dl_fteid.teid          = htonl(qos_flow.dl_fteid.teid);
-  dl_fteid.ipv4_address  = qos_flow.dl_fteid.ipv4_address;
+  dl_fteid.v4            = qos_flows.begin()->second.dl_fteid.v4;
+  dl_fteid.teid          = htonl(qos_flows.begin()->second.dl_fteid.teid);
+  dl_fteid.ipv4_address  = qos_flows.begin()->second.dl_fteid.ipv4_address;
 
   Ngap_PDUSessionResourceModifyRequestTransferIEs_t* ul_NGU_UP_TNLModifyList =
       nullptr;
@@ -804,7 +706,8 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       qosFlowAddOrModifyRequestList = nullptr;
   qosFlowAddOrModifyRequestList =
       (Ngap_PDUSessionResourceModifyRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceModifyRequestTransferIEs_t));
+          qos_flows.size(),
+          sizeof(Ngap_PDUSessionResourceModifyRequestTransferIEs_t));
 
   qosFlowAddOrModifyRequestList->id =
       Ngap_ProtocolIE_ID_id_QosFlowAddOrModifyRequestList;
@@ -815,46 +718,83 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       nullptr;
   ngap_QosFlowAddOrModifyRequestItem =
       (Ngap_QosFlowAddOrModifyRequestItem*) calloc(
-          1, sizeof(Ngap_QosFlowAddOrModifyRequestItem));
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowIdentifier = qos_flow.qfi.qfi;
+          qos_flows.size(), sizeof(Ngap_QosFlowAddOrModifyRequestItem));
+  int i = 0;
+  for (const auto& qos_flow_pair : qos_flows) {
+    auto qos_flow = qos_flow_pair.second;
 
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters =
-      (struct Ngap_QosFlowLevelQosParameters*) calloc(
-          1, sizeof(struct Ngap_QosFlowLevelQosParameters));
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-      ->qosCharacteristics.present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-      ->qosCharacteristics.choice.nonDynamic5QI =
-      (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-      ->qosCharacteristics.choice.nonDynamic5QI->fiveQI = qos_flow.qfi.qfi;
-  ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-      ->allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.priority_level;
-  if (qos_flow.qos_profile.arp.preempt_cap.compare("NOT_PREEMPT") == 0) {
-    ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-        ->allocationAndRetentionPriority.pre_emptionCapability =
-        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
-  } else {
-    ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-        ->allocationAndRetentionPriority.pre_emptionCapability =
-        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
-  }
-  if (qos_flow.qos_profile.arp.preempt_vuln.compare("NOT_PREEMPTABLE") == 0) {
-    ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-        ->allocationAndRetentionPriority.pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_not_pre_emptable;
-  } else {
-    ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-        ->allocationAndRetentionPriority.pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_pre_emptable;
+    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowIdentifier = qos_flow.qfi.qfi;
+
+    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowLevelQosParameters =
+        (struct Ngap_QosFlowLevelQosParameters*) calloc(
+            1, sizeof(struct Ngap_QosFlowLevelQosParameters));
+    ngap_QosFlowAddOrModifyRequestItem[i]
+        .qosFlowLevelQosParameters->qosCharacteristics.present =
+        Ngap_QosCharacteristics_PR_nonDynamic5QI;
+    ngap_QosFlowAddOrModifyRequestItem[i]
+        .qosFlowLevelQosParameters->qosCharacteristics.choice.nonDynamic5QI =
+        (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+            1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+    ngap_QosFlowAddOrModifyRequestItem[i]
+        .qosFlowLevelQosParameters->qosCharacteristics.choice.nonDynamic5QI
+        ->fiveQI = qos_flow.qfi.qfi;
+    ngap_QosFlowAddOrModifyRequestItem[i]
+        .qosFlowLevelQosParameters->allocationAndRetentionPriority
+        .priorityLevelARP = qos_flow.qos_profile.priority_level;
+    if (qos_flow.qos_profile.arp.preempt_cap == "NOT_PREEMPT") {
+      ngap_QosFlowAddOrModifyRequestItem[i]
+          .qosFlowLevelQosParameters->allocationAndRetentionPriority
+          .pre_emptionCapability =
+          Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+    } else {
+      ngap_QosFlowAddOrModifyRequestItem[i]
+          .qosFlowLevelQosParameters->allocationAndRetentionPriority
+          .pre_emptionCapability =
+          Ngap_Pre_emptionCapability_may_trigger_pre_emption;
+    }
+    if (qos_flow.qos_profile.arp.preempt_vuln == "NOT_PREEMPTABLE") {
+      ngap_QosFlowAddOrModifyRequestItem[i]
+          .qosFlowLevelQosParameters->allocationAndRetentionPriority
+          .pre_emptionVulnerability =
+          Ngap_Pre_emptionVulnerability_not_pre_emptable;
+    } else {
+      ngap_QosFlowAddOrModifyRequestItem[i]
+          .qosFlowLevelQosParameters->allocationAndRetentionPriority
+          .pre_emptionVulnerability =
+          Ngap_Pre_emptionVulnerability_pre_emptable;
+    }
+
+    ASN_SEQUENCE_ADD(
+        &qosFlowAddOrModifyRequestList->value.choice
+             .QosFlowAddOrModifyRequestList.list,
+        &ngap_QosFlowAddOrModifyRequestItem[i]);
+    i++;
   }
 
-  ASN_SEQUENCE_ADD(
-      &qosFlowAddOrModifyRequestList->value.choice.QosFlowAddOrModifyRequestList
-           .list,
-      ngap_QosFlowAddOrModifyRequestItem);
+  /*Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
+  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
+          qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
+  int i = 0;
+  for (const auto& qos_flow_pair : qos_flows) {
+    auto qos_flow = qos_flow_pair.second;
+
+    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
+
+    ASN_SEQUENCE_ADD(
+            &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
+            &ngap_QosFlowSetupRequestItem[i]);
+
+    Logger::smf_n2().info(
+            "QoS parameters: QFI %d, ARP priority level %d, "
+            "qos_flow.qos_profile.arp.preempt_cap %s, "
+            "qos_flow.qos_profile.arp.preempt_vuln %s",
+            qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
+            qos_flow.qos_profile.arp.preempt_cap.c_str(),
+            qos_flow.qos_profile.arp.preempt_vuln.c_str());
+
+    i++;
+  }*/
+
   // Ngap_E_RAB_ID_t *e_RAB_ID;  //optional
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowAddOrModifyRequestList);
 
@@ -1673,6 +1613,72 @@ int smf_n2::decode_n2_sm_information(
     return RETURNerror;
   }
   return RETURNok;
+}
+
+Ngap_QosFlowSetupRequestItem_t smf_n2::get_QoSFlowSetupRequestItem(
+    const qos_flow_context_updated& qos_flow) {
+  Ngap_QosFlowSetupRequestItem_t ngap_QosFlowSetupRequestItem = {};
+  ngap_QosFlowSetupRequestItem.qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
+  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
+      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
+      .choice.nonDynamic5QI->fiveQI = qos_flow.qos_profile._5qi;
+  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+      .allocationAndRetentionPriority.priorityLevelARP =
+      qos_flow.qos_profile.arp.priority_level;
+  if (qos_flow.qos_profile.arp.preempt_cap == "NOT_PREEMPT") {
+    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+  } else {
+    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionCapability =
+        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
+  }
+  if (qos_flow.qos_profile.arp.preempt_vuln == "NOT_PREEMPTABLE") {
+    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_not_pre_emptable;
+  } else {
+    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+        .allocationAndRetentionPriority.pre_emptionVulnerability =
+        Ngap_Pre_emptionVulnerability_pre_emptable;
+  }
+
+  if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
+    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.gBR_QosInformation =
+        (Ngap_GBR_QosInformation_t*) (calloc(
+            1, sizeof(Ngap_GBR_QosInformation_t)));
+
+    set_ngap_bit_rate(
+        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+            .gBR_QosInformation->maximumFlowBitRateUL,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
+
+    set_ngap_bit_rate(
+        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+            .gBR_QosInformation->maximumFlowBitRateDL,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
+
+    set_ngap_bit_rate(
+        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+            .gBR_QosInformation->guaranteedFlowBitRateUL,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
+
+    set_ngap_bit_rate(
+        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
+            .gBR_QosInformation->guaranteedFlowBitRateDL,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
+        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
+  }
+
+  return ngap_QosFlowSetupRequestItem;
 }
 
 void smf_n2::set_ngap_bit_rate(
