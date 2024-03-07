@@ -42,6 +42,7 @@
 #include "smf_msg.hpp"
 #include "uint_generator.hpp"
 #include "smf_pfcp_association.hpp"
+#include "smf_qos_upf_edge.hpp"
 
 namespace smf {
 
@@ -63,7 +64,7 @@ class smf_procedure {
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
   explicit smf_procedure(uint64_t tx) { trxn_id = tx; }
-  virtual ~smf_procedure() {}
+  virtual ~smf_procedure() = default;
   virtual itti_msg_type_t get_procedure_type() { return ITTI_MSG_TYPE_NONE; }
   virtual smf_procedure_code handle_itti_msg(
       itti_n4_session_establishment_response& resp,
@@ -82,7 +83,6 @@ class smf_procedure {
   }
 };
 
-class smf_qos_flow;
 class smf_pdu_session;
 
 class smf_session_procedure : public smf_procedure {
@@ -92,33 +92,36 @@ class smf_session_procedure : public smf_procedure {
 
   std::shared_ptr<smf_pdu_session> sps;
 
-  pfcp::create_far pfcp_create_far(
-      edge& edge, const pfcp::qfi_t& qfi, const oai::config::smf::upf& cfg);
+  pfcp::create_far pfcp_create_far(const std::shared_ptr<qos_upf_edge>& edge);
 
-  pfcp::create_pdr pfcp_create_pdr(
-      edge& edge, const pfcp::qfi_t& qfi,
-      const pfcp::up_function_features_s up_features,
-      const oai::config::smf::upf& cfg);
+  pfcp::create_pdr pfcp_create_pdr(const std::shared_ptr<qos_upf_edge>& edge);
 
-  pfcp::create_urr pfcp_create_urr(edge& edge, const pfcp::qfi_t& qfi);
+  pfcp::create_urr pfcp_create_urr(const std::shared_ptr<qos_upf_edge>& edge);
 
-  pfcp::create_pdr pfcp_create_pdr_dl(edge& edge, const pfcp::qfi_t& qfi);
+  static pfcp::remove_pdr pfcp_remove_pdr(
+      const std::shared_ptr<qos_upf_edge>& edge);
 
-  // TODO eventuell if used more than once
+  static pfcp::remove_far pfcp_remove_far(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  pfcp::update_pdr pfcp_update_pdr(const std::shared_ptr<qos_upf_edge>& edge);
+
+  static pfcp::update_far pfcp_update_far(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  static bool pfcp_outer_header_creation(
+      const std::shared_ptr<qos_upf_edge>& edge,
+      pfcp::outer_header_creation_t& outer_header);
+
  private:
-  // pfcp::destination_interface_value_e get_interface_value(const edge& edge);
+  pfcp::ue_ip_address_t pfcp_ue_ip_address(
+      const std::shared_ptr<qos_upf_edge>& edge);
 
-  pfcp::ue_ip_address_t pfcp_ue_ip_address(const edge& edge);
-
-  pfcp::fteid_t pfcp_prepare_fteid(
+  static pfcp::fteid_t pfcp_prepare_fteid(
       pfcp::fteid_t& fteid, const bool& ftup_supported,
       const oai::config::smf::upf& cfg);
 
  protected:
-  void synch_ul_dl_edges(
-      const vector<edge>& dl_edges, const vector<edge>& ul_edges,
-      const pfcp::qfi_t& qfi, bool synch_pdr_for_uplink);
-
   /**
    * Helper function to get current UPF from graph in a safe way
    * @param dl_edges
@@ -127,7 +130,8 @@ class smf_session_procedure : public smf_procedure {
    * @return ERROR in case not successful
    */
   smf_procedure_code get_current_upf(
-      std::vector<edge>& dl_edges, std::vector<edge>& ul_edges,
+      std::vector<std::shared_ptr<qos_upf_edge>>& dl_edges,
+      std::vector<std::shared_ptr<qos_upf_edge>>& ul_edges,
       std::shared_ptr<pfcp_association>& current_upf);
 
   /**
@@ -139,8 +143,23 @@ class smf_session_procedure : public smf_procedure {
    * CONTINUE if UPF is not null
    */
   smf_procedure_code get_next_upf(
-      std::vector<edge>& dl_edges, std::vector<edge>& ul_edges,
+      std::vector<std::shared_ptr<qos_upf_edge>>& dl_edges,
+      std::vector<std::shared_ptr<qos_upf_edge>>& ul_edges,
       std::shared_ptr<pfcp_association>& next_upf);
+
+  static std::string to_string_fteid(const pfcp::fteid_t& fteid);
+
+  static bool is_qfi_served_in_edges(
+      const std::vector<pfcp::qfi_t>& qfis,
+      const std::vector<std::shared_ptr<qos_upf_edge>>& edges,
+      std::vector<std::shared_ptr<qos_upf_edge>>& served_edges);
+
+  std::vector<pfcp::qfi_t> associate_fteid_with_created_pdrs(
+      const std::vector<pfcp::created_pdr>& created_pdrs,
+      const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
+  void check_if_all_qfis_are_handled(
+      const std::vector<pfcp::qfi_t>& all_qfis_to_check,
+      const std::vector<pfcp::qfi_t>& handled_qfis);
 };
 
 //------------------------------------------------------------------------------
@@ -178,8 +197,8 @@ class session_create_sm_context_procedure : public smf_session_procedure {
    * @return
    */
   smf_procedure_code run(
-      std::shared_ptr<itti_n11_create_sm_context_request> req,
-      std::shared_ptr<itti_n11_create_sm_context_response> resp,
+      const std::shared_ptr<itti_n11_create_sm_context_request>& req,
+      const std::shared_ptr<itti_n11_create_sm_context_response>& resp,
       std::shared_ptr<smf::smf_context> sc);
 
   /*
@@ -196,9 +215,6 @@ class session_create_sm_context_procedure : public smf_session_procedure {
 
   std::shared_ptr<itti_n11_create_sm_context_request> n11_trigger;
   std::shared_ptr<itti_n11_create_sm_context_response> n11_triggered_pending;
-
- private:
-  smf_qos_flow current_flow{};
 
   /**
    * Sends a session establishment request, based on current UPF graph
@@ -226,9 +242,9 @@ class session_update_sm_context_procedure : public smf_session_procedure {
    * @return
    */
   smf_procedure_code run(
-      std::shared_ptr<itti_n11_update_sm_context_request> req,
+      const std::shared_ptr<itti_n11_update_sm_context_request>& req,
       std::shared_ptr<itti_n11_update_sm_context_response> resp,
-      std::shared_ptr<smf::smf_context> sc);
+      const std::shared_ptr<smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
@@ -247,14 +263,16 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   session_management_procedures_type_e session_procedure_type;
 
  private:
-  // TODO currently support only one flow
-  smf_qos_flow current_flow{};
   /**
    * Sends a session modification request, based on the graph
    * Does only consider normal DL procedures
    * @return OK when successful, ERROR otherwise
    */
-  smf_procedure_code send_n4_session_modification_request();
+  smf_procedure_code send_n4_session_modification_request(
+      const std::vector<pfcp::qfi_t>& list_of_qfis);
+
+  void remove_pdrs_and_fars(
+      const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
 };
 
 //------------------------------------------------------------------------------
@@ -276,9 +294,9 @@ class session_release_sm_context_procedure : public smf_session_procedure {
    * @return
    */
   smf_procedure_code run(
-      std::shared_ptr<itti_n11_release_sm_context_request> req,
+      const std::shared_ptr<itti_n11_release_sm_context_request>& req,
       std::shared_ptr<itti_n11_release_sm_context_response> resp,
-      std::shared_ptr<smf::smf_context> sc);
+      const std::shared_ptr<smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF

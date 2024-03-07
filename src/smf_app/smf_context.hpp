@@ -48,6 +48,7 @@
 #include "uint_generator.hpp"
 #include "smf_n7.hpp"
 #include "smf_pfcp_association.hpp"
+#include "session_handler.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
@@ -78,14 +79,13 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     pdu_session_type    = {};
     seid                = 0;
     up_fseid            = {};
-    qos_flows.clear();
-    default_qfi.qfi    = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
-    pdu_session_status = pdu_session_status_e::PDU_SESSION_INACTIVE;
-    upCnx_state        = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
-    ho_state           = ho_state_e::HO_STATE_NONE;
-    timer_T3590        = ITTI_INVALID_TIMER_ID;
-    timer_T3591        = ITTI_INVALID_TIMER_ID;
-    timer_T3592        = ITTI_INVALID_TIMER_ID;
+    default_qfi.qfi     = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
+    pdu_session_status  = pdu_session_status_e::PDU_SESSION_INACTIVE;
+    upCnx_state         = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
+    ho_state            = ho_state_e::HO_STATE_NONE;
+    timer_T3590         = ITTI_INVALID_TIMER_ID;
+    timer_T3591         = ITTI_INVALID_TIMER_ID;
+    timer_T3592         = ITTI_INVALID_TIMER_ID;
     number_of_supported_packet_filters         = 0;
     maximum_number_of_supported_packet_filters = 0;
     number_retransmission_T3591                = 0;
@@ -93,18 +93,17 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   }
 
   void clear() {
-    ipv4                = false;
-    ipv6                = false;
-    ipv4_address.s_addr = INADDR_ANY;
-    ipv6_address        = in6addr_any;
-    released            = false;
-    pdu_session_id      = 0;
-    dnn                 = {};
-    snssai              = {};
-    pdu_session_type    = {};
-    seid                = 0;
-    up_fseid            = {};
-    qos_flows.clear();
+    ipv4                        = false;
+    ipv6                        = false;
+    ipv4_address.s_addr         = INADDR_ANY;
+    ipv6_address                = in6addr_any;
+    released                    = false;
+    pdu_session_id              = 0;
+    dnn                         = {};
+    snssai                      = {};
+    pdu_session_type            = {};
+    seid                        = 0;
+    up_fseid                    = {};
     default_qfi.qfi             = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
     pdu_session_status          = pdu_session_status_e::PDU_SESSION_INACTIVE;
     upCnx_state                 = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
@@ -134,87 +133,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return void
    */
   void get_paa(paa_t& paa);
-
-  /*
-   * Find a QoS flow by a PDR ID
-   * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
-   * @param [const smf_qos_flow &] flow: flow to be assigned
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by a FAR
-   * @param [const pfcp::far_id_t &] far_id: FAR ID
-   * @param [const smf_qos_flow &] flow: flow to be assigned if found
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::far_id_t& far_id, smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by its QFI
-   * @param [const pfcp::qfi_t &] QFI
-   * @param [const smf_qos_flow &] flow: flow to be assigned
-   * @return bool: Return True if found, otherwise return false
-   */
-  bool get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& flow);
-
-  /*
-   * Add a QoS flow to a PDU Session
-   * @param [const smf_qos_flow &] flow: Flow to be added
-   * @return void
-   */
-  void add_qos_flow(const smf_qos_flow& flow);
-
-  /*
-   * Get all QoS Flows associated with this PDU Session
-   * @param [std::vector<smf_qos_flow> &] flows: list of Flows associated with
-   * this session
-   * @return void
-   */
-  void get_qos_flows(std::vector<smf_qos_flow>& flows);
-
-  /*
-   * Set a default flow for this PDU Session
-   * @param [const pfcp::qfi_t &] qfi: Default QFI
-   * @return void
-   */
-  void set_default_qos_flow(const pfcp::qfi_t& qfi);
-
-  /*
-   * Get the default QoS flow of this PDU Session
-   * @param [smf_qos_flow &] flow: Default QoS flow
-   * @return bool: Return true if the default QoS flow exist
-   */
-  bool get_default_qos_flow(smf_qos_flow& flow);
-
-  /*
-   * Find a QoS flow by its PDR ID
-   * @param [const pfcp::pdr_id_t &] pdr_id: PDR ID
-   * @param [smf_qos_flow &] flow: Flow to be returned if found
-   * @return bool: return true if a flow is found, otherwise false
-   */
-  bool find_qos_flow(const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow);
-
-  /*
-   * Remove a QoS flow identified by its QFI
-   * @param [const pfcp::qfi_t &] qfi: QFI of the flow to be removed
-   * @return void
-   */
-  void remove_qos_flow(const pfcp::qfi_t& qfi);
-
-  /*
-   * Remove a QoS flow
-   * @param [smf_qos_flow &] flow: flow to be removed
-   * @return void
-   */
-  void remove_qos_flow(smf_qos_flow& flow);
-
-  /*
-   * Remove all QoS flow associated with this PDU Session
-   * @return void
-   */
-  void remove_qos_flows();
 
   /*
    * Set current status of PDU Session
@@ -280,165 +198,13 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void set_seid(const uint64_t& seid);
 
   /*
-   * Generate a PDR ID
-   * @param [pfcp::pdr_id_t &]: pdr_id: PDR ID generated
-   * @return void
-   */
-  void generate_pdr_id(pfcp::pdr_id_t& pdr_id);
-
-  /*
-   * Release a PDR ID
-   * @param [const pfcp::pdr_id_t &]: pdr_id: PDR ID to be released
-   * @return void
-   */
-  void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
-  /*
-   * Generate a URR ID
-   * @param [pfcp::urr_id_t &]: far_id: URR ID generated
-   * @return void
-   */
-  void generate_urr_id(pfcp::urr_id_t& urr_id);
-
-  /*
-   * Release a URR ID
-   * @param [const pfcp::urr_id_t &]: far_id: URR ID to be released
-   * @return void
-   */
-  void release_urr_id(const pfcp::urr_id_t& urr_id);
-  /*
-   * Generate a FAR ID
-   * @param [pfcp::far_id_t &]: far_id: FAR ID generated
-   * @return void
-   */
-  void generate_far_id(pfcp::far_id_t& far_id);
-
-  /*
-   * Release a FAR ID
-   * @param [const pfcp::far_id_t &]: far_id: FAR ID to be released
-   * @return void
-   */
-  void release_far_id(const pfcp::far_id_t& far_id);
-
-  /*
-   * Generate a QoS Rule ID
-   * @param [uint8_t &]: rule_id: QoS Rule ID generated
-   * @return void
-   */
-  void generate_qos_rule_id(uint8_t& rule_id);
-
-  /*
-   * Release a QoS Rule ID
-   * @param [uint8_t &]: rule_id: QoS Rule ID to be released
-   * @return void
-   */
-  void release_qos_rule_id(const uint8_t& rule_id);
-
-  /*
-   * Mark a QoS Rule to be synchronised with UE
-   * @param [const uint8_t ]: rule_id: QoS Rule ID to be synchronised with UE
-   * @return void
-   */
-  void mark_qos_rule_to_be_synchronised(const uint8_t rule_id);
-
-  /*
-   * Get all QoS Rules to be synchronised with UE
-   * @param [std::vector<QOSRulesIE> &]: qos_rules: List of QoS Rules to be
-   * synchronised with UE
-   * @return void
-   */
-  void get_qos_rules_to_be_synchronised(
-      std::vector<QOSRulesIE>& qos_rules) const;
-
-  /*
-   * Get list of QoS rules associated with a given QFI
-   * @param [pfcp::qfi_t &] qfi
-   * @param [std::vector<QOSRulesIE> &] rules
-   * @void
-   */
-  void get_qos_rules(
-      const pfcp::qfi_t& qfi, std::vector<QOSRulesIE>& rules) const;
-
-  /*
-   * Get default QoS Rule associated with this PDU Session
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  bool get_default_qos_rule(QOSRulesIE& qos_rule) const;
-
-  /*
-   * Get QoS Rule with Rule ID
-   * @param [uint8_t] rule_id: Rule ID
-   * @param [QOSRulesIE &] qos_rule
-   * @return bool: Return true if Rule exist, otherwise return false
-   */
-  bool get_qos_rule(const uint8_t rule_id, QOSRulesIE& qos_rule) const;
-
-  /*
-   * Update QoS Rule
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  void update_qos_rule(const QOSRulesIE& qos_rule);
-
-  /*
-   * Add a QoS Rule
-   * @param [QOSRulesIE &] qos_rule
-   * @void
-   */
-  void add_qos_rule(const QOSRulesIE& qos_rule);
-
-  /*
    * Get PDN Type of this PDU session
    * @param void
    * @return pdu_session_type_t: PDN Type
    */
   pdu_session_type_t get_pdu_session_type() const;
 
-  /*
-   * Get URR_ID associated with this PDU Session
-   * @param void
-   * @return uint32_t: urrId
-   */
-  uint32_t get_urr_id() const;
-
-  /*
-   * Set URR_ID associated with this PDU Session
-   * @param [const uint32_t&] urrId: URR_ID
-   * @return void
-   */
-  void set_urr_id(const uint32_t& urrId);
-
-  /*
-   * Get NWI associated with this PDU Session
-   * @param void
-   * @return std::string: NWI
-   */
-  std::string get_nwi_access() const;
-
-  /*
-   * Set DNN associated with this PDU Session
-   * @param [const std::string&] nwi: NWI
-   * @return void
-   */
-  void set_nwi_access(const std::string& nwiAccess);
-
-  /*
-   * Get NWI associated with this PDU Session
-   * @param void
-   * @return std::string: NWI
-   */
-  std::string get_nwi_core() const;
-
-  /*
-   * Set DNN associated with this PDU Session
-   * @param [const std::string&] nwi: NWI
-   * @return void
-   */
-  void set_nwi_core(const std::string& nwiCore);
-
-  void set_sessions_graph(const std::shared_ptr<upf_graph> upf_graph);
-
-  std::shared_ptr<upf_graph> get_sessions_graph() const;
+  std::shared_ptr<session_handler> get_session_handler() const;
 
   /*
    * Get DNN associated with this PDU Session
@@ -487,7 +253,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   bool released;  // release session request
 
-  std::shared_ptr<n7::policy_association> policy_ptr;
+  std::shared_ptr<::smf::n7::policy_association> policy_ptr;
 
   uint32_t pdu_session_id;
   std::string dnn;  // associated DNN
@@ -499,7 +265,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   std::string nwi_access;  // associated nwi_access
   std::string nwi_core;    // associated nwi_core
 
-  std::shared_ptr<upf_graph> sessions_graph;
+  std::shared_ptr<session_handler> m_session_handler;
 
   pdu_session_status_e pdu_session_status;
   upCnx_state_e
@@ -509,11 +275,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   timer_id_t timer_T3591;
   timer_id_t timer_T3592;
 
-  pfcp::qfi_t default_qfi;                    // Default QFI for this session
-  std::map<uint8_t, smf_qos_flow> qos_flows;  // QFI <-> QoS Flow
-  std::map<uint8_t, QOSRulesIE> qos_rules;    // QRI <-> QoS Rules
-  std::vector<uint8_t> qos_rules_to_be_synchronised;
-  std::vector<uint8_t> qos_rules_to_be_removed;
+  pfcp::qfi_t default_qfi;  // Default QFI for this session
+
   // 5GSM parameters and capabilities
   uint8_t maximum_number_of_supported_packet_filters;
   // TODO: 5GSM Capability (section 9.11.4.1@3GPP TS 24.501 V16.1.0)
@@ -521,17 +284,12 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   // TS 24.501 V16.1.0)
   uint8_t
       number_of_supported_packet_filters;  // number_of_supported_packet_filters
-  util::uint_generator<uint32_t> qos_rule_id_generator;
 
   // PFCP related members
   // PFCP Session
   uint64_t seid;
   pfcp::fseid_t up_fseid;
   //
-  util::uint_generator<uint16_t> pdr_id_generator;
-  util::uint_generator<uint32_t> far_id_generator;
-  util::uint_generator<uint32_t> urr_id_generator;
-
   // Shared lock
   mutable std::shared_mutex m_pdu_session_mutex;
 
@@ -583,7 +341,8 @@ class session_management_subscription {
   mutable std::shared_mutex m_mutex;
 };
 
-class smf_context;
+// TODO ???
+// class smf_context;
 
 class smf_context : public std::enable_shared_from_this<smf_context> {
  public:
@@ -1144,9 +903,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   bool find_pdu_session(
       const pdu_session_id_t& psi, std::shared_ptr<smf_pdu_session>& sp) const;
 
-  bool find_pdu_session(
-      const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi,
-      std::shared_ptr<smf_pdu_session>& sp);
+  bool find_pdu_session_from_seid(
+      uint64_t seid, std::shared_ptr<smf_pdu_session>& sp);
   /*
    * Add a PDU Session to the PDU Session List
    * @param [const pdu_session_id_t &] psi: PDU Session ID
@@ -1266,9 +1024,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param [const nas_message_t] nas_msg: NAS message
    * @return void
    */
+  // TODO delete?
+
   void update_qos_info(
       std::shared_ptr<smf_pdu_session>& sp,
-      smf::pdu_session_update_sm_context_response& res,
+      ::smf::pdu_session_update_sm_context_response& res,
       const nas_message_t& nas_msg);
 
   /*
@@ -1422,7 +1182,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   mutable std::recursive_mutex m_context;
 
   // for Event Handling
-  smf_event event_sub;
+  ::smf::smf_event event_sub;
   bs2::connection sm_context_status_connection;
   bs2::connection ee_pdu_session_release_connection;
   bs2::connection ee_ue_ip_change_connection;

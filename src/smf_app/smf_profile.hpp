@@ -44,8 +44,6 @@
 
 namespace smf {
 
-enum class iface_type { N9, N6, N3 };
-
 using namespace std;
 class nf_profile : public std::enable_shared_from_this<nf_profile> {
  public:

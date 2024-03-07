@@ -644,18 +644,18 @@ void smf_app::handle_itti_msg(
 
         // TODO when is this triggered and what should we do in that case?
 
-        std::shared_ptr<upf_graph> graph = sp->get_sessions_graph();
+        std::shared_ptr<upf_graph> graph =
+            sp->get_session_handler()->get_session_graph();
         if (!graph) {
           Logger::smf_app().warn("PDU sessions graph does not exist!");
           return;
         }
-        std::vector<edge> dl_edges;
-        std::vector<edge> ul_edges;
+        std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
+        std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
         std::shared_ptr<pfcp_association> current_upf;
-        smf_qos_flow empty_flow;
         // TODO what is exactly happening here or should happen?
         // and why is this not in the procedure?
-        graph->start_asynch_dfs_procedure(true, empty_flow);
+        graph->start_asynch_dfs_procedure(true);
         graph->dfs_next_upf(dl_edges, ul_edges, current_upf);
 
         if (!current_upf) {

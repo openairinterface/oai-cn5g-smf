@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
+#include <memory>
 
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
@@ -166,145 +167,13 @@ void smf_pdu_session::get_paa(paa_t& paa) {
 }
 
 //------------------------------------------------------------------------------
-void smf_pdu_session::add_qos_flow(const smf_qos_flow& flow) {
-  if ((flow.qfi.qfi >= QOS_FLOW_IDENTIFIER_FIRST) and
-      (flow.qfi.qfi <= QOS_FLOW_IDENTIFIER_LAST)) {
-    Logger::smf_app().trace(
-        "QoS Flow (flow Id %d) has been added successfully", flow.qfi.qfi);
-    std::unique_lock lock(m_pdu_session_mutex);
-    qos_flows.erase(flow.qfi.qfi);
-    qos_flows.insert(
-        std::pair<uint8_t, smf_qos_flow>((uint8_t) flow.qfi.qfi, flow));
-  } else {
-    Logger::smf_app().error(
-        "Failed to add QoS flow (flow Id %d), invalid QFI", flow.qfi.qfi);
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(
-    const pfcp::pdr_id_t& pdr_id, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.pdr_id_ul.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
-    if (it.second.pdr_id_dl.rule_id == pdr_id.rule_id) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(
-    const pfcp::far_id_t& far_id, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if ((it.second.far_id_ul.first) &&
-        (it.second.far_id_ul.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
-    if ((it.second.far_id_dl.first) &&
-        (it.second.far_id_dl.second.far_id == far_id.far_id)) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_flow(const pfcp::qfi_t& qfi, smf_qos_flow& q) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_flows) {
-    if (it.second.qfi == qfi) {
-      q = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::set_default_qos_flow(const pfcp::qfi_t& qfi) {
-  default_qfi.qfi = qfi.qfi;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_default_qos_flow(smf_qos_flow& flow) {
-  Logger::smf_app().debug("Get default QoS Flow of this PDU session.");
-  return get_qos_flow(default_qfi, flow);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_flows(std::vector<smf_qos_flow>& flows) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  flows.clear();
-  for (auto it : qos_flows) {
-    flows.push_back(it.second);
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::find_qos_flow(
-    const pfcp::pdr_id_t& pdr_id, smf_qos_flow& flow) {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    if ((it->second.pdr_id_ul == pdr_id) || (it->second.pdr_id_dl == pdr_id)) {
-      flow = it->second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flow(const pfcp::qfi_t& qfi) {
-  std::unique_lock lock(m_pdu_session_mutex);
-  smf_qos_flow& flow = qos_flows[qfi.qfi];
-  flow.deallocate_ressources();
-  qos_flows.erase(qfi.qfi);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flow(smf_qos_flow& flow) {
-  std::unique_lock lock(m_pdu_session_mutex);
-  pfcp::qfi_t qfi = {};
-  qfi.qfi         = flow.qfi.qfi;
-  flow.deallocate_ressources();
-  qos_flows.erase(qfi.qfi);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::remove_qos_flows() {
-  std::unique_lock lock(m_pdu_session_mutex);
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    it->second.deallocate_ressources();
-  }
-  qos_flows.clear();
-}
-
-//------------------------------------------------------------------------------
 void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
-  for (std::map<uint8_t, smf_qos_flow>::iterator it = qos_flows.begin();
-       it != qos_flows.end(); ++it) {
-    // TODO: release FAR_ID, PDR_ID
-    // release_pdr_id(it->second.pdr_id_dl);
-    // release_pdr_id(it->second.pdr_id_ul);
-    // release_far_id(it->second.far_id_dl.second);
-    // release_far_id(it->second.far_id_ul.second);
-    it->second.deallocate_ressources();
-  }
+  m_session_handler->deallocate_resources();
+
   if (ipv4) {
     paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
   }
-  clear();  // including qos_flows.clear()
+  clear();
   Logger::smf_app().info(
       "Resources associated with this PDU Session have been released");
 }
@@ -314,57 +183,8 @@ void smf_pdu_session::set_seid(const uint64_t& s) {
 }
 
 //------------------------------------------------------------------------------
-// TODO check if urr_id should be unique in the UPF or in the context of a pdn
-// connection
-void smf_pdu_session::generate_urr_id(pfcp::urr_id_t& urr_id) {
-  urr_id.urr_id = urr_id_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::release_urr_id(const pfcp::urr_id_t& urr_id) {
-  urr_id_generator.free_uid(urr_id.urr_id);
-}
-
-//------------------------------------------------------------------------------
-// TODO check if far_id should be uniq in the UPF or in the context of a pdn
-// connection
-void smf_pdu_session::generate_far_id(pfcp::far_id_t& far_id) {
-  far_id.far_id = far_id_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::release_far_id(const pfcp::far_id_t& far_id) {
-  far_id_generator.free_uid(far_id.far_id);
-}
-
-//------------------------------------------------------------------------------
-// TODO check if prd_id should be unique in the UPF or in the context of a pdn
-// connection
-void smf_pdu_session::generate_pdr_id(pfcp::pdr_id_t& pdr_id) {
-  pdr_id.rule_id = pdr_id_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-// TODO check if prd_id should be unique in the UPF or in the context of a pdn
-// connection
-void smf_pdu_session::release_pdr_id(const pfcp::pdr_id_t& pdr_id) {
-  pdr_id_generator.free_uid(pdr_id.rule_id);
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::generate_qos_rule_id(uint8_t& rule_id) {
-  rule_id = qos_rule_id_generator.get_uid();
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::release_qos_rule_id(const uint8_t& rule_id) {
-  qos_rule_id_generator.free_uid(rule_id);
-}
-
-//------------------------------------------------------------------------------
 std::string smf_pdu_session::toString() const {
-  std::string s     = {};
-  smf_qos_flow flow = {};
+  std::string s = {};
 
   bool is_released = false;
   if (pdu_session_status == pdu_session_status_e::PDU_SESSION_INACTIVE)
@@ -398,8 +218,8 @@ std::string smf_pdu_session::toString() const {
     s.append("\tSEID:\t\t\t").append(std::to_string(seid)).append("\n");
   }
 
-  if (sessions_graph) {
-    s.append(sessions_graph->to_string("\t"));
+  if (m_session_handler->has_session_graph()) {
+    s.append(m_session_handler->get_session_graph()->to_string("\t"));
   }
 
   if (policy_ptr) {
@@ -461,173 +281,8 @@ pdu_session_type_t smf_pdu_session::get_pdu_session_type() const {
   return pdu_session_type;
 }
 
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_rules_to_be_synchronised(
-    std::vector<QOSRulesIE>& rules) const {
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules_to_be_synchronised) {
-    if (qos_rules.count(it) > 0) rules.push_back(qos_rules.at(it));
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::get_qos_rules(
-    const pfcp::qfi_t& qfi, std::vector<QOSRulesIE>& rules) const {
-  Logger::smf_app().info(
-      "Get QoS Rules associated with Flow with QFI %d", qfi.qfi);
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules) {
-    if (it.second.qosflowidentifer == qfi.qfi)
-      rules.push_back(qos_rules.at(it.first));
-  }
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_default_qos_rule(QOSRulesIE& qos_rule) const {
-  Logger::smf_app().info(
-      "Get default QoS Rule this PDU Session (ID %d)", pdu_session_id);
-  std::shared_lock lock(m_pdu_session_mutex);
-  for (auto it : qos_rules) {
-    if (it.second.dqrbit == THE_QOS_RULE_IS_DEFAULT_QOS_RULE) {
-      qos_rule = it.second;
-      return true;
-    }
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-bool smf_pdu_session::get_qos_rule(
-    const uint8_t rule_id, QOSRulesIE& qos_rule) const {
-  Logger::smf_app().info("Find QoS Rule with Rule Id %d", (uint8_t) rule_id);
-  std::shared_lock lock(m_pdu_session_mutex);
-  if (qos_rules.count(rule_id) > 0) {
-    qos_rule = qos_rules.at(rule_id);
-  }
-  return false;
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::update_qos_rule(const QOSRulesIE& qos_rule) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
-
-  Logger::smf_app().info(
-      "Update QoS Rule with Rule Id %d", (uint8_t) qos_rule.qosruleidentifer);
-  uint8_t rule_id = qos_rule.qosruleidentifer;
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      lock.lock();  // Lock it here
-      qos_rules.erase(rule_id);
-      qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rule));
-      // marked to be synchronised with UE
-      qos_rules_to_be_synchronised.push_back(rule_id);
-      Logger::smf_app().trace("Update QoS rule (%d) success", rule_id);
-    } else {
-      Logger::smf_app().error(
-          "Update QoS Rule (%d) failed, rule does not existed", rule_id);
-    }
-
-  } else {
-    Logger::smf_app().error(
-        "Update QoS rule (%d) failed, invalid Rule Id", rule_id);
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::mark_qos_rule_to_be_synchronised(const uint8_t rule_id) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      lock.lock();  // Lock it here
-      qos_rules_to_be_synchronised.push_back(rule_id);
-      Logger::smf_app().trace(
-          "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) success",
-          rule_id);
-    } else {
-      Logger::smf_app().error(
-          "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) failed, rule "
-          "does not existed",
-          rule_id);
-    }
-
-  } else {
-    Logger::smf_app().error(
-        "smf_pdu_session::mark_qos_rule_to_be_synchronised(%d) failed, invalid "
-        "Rule Id",
-        rule_id);
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_pdu_session::add_qos_rule(const QOSRulesIE& qos_rule) {
-  std::unique_lock lock(
-      m_pdu_session_mutex,
-      std::defer_lock);  // Do not lock it first
-  Logger::smf_app().info(
-      "Add QoS Rule with Rule Id %d", (uint8_t) qos_rule.qosruleidentifer);
-  uint8_t rule_id = qos_rule.qosruleidentifer;
-
-  if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
-      (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
-    if (qos_rules.count(rule_id) > 0) {
-      Logger::smf_app().error(
-          "Failed to add rule (Id %d), rule existed", rule_id);
-    } else {
-      lock.lock();  // Lock it here
-      qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rule));
-      Logger::smf_app().trace(
-          "Rule (Id %d) has been added successfully", rule_id);
-    }
-
-  } else {
-    Logger::smf_app().error(
-        "Failed to add rule (Id %d) failed: invalid rule Id", rule_id);
-  }
-}
-
-std::shared_ptr<upf_graph> smf_pdu_session::get_sessions_graph() const {
-  return sessions_graph;
-}
-
-void smf_pdu_session::set_sessions_graph(
-    const std::shared_ptr<upf_graph> upf_graph) {
-  sessions_graph = upf_graph;
-}
-
-//-----------------------------------------------------------------------------
-void smf_pdu_session::set_urr_id(const uint32_t& urrId) {
-  urr_Id = urrId;
-}
-
-//-----------------------------------------------------------------------------
-uint32_t smf_pdu_session::get_urr_id() const {
-  return urr_Id;
-}
-
-//-----------------------------------------------------------------------------
-void smf_pdu_session::set_nwi_access(const std::string& nwiAccess) {
-  nwi_access = nwiAccess;
-}
-
-//-----------------------------------------------------------------------------
-std::string smf_pdu_session::get_nwi_access() const {
-  return nwi_access;
-}
-
-//-----------------------------------------------------------------------------
-void smf_pdu_session::set_nwi_core(const std::string& nwiCore) {
-  nwi_core = nwiCore;
-}
-
-//-----------------------------------------------------------------------------
-std::string smf_pdu_session::get_nwi_core() const {
-  return nwi_core;
+std::shared_ptr<session_handler> smf_pdu_session::get_session_handler() const {
+  return m_session_handler;
 }
 
 //-----------------------------------------------------------------------------
@@ -856,7 +511,7 @@ void smf_context::handle_itti_msg(
         if (data_report.get(pdr_id)) {
           std::shared_ptr<smf_pdu_session> sp = {};
           pfcp::qfi_t qfi                     = {};
-          if (find_pdu_session(pdr_id, qfi, sp)) {
+          if (find_pdu_session_from_seid(req->seid, sp)) {
             // Step 1. send N4 Data Report Ack to UPF
             std::shared_ptr<itti_n4_session_report_response> n4_report_ack =
                 std::make_shared<itti_n4_session_report_response>(
@@ -880,10 +535,10 @@ void smf_context::handle_itti_msg(
             pdu_session_report_response session_report_msg = {};
             // set the required IEs
             session_report_msg.set_supi(supi);
-            session_report_msg.set_snssai(sp.get()->get_snssai());
-            session_report_msg.set_dnn(sp.get()->get_dnn());
+            session_report_msg.set_snssai(sp->get_snssai());
+            session_report_msg.set_dnn(sp->get_dnn());
             session_report_msg.set_pdu_session_type(
-                sp.get()->get_pdu_session_type().pdu_session_type);
+                sp->get_pdu_session_type().pdu_session_type);
             // get supi and put into URL
             std::string supi_prefix = {};
             get_supi_prefix(supi_prefix);
@@ -903,14 +558,8 @@ void smf_context::handle_itti_msg(
             session_report_msg.set_seid(req->seid);
             session_report_msg.set_trxn_id(req->trxn_id);
 
-            // QFIs, QoS profiles, CN Tunnel
-            smf_qos_flow flow = {};
-            sp.get()->get_qos_flow(qfi, flow);
-            // ADD QoS Flow to be updated
-            qos_flow_context_updated qcu = {};
-            qcu.set_qfi(qfi);
-            qcu.set_ul_fteid(flow.ul_fteid);
-            qcu.set_qos_profile(flow.qos_profile);
+            qos_flow_context_updated qcu =
+                sp->get_session_handler()->get_qos_flow_context_updated(qfi);
             session_report_msg.add_qos_flow_context_updated(qcu);
 
             // Create N2 SM Information: PDU Session Resource Setup Request
@@ -1024,7 +673,7 @@ void smf_context::handle_itti_msg(
           if (ur.usage_report_trigger.first)
             ur_model.setURTrigger(ur.usage_report_trigger.second);
           ev_notif.setUsageReport(ur_model);
-          pc.get()->trigger_qos_monitoring(req->seid, ev_notif, 1);
+          pc->trigger_qos_monitoring(req->seid, ev_notif, 1);
         } else {
           Logger::smf_app().debug(
               "No SFM context found for SEID " TEID_FMT
@@ -1096,64 +745,12 @@ void smf_context::get_default_qos(
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
 
-  if (nullptr != ss.get()) {
-    ss.get()->find_dnn_configuration(dnn, sdc);
-    if (nullptr != sdc.get()) {
-      default_qos = sdc.get()->_5g_qos_profile;
+  if (nullptr != ss) {
+    ss->find_dnn_configuration(dnn, sdc);
+    if (nullptr != sdc) {
+      default_qos = sdc->_5g_qos_profile;
     }
   }
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_default_qos_rule(
-    QOSRulesIE& qos_rule, uint8_t pdu_session_type) {
-  // TODO, update according to PDU Session type
-  Logger::smf_app().info(
-      "Get default QoS rule for a PDU Session (PDU session type %d)",
-      pdu_session_type);
-  // see section 9.11.4.13 @ 3GPP TS 24.501 and section 5.7.1.4 @ 3GPP TS 23.501
-  qos_rule.qosruleidentifer  = 0x01;  // be updated later on
-  qos_rule.ruleoperationcode = CREATE_NEW_QOS_RULE;
-  qos_rule.dqrbit            = THE_QOS_RULE_IS_DEFAULT_QOS_RULE;
-  if ((pdu_session_type == PDU_SESSION_TYPE_E_IPV4) or
-      (pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) or
-      (pdu_session_type == PDU_SESSION_TYPE_E_IPV6) or
-      (pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET)) {
-    qos_rule.numberofpacketfilters = 1;
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
-        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-            1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilterdirection = 0b10;  // TODO: Uplink only!
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilteridentifier = 1;
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
-    // qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0].packetfiltercontents.component_value
-    // = bfromcstralloc(2, "\0");
-    qos_rule.qosruleprecedence = 0x01;
-  }
-
-  if (pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
-    qos_rule.numberofpacketfilters = 0;
-    qos_rule.qosruleprecedence     = 0xff;
-  }
-
-  qos_rule.segregation      = SEGREGATION_NOT_REQUESTED;
-  qos_rule.qosflowidentifer = DEFAULT_QFI;
-
-  Logger::smf_app().debug(
-      "Default QoSRules: %x %x %x %x %x %x %x %x %x", qos_rule.qosruleidentifer,
-      qos_rule.ruleoperationcode, qos_rule.dqrbit,
-      qos_rule.numberofpacketfilters,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfilterdirection,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfilteridentifier,
-      qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace
-          ->packetfiltercontents.component_type,
-      qos_rule.qosruleprecedence, qos_rule.segregation,
-      qos_rule.qosflowidentifer);
 }
 
 //------------------------------------------------------------------------------
@@ -1453,16 +1050,17 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       smreq, sm_context_resp_pending);
 
   // Step 3.2. Create PDU session if not exist
-  std::shared_ptr<smf_pdu_session> sp = {};
-  bool find_pdu                       = find_pdu_session(pdu_session_id, sp);
+  auto sp       = std::make_shared<smf_pdu_session>();
+  bool find_pdu = find_pdu_session(pdu_session_id, sp);
 
-  if (nullptr == sp.get()) {
+  if (!find_pdu) {
     Logger::smf_app().debug("Create a new PDU session");
-    sp = std::shared_ptr<smf_pdu_session>(new smf_pdu_session(pdu_session_id));
-    sp.get()->pdu_session_type.pdu_session_type =
-        smreq->req.get_pdu_session_type();
-    sp.get()->set_dnn(dnn);
-    sp.get()->set_snssai(snssai);
+    sp = std::make_shared<smf_pdu_session>(pdu_session_id);
+    sp->pdu_session_type.pdu_session_type = smreq->req.get_pdu_session_type();
+    auto type = pdu_session_type_e(sp->pdu_session_type.pdu_session_type);
+    sp->m_session_handler = std::make_shared<session_handler>(type);
+    sp->set_dnn(dnn);
+    sp->set_snssai(snssai);
     add_pdu_session(pdu_session_id, sp);
   } else {
     Logger::smf_app().warn("PDU session is already existed!");
@@ -1475,16 +1073,16 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Step 5. Create SM Policy Association with PCF or local PCC rules
 
   std::string smContextRef = std::to_string(smreq->scid);
-  sp.get()->policy_ptr     = std::make_shared<n7::policy_association>();
+  sp->policy_ptr           = std::make_shared<n7::policy_association>();
   bool use_pcf_policy      = false;
-  sp.get()->policy_ptr->set_context(
+  sp->policy_ptr->set_context(
       smf_supi_to_string_without_nulls(smreq->req.get_supi()),
       smreq->req.get_supi_prefix(), smreq->req.get_dnn(), snssai, plmn,
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
 
   // TODO what is the exact meaning of SCID? Is this unique per registration
   // or unique per PDU session?
-  sp.get()->policy_ptr->id = smreq->scid;
+  sp->policy_ptr->id = smreq->scid;
 
   n7::sm_policy_status_code status =
       n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
@@ -1537,16 +1135,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::shared_ptr<session_management_subscription> ss = {};
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
-  if (nullptr != ss.get()) {
-    ss.get()->find_dnn_configuration(dnn, sdc);
-    if (nullptr != sdc.get()) {
+  if (nullptr != ss) {
+    ss->find_dnn_configuration(dnn, sdc);
+    if (nullptr != sdc) {
       paa.pdu_session_type.pdu_session_type =
-          sdc.get()
-              ->pdu_session_types.default_session_type
+          sdc->pdu_session_types.default_session_type
               .pdu_session_type;  // TODO: Verified if use default session
                                   // type or requested session type
                                   // Static IP address allocation
-      for (auto addr : sdc.get()->static_ip_addresses) {
+      for (auto addr : sdc->static_ip_addresses) {
         if ((sp->pdu_session_type.pdu_session_type ==
              PDU_SESSION_TYPE_E_IPV4V6) or
             (sp->pdu_session_type.pdu_session_type ==
@@ -2125,10 +1722,14 @@ bool smf_context::handle_pdu_session_release_request(
 
   // get the associated QoS flows: to be used for PFCP Session
   // Modification procedure
-  std::vector<smf_qos_flow> qos_flows;
-  sp.get()->get_qos_flows(qos_flows);
-  for (auto i : qos_flows) {
-    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
+  //  std::vector<smf_qos_flow> qos_flows;
+  //  sp.get()->get_qos_flows(qos_flows);
+  //  for (auto i : qos_flows) {
+  //    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
+  //  }
+  std::vector<pfcp::qfi_t> qfis = sp->get_session_handler()->get_all_qfis();
+  for (const auto& qfi : qfis) {
+    sm_context_request->req.add_qfi(qfi.qfi);
   }
 
   return true;
@@ -2460,34 +2061,39 @@ bool smf_context::handle_service_request(
   std::string n2_sm_info, n2_sm_info_hex;
 
   // Update upCnxState
-  sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
+  sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
 
   // get QFIs associated with PDU session ID
-  std::vector<smf_qos_flow> qos_flows = {};
-  sp.get()->get_qos_flows(qos_flows);
-  for (auto i : qos_flows) {
-    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
-
-    qos_flow_context_updated qcu = {};
-    qcu.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-    qcu.set_qfi(i.qfi);
-    qcu.set_ul_fteid(i.ul_fteid);
-    qcu.set_qos_profile(i.qos_profile);
-    sm_context_resp.get()->res.add_qos_flow_context_updated(qcu);
+  //  std::vector<smf_qos_flow> qos_flows = {};
+  //  sp.get()->get_qos_flows(qos_flows);
+  //  for (auto i : qos_flows) {
+  //    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
+  //    qos_flow_context_updated qcu = {};
+  //    qcu.set_cause(
+  //        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  //    qcu.set_qfi(i.qfi);
+  //    qcu.set_ul_fteid(i.ul_fteid);
+  //    qcu.set_qos_profile(i.qos_profile);
+  //    sm_context_resp.get()->res.add_qos_flow_context_updated(qcu);
+  //  }
+  std::vector<pfcp::qfi_t> qfis = sp->get_session_handler()->get_all_qfis();
+  for (const auto& qfi : qfis) {
+    sm_context_request->req.add_qfi(qfi.qfi);
+    qos_flow_context_updated qcu =
+        sp->get_session_handler()->get_qos_flow_context_updated(qfi);
+    sm_context_resp->res.add_qos_flow_context_updated(qcu);
   }
 
-  sm_context_resp.get()->session_procedure_type =
+  sm_context_resp->session_procedure_type =
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP1;
 
   // Create N2 SM Information: PDU Session Resource Setup Request Transfer IE
   // N2 SM Information
   smf_n2::get_instance().create_n2_pdu_session_resource_setup_request_transfer(
-      sm_context_resp.get()->res, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-      n2_sm_info);
+      sm_context_resp->res, n2_sm_info_type_e::PDU_RES_SETUP_REQ, n2_sm_info);
 
   conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-  sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
+  sm_context_resp->res.set_n2_sm_information(n2_sm_info_hex);
 
   // fill the content of SmContextUpdatedData
   nlohmann::json json_data = {};
@@ -2495,10 +2101,10 @@ bool smf_context::handle_service_request(
   json_data["n2SmInfo"]["contentId"] = N2_SM_CONTENT_ID;
   json_data["n2SmInfoType"]          = "PDU_RES_SETUP_REQ";  // NGAP message
   json_data["upCnxState"]            = "ACTIVATING";
-  sm_context_resp.get()->res.set_json_data(json_data);
+  sm_context_resp->res.set_json_data(json_data);
 
   // Update upCnxState to ACTIVATING
-  sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
+  sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATING);
 
   // TODO: If new UPF is used, need to send N4 Session Modification
   // Request/Response to new/old UPF
@@ -2520,25 +2126,17 @@ bool smf_context::handle_an_release(
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   // Get QFIs associated with PDU session ID
-  std::vector<smf_qos_flow> qos_flows = {};
-  sp.get()->get_qos_flows(qos_flows);
-  for (auto i : qos_flows) {
-    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
-
-    qos_flow_context_updated qcu = {};
-    qcu.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-    qcu.set_qfi(i.qfi);
-    qcu.set_ul_fteid(i.ul_fteid);
-    qcu.set_qos_profile(i.qos_profile);
-    sm_context_resp.get()->res.add_qos_flow_context_updated(qcu);
+  auto qfus = sp->get_session_handler()->get_qos_flows_context_updated();
+  for (const auto& qfu : qfus) {
+    sm_context_request->req.add_qfi(qfu.qfi);
+    sm_context_resp->res.add_qos_flow_context_updated(qfu);
   }
 
-  sm_context_resp.get()->session_procedure_type =
+  sm_context_resp->session_procedure_type =
       session_management_procedures_type_e::PDU_SESSION_RELEASE_AN_INITIATED;
 
   // Update upCnxState
-  sp.get()->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
+  sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
   return true;
 }
 
@@ -2982,11 +2580,16 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     procedure_type =
         session_management_procedures_type_e::PDU_SESSION_RELEASE_AMF_INITIATED;
     // get QFIs associated with PDU session ID
-    std::vector<smf_qos_flow> qos_flows = {};
-    sp.get()->get_qos_flows(qos_flows);
-    for (auto i : qos_flows) {
-      smreq->req.add_qfi(i.qfi.qfi);
+    //    std::vector<smf_qos_flow> qos_flows = {};
+    //    sp.get()->get_qos_flows(qos_flows);
+    //    for (auto i : qos_flows) {
+    //      smreq->req.add_qfi(i.qfi.qfi);
+    //    }
+    std::vector<pfcp::qfi_t> qfis = sp->get_session_handler()->get_all_qfis();
+    for (const auto& qfi : qfis) {
+      smreq->req.add_qfi(qfi.qfi);
     }
+
     // need update UPF
     update_upf                    = true;
     pdu_session_release_procedure = true;
@@ -3290,26 +2893,10 @@ void smf_context::handle_pdu_session_modification_network_requested(
   itti_msg->msg.get_qfis(list_qfis_to_be_updated);
 
   // add QFI(s), QoS Profile(s), QoS Rules
-  for (auto it : list_qfis_to_be_updated) {
-    Logger::smf_app().debug("QFI to be updated: %d", it.qfi);
-
-    std::vector<QOSRulesIE> qos_rules;
-    sp.get()->get_qos_rules(it, qos_rules);
-    // mark QoS rule to be updated for all rules associated with the QFIs
-    for (auto r : qos_rules) {
-      sp.get()->mark_qos_rule_to_be_synchronised(r.qosruleidentifer);
-    }
-
-    // list of QFIs and QoS profiles
-    smf_qos_flow flow = {};
-    if (sp.get()->get_qos_flow(it, flow)) {
-      qos_flow_context_updated qcu = {};
-      qcu.set_qfi(flow.qfi);
-      qcu.set_qos_profile(flow.qos_profile);
-      qcu.set_ul_fteid(flow.ul_fteid);
-      qcu.set_dl_fteid(flow.dl_fteid);
-      itti_msg->msg.add_qos_flow_context_updated(qcu);
-    }
+  sp->get_session_handler()->set_qfis_to_be_updated(list_qfis_to_be_updated);
+  for (const auto& flow :
+       sp->get_session_handler()->get_qos_flows_context_updated()) {
+    itti_msg->msg.add_qos_flow_context_updated(flow);
   }
 
   // Step 2. prepare information for N1N2MessageTransfer to send to AMF
@@ -3332,9 +2919,9 @@ void smf_context::handle_pdu_session_modification_network_requested(
 
   // Fill N1N2MesasgeTransferRequestData
   // get supi and put into URL
-  supi_t supi          = itti_msg->msg.get_supi();
+  supi_t msg_supi      = itti_msg->msg.get_supi();
   std::string supi_str = smf_get_supi_with_prefix(
-      itti_msg->msg.get_supi_prefix(), smf_supi_to_string(supi));
+      itti_msg->msg.get_supi_prefix(), smf_supi_to_string(msg_supi));
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
@@ -3479,7 +3066,7 @@ bool smf_context::handle_ho_preparation_request(
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
 
-  sm_context_resp.get()->session_procedure_type =
+  sm_context_resp->session_procedure_type =
       session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP1;
 
   // Ngap_HandoverRequiredTransfer
@@ -3524,49 +3111,40 @@ bool smf_context::handle_ho_preparation_request(
     return false;
   }
 
-  if (!sp->get_sessions_graph()) {
+  if (!sp->get_session_handler()->has_session_graph()) {
     // Abnormal condition when the PDU Session has no associate graph
     // TODO: Check correct return code/error
     smf_app_inst->trigger_update_context_error_response(
         http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
-        PDU_SESSION_APPLICATION_ERROR_NETWORK_FAILURE,
-        sm_context_request.get()->pid);
+        PDU_SESSION_APPLICATION_ERROR_NETWORK_FAILURE, sm_context_request->pid);
     return false;
   }
 
-  edge access_upf = sp->get_sessions_graph()->get_access_edge();
-
-  // Retrieve QoS Flows from the access UPF
-  // TODO: Check PDU Session id cast (uint32 -> uint8)
-  std::vector<std::shared_ptr<smf_qos_flow>> flows = {};
-  access_upf.get_qos_flows(sp->pdu_session_id, flows);
-
-  for (const auto& flow : flows) {
-    qos_flow_context_updated qos_flow = {};
-    qos_flow.set_qfi(flow->qfi);
-    qos_flow.set_ul_fteid(flow->ul_fteid);
-    qos_flow.set_dl_fteid(flow->dl_fteid);
-    qos_flow.set_qos_profile(flow->qos_profile);
-    sm_context_resp->res.add_qos_flow_context_updated(qos_flow);
+  std::vector<pfcp::qfi_t> access_qfis =
+      sp->get_session_handler()->get_all_qfis();
+  for (const auto& qfi : access_qfis) {
+    qos_flow_context_updated qcu =
+        sp->get_session_handler()->get_qos_flow_context_updated(qfi);
+    sm_context_resp->res.add_qos_flow_context_updated(qcu);
   }
 
   smf_n2::get_instance().create_n2_pdu_session_resource_setup_request_transfer(
       sm_context_resp->res, n2_sm_info_type_e::PDU_RES_SETUP_REQ, n2_sm_info);
 
   conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-  sm_context_resp.get()->res.set_n2_sm_information(n2_sm_info_hex);
+  sm_context_resp->res.set_n2_sm_information(n2_sm_info_hex);
 
   // Fill the content of SmContextUpdatedData
   nlohmann::json json_data           = {};
   json_data["n2SmInfo"]["contentId"] = N2_SM_CONTENT_ID;
   json_data["n2SmInfoType"]          = "PDU_RES_SETUP_REQ";  // NGAP message
   json_data["hoState"]               = "PREPARING";
-  sm_context_resp.get()->res.set_json_data(json_data);
-  sm_context_resp.get()->res.set_http_code(
+  sm_context_resp->res.set_json_data(json_data);
+  sm_context_resp->res.set_http_code(
       http_status_code_e::HTTP_STATUS_CODE_200_OK);
 
   // Set HOStatus to PREPARING
-  sp.get()->set_ho_state(ho_state_e::HO_STATE_PREPARING);
+  sp->set_ho_state(ho_state_e::HO_STATE_PREPARING);
 
   return true;
 }
@@ -3670,8 +3248,7 @@ bool smf_context::handle_ho_preparation_request_fail(
     // TODO: to be updated with correct status/cause
     smf_app_inst->trigger_update_context_error_response(
         http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
-        PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR,
-        sm_context_request.get()->pid);
+        PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR, sm_context_request->pid);
     return false;
   }
 
@@ -3902,19 +3479,16 @@ bool smf_context::find_pdu_session(
 }
 
 //-----------------------------------------------------------------------------
-bool smf_context::find_pdu_session(
-    const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi,
-    std::shared_ptr<smf_pdu_session>& sp) {
+bool smf_context::find_pdu_session_from_seid(
+    uint64_t seid, std::shared_ptr<smf_pdu_session>& sp) {
   std::shared_lock lock(m_pdu_sessions_mutex);
-  for (auto it : pdu_sessions) {
-    smf_qos_flow flow = {};
-    if (it.second->find_qos_flow(pdr_id, flow)) {
-      qfi.qfi = flow.qfi.qfi;
-      sp      = it.second;
-      if (sp) return true;
-      break;
+  for (const auto& it : pdu_sessions) {
+    if (it.second->seid == seid) {
+      sp = it.second;
+      return true;
     }
   }
+
   return false;
 }
 
@@ -4468,40 +4042,7 @@ void smf_context::handle_flexcn_event(
       cj["dnn"]           = sp->get_dnn();       // DNN
       cj["amf_addr"]      = sc->get_amf_addr();  // Serving AMF addr
 
-      // QoS flows associated with this session
-      std::vector<smf_qos_flow> flows = {};
-      sp->get_qos_flows(flows);
-
-      if (flows.size() > 0) {
-        cj["qos_flow"] = nlohmann::json::array();
-        for (auto f : flows) {
-          nlohmann::json tmp = {};
-          tmp["qfi"]         = (uint8_t) f.qfi.qfi;
-          // UL FTEID IPv4/IPv6 (UPF)
-          if (f.ul_fteid.v4)
-            tmp["upf_addr"]["ipv4"] = inet_ntoa(f.ul_fteid.ipv4_address);
-          if (f.ul_fteid.v6) {
-            char str_addr6[INET6_ADDRSTRLEN];
-            if (inet_ntop(
-                    AF_INET6, &f.ul_fteid.ipv6_address, str_addr6,
-                    sizeof(str_addr6))) {
-              tmp["upf_addr"]["ipv6"] = str_addr6;
-            }
-          }
-          // DL FTEID Ipv4/v6 (AN)
-          if (f.dl_fteid.v4)
-            tmp["an_addr"]["ipv4"] = inet_ntoa(f.dl_fteid.ipv4_address);
-          if (f.dl_fteid.v6) {
-            char str_addr6[INET6_ADDRSTRLEN];
-            if (inet_ntop(
-                    AF_INET6, &f.dl_fteid.ipv6_address, str_addr6,
-                    sizeof(str_addr6))) {
-              tmp["an_addr"]["ipv6"] = str_addr6;
-            }
-          }
-          cj["qos_flow"].push_back(tmp);
-        }
-      }
+      cj["qos_flow"] = sp->get_session_handler()->create_qos_flows_json();
 
       ev_notif.set_custom_info(cj);
       itti_msg->event_notifs.push_back(ev_notif);
@@ -4703,37 +4244,11 @@ void smf_context::handle_plmn_change(
 //------------------------------------------------------------------------------
 void smf_context::update_qos_info(
     std::shared_ptr<smf_pdu_session>& sp,
-    smf::pdu_session_update_sm_context_response& res,
+    ::smf::pdu_session_update_sm_context_response& res,
     const nas_message_t& nas_msg) {
   // Process QoS rules and Qos Flow descriptions
   uint16_t length_of_rule_ie = nas_msg.plain.sm.pdu_session_modification_request
                                    .qosrules.lengthofqosrulesie;
-
-  pfcp::qfi_t generated_qfi{};
-  generated_qfi.qfi = 0;
-
-  // QOSFlowDescriptions
-  uint8_t number_of_flow_descriptions =
-      nas_msg.plain.sm.pdu_session_modification_request.qosflowdescriptions
-          .qosflowdescriptionsnumber;
-  QOSFlowDescriptionsContents qos_flow_description_content = {};
-
-  // Only one flow description for new requested QoS Flow
-  if (number_of_flow_descriptions > 0) {
-    for (int i = 0; i < number_of_flow_descriptions; i++) {
-      if (nas_msg.plain.sm.pdu_session_modification_request.qosflowdescriptions
-              .qosflowdescriptionscontents[i]
-              .qfi == NO_QOS_FLOW_IDENTIFIER_ASSIGNED) {
-        // TODO: generate new QFI
-        generated_qfi.qfi = (uint8_t) 60;  // hardcoded for now
-        qos_flow_description_content =
-            nas_msg.plain.sm.pdu_session_modification_request
-                .qosflowdescriptions.qosflowdescriptionscontents[i];
-        qos_flow_description_content.qfi = generated_qfi.qfi;
-        break;
-      }
-    }
-  }
 
   int i              = 0;
   int length_of_rule = 0;
@@ -4741,105 +4256,40 @@ void smf_context::update_qos_info(
     QOSRulesIE qos_rules_ie = {};
     qos_rules_ie = nas_msg.plain.sm.pdu_session_modification_request.qosrules
                        .qosrulesie[i];
-    uint8_t rule_id       = {0};
-    pfcp::qfi_t qfi       = {};
-    smf_qos_flow qos_flow = {};
-    length_of_rule        = qos_rules_ie.LengthofQoSrule;
+    length_of_rule = qos_rules_ie.LengthofQoSrule;
 
     // If UE requested a new GBR flow
     if ((qos_rules_ie.ruleoperationcode == CREATE_NEW_QOS_RULE) and
         (qos_rules_ie.segregation == SEGREGATION_REQUESTED)) {
       // Add a new QoS Flow
-      if (qos_rules_ie.qosruleidentifer == NO_QOS_RULE_IDENTIFIER_ASSIGNED) {
-        // Generate a new QoS rule
-        sp.get()->generate_qos_rule_id(rule_id);
-        Logger::smf_app().info("Create a new QoS rule (rule Id %d)", rule_id);
-        qos_rules_ie.qosruleidentifer = rule_id;
-      }
-      sp.get()->add_qos_rule(qos_rules_ie);
+      uint8_t number_of_flow_descriptions =
+          nas_msg.plain.sm.pdu_session_modification_request.qosflowdescriptions
+              .qosflowdescriptionsnumber;
 
-      qfi.qfi      = generated_qfi.qfi;
-      qos_flow.qfi = generated_qfi.qfi;
+      // Only one flow description for new requested QoS Flow
+      for (int j = 0; j < number_of_flow_descriptions; j++) {
+        if (nas_msg.plain.sm.pdu_session_modification_request
+                .qosflowdescriptions.qosflowdescriptionscontents[j]
+                .qfi == NO_QOS_FLOW_IDENTIFIER_ASSIGNED) {
+          QOSFlowDescriptionsContents qos_flow_description_content =
+              nas_msg.plain.sm.pdu_session_modification_request
+                  .qosflowdescriptions.qosflowdescriptionscontents[j];
 
-      // set qos_profile from qos_flow_description_content
-      qos_flow.qos_profile = {};
-
-      for (int j = 0; j < qos_flow_description_content.numberofparameters;
-           j++) {
-        if (qos_flow_description_content.parameterslist[j]
-                .parameteridentifier == PARAMETER_IDENTIFIER_5QI) {
-          qos_flow.qos_profile._5qi =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents._5qi;
-        } else if (
-            qos_flow_description_content.parameterslist[j]
-                .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.value;
-        } else if (
-            qos_flow_description_content.parameterslist[j]
-                .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.value;
-        } else if (
-            qos_flow_description_content.parameterslist[j]
-                .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.value;
-        } else if (
-            qos_flow_description_content.parameterslist[j]
-                .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value =
-              qos_flow_description_content.parameterslist[j]
-                  .parametercontents.gfbrormfbr_uplinkordownlink.value;
+          qos_flow_context_updated qcu =
+              sp->get_session_handler()->create_new_qos_rule(
+                  qos_rules_ie, qos_flow_description_content);
+          res.add_qos_flow_context_updated(qcu);
+          break;
         }
       }
-
-      Logger::smf_app().debug(
-          "Add new QoS Flow with new QRI %d", qos_rules_ie.qosruleidentifer);
-      // mark this rule to be synchronised with the UE
-      sp.get()->update_qos_rule(qos_rules_ie);
-      // Add new QoS flow
-      sp.get()->add_qos_flow(qos_flow);
-
-      // ADD QoS Flow to be updated
-      qos_flow_context_updated qcu = {};
-      qcu.set_qfi(pfcp::qfi_t(qos_flow.qfi));
-      // qcu.set_ul_fteid(flow.ul_fteid);
-      // qcu.set_dl_fteid(flow.dl_fteid);
-      qcu.set_qos_profile(qos_flow.qos_profile);
-      res.add_qos_flow_context_updated(qcu);
-
     } else {  // update existing QRI
       Logger::smf_app().debug(
           "Update existing QRI %d", qos_rules_ie.qosruleidentifer);
-      qfi.qfi = qos_rules_ie.qosflowidentifer;
-      if (sp.get()->get_qos_flow(qfi, qos_flow)) {
-        sp.get()->update_qos_rule(qos_rules_ie);
-        // update QoS flow
-        sp.get()->add_qos_flow(qos_flow);
 
-        // ADD QoS Flow to be updated
-        qos_flow_context_updated qcu = {};
-        qcu.set_qfi(pfcp::qfi_t(qos_flow.qfi));
-        qcu.set_ul_fteid(qos_flow.ul_fteid);
-        qcu.set_dl_fteid(qos_flow.dl_fteid);
-        qcu.set_qos_profile(qos_flow.qos_profile);
+      if (sp->get_session_handler()->qfi_exists(
+              qos_rules_ie.qosflowidentifer)) {
+        qos_flow_context_updated qcu =
+            sp->get_session_handler()->update_qos_rule(qos_rules_ie);
         res.add_qos_flow_context_updated(qcu);
       }
     }

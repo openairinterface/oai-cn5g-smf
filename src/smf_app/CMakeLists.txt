@@ -67,5 +67,7 @@ add_library (SMF STATIC
   smf_subscription.cpp
   smf_msg.cpp
   smf_config_types.cpp
+  smf_qos_upf_edge.cpp
+  session_handler.cpp
 )
 
