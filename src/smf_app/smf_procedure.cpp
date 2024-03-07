@@ -500,7 +500,10 @@ smf_procedure_code smf_session_procedure::get_next_upf(
     return smf_procedure_code::ERROR;
   }
 
-  graph->dfs_next_upf(dl_edges, ul_edges, next_upf);
+  // at some point the graph has to return true, otherwise we are done
+  while (!graph->dfs_next_upf(dl_edges, ul_edges, next_upf))
+    ;
+
   if (!next_upf) {
     Logger::smf_app().debug("UPF graph in SMF finished");
     return smf_procedure_code::OK;
@@ -1139,12 +1142,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
       // TODO do we still need this "trick" to increase precedence to not
       // confuse UPF?
       for (const auto& ul_edge : ul_edges_to_update) {
-        n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
         ul_edge->precedence += 1;
+        n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
       }
       for (const auto& dl_edge : dl_edges_to_update) {
-        n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
         dl_edge->precedence += 1;
+        n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
       }
       // Re-enable also old URR
       if (current_upf->get_upf_config().enable_usage_reporting()) {
@@ -1305,7 +1308,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
           "PDU Session Update SM Context, SERVICE_REQUEST_UE_TRIGGERED_STEP1");
 
       std::vector<pfcp::qfi_t> used_qfis = associate_fteid_with_created_pdrs(
-          resp.pfcp_ies.created_pdrs, ul_edges_to_update);
+          resp.pfcp_ies.created_pdrs, dl_edges_to_update);
 
       check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
       // we just update N3 interface

@@ -346,8 +346,10 @@ class upf_graph {
    * @param info_dl output_parameter: dl edge
    * @param info_ul output_parameter: ul edge
    * @param upf output_parameter: UPF
+   * @return true in case the UPF selection was successfull, false e.g. if there
+   * are unvisited UL UPFs
    */
-  void dfs_next_upf(
+  bool dfs_next_upf(
       std::vector<std::shared_ptr<qos_upf_edge>>& info_dl,
       std::vector<std::shared_ptr<qos_upf_edge>>& info_ul,
       std::shared_ptr<pfcp_association>& upf);

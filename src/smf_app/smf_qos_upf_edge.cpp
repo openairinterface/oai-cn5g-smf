@@ -58,6 +58,13 @@ std::string qos_upf_edge::to_string(int level) const {
   output.append(fmt::format(fmt_value, "Interface Type", type.getEnumString()));
   output.append(fmt::format(fmt_value, "NWI", nw_instance));
   output.append(fmt::format(fmt_value, "Uplink", uplink ? "Yes" : "No"));
+  if (pdr_id.rule_id != 0) {
+    output.append(fmt::format(fmt_value, "PDR ID", pdr_id.rule_id));
+  }
+  if (far_id.far_id != 0) {
+    output.append(fmt::format(fmt_value, "FAR ID", far_id.far_id));
+  }
+
   // TODO DNAI
   if (destination_upf) {
     output.append(fmt::format(
