@@ -60,6 +60,7 @@
 #include "PlmnId.h"
 #include "Snssai.h"
 #include "PduSessionType.h"
+#include "conversions.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -82,6 +83,7 @@ extern "C" {
 }
 
 using namespace smf;
+using namespace oai::utils;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
@@ -1300,7 +1302,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       addr = full_addr;
     }
     struct in_addr amf_ipv4_addr;
-    if (inet_pton(AF_INET, util::trim(addr).c_str(), &amf_ipv4_addr) == 0) {
+    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
       amf_addr_str = "http://" + full_addr;
@@ -4016,13 +4018,10 @@ void smf_context::handle_flexcn_event(
       // custom json e.g., for FlexCN
       nlohmann::json cj = {};
       // PLMN
-      plmn_t plmn     = {};
-      std::string mcc = {};
-      std::string mnc = {};
-      sc->get_plmn(plmn);
-      conv::plmnToMccMnc(plmn, mcc, mnc);
-      cj["plmn"]["mcc"] = mcc;
-      cj["plmn"]["mnc"] = mnc;
+      plmn_t _plmn = {};
+      sc->get_plmn(_plmn);
+      cj["plmn"]["mcc"] = _plmn.mcc;
+      cj["plmn"]["mnc"] = _plmn.mnc;
       // UE IPv4
       if (sp->ipv4) {
         cj["ue_ipv4_addr"] = conv::toString(sp->ipv4_address);
@@ -4218,13 +4217,11 @@ void smf_context::handle_plmn_change(
       ev_notif.set_timestamp(std::to_string(tv_ntp));
 
       // PLMN
-      plmn_t plmn = {};
-      std::string mcc, mnc;
-      sc->get_plmn(plmn);
-      conv::plmnToMccMnc(plmn, mcc, mnc);
+      plmn_t _plmn = {};
+      sc->get_plmn(_plmn);
       oai::model::common::PlmnId plmnid;
-      plmnid.setMcc(mcc);
-      plmnid.setMnc(mnc);
+      plmnid.setMcc(_plmn.mcc);
+      plmnid.setMnc(_plmn.mnc);
       ev_notif.set_PlmnId(plmnid);
       itti_msg->event_notifs.push_back(ev_notif);
     }

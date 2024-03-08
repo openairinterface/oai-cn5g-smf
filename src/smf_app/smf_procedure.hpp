@@ -54,10 +54,8 @@ enum class smf_procedure_code : uint8_t { CONTINUE, ERROR, OK };
 //------------------------------------------------------------------------------
 class smf_procedure {
  private:
-  static uint64_t trxn_id_generator;
-
   static uint64_t generate_trxn_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    return oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 
  public:

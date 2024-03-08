@@ -303,11 +303,13 @@ void nf_profile::from_json(const nlohmann::json& data) {
       struct in_addr addr4 = {};
       std::string address  = it.get<std::string>();
       unsigned char buf_in_addr[sizeof(struct in_addr)];
-      if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) == 1) {
+      if (inet_pton(AF_INET, oai::utils::trim(address).c_str(), buf_in_addr) ==
+          1) {
         memcpy(&addr4, buf_in_addr, sizeof(struct in_addr));
       } else {
         Logger::smf_app().warn(
-            "Address conversion: Bad value %s", util::trim(address).c_str());
+            "Address conversion: Bad value %s",
+            oai::utils::trim(address).c_str());
       }
       add_nf_ipv4_addresses(addr4);
     }
@@ -667,13 +669,14 @@ void upf_profile::from_json(const nlohmann::json& data) {
             struct in_addr addr4 = {};
             std::string address  = d.get<std::string>();
             unsigned char buf_in_addr[sizeof(struct in_addr)];
-            if (inet_pton(AF_INET, util::trim(address).c_str(), buf_in_addr) ==
+            if (inet_pton(
+                    AF_INET, oai::utils::trim(address).c_str(), buf_in_addr) ==
                 1) {
               memcpy(&addr4, buf_in_addr, sizeof(struct in_addr));
             } else {
               Logger::smf_app().warn(
                   "Address conversion: Bad value %s",
-                  util::trim(address).c_str());
+                  oai::utils::trim(address).c_str());
             }
             up_interface_info_item.ipv4_addresses.push_back(addr4);
           }

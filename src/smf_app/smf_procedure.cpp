@@ -60,7 +60,7 @@ extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 std::string smf_session_procedure::to_string_fteid(const pfcp::fteid_t& fteid) {
   return fmt::format(
       "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
-      conv::toString(fteid.ipv4_address));
+      oai::utils::conv::toString(fteid.ipv4_address));
 }
 
 pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
@@ -104,14 +104,16 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
           cfg.get_host());
       local_fteid.ipv4_address = cfg.get_node_id().u1.ipv4_address;
     } else {
-      local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
+      local_fteid.ipv4_address =
+          oai::utils::conv::fromString(cfg.get_local_n3_ip());
     }
     // TODO upon session release, we have to free this F-TEID again
     local_fteid.teid = smf_app_inst->generate_teid();
     fteid            = local_fteid;
     Logger::smf_app().info(
         "    UL F-TEID 0x%" PRIx32 " allocated for N3 IPv4 Addr : %s",
-        local_fteid.teid, conv::toString(local_fteid.ipv4_address).c_str());
+        local_fteid.teid,
+        oai::utils::conv::toString(local_fteid.ipv4_address).c_str());
   } else if (fteid.is_zero()) {
     local_fteid.ch   = 1;
     local_fteid.v4   = 1;
