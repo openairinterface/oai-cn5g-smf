@@ -764,36 +764,47 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
           Ngap_Pre_emptionVulnerability_pre_emptable;
     }
 
+    if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
+      ngap_QosFlowAddOrModifyRequestItem[i]
+          .qosFlowLevelQosParameters->gBR_QosInformation =
+          (Ngap_GBR_QosInformation_t*) (calloc(
+              1, sizeof(Ngap_GBR_QosInformation_t)));
+
+      set_ngap_bit_rate(
+          ngap_QosFlowAddOrModifyRequestItem[i]
+              .qosFlowLevelQosParameters->gBR_QosInformation
+              ->maximumFlowBitRateUL,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
+
+      set_ngap_bit_rate(
+          ngap_QosFlowAddOrModifyRequestItem[i]
+              .qosFlowLevelQosParameters->gBR_QosInformation
+              ->maximumFlowBitRateDL,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
+
+      set_ngap_bit_rate(
+          ngap_QosFlowAddOrModifyRequestItem[i]
+              .qosFlowLevelQosParameters->gBR_QosInformation
+              ->guaranteedFlowBitRateUL,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
+
+      set_ngap_bit_rate(
+          ngap_QosFlowAddOrModifyRequestItem[i]
+              .qosFlowLevelQosParameters->gBR_QosInformation
+              ->guaranteedFlowBitRateDL,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
+          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
+    }
+
     ASN_SEQUENCE_ADD(
         &qosFlowAddOrModifyRequestList->value.choice
              .QosFlowAddOrModifyRequestList.list,
         &ngap_QosFlowAddOrModifyRequestItem[i]);
     i++;
   }
-
-  /*Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
-  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-          qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
-  int i = 0;
-  for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
-
-    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
-
-    ASN_SEQUENCE_ADD(
-            &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
-            &ngap_QosFlowSetupRequestItem[i]);
-
-    Logger::smf_n2().info(
-            "QoS parameters: QFI %d, ARP priority level %d, "
-            "qos_flow.qos_profile.arp.preempt_cap %s, "
-            "qos_flow.qos_profile.arp.preempt_vuln %s",
-            qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
-            qos_flow.qos_profile.arp.preempt_cap.c_str(),
-            qos_flow.qos_profile.arp.preempt_vuln.c_str());
-
-    i++;
-  }*/
 
   // Ngap_E_RAB_ID_t *e_RAB_ID;  //optional
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowAddOrModifyRequestList);

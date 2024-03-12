@@ -491,14 +491,14 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
   // TODO: get authorized QoS flow descriptions IE
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+    sm_msg->pdu_session_modification_command.qosflowdescriptions
         .qosflowdescriptionsnumber = qos_flows.size();
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+    sm_msg->pdu_session_modification_command.qosflowdescriptions
         .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
         qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
 
     for (int i = 0; i < qos_flows.size(); i++) {
-      sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+      sm_msg->pdu_session_modification_command.qosflowdescriptions
           .qosflowdescriptionscontents[i] =
           qos_flows[i].qos_flow_description_content;
     }
@@ -637,14 +637,14 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+    sm_msg->pdu_session_modification_command.qosflowdescriptions
         .qosflowdescriptionsnumber = qos_flows.size();
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+    sm_msg->pdu_session_modification_command.qosflowdescriptions
         .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
         qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
 
     for (int i = 0; i < qos_flows.size(); i++) {
-      sm_msg->pdu_session_establishment_accept.qosflowdescriptions
+      sm_msg->pdu_session_modification_command.qosflowdescriptions
           .qosflowdescriptionscontents[i] =
           qos_flows[i].qos_flow_description_content;
     }
