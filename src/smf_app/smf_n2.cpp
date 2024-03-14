@@ -737,7 +737,7 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
             1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
     ngap_QosFlowAddOrModifyRequestItem[i]
         .qosFlowLevelQosParameters->qosCharacteristics.choice.nonDynamic5QI
-        ->fiveQI = qos_flow.qfi.qfi;
+        ->fiveQI = qos_flow.qos_profile._5qi;
     ngap_QosFlowAddOrModifyRequestItem[i]
         .qosFlowLevelQosParameters->allocationAndRetentionPriority
         .priorityLevelARP = qos_flow.qos_profile.priority_level;

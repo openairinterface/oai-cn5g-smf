@@ -2064,7 +2064,7 @@ bool smf_app::get_session_management_subscription_data(
   // SSC_Mode
   dnn_configuration->ssc_modes.default_ssc_mode.ssc_mode = 1;
   // 5gQosProfile
-  dnn_configuration->_5g_qos_profile._5qi               = DEFAULT_QFI;
+  dnn_configuration->_5g_qos_profile._5qi               = DEFAULT_5QI;
   dnn_configuration->_5g_qos_profile.arp.priority_level = 1;
   dnn_configuration->_5g_qos_profile.arp.preempt_cap    = "NOT_PREEMPT";
   dnn_configuration->_5g_qos_profile.arp.preempt_vuln   = "NOT_PREEMPTABLE";
