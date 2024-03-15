@@ -1077,7 +1077,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
         if (gnb_fteid == dl_edge->next_hop_fteid) {
           Logger::smf_app().debug(
               "QFI %d dl_fteid unchanged", dl_edge->qfi.qfi);
-          return smf_procedure_code::OK;
+          // return smf_procedure_code::OK;
+          continue;
         } else {
           dl_edge->next_hop_fteid = gnb_fteid;
         }
