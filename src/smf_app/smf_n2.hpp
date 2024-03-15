@@ -59,6 +59,9 @@ class smf_n2 {
   static Ngap_QosFlowSetupRequestItem get_QoSFlowSetupRequestItem(
       const qos_flow_context_updated& qos_flow);
 
+  static Ngap_QosFlowLevelQosParameters get_QoSFlowLevelQosParameters(
+      const qos_flow_context_updated& qos_flow);
+
  public:
   smf_n2(){};
   smf_n2(smf_n2 const&) = delete;

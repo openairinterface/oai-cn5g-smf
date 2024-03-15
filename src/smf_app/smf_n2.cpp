@@ -728,76 +728,9 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
     ngap_QosFlowAddOrModifyRequestItem[i].qosFlowLevelQosParameters =
         (struct Ngap_QosFlowLevelQosParameters*) calloc(
             1, sizeof(struct Ngap_QosFlowLevelQosParameters));
-    ngap_QosFlowAddOrModifyRequestItem[i]
-        .qosFlowLevelQosParameters->qosCharacteristics.present =
-        Ngap_QosCharacteristics_PR_nonDynamic5QI;
-    ngap_QosFlowAddOrModifyRequestItem[i]
-        .qosFlowLevelQosParameters->qosCharacteristics.choice.nonDynamic5QI =
-        (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-            1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-    ngap_QosFlowAddOrModifyRequestItem[i]
-        .qosFlowLevelQosParameters->qosCharacteristics.choice.nonDynamic5QI
-        ->fiveQI = qos_flow.qos_profile._5qi;
-    ngap_QosFlowAddOrModifyRequestItem[i]
-        .qosFlowLevelQosParameters->allocationAndRetentionPriority
-        .priorityLevelARP = qos_flow.qos_profile.priority_level;
-    if (qos_flow.qos_profile.arp.preempt_cap == "NOT_PREEMPT") {
-      ngap_QosFlowAddOrModifyRequestItem[i]
-          .qosFlowLevelQosParameters->allocationAndRetentionPriority
-          .pre_emptionCapability =
-          Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
-    } else {
-      ngap_QosFlowAddOrModifyRequestItem[i]
-          .qosFlowLevelQosParameters->allocationAndRetentionPriority
-          .pre_emptionCapability =
-          Ngap_Pre_emptionCapability_may_trigger_pre_emption;
-    }
-    if (qos_flow.qos_profile.arp.preempt_vuln == "NOT_PREEMPTABLE") {
-      ngap_QosFlowAddOrModifyRequestItem[i]
-          .qosFlowLevelQosParameters->allocationAndRetentionPriority
-          .pre_emptionVulnerability =
-          Ngap_Pre_emptionVulnerability_not_pre_emptable;
-    } else {
-      ngap_QosFlowAddOrModifyRequestItem[i]
-          .qosFlowLevelQosParameters->allocationAndRetentionPriority
-          .pre_emptionVulnerability =
-          Ngap_Pre_emptionVulnerability_pre_emptable;
-    }
-
-    if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
-      ngap_QosFlowAddOrModifyRequestItem[i]
-          .qosFlowLevelQosParameters->gBR_QosInformation =
-          (Ngap_GBR_QosInformation_t*) (calloc(
-              1, sizeof(Ngap_GBR_QosInformation_t)));
-
-      set_ngap_bit_rate(
-          ngap_QosFlowAddOrModifyRequestItem[i]
-              .qosFlowLevelQosParameters->gBR_QosInformation
-              ->maximumFlowBitRateUL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowAddOrModifyRequestItem[i]
-              .qosFlowLevelQosParameters->gBR_QosInformation
-              ->maximumFlowBitRateDL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowAddOrModifyRequestItem[i]
-              .qosFlowLevelQosParameters->gBR_QosInformation
-              ->guaranteedFlowBitRateUL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
-
-      set_ngap_bit_rate(
-          ngap_QosFlowAddOrModifyRequestItem[i]
-              .qosFlowLevelQosParameters->gBR_QosInformation
-              ->guaranteedFlowBitRateDL,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
-          qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
-    }
+    auto parameters = get_QoSFlowLevelQosParameters(qos_flow);
+    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowLevelQosParameters =
+        &parameters;
 
     ASN_SEQUENCE_ADD(
         &qosFlowAddOrModifyRequestList->value.choice
@@ -1630,66 +1563,68 @@ Ngap_QosFlowSetupRequestItem_t smf_n2::get_QoSFlowSetupRequestItem(
     const qos_flow_context_updated& qos_flow) {
   Ngap_QosFlowSetupRequestItem_t ngap_QosFlowSetupRequestItem = {};
   ngap_QosFlowSetupRequestItem.qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
-      .present = Ngap_QosCharacteristics_PR_nonDynamic5QI;
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI = (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-      1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.qosCharacteristics
-      .choice.nonDynamic5QI->fiveQI = qos_flow.qos_profile._5qi;
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-      .allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.arp.priority_level;
+  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters =
+      get_QoSFlowLevelQosParameters(qos_flow);
+  return ngap_QosFlowSetupRequestItem;
+}
+
+Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
+    const smf::qos_flow_context_updated& qos_flow) {
+  Ngap_QosFlowLevelQosParameters_t qosFlowLevelQosParameters = {};
+  qosFlowLevelQosParameters.qosCharacteristics.present =
+      Ngap_QosCharacteristics_PR_nonDynamic5QI;
+  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI =
+      (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
+          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
+  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
+      qos_flow.qos_profile._5qi;
+  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
+      qos_flow.qos_profile.priority_level;
   if (qos_flow.qos_profile.arp.preempt_cap == "NOT_PREEMPT") {
-    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionCapability =
+    qosFlowLevelQosParameters.allocationAndRetentionPriority
+        .pre_emptionCapability =
         Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
   } else {
-    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionCapability =
+    qosFlowLevelQosParameters.allocationAndRetentionPriority
+        .pre_emptionCapability =
         Ngap_Pre_emptionCapability_may_trigger_pre_emption;
   }
   if (qos_flow.qos_profile.arp.preempt_vuln == "NOT_PREEMPTABLE") {
-    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionVulnerability =
+    qosFlowLevelQosParameters.allocationAndRetentionPriority
+        .pre_emptionVulnerability =
         Ngap_Pre_emptionVulnerability_not_pre_emptable;
   } else {
-    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-        .allocationAndRetentionPriority.pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_pre_emptable;
+    qosFlowLevelQosParameters.allocationAndRetentionPriority
+        .pre_emptionVulnerability = Ngap_Pre_emptionVulnerability_pre_emptable;
   }
 
   if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
-    ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters.gBR_QosInformation =
+    qosFlowLevelQosParameters.gBR_QosInformation =
         (Ngap_GBR_QosInformation_t*) (calloc(
             1, sizeof(Ngap_GBR_QosInformation_t)));
 
     set_ngap_bit_rate(
-        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-            .gBR_QosInformation->maximumFlowBitRateUL,
+        qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL,
         qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
         qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
 
     set_ngap_bit_rate(
-        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-            .gBR_QosInformation->maximumFlowBitRateDL,
+        qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL,
         qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
         qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
 
     set_ngap_bit_rate(
-        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-            .gBR_QosInformation->guaranteedFlowBitRateUL,
+        qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL,
         qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
         qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
 
     set_ngap_bit_rate(
-        ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters
-            .gBR_QosInformation->guaranteedFlowBitRateDL,
+        qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL,
         qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
         qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
   }
 
-  return ngap_QosFlowSetupRequestItem;
+  return qosFlowLevelQosParameters;
 }
 
 void smf_n2::set_ngap_bit_rate(
