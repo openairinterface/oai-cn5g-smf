@@ -449,95 +449,110 @@ void smf_http2_server::create_sm_contexts_handler(
   itti_msg->http_version = 2;
   m_smf_app->handle_pdu_session_create_sm_context_request(itti_msg);
 
+  boost::future_status status;
   // Wait for the result from APP and send reply to AMF
-  nlohmann::json sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
 
-  nlohmann::json json_data = {};
-  std::string json_format  = {};
-  bool n1_sm_msg_is_set    = false;
-  bool n2_sm_info_is_set   = false;
-  int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    // Wait for the result from APP and send reply to AMF
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
-  if (sm_context_response.find("http_code") != sm_context_response.end()) {
-    http_code = sm_context_response["http_code"].get<int>();
-  }
+    nlohmann::json json_data = {};
+    std::string json_format  = {};
+    bool n1_sm_msg_is_set    = false;
+    bool n2_sm_info_is_set   = false;
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
 
-  if (sm_context_response.find("json_format") != sm_context_response.end()) {
-    json_format = sm_context_response["json_format"].get<std::string>();
-  }
-  if (sm_context_response.find("json_data") != sm_context_response.end()) {
-    json_data = sm_context_response["json_data"];
-  }
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
 
-  if (sm_context_response.find("n1_sm_message") != sm_context_response.end()) {
-    // json_data = sm_context_response["n1_sm_message"].get<std::string>();
-    n1_sm_msg_is_set = true;
-  }
+    if (sm_context_response.find("json_format") != sm_context_response.end()) {
+      json_format = sm_context_response["json_format"].get<std::string>();
+    }
+    if (sm_context_response.find("json_data") != sm_context_response.end()) {
+      json_data = sm_context_response["json_data"];
+    }
 
-  if (sm_context_response.find("n2_sm_information") !=
-      sm_context_response.end()) {
-    n2_sm_info_is_set = true;
-  }
+    if (sm_context_response.find("n1_sm_message") !=
+        sm_context_response.end()) {
+      // json_data = sm_context_response["n1_sm_message"].get<std::string>();
+      n1_sm_msg_is_set = true;
+    }
 
-  std::string body = {};
+    if (sm_context_response.find("n2_sm_information") !=
+        sm_context_response.end()) {
+      n2_sm_info_is_set = true;
+    }
 
-  // Add header
-  header_map h;
+    std::string body = {};
 
-  if (n1_sm_msg_is_set and n2_sm_info_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n1_sm_message"].get<std::string>(),
-        sm_context_response["n2_sm_information"].get<std::string>(),
-        json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
-  } else if (n1_sm_msg_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n1_sm_message"].get<std::string>(),
-        multipart_related_content_part_e::NAS, json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
-  } else if (n2_sm_info_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n2_sm_information"].get<std::string>(),
-        multipart_related_content_part_e::NGAP, json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+    // Add header
+    header_map h;
+
+    if (n1_sm_msg_is_set and n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else if (n1_sm_msg_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          multipart_related_content_part_e::NAS, json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else if (n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          multipart_related_content_part_e::NGAP, json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else {
+      h.emplace("content-type", header_value{json_format});
+      body = json_data.dump().c_str();
+    }
+
+    // Location header
+    if (sm_context_response.find("smf_context_uri") !=
+        sm_context_response.end()) {
+      Logger::smf_api_server().debug(
+          "Add location header %s",
+          sm_context_response["smf_context_uri"].get<std::string>().c_str());
+      h.emplace(
+          "location", header_value{sm_context_response["smf_context_uri"]
+                                       .get<std::string>()
+                                       .c_str()});
+    }
+
+    // content-type header
+    //  h.emplace("content-type", header_value{json_format});
+    //  response.write_head(http_code, h);
+
+    // response.end(json_data.dump().c_str());
+
+    response.write_head(http_code, h);
+    response.end(body);
+
   } else {
-    h.emplace("content-type", header_value{json_format});
-    body = json_data.dump().c_str();
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
   }
-
-  // Location header
-  if (sm_context_response.find("smf_context_uri") !=
-      sm_context_response.end()) {
-    Logger::smf_api_server().debug(
-        "Add location header %s",
-        sm_context_response["smf_context_uri"].get<std::string>().c_str());
-    h.emplace(
-        "location",
-        header_value{
-            sm_context_response["smf_context_uri"].get<std::string>().c_str()});
-  }
-
-  // content-type header
-  //  h.emplace("content-type", header_value{json_format});
-  //  response.write_head(http_code, h);
-
-  // response.end(json_data.dump().c_str());
-
-  response.write_head(http_code, h);
-  response.end(body);
 }
 
 //------------------------------------------------------------------------------
@@ -577,76 +592,90 @@ void smf_http2_server::update_sm_context_handler(
   itti_msg->http_version = 2;
   m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
 
+  boost::future_status status;
   // Wait for the result from APP and send reply to AMF
-  nlohmann::json sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
 
-  nlohmann::json json_data = {};
-  std::string body         = {};
-  header_map h             = {};
-  std::string json_format  = {};
-  bool n1_sm_msg_is_set    = false;
-  bool n2_sm_info_is_set   = false;
-  int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    // Wait for the result from APP and send reply to AMF
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
-  if (sm_context_response.find("http_code") != sm_context_response.end()) {
-    http_code = sm_context_response["http_code"].get<int>();
-  }
+    nlohmann::json json_data = {};
+    std::string body         = {};
+    header_map h             = {};
+    std::string json_format  = {};
+    bool n1_sm_msg_is_set    = false;
+    bool n2_sm_info_is_set   = false;
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
 
-  if (sm_context_response.find("json_format") != sm_context_response.end()) {
-    json_format = sm_context_response["json_format"].get<std::string>();
-  }
-  if (sm_context_response.find("json_data") != sm_context_response.end()) {
-    json_data = sm_context_response["json_data"];
-  }
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
 
-  if (sm_context_response.find("n1_sm_message") != sm_context_response.end()) {
-    // json_data = sm_context_response["n1_sm_message"].get<std::string>();
-    n1_sm_msg_is_set = true;
-  }
+    if (sm_context_response.find("json_format") != sm_context_response.end()) {
+      json_format = sm_context_response["json_format"].get<std::string>();
+    }
+    if (sm_context_response.find("json_data") != sm_context_response.end()) {
+      json_data = sm_context_response["json_data"];
+    }
 
-  if (sm_context_response.find("n2_sm_information") !=
-      sm_context_response.end()) {
-    n2_sm_info_is_set = true;
-  }
+    if (sm_context_response.find("n1_sm_message") !=
+        sm_context_response.end()) {
+      // json_data = sm_context_response["n1_sm_message"].get<std::string>();
+      n1_sm_msg_is_set = true;
+    }
 
-  Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
+    if (sm_context_response.find("n2_sm_information") !=
+        sm_context_response.end()) {
+      n2_sm_info_is_set = true;
+    }
 
-  if (n1_sm_msg_is_set and n2_sm_info_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n1_sm_message"].get<std::string>(),
-        sm_context_response["n2_sm_information"].get<std::string>(),
-        json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
-  } else if (n1_sm_msg_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n1_sm_message"].get<std::string>(),
-        multipart_related_content_part_e::NAS, json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
-  } else if (n2_sm_info_is_set) {
-    mime_parser::create_multipart_related_content(
-        body, json_data.dump(), CURL_MIME_BOUNDARY,
-        sm_context_response["n2_sm_information"].get<std::string>(),
-        multipart_related_content_part_e::NGAP, json_format);
-    h.emplace(
-        "content-type",
-        header_value{
-            "multipart/related; boundary=" + std::string(CURL_MIME_BOUNDARY)});
+    Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
+
+    if (n1_sm_msg_is_set and n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else if (n1_sm_msg_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n1_sm_message"].get<std::string>(),
+          multipart_related_content_part_e::NAS, json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else if (n2_sm_info_is_set) {
+      mime_parser::create_multipart_related_content(
+          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          sm_context_response["n2_sm_information"].get<std::string>(),
+          multipart_related_content_part_e::NGAP, json_format);
+      h.emplace(
+          "content-type", header_value{
+                              "multipart/related; boundary=" +
+                              std::string(CURL_MIME_BOUNDARY)});
+    } else {
+      h.emplace("content-type", header_value{json_format});
+      body = json_data.dump().c_str();
+    }
+
+    response.write_head(http_code, h);
+    response.end(body);
   } else {
-    h.emplace("content-type", header_value{json_format});
-    body = json_data.dump().c_str();
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
   }
-
-  response.write_head(http_code, h);
-  response.end(body);
 }
 
 //------------------------------------------------------------------------------
@@ -685,17 +714,31 @@ void smf_http2_server::release_sm_context_handler(
   itti_msg->http_version = 2;
   m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
 
-  // wait for the result from APP and send reply to AMF
-  nlohmann::json sm_context_response = f.get();
-  Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
 
-  int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
-  if (sm_context_response.find("http_code") != sm_context_response.end()) {
-    http_code = sm_context_response["http_code"].get<int>();
+    // wait for the result from APP and send reply to AMF
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    if (sm_context_response.find("http_code") != sm_context_response.end()) {
+      http_code = sm_context_response["http_code"].get<int>();
+    }
+
+    response.write_head(http_code);
+    response.end();
+
+  } else {
+    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
   }
-
-  response.write_head(http_code);
-  response.end();
 }
 
 //------------------------------------------------------------------------------
