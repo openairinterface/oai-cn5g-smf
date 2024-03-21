@@ -50,6 +50,10 @@
   (buf)[0] = (x) >> 24, (buf)[1] = (x) >> 16, (buf)[2] = (x) >> 8,             \
   (buf)[3] = (x)
 
+#define INT64_TO_BUFFER(x, buf) \
+    (buf)[0] = (x) >> 56, (buf)[1] = (x) >> 48, (buf)[2] = (x) >> 40, (buf)[3] = (x) >> 32, \
+    (buf)[4] = (x) >> 24, (buf)[5] = (x) >> 16, (buf)[6] = (x) >> 8, (buf)[7] = (x)
+
 class conv {
  public:
   static void hexa_to_ascii(uint8_t* from, char* to, size_t length);

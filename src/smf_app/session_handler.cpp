@@ -91,7 +91,7 @@ session_handler::get_qos_flows_context_updated() {
   // Hardcoded second flow TODO remove after smf-pcf communication is done
   //
 
-  /*
+
   auto flow             = get_qos_flow_context_updated(m_qfis_to_be_updated[0]);
   flow.qfi.qfi          = 2;
   flow.qos_profile._5qi = 2;
@@ -119,9 +119,9 @@ session_handler::get_qos_flows_context_updated() {
 
   flow.qos_flow_description_content.qfi = 2;
 
-  flow.qos_flow_description_content.numberofparameters = 2;
+  flow.qos_flow_description_content.numberofparameters = 5;
   flow.qos_flow_description_content.parameterslist =
-      (ParametersList*) calloc(2, sizeof(ParametersList));
+      (ParametersList*) calloc(5, sizeof(ParametersList));
   flow.qos_flow_description_content.parameterslist[0].parameteridentifier =
       PARAMETER_IDENTIFIER_5QI;
   flow.qos_flow_description_content.parameterslist[0].parametercontents._5qi =
@@ -134,11 +134,10 @@ session_handler::get_qos_flows_context_updated() {
       flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
   flow.qos_flow_description_content.parameterslist[1]
       .parametercontents.gfbrormfbr_uplinkordownlink.value =
-      flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;*/
+      flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
 
-  // TODO: If more than 2 parameters are set, the gnbsim crashes. Haven't
-  // figured out why yet.
-  /*flow.qos_flow_description_content.parameterslist[2].parameteridentifier =
+  // TODO: If more than 2 parameters are set, the gnbsim crashes.
+  flow.qos_flow_description_content.parameterslist[2].parameteridentifier =
   PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
   flow.qos_flow_description_content.parameterslist[2].parametercontents.gfbrormfbr_uplinkordownlink.uint
   = flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
@@ -157,9 +156,9 @@ session_handler::get_qos_flows_context_updated() {
   flow.qos_flow_description_content.parameterslist[4].parametercontents.gfbrormfbr_uplinkordownlink.uint
   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
   flow.qos_flow_description_content.parameterslist[4].parametercontents.gfbrormfbr_uplinkordownlink.value
-  = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;*/
+  = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
 
-  // flows.push_back(flow);
+  flows.push_back(flow);
   //------------------------------------------------------------------------------------------------------------------
 
   return flows;
