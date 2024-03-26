@@ -121,11 +121,11 @@ itti_mw::itti_mw()
 
 //------------------------------------------------------------------------------
 itti_mw::~itti_mw() {
-  std::cout << "~itti()" << std::endl;
+  Logger::itti().info("~itti()");
   // Making sure the timer thread has finished.
   // detach is not good since we don't control when the thread will end.
   if (terminate) {
-    std::cout << "joining timer_thread" << std::endl;
+    Logger::itti().debug("Joining timer_thread");
     timer_thread.join();
   }
 
@@ -134,7 +134,7 @@ itti_mw::~itti_mw() {
       delete itti_task_ctxts[t];
     }
   }
-  std::cout << "~itti() Done!" << std::endl;
+  Logger::itti().info("~itti() Done!");
 }
 
 //------------------------------------------------------------------------------

@@ -59,14 +59,24 @@ static std::string string_to_hex(const std::string& input) {
 }
 //------------------------------------------------------------------------------
 udp_server::~udp_server() {
+  int res = 0;
+
   terminate_ = true;
   // closing a socket is not enough for a blocking API call to stop.
   // shutdown is required. recvfrom will stop automically
   // and bytes_received should be equal to 0.
-  shutdown(socket_, SHUT_RDWR);
+  res = shutdown(socket_, SHUT_RDWR);
+  if (res != 0) {
+    Logger::udp().error("shutdown on socket_ failed %s", strerror(errno));
+  }
   // waiting for the thread to end
   while (terminate_) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  // now we can close the socket
+  res = close(socket_);
+  if (res != 0) {
+    Logger::udp().error("close on socket_ failed %s", strerror(errno));
   }
   Logger::udp().debug("Thread on udp_read_loop should have ended!");
 }
