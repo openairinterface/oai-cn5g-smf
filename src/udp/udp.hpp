@@ -63,6 +63,7 @@ class udp_server {
   udp_server(const struct in_addr& address, const uint16_t port_num)
       : app_(nullptr), port_(port_num) {
     recv_buffer_[0] = 0;
+    terminate_      = false;
     socket_         = create_socket(address, port_);
     if (socket_ > 0) {
       Logger::udp().debug(
@@ -83,6 +84,7 @@ class udp_server {
   udp_server(const struct in6_addr& address, const uint16_t port_num)
       : app_(nullptr), port_(port_num) {
     recv_buffer_[0] = 0;
+    terminate_      = false;
     socket_         = create_socket(address, port_);
     if (socket_ > 0) {
       Logger::udp().debug(
@@ -114,7 +116,7 @@ class udp_server {
     }
   }
 
-  ~udp_server() { close(socket_); }
+  ~udp_server();
 
   void udp_read_loop(const util::thread_sched_params& thread_sched_params);
 
@@ -170,6 +172,7 @@ class udp_server {
 
   udp_application* app_;
   std::thread thread_;
+  bool terminate_;
   int socket_;
   uint16_t port_;
   sa_family_t sa_family;

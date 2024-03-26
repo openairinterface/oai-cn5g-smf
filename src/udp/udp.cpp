@@ -58,11 +58,25 @@ static std::string string_to_hex(const std::string& input) {
   return output;
 }
 //------------------------------------------------------------------------------
+udp_server::~udp_server() {
+  terminate_ = true;
+  // closing a socket is not enough for a blocking API call to stop.
+  // shutdown is required. recvfrom will stop automically
+  // and bytes_received should be equal to 0.
+  shutdown(socket_, SHUT_RDWR);
+  // waiting for the thread to end
+  while (terminate_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  Logger::udp().debug("Thread on udp_read_loop should have ended!");
+}
+//------------------------------------------------------------------------------
 void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
   endpoint r_endpoint   = {};
   size_t bytes_received = 0;
 
   sched_params.apply(TASK_NONE, Logger::udp());
+  terminate_ = false;
 
   while (1) {
     r_endpoint.addr_storage_len = sizeof(struct sockaddr_storage);
@@ -73,6 +87,10 @@ void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
       app_->handle_receive(recv_buffer_, bytes_received, r_endpoint);
     } else {
       Logger::udp().error("Recvfrom failed %s\n", strerror(errno));
+    }
+    if (terminate_) {
+      terminate_ = false;
+      return;
     }
   }
 }
