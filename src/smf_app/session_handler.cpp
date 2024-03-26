@@ -91,7 +91,7 @@ session_handler::get_qos_flows_context_updated() {
   // Hardcoded second flow TODO remove after smf-pcf communication is done
   //
 
-
+  /*
   auto flow             = get_qos_flow_context_updated(m_qfis_to_be_updated[0]);
   flow.qfi.qfi          = 2;
   flow.qos_profile._5qi = 2;
@@ -158,7 +158,7 @@ session_handler::get_qos_flows_context_updated() {
   flow.qos_flow_description_content.parameterslist[4].parametercontents.gfbrormfbr_uplinkordownlink.value
   = flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
 
-  flows.push_back(flow);
+  flows.push_back(flow);*/
   //------------------------------------------------------------------------------------------------------------------
 
   return flows;
