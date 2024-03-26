@@ -892,10 +892,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   auto all_qfis = sps->get_session_handler()->get_all_qfis();
   check_if_all_qfis_are_handled(all_qfis, used_qfis);
 
-  // TODO we have more than one QoS flow here, to adapt with new QoS framework
   for (const auto& flow :
        sps->get_session_handler()->get_qos_flows_context_updated()) {
-    n11_triggered_pending->res.set_qos_flow_context(flow);
+    n11_triggered_pending->res.add_qos_flow_context(flow);
   }
 
   return smf_procedure_code::OK;
