@@ -84,12 +84,14 @@ void my_app_signal_handler(int s) {
     smf_api_server_2 = nullptr;
   }
   std::cout << "SMF API Server memory done." << std::endl;
-  if (itti_inst) delete itti_inst;
-  itti_inst = nullptr;
-  std::cout << "ITTI memory done." << std::endl;
   if (smf_app_inst) delete smf_app_inst;
   smf_app_inst = nullptr;
   std::cout << "SMF APP memory done." << std::endl;
+  // itti_inst is used in a lot of code without any nullPtr check
+  // it has to be deallocated last
+  if (itti_inst) delete itti_inst;
+  itti_inst = nullptr;
+  std::cout << "ITTI memory done." << std::endl;
   std::cout << "Freeing Allocated memory done" << std::endl;
   exit(0);
 }
