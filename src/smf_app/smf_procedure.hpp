@@ -61,9 +61,9 @@ class smf_procedure {
   }
 
  public:
-
   static uint32_t generate_correlation_id() {
-    return static_cast<uint32_t>(util::uint_uid_generator<uint64_t>::get_instance().get_uid());
+    return static_cast<uint32_t>(
+        util::uint_uid_generator<uint64_t>::get_instance().get_uid());
   }
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
@@ -115,6 +115,9 @@ class smf_session_procedure : public smf_procedure {
 
   pfcp::update_pdr pfcp_update_pdr(const std::shared_ptr<qos_upf_edge>& edge);
 
+  static pfcp::update_qer pfcp_update_qer(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
   static pfcp::update_far pfcp_update_far(
       const std::shared_ptr<qos_upf_edge>& edge);
 
@@ -129,6 +132,12 @@ class smf_session_procedure : public smf_procedure {
   static pfcp::fteid_t pfcp_prepare_fteid(
       pfcp::fteid_t& fteid, const bool& ftup_supported,
       const oai::config::smf::upf& cfg);
+
+  static bool pfcp_gbr(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::gbr_t& pfcp_gbr);
+
+  static bool pfcp_mbr(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& pcp_mbr);
 
  protected:
   /**

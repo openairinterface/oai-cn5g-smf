@@ -368,6 +368,35 @@ ip_range ip_range::from_string(const std::string& ip_string) {
   return range;
 }
 
+bool oai::utils::conversions::parse_bitrate_string_to_unit(
+    const std::string& bitrate, const bitrate_unit_e& unit, uint32_t& value) {
+  // we make it super easy here and just calculate, we could also integrate it
+  // into the other parse function to safe some arithmetics, but I think it is
+  // negligible
+  bitrate_unit_e calculated_unit;
+  uint16_t calculated_value;
+  if (!parse_bitrate_string(bitrate, calculated_value, calculated_unit)) {
+    return false;
+  }
+
+  int bitrate_int_goal =
+      static_cast<std::underlying_type_t<bitrate_unit_e>>(unit);
+  int bitrate_int_calculated =
+      static_cast<std::underlying_type_t<bitrate_unit_e>>(calculated_unit);
+
+  uint8_t diff = bitrate_int_calculated - bitrate_int_goal;
+
+  value = calculated_value;
+
+  if (diff > 0) {
+    value = value * (diff * 1000);
+  } else if (diff < 0) {
+    value = value * (diff / 1000);
+  }
+
+  return value;
+}
+
 bool oai::utils::conversions::parse_bitrate_string(
     const std::string& bitrate, uint16_t& value, bitrate_unit_e& unit) {
   // TODO update BANDWIDTH_REGEX in model/Helpers.h with this value, the only
@@ -433,8 +462,8 @@ bool oai::utils::conversions::parse_bitrate_string(
       bw_value = bw_value * 1000;
       bitrate_int--;
     }
-
-    value = long(bw_value);
+    // we round up because it is described in 3GPP 29.244
+    value = long(bw_value + 0.5);
     unit  = static_cast<bitrate_unit_e>(bitrate_int);
     return true;
   } catch (std::invalid_argument&) {
