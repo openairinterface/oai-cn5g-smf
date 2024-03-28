@@ -117,6 +117,28 @@ struct sdf_filter {
   static sdf_filter from_string(const std::string& filter_string);
 };
 
+// DO NOT CHANGE the int values of the enum, they are used
+// Note: 3GPP also allows bit/s, but it is neither used in NAS nor in PFCP so we
+// ignore it
+enum class bitrate_unit_e {
+  KBPS     = 1,
+  MBPS     = 2,
+  GBPS     = 3,
+  TBPS     = 4,
+  PBPS     = 5,
+  _256PBPS = 6  // to support maximum NAS value
+};
+
+/**
+ * Parses 3GPP 29.571 BitRate string into value and unit
+ * @param bitrate input: bitrate string
+ * @param value output: bitrate value
+ * @param unit output: bitrate unit
+ * @return true if parsing is successful
+ */
+bool parse_bitrate_string(
+    const std::string& bitrate, uint16_t& value, bitrate_unit_e& unit);
+
 }  // namespace oai::utils::conversions
 
 #endif /* FILE_CONVERSIONS_HPP_SEEN */

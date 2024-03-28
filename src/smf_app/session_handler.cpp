@@ -357,72 +357,73 @@ QOSFlowDescriptionsContents session_handler::qos_flow_description_from_edge(
 
   if (edge->qos_profile.gbrUlIsSet() && edge->qos_profile.gbrDlIsSet() &&
       edge->qos_profile.maxbrUlIsSet() && edge->qos_profile.maxbrDlIsSet()) {
-#if 1
     flow_description_content.numberofparameters = 5;
     flow_description_content.parameterslist     = (ParametersList*) calloc(
         7, sizeof(ParametersList));  // TODO: is 7 right?
-    flow_description_content.parameterslist[0].parameteridentifier =
-        PARAMETER_IDENTIFIER_5QI;
-    flow_description_content.parameterslist[0].parametercontents._5qi =
-        edge->qos_profile.getR5qi();
 
-    flow_description_content.parameterslist[1].parameteridentifier =
-        PARAMETER_IDENTIFIER_GFBR_UPLINK;
-    flow_description_content.parameterslist[1]
-        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
-    flow_description_content.parameterslist[1]
-        .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        std::stoi(edge->qos_profile.getGbrUl());
-    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_GFBR_UPLINK, edge->qos_profile.getGbrUl(),
+        flow_description_content.parameterslist[1]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_GFBR_DOWNLINK, edge->qos_profile.getGbrDl(),
+        flow_description_content.parameterslist[2]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_MFBR_UPLINK, edge->qos_profile.getMaxbrUl(),
+        flow_description_content.parameterslist[3]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_MFBR_DOWNLINK, edge->qos_profile.getMaxbrDl(),
+        flow_description_content.parameterslist[4]);
 
-    flow_description_content.parameterslist[2].parameteridentifier =
-        PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
-    flow_description_content.parameterslist[2]
-        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
-    flow_description_content.parameterslist[2]
-        .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        std::stoi(edge->qos_profile.getGbrDl());
-    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value;
-
-    flow_description_content.parameterslist[3].parameteridentifier =
-        PARAMETER_IDENTIFIER_MFBR_UPLINK;
-    flow_description_content.parameterslist[3]
-        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit;
-    flow_description_content.parameterslist[3]
-        .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        std::stoi(edge->qos_profile.getMaxbrUl());
-    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value;
-
-    flow_description_content.parameterslist[4].parameteridentifier =
-        PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
-    flow_description_content.parameterslist[4]
-        .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
-    flow_description_content.parameterslist[4]
-        .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        std::stoi(edge->qos_profile.getMaxbrDl());
-    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
-#endif
   } else {
-#if 1
     flow_description_content.numberofparameters = 1;
     flow_description_content.parameterslist =
         (ParametersList*) calloc(3, sizeof(ParametersList));  // TODO: Why 3?
-    flow_description_content.parameterslist[0].parameteridentifier =
-        PARAMETER_IDENTIFIER_5QI;
-    flow_description_content.parameterslist[0].parametercontents._5qi =
-        edge->qos_profile.getR5qi();
-#endif
   }
 
+  flow_description_content.parameterslist[0].parameteridentifier =
+      PARAMETER_IDENTIFIER_5QI;
+  flow_description_content.parameterslist[0].parametercontents._5qi =
+      edge->qos_profile.getR5qi();
+
   return flow_description_content;
+}
+
+uint8_t session_handler::nas_unit_from_bitrate_unit(
+    const bitrate_unit_e& bitrate_unit) {
+  switch (bitrate_unit) {
+    case bitrate_unit_e::KBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
+    case bitrate_unit_e::MBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    case bitrate_unit_e::GBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
+    case bitrate_unit_e::TBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
+    case bitrate_unit_e::PBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
+    case bitrate_unit_e::_256PBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS;
+  }
+  Logger::smf_app().error("Unknown bitrate value, use default MBPS");
+
+  return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+}
+
+void session_handler::set_nas_bitrate(
+    uint8_t type, const std::string& bitrate_string,
+    ParametersList& nas_value) {
+  uint16_t value;
+  bitrate_unit_e unit;
+  if (!parse_bitrate_string(bitrate_string, value, unit)) {
+    Logger::smf_app().warn(
+        "Cannot parse bitrate string, use default 1000 MBPS");
+    value = 1000;
+    unit  = bitrate_unit_e::MBPS;
+  }
+  nas_value.parameteridentifier = type;
+  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.uint =
+      nas_unit_from_bitrate_unit(unit);
+  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.value = value;
 }
 
 //------------------------------------------------------------------------------

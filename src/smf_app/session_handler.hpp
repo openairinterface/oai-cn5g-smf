@@ -225,6 +225,13 @@ class session_handler {
 
   QOSRulesIE qos_rule_from_edge(const std::shared_ptr<qos_upf_edge>& edge);
 
+  static uint8_t nas_unit_from_bitrate_unit(
+      const oai::utils::conversions::bitrate_unit_e& bitrate_unit);
+
+  static void set_nas_bitrate(
+      uint8_t type, const std::string& bitrate_string,
+      ParametersList& nas_value);
+
   QOSFlowDescriptionsContents qos_flow_description_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge);
 

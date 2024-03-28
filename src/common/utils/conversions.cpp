@@ -367,3 +367,80 @@ ip_range ip_range::from_string(const std::string& ip_string) {
   }
   return range;
 }
+
+bool oai::utils::conversions::parse_bitrate_string(
+    const std::string& bitrate, uint16_t& value, bitrate_unit_e& unit) {
+  // TODO update BANDWIDTH_REGEX in model/Helpers.h with this value, the only
+  // difference is capture groups after resynch with common-src
+  // Here, the space is optional, so "100Mbps" is okay and "100 Mbps", but in
+  // the standard the space is mandatory
+  std::string bandwidth_regex = R"((^\d+(\.\d+)?) ?(bps|Kbps|Mbps|Gbps|Tbps)$)";
+
+  std::regex re(bandwidth_regex);
+  std::smatch matches;
+  if (!std::regex_match(bitrate, matches, re)) {
+    Logger::smf_app().error(
+        "Bitrate %s cannot be parsed, does not follow the specification",
+        bitrate);
+    return false;
+  }
+
+  std::string string_bw_value = matches[1];
+  // matches[2] is the fractional part but that is included in matches[1]
+  // already
+  std::string string_unit = matches[3];
+
+  try {
+    double bw_value = std::stod(string_bw_value);
+
+    if (string_unit == "bps") {
+      unit     = bitrate_unit_e::KBPS;
+      bw_value = bw_value / 1000;
+    } else if (string_unit == "Kbps") {
+      unit = bitrate_unit_e::KBPS;
+    } else if (string_unit == "Mbps") {
+      unit = bitrate_unit_e::MBPS;
+    } else if (string_unit == "Gbps") {
+      unit = bitrate_unit_e::GBPS;
+    } else if (string_unit == "Tbps") {
+      unit = bitrate_unit_e::TBPS;
+    }
+
+    // a bit hacky, but like this we can use arithmetic to calculate the unit
+    int bitrate_int = static_cast<std::underlying_type_t<bitrate_unit_e>>(unit);
+
+    // Here we convert up so that there is enough space in the int buffer
+    while (bw_value > UINT16_MAX) {
+      if (bitrate_int == 6) {
+        Logger::smf_app().warn(
+            "Bitrate cannot be higher than %d x 256 PBPS", bw_value);
+      }
+      if (bitrate_int == 5) {
+        bw_value = bw_value / 256;
+      } else {
+        bw_value = bw_value / 1000;
+      }
+      bitrate_int++;
+    }
+
+    // Here we have to handle the fractional part, as 3GPP also allows that
+    // we check if bw_value has fractional parts
+    while (long(bw_value) != bw_value) {
+      if (bitrate_int == 1 || (long(bw_value / 1000) > (UINT16_MAX / 1000))) {
+        // we possibly cant make it smaller, so we just cut it off
+        break;
+      }
+      bw_value = bw_value * 1000;
+      bitrate_int--;
+    }
+
+    value = long(bw_value);
+    unit  = static_cast<bitrate_unit_e>(bitrate_int);
+    return true;
+  } catch (std::invalid_argument&) {
+    Logger::smf_app().error(
+        "Bitrate value part %s is not a number, cannot parse.",
+        string_bw_value);
+    return false;
+  }
+}

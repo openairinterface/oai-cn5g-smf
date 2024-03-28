@@ -815,99 +815,71 @@ void smf_context::get_session_ambr(
   std::shared_ptr<session_management_subscription> ss = {};
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
-  if (nullptr != ss.get()) {
-    ss.get()->find_dnn_configuration(dnn, sdc);
-    if (nullptr != sdc.get()) {
+
+  // set default value in case of error
+  session_ambr.session_ambr_for_downlink = 1;
+  session_ambr.uint_for_session_ambr_for_downlink =
+      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+  session_ambr.session_ambr_for_uplink = 1;
+  session_ambr.uint_for_session_ambr_for_uplink =
+      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+
+  if (nullptr != ss) {
+    ss->find_dnn_configuration(dnn, sdc);
+    if (nullptr != sdc) {
       Logger::smf_app().debug(
           "Default AMBR info from the subscription information, downlink %s, "
           "uplink %s",
-          (sdc.get()->session_ambr).downlink.c_str(),
-          (sdc.get()->session_ambr).uplink.c_str());
+          (sdc->session_ambr).downlink.c_str(),
+          (sdc->session_ambr).uplink.c_str());
 
-      // Downlink
-      size_t leng_of_session_ambr_dl =
-          (sdc.get()->session_ambr).downlink.length();
-      try {
-        std::string session_ambr_dl_unit =
-            (sdc.get()->session_ambr)
-                .downlink.substr(
-                    leng_of_session_ambr_dl -
-                    4);  // 4 last characters stand for mbps, kbps, ..
-        if (session_ambr_dl_unit.compare("Kbps") == 0)
-          session_ambr.uint_for_session_ambr_for_downlink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-        if (session_ambr_dl_unit.compare("Mbps") == 0)
-          session_ambr.uint_for_session_ambr_for_downlink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-        if (session_ambr_dl_unit.compare("Gbps") == 0)
-          session_ambr.uint_for_session_ambr_for_downlink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-        if (session_ambr_dl_unit.compare("Tbps") == 0)
-          session_ambr.uint_for_session_ambr_for_downlink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-        if (session_ambr_dl_unit.compare("Pbps") == 0)
-          session_ambr.uint_for_session_ambr_for_downlink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
-
-        session_ambr.session_ambr_for_downlink =
-            std::stoi((sdc.get()->session_ambr)
-                          .downlink.substr(0, leng_of_session_ambr_dl - 4));
-      } catch (const std::exception& e) {
-        Logger::smf_app().warn("Undefined error: %s", e.what());
-        // assign default value
-        session_ambr.session_ambr_for_downlink = 1;
+      oai::utils::conversions::bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
+      uint16_t ambr_dl_value, ambr_ul_value;
+      if (oai::utils::conversions::parse_bitrate_string(
+              sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
         session_ambr.uint_for_session_ambr_for_downlink =
-            AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+            nas_ambr_from_bitrate_unit(ambr_dl_unit);
+        session_ambr.session_ambr_for_downlink = ambr_dl_value;
+      } else {
+        Logger::smf_app().warn(
+            "Could not set AMBR downlink value, use default 1 MBPS");
       }
 
-      // Uplink
-      size_t leng_of_session_ambr_ul =
-          (sdc.get()->session_ambr).uplink.length();
-      try {
-        std::string session_ambr_ul_unit =
-            (sdc.get()->session_ambr)
-                .uplink.substr(
-                    leng_of_session_ambr_ul -
-                    4);  // 4 last characters stand for mbps, kbps, ..
-        if (session_ambr_ul_unit.compare("Kbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-        if (session_ambr_ul_unit.compare("Mbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-        if (session_ambr_ul_unit.compare("Gbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-        if (session_ambr_ul_unit.compare("Tbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-        if (session_ambr_ul_unit.compare("Pbps") == 0)
-          session_ambr.uint_for_session_ambr_for_uplink =
-              AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
-
-        session_ambr.session_ambr_for_uplink =
-            std::stoi((sdc.get()->session_ambr)
-                          .uplink.substr(0, leng_of_session_ambr_ul - 4));
-      } catch (const std::exception& e) {
-        Logger::smf_app().warn("Undefined error: %s", e.what());
-        // assign default value
-        session_ambr.session_ambr_for_uplink = 1;
+      if (oai::utils::conversions::parse_bitrate_string(
+              sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
         session_ambr.uint_for_session_ambr_for_uplink =
-            AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+            nas_ambr_from_bitrate_unit(ambr_ul_unit);
+        session_ambr.session_ambr_for_uplink = ambr_ul_value;
+      } else {
+        Logger::smf_app().warn(
+            "Could not set AMBR uplink value, use default 1 MBPS");
       }
     }
   } else {
-    Logger::smf_app().debug(
-        "Could not get default info from the subscription information, use "
-        "default value instead.");
-    // use default value
-    session_ambr.session_ambr_for_downlink = 1;
-    session_ambr.uint_for_session_ambr_for_downlink =
-        AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    session_ambr.session_ambr_for_uplink = 1;
-    session_ambr.uint_for_session_ambr_for_uplink =
-        AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    Logger::smf_app().warn(
+        "Could not get default info from the subscription information for AMBR "
+        "Dl/UL value, use default 1 MBPS");
   }
+}
+
+uint8_t smf_context::nas_ambr_from_bitrate_unit(
+    const oai::utils::conversions::bitrate_unit_e& bitrate_unit) {
+  switch (bitrate_unit) {
+    case oai::utils::conversions::bitrate_unit_e::KBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
+    case oai::utils::conversions::bitrate_unit_e::MBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    case oai::utils::conversions::bitrate_unit_e::GBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
+    case oai::utils::conversions::bitrate_unit_e::TBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
+    case oai::utils::conversions::bitrate_unit_e::PBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
+    case oai::utils::conversions::bitrate_unit_e::_256PBPS:
+      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS;
+  }
+  Logger::smf_app().error("Unknown bitrate value, use default MBPS");
+  return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
 }
 
 //------------------------------------------------------------------------------
