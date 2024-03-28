@@ -277,7 +277,6 @@ class smf_n2 {
       const std::string& n2_sm_info);
 
   static std::map<uint8_t, uint64_t> bpsMap;
-
 };
 
 }  // namespace smf
