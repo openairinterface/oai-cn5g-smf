@@ -165,6 +165,7 @@ class upf_graph {
 
   // statistics which are useful for verifying the graph
   unsigned int access_edge_count     = 0;
+  unsigned int qfi_count             = 0;
   unsigned int exit_edge_count       = 0;
   unsigned int total_edge_count      = 0;
   unsigned int associated_edge_count = 0;

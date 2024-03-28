@@ -42,6 +42,7 @@
 #include "pistache/http.h"
 #include "smf_profile.hpp"
 #include "PlmnId.h"
+#include "QosData.h"
 #include "DddStatus.h"
 
 extern "C" {
@@ -81,7 +82,7 @@ class qos_flow_context_updated {
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
   void add_qos_rule(const QOSRulesIE& rule);
-  void set_qos_profile(const qos_profile_t& profile);
+  void set_qos_profile(const oai::model::pcf::QosData& profile);
   void set_priority_level(uint8_t p);
   void set_qos_flow_descriptions(
       const QOSFlowDescriptionsContents& flow_description_content);
@@ -91,8 +92,8 @@ class qos_flow_context_updated {
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
   std::map<uint8_t, QOSRulesIE> qos_rules;
-  qos_profile_t qos_profile;
   QOSFlowDescriptionsContents qos_flow_description_content;
+  oai::model::pcf::QosData qos_profile;
   bool to_be_removed;
 };
 

@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string>
 #include <netinet/in.h>
+#include <vector>
 
 #include "3gpp_23.003.h"
 
@@ -50,9 +51,10 @@
   (buf)[0] = (x) >> 24, (buf)[1] = (x) >> 16, (buf)[2] = (x) >> 8,             \
   (buf)[3] = (x)
 
-#define INT64_TO_BUFFER(x, buf) \
-    (buf)[0] = (x) >> 56, (buf)[1] = (x) >> 48, (buf)[2] = (x) >> 40, (buf)[3] = (x) >> 32, \
-    (buf)[4] = (x) >> 24, (buf)[5] = (x) >> 16, (buf)[6] = (x) >> 8, (buf)[7] = (x)
+#define INT64_TO_BUFFER(x, buf)                                                \
+  (buf)[0] = (x) >> 56, (buf)[1] = (x) >> 48, (buf)[2] = (x) >> 40,            \
+  (buf)[3] = (x) >> 32, (buf)[4] = (x) >> 24, (buf)[5] = (x) >> 16,            \
+  (buf)[6] = (x) >> 8, (buf)[7] = (x)
 
 class conv {
  public:
@@ -80,4 +82,41 @@ class conv {
   static void convert_string_2_hex(
       const std::string& input_str, std::string& output_str);
 };
+
+namespace oai::utils::conversions {
+
+struct port_range {
+  bool use_port_range = false;
+  bool is_range =
+      false;  // if range is false, only start should be used and set
+  uint16_t start = 0;
+  uint16_t end   = UINT16_MAX;
+
+  static port_range from_string(const std::string& port_string);
+};
+
+struct ip_range {
+  bool use_ip_range = false;
+  in_addr ip_addr{};
+  in_addr snm{};
+
+  static ip_range from_string(const std::string& ip_string);
+};
+
+struct sdf_filter {
+  bool default_filter          = true;
+  bool use_protocol_identifier = false;
+  uint8_t protocol_identifier  = 0;
+  // as I understood the spec, there is only one IP range (not like for ports)
+  ip_range src_ip_range;
+  std::vector<port_range> src_port_ranges;
+  int filter_components = 0;
+  // TODO there are some more things in RFC 6733 but this should cover most
+  // cases
+
+  static sdf_filter from_string(const std::string& filter_string);
+};
+
+}  // namespace oai::utils::conversions
+
 #endif /* FILE_CONVERSIONS_HPP_SEEN */

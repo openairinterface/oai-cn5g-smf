@@ -34,6 +34,12 @@
 #include <arpa/inet.h>
 #include "logger.hpp"
 
+#include <regex>
+#include <fmt/format.h>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/algorithm/string/classification.hpp>
+
 extern "C" {
 #include "dynamic_memory_check.h"
 }
@@ -265,4 +271,99 @@ void conv::convert_string_2_hex(
   // free memory
   free_wrapper((void**) &data);
   free_wrapper((void**) &datahex);
+}
+
+using namespace oai::utils::conversions;
+
+sdf_filter sdf_filter::from_string(const std::string& filter_string) {
+  sdf_filter filter;
+  // according to 29.212, we may also need to encode the destination IP
+  // accordingly (instead of assigned)
+
+  // example for parsing: permit out ip from 1.2.3.4/24 80,433-500 to assigned
+
+  std::string regex = "permit out (\\S*) from (\\S*) ?(.*)? to assigned";
+  //                               proto        src   ports
+
+  std::regex re(regex);
+  std::smatch matches;
+  if (!std::regex_match(filter_string, matches, re)) {
+    Logger::smf_app().error(
+        "SDF Filter %s cannot be parsed, does not follow the "
+        "specification, use default filter",
+        filter_string);
+    return filter;
+  }
+  std::string proto = matches[1];
+  if (!proto.empty() && proto != "ip") {
+    filter.protocol_identifier     = std::stoi(proto);
+    filter.use_protocol_identifier = true;
+    filter.default_filter          = false;
+    filter.filter_components++;
+  }
+
+  std::string src_ip = matches[2];
+  if (!src_ip.empty() && src_ip != "any") {
+    filter.src_ip_range   = ip_range::from_string(src_ip);
+    filter.default_filter = false;
+    filter.filter_components++;
+  }
+
+  std::string src_ports = matches[3];
+  if (!src_ports.empty()) {
+    std::vector<std::string> splits;
+    boost::split(
+        splits, src_ports, boost::is_any_of(","), boost::token_compress_on);
+    for (auto& split : splits) {
+      boost::trim(split);
+      port_range range = port_range::from_string(split);
+      if (range.use_port_range) {
+        filter.src_port_ranges.push_back(range);
+        filter.filter_components++;
+      }
+    }
+  }
+  return filter;
+}
+
+port_range port_range::from_string(const std::string& port_string) {
+  port_range range;
+
+  std::vector<std::string> splits;
+  boost::split(
+      splits, port_string, boost::is_any_of("-"), boost::token_compress_on);
+  boost::trim(splits[0]);
+  range.start = std::stoi(splits[0]);
+  if (splits.size() > 1) {
+    boost::trim(splits[1]);
+    range.end      = std::stoi(splits[1]);
+    range.is_range = true;
+  }
+  range.use_port_range = true;
+
+  return range;
+}
+
+ip_range ip_range::from_string(const std::string& ip_string) {
+  ip_range range;
+  std::vector<std::string> splits;
+  boost::split(
+      splits, ip_string, boost::is_any_of("/"), boost::token_compress_on);
+
+  if (splits[0] == "any") {
+    range.use_ip_range = false;
+    return range;
+  }
+  range.use_ip_range = true;
+  in_addr ip_addr    = conv::fromString(splits[0]);
+  if (splits.size() == 1) {
+    // there is no SNM, so we take 255.255.255.255
+    range.snm.s_addr = 0xffffffff;
+    range.ip_addr    = ip_addr;
+  } else {
+    uint8_t snm       = std::stoi(splits[1]);
+    uint8_t left_bits = 32 - snm;
+    range.snm.s_addr  = ntohl(0xffffffff << left_bits);
+  }
+  return range;
 }
