@@ -48,6 +48,8 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 # TODO Stefan: Why do I need include_directories here if it is already in utils.cmake?
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/)
 include(${BUILD_TOP_DIR}/smf/used_models.cmake)
 
 add_library (SMF STATIC

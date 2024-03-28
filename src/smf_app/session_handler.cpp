@@ -29,9 +29,11 @@
 
 #include "session_handler.hpp"
 #include "FlowDirection.h"
+#include "conversions.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
+using namespace oai::utils::conversions;
 
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {
@@ -198,27 +200,108 @@ void session_handler::set_nas_filter_from_edge(
       ue_rule = true;
       break;
   }
-  if (!ue_rule) return;
+  if (flow.getFlowDescription().empty() || !ue_rule) {
+    Logger::smf_app().warn(
+        "Flow description is empty for rule: %s", flow.getFlowDescription());
+    return;
+  }
 
-  // TODO for real QoS, we should parse SDF filter here
-  // Note: work already in progress, but let's merge this first
+  auto parsed_filter = sdf_filter::from_string(flow.getFlowDescription());
 
   // TODO really not nice to do calloc in this deep service layer, that should
   // all be part of protocol
   // TODO also, free on this is never called as far as I can see that!!!
-  // Design decision: We always only supply one packet filter for now
-  qos_rule.numberofpacketfilters = 1;
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
-      (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-          1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfilterdirection = 0b10;  // always uplink
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfilteridentifier = 1;
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
-  // qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0].packetfiltercontents.component_value
-  // = bfromcstralloc(2, "\0");
+  if (edge->default_qos) {
+    qos_rule.numberofpacketfilters = 1;
+
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
+        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
+            1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfilterdirection = 0b10;  // always uplink
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfilteridentifier = 1;
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
+  } else if (!parsed_filter.default_filter) {
+    // TODO we should take into account the max number of supported packet
+    // filters from UE
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
+        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
+            parsed_filter.filter_components,
+            sizeof(Create_ModifyAndAdd_ModifyAndReplace));
+    qos_rule.numberofpacketfilters = parsed_filter.filter_components;
+    int filter_id                  = 1;
+    if (parsed_filter.use_protocol_identifier) {
+      set_protocol_filter(
+          filter_id,
+          qos_rule.packetfilterlist
+              .create_modifyandadd_modifyandreplace[filter_id - 1],
+          parsed_filter.protocol_identifier);
+      filter_id++;
+    }
+    if (parsed_filter.src_ip_range.use_ip_range) {
+      set_ip_filter(
+          filter_id,
+          qos_rule.packetfilterlist
+              .create_modifyandadd_modifyandreplace[filter_id - 1],
+          parsed_filter.src_ip_range);
+      filter_id++;
+    }
+    if (!parsed_filter.src_port_ranges.empty()) {
+      for (const auto& port : parsed_filter.src_port_ranges) {
+        set_port_filter(
+            filter_id,
+            qos_rule.packetfilterlist
+                .create_modifyandadd_modifyandreplace[filter_id - 1],
+            port);
+        filter_id++;
+      }
+    }
+  }
+}
+
+void session_handler::set_port_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    const port_range& port_range) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  uint16_t port_low                 = htons(port_range.start);
+  uint16_t port_high                = htons(port_range.end);
+
+  if (port_range.is_range) {
+    uint32_t int_range = 0;
+    int_range          = ((uint32_t) port_high << 16) | port_low;
+    nas_filter.packetfiltercontents.component_type =
+        QOS_RULE_REMOTE_PORT_RANGE_TYPE;
+    nas_filter.packetfiltercontents.component_value = blk2bstr(&int_range, 4);
+  } else {
+    nas_filter.packetfiltercontents.component_type =
+        QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
+    nas_filter.packetfiltercontents.component_value = blk2bstr(&port_low, 2);
+  }
+}
+
+void session_handler::set_ip_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    const ip_range& ip_range) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  uint64_t ip_snm =
+      ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
+  nas_filter.packetfiltercontents.component_type =
+      QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
+  nas_filter.packetfiltercontents.component_value = blk2bstr(&ip_snm, 8);
+}
+
+void session_handler::set_protocol_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    uint8_t protocol_id) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfiltercontents.component_type =
+      QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
+  nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
 }
 
 // Comments about architecture
@@ -271,58 +354,72 @@ QOSFlowDescriptionsContents session_handler::qos_flow_description_from_edge(
   flow_description_content.qfi           = edge->qfi.qfi;
   flow_description_content.operationcode = CREATE_NEW_QOS_FLOW_DESCRIPTION;
   flow_description_content.e             = PARAMETERS_LIST_IS_INCLUDED;
-  if (edge->qos_profile.profile_type == qos_profile_type_e::GBR) {
+
+  if (edge->qos_profile.gbrUlIsSet() && edge->qos_profile.gbrDlIsSet() &&
+      edge->qos_profile.maxbrUlIsSet() && edge->qos_profile.maxbrDlIsSet()) {
+#if 1
     flow_description_content.numberofparameters = 5;
     flow_description_content.parameterslist     = (ParametersList*) calloc(
         7, sizeof(ParametersList));  // TODO: is 7 right?
     flow_description_content.parameterslist[0].parameteridentifier =
         PARAMETER_IDENTIFIER_5QI;
     flow_description_content.parameterslist[0].parametercontents._5qi =
-        edge->qos_profile._5qi;
+        edge->qos_profile.getR5qi();
 
     flow_description_content.parameterslist[1].parameteridentifier =
         PARAMETER_IDENTIFIER_GFBR_UPLINK;
     flow_description_content.parameterslist[1]
         .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit;
     flow_description_content.parameterslist[1]
         .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
+        std::stoi(edge->qos_profile.getGbrUl());
+    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value;
 
     flow_description_content.parameterslist[2].parameteridentifier =
         PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
     flow_description_content.parameterslist[2]
         .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit;
     flow_description_content.parameterslist[2]
         .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value;
+        std::stoi(edge->qos_profile.getGbrDl());
+    // edge->qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value;
 
     flow_description_content.parameterslist[3].parameteridentifier =
         PARAMETER_IDENTIFIER_MFBR_UPLINK;
     flow_description_content.parameterslist[3]
         .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit;
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit;
     flow_description_content.parameterslist[3]
         .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value;
+        std::stoi(edge->qos_profile.getMaxbrUl());
+    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value;
 
     flow_description_content.parameterslist[4].parameteridentifier =
         PARAMETER_IDENTIFIER_MFBR_DOWNLINK;
     flow_description_content.parameterslist[4]
         .parametercontents.gfbrormfbr_uplinkordownlink.uint =
-        edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
+        GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit;
     flow_description_content.parameterslist[4]
         .parametercontents.gfbrormfbr_uplinkordownlink.value =
-        edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
+        std::stoi(edge->qos_profile.getMaxbrDl());
+    // edge->qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value;
+#endif
   } else {
+#if 1
     flow_description_content.numberofparameters = 1;
     flow_description_content.parameterslist =
         (ParametersList*) calloc(3, sizeof(ParametersList));  // TODO: Why 3?
     flow_description_content.parameterslist[0].parameteridentifier =
         PARAMETER_IDENTIFIER_5QI;
     flow_description_content.parameterslist[0].parametercontents._5qi =
-        edge->qos_profile._5qi;
+        edge->qos_profile.getR5qi();
+#endif
   }
 
   return flow_description_content;
@@ -421,44 +518,53 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   for (int j = 0; j < qos_flow_description_content.numberofparameters; j++) {
     if (qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_5QI) {
-      qos_flow.qos_profile._5qi =
-          qos_flow_description_content.parameterslist[j].parametercontents._5qi;
+      qos_flow.qos_profile.setR5qi(
+          qos_flow_description_content.parameterslist[j]
+              .parametercontents._5qi);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit =
+      std::string gbrUlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setGbrUl(gbrUlValue);
+      std::string gbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setGbrUl(gbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit =
+      std::string gbrDlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setGbrDl(gbrDlValue);
+      std::string gbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setGbrDl(gbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit =
+      std::string mbrUlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setMaxbrUl(mbrUlValue);
+      std::string mbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setMaxbrUl(mbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit =
+      std::string mbrDlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setMaxbrDl(mbrDlValue);
+      std::string mbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setMaxbrDl(mbrValue);
     }
   }
 

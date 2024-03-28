@@ -20,12 +20,12 @@
  */
 
 /*! \file smf_n2.cpp
- \brief
- \author  Tien-Thinh NGUYEN, Keliang DU
- \company Eurecom
- \date 2019
- \email:  tien-thinh.nguyen@eurecom.fr
- */
+\brief
+\author  Tien-Thinh NGUYEN, Keliang DU
+\company Eurecom
+\date 2019
+\email:  tien-thinh.nguyen@eurecom.fr
+*/
 
 #include "smf_n2.hpp"
 
@@ -35,6 +35,10 @@
 #include "string.hpp"
 
 #include "smf.h"
+#include "PreemptionCapability_anyOf.h"
+#include "PreemptionVulnerability_anyOf.h"
+#include "Helpers.h"
+#include "GbrQosFlowInformation.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -62,6 +66,7 @@ extern "C" {
 }
 
 using namespace smf;
+using namespace oai::model::common;
 extern smf_app* smf_app_inst;
 
 //------------------------------------------------------------------------------
@@ -88,9 +93,11 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         qos_flow.ul_fteid.teid,
         conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().info(
-        "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.priority_level,
-        qos_flow.qos_profile.arp.priority_level);
+        "QoS parameters: QFI %d, 5QI: %d, Priority level %d, ARP priority "
+        "level %d",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getR5qi(),
+        qos_flow.qos_profile.getPriorityLevel(),
+        qos_flow.qos_profile.getArp().getPriorityLevel());
 
     // check the QoS Flow
     if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
@@ -243,13 +250,14 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
 
+    /* TODO Add getEnumString to ARP enums
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, ARP priority level %d, "
         "qos_flow.qos_profile.arp.preempt_cap %s, "
         "qos_flow.qos_profile.arp.preempt_vuln %s",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
-        qos_flow.qos_profile.arp.preempt_cap.c_str(),
-        qos_flow.qos_profile.arp.preempt_vuln.c_str());
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getArp().getPriorityLevel(),
+        qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
+        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString()); */
 
     i++;
   }
@@ -334,8 +342,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.priority_level,
-        qos_flow.qos_profile.arp.priority_level);
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
+        qos_flow.qos_profile.getArp().getPriorityLevel());
 
     // check the QoS Flow
     if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
@@ -485,15 +493,14 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     ASN_SEQUENCE_ADD(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
-
-    Logger::smf_n2().info(
-        "QoS parameters: QFI %d, ARP priority level %d, "
-        "qos_flow.qos_profile.arp.preempt_cap %s, "
-        "qos_flow.qos_profile.arp.preempt_vuln %s",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.arp.priority_level,
-        qos_flow.qos_profile.arp.preempt_cap.c_str(),
-        qos_flow.qos_profile.arp.preempt_vuln.c_str());
-
+    /* TODO add getEnumString to ARP Enums
+        Logger::smf_n2().info(
+            "QoS parameters: QFI %d, ARP priority level %d, "
+            "qos_flow.qos_profile.arp.preempt_cap %d, "
+            "qos_flow.qos_profile.arp.preempt_vuln %d",
+            qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
+            qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
+            qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());  */
     i++;
   }
 
@@ -1572,10 +1579,13 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
       (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
           1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
-      qos_flow.qos_profile._5qi;
+      qos_flow.qos_profile.getR5qi();
   qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.priority_level;
-  if (qos_flow.qos_profile.arp.preempt_cap == "NOT_PREEMPT") {
+      qos_flow.qos_profile.getPriorityLevel();
+  auto preemptCapEnumValue =
+      qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
+  if (preemptCapEnumValue ==
+      PreemptionCapability_anyOf::ePreemptionCapability_anyOf::NOT_PREEMPT) {
     qosFlowLevelQosParameters.allocationAndRetentionPriority
         .pre_emptionCapability =
         Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
@@ -1584,7 +1594,11 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
         .pre_emptionCapability =
         Ngap_Pre_emptionCapability_may_trigger_pre_emption;
   }
-  if (qos_flow.qos_profile.arp.preempt_vuln == "NOT_PREEMPTABLE") {
+  auto preemptVulnEnumValue =
+      qos_flow.qos_profile.getArp().getPreemptVuln().getEnumValue();
+  if (preemptVulnEnumValue ==
+      PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
+          NOT_PREEMPTABLE) {
     qosFlowLevelQosParameters.allocationAndRetentionPriority
         .pre_emptionVulnerability =
         Ngap_Pre_emptionVulnerability_not_pre_emptable;
@@ -1593,65 +1607,90 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
         .pre_emptionVulnerability = Ngap_Pre_emptionVulnerability_pre_emptable;
   }
 
-  if (qos_flow.qos_profile.profile_type == qos_profile_type_e::GBR) {
+  // FIXME check the if condition is okay.
+  if (qos_flow.qos_profile.gbrUlIsSet() && qos_flow.qos_profile.gbrDlIsSet() &&
+      qos_flow.qos_profile.maxbrUlIsSet() &&
+      qos_flow.qos_profile.maxbrDlIsSet()) {
     qosFlowLevelQosParameters.gBR_QosInformation =
         (Ngap_GBR_QosInformation_t*) (calloc(
             1, sizeof(Ngap_GBR_QosInformation_t)));
 
-    set_ngap_bit_rate(
-        qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit);
-
-    set_ngap_bit_rate(
-        qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit);
-
-    set_ngap_bit_rate(
-        qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateUL,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit);
-
-    set_ngap_bit_rate(
-        qosFlowLevelQosParameters.gBR_QosInformation->guaranteedFlowBitRateDL,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value,
-        qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit);
+    for (int j = 0;
+         j < qos_flow.qos_flow_description_content.numberofparameters; j++) {
+      if (qos_flow.qos_flow_description_content.parameterslist[j]
+              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_UPLINK) {
+        set_ngap_bit_rate(
+            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      } else if (
+          qos_flow.qos_flow_description_content.parameterslist[j]
+              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
+        set_ngap_bit_rate(
+            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      } else if (
+          qos_flow.qos_flow_description_content.parameterslist[j]
+              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_UPLINK) {
+        set_ngap_bit_rate(
+            qosFlowLevelQosParameters.gBR_QosInformation
+                ->guaranteedFlowBitRateUL,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      } else if (
+          qos_flow.qos_flow_description_content.parameterslist[j]
+              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
+        set_ngap_bit_rate(
+            qosFlowLevelQosParameters.gBR_QosInformation
+                ->guaranteedFlowBitRateDL,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value,
+            qos_flow.qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      }
+    }
   }
 
   return qosFlowLevelQosParameters;
 }
 
 std::map<uint8_t, uint64_t> smf_n2::bpsMap = {
-        {0, 1},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS, 1000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4KBPS, 4000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16KBPS, 16000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64KBPS, 64000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256KBPS, 256000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS, 1000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4MBPS, 4000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS, 16000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64MBPS, 64000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256MBPS, 256000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS, 1000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4GBPS, 4000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16GBPS, 16000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64GBPS, 64000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS, 256000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS, 1000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4TBPS, 4000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16TBPS, 16000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64TBPS, 64000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256TBPS, 256000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS, 1000000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4PBPS, 4000000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16PBPS, 16000000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64PBPS, 64000000000000000},
-        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS, 256000000000000000}
-        // larger than 25 should use value of 25
+    {0, 1},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS, 1000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4KBPS, 4000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16KBPS, 16000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64KBPS, 64000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256KBPS, 256000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS, 1000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4MBPS, 4000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS, 16000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64MBPS, 64000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256MBPS, 256000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS, 1000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4GBPS, 4000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16GBPS, 16000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64GBPS, 64000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS, 256000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS, 1000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4TBPS, 4000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16TBPS, 16000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64TBPS, 64000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256TBPS, 256000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS, 1000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4PBPS, 4000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16PBPS, 16000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64PBPS, 64000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS,
+     256000000000000000}
+    // larger than 25 should use value of 25
 };
-
 void smf_n2::set_ngap_bit_rate(
     Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit) {
   bit_rate.size = 8;

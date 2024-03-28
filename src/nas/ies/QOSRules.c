@@ -126,9 +126,15 @@ int encode_qos_rules(
                        .packetfiltercontents.component_value,
                    buffer + encoded, len - encoded)) < 0)
             return encode_result;
-          else
+          else 
             encoded += encode_result;
-        }
+        } else if (qosrules.qosrulesie[i]
+                .packetfilterlist.create_modifyandadd_modifyandreplace[j]
+                .packetfiltercontents.component_type ==
+            QOS_RULE_MATCHALL_TYPE)
+	{
+	   encode_result = 0;
+	} /** Anurag TEMP */
 
         *len_packetfiltercontents = encode_result + 1;
       }

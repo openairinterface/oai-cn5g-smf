@@ -66,14 +66,16 @@ void qos_flow_context_updated::add_qos_rule(const QOSRulesIE& rule) {
 }
 
 //-----------------------------------------------------------------------------
-void qos_flow_context_updated::set_qos_profile(const qos_profile_t& profile) {
+void qos_flow_context_updated::set_qos_profile(const oai::model::pcf::QosData& profile) {
   qos_profile = profile;
 }
 
 //-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_priority_level(uint8_t p) {
   // priority_level = p;
-  qos_profile.priority_level = p;
+  //qos_profile.priority_level = p;
+  int32_t priority = static_cast<int32_t>(p); 
+  qos_profile.setPriorityLevel(priority);
 }
 
 //-----------------------------------------------------------------------------

@@ -213,6 +213,16 @@ class session_handler {
   void set_nas_filter_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge, QOSRulesIE& qos_rule);
 
+  void set_port_filter(
+      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+      const oai::utils::conversions::port_range& port_range);
+  void set_ip_filter(
+      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+      const oai::utils::conversions::ip_range& port_range);
+  void set_protocol_filter(
+      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+      uint8_t protocol_id);
+
   QOSRulesIE qos_rule_from_edge(const std::shared_ptr<qos_upf_edge>& edge);
 
   QOSFlowDescriptionsContents qos_flow_description_from_edge(
