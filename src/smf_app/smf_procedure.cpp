@@ -528,20 +528,21 @@ bool smf_session_procedure::is_qfi_served_in_edges(
         "because of an earlier reject");
     return false;
   }
+  bool found_qfi = false;
   for (const auto& qfi : qfis) {
-    bool found_qfi = false;
     for (const auto& edge : edges) {
       if (qfi == edge->qfi) {
         found_qfi = true;
         served_edges.push_back(edge);
       }
     }
-    if (!found_qfi) {
-      Logger::smf_app().error(
-          "Requested QFI %d does not exist in PDU session. Cannot modify PFCP "
-          "session");
-      return false;
-    }
+  }
+
+  if (!found_qfi) {
+    Logger::smf_app().error(
+        "Requested QFIs does not exist in PDU session. Cannot modify PFCP "
+        "session");
+    return false;
   }
   return true;
 }
