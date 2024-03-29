@@ -1606,6 +1606,8 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
     qosFlowLevelQosParameters.allocationAndRetentionPriority
         .pre_emptionVulnerability = Ngap_Pre_emptionVulnerability_pre_emptable;
   }
+  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
+      qos_flow.qos_profile.getArp().getPriorityLevel();
 
   // FIXME check the if condition is okay.
   if (qos_flow.qos_profile.gbrUlIsSet() && qos_flow.qos_profile.gbrDlIsSet() &&

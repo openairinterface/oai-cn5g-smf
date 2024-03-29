@@ -745,7 +745,7 @@ smf_procedure_code session_create_sm_context_procedure::run(
 
   arp.setPreemptCap(preempt_cap);
   arp.setPreemptVuln(preempt_vuln);
-  arp.setPriorityLevel(default_qos.priority_level);
+  arp.setPriorityLevel(default_qos.arp.priority_level);
 
   criteria.qos_profile.setArp(arp);
   criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
