@@ -1085,7 +1085,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     selection_criteria.generate_new_qfi = generate_new_qfi;
     selection_criterias.push_back(selection_criteria);
     verify_criterias.push_back(verify_criteria);
-    generate_new_qfi = false;
+    // We always add more and more DNAIs, if we need to remove them we need a
+    // different logic
+    previous_verify_criteria = verify_criteria;
+    generate_new_qfi         = false;
   }
 
   if (remove_session_rule && session_rule_exists) {
