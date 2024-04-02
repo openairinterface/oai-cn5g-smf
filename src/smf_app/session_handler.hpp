@@ -32,6 +32,7 @@
 #include <smf_msg.hpp>
 #include <smf_pfcp_association.hpp>
 #include <QOSFlowDescriptions.h>
+#include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 
 #pragma once
 
@@ -176,6 +177,13 @@ class session_handler {
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
 
+
+  static uint64_t set_ngap_bitrate(
+          Ngap_BitRate_t& ngap_bitrate,
+          const std::string& bitrate_string);
+
+  static uint64_t parse_nas_value_unit_to_bps(const uint16_t& value, const uint8_t & unit);
+
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
@@ -236,6 +244,8 @@ class session_handler {
       const std::shared_ptr<qos_upf_edge>& edge);
 
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
+
+  static map<uint8_t, uint64_t> bpsMap;
 };
 
 }  // namespace smf

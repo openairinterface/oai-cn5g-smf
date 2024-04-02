@@ -426,6 +426,31 @@ void session_handler::set_nas_bitrate(
   nas_value.parametercontents.gfbrormfbr_uplinkordownlink.value = value;
 }
 
+uint64_t session_handler::set_ngap_bitrate(
+        Ngap_BitRate_t& ngap_bitrate,
+        const std::string& bitrate_string) {
+  uint16_t value;
+  uint8_t unit;
+  bitrate_unit_e unit_e;
+  if (!parse_bitrate_string(bitrate_string, value, unit_e)) {
+    Logger::smf_app().warn(
+            "Cannot parse bitrate string, use default 1000 MBPS");
+    value = 1000;
+    unit_e  = bitrate_unit_e::MBPS;
+  }
+  unit  = nas_unit_from_bitrate_unit(unit_e);
+  uint64_t bitrate = parse_nas_value_unit_to_bps(value, unit);
+
+  ngap_bitrate.size = 8;
+  ngap_bitrate.buf = (uint8_t*) calloc(ngap_bitrate.size, sizeof(uint8_t));
+
+  INT64_TO_BUFFER(
+          bitrate, ngap_bitrate.buf);
+
+  return bitrate;
+}
+
+
 //------------------------------------------------------------------------------
 pfcp::urr_id_t session_handler::generate_urr_id() {
   pfcp::urr_id_t urr_id;
@@ -719,4 +744,52 @@ std::vector<QOSRulesIE> session_handler::get_qos_rules() {
     }
   }
   return qos_rules;
+}
+
+std::map<uint8_t, uint64_t> session_handler::bpsMap = {
+        {0,                                                       1},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS,   1000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4KBPS,   4000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16KBPS,  16000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64KBPS,  64000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256KBPS, 256000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS,   1000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4MBPS,   4000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS,  16000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64MBPS,  64000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256MBPS, 256000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS,   1000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4GBPS,   4000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16GBPS,  16000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64GBPS,  64000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS, 256000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS,   1000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4TBPS,   4000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16TBPS,  16000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64TBPS,  64000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256TBPS, 256000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS,   1000000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4PBPS,   4000000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16PBPS,  16000000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64PBPS,  64000000000000000},
+        {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS,
+                                                                  256000000000000000}
+        // larger than 25 should use value of 25
+};
+
+uint64_t session_handler::parse_nas_value_unit_to_bps(const uint16_t &value, const uint8_t &unit) {
+  uint64_t bit_rate_value;
+
+  if (unit > 0) {
+    // 3GPP TS 24.501 Table 9.11.4.12.1: QoS flow descriptions information
+    if (unit <= 25) {
+      bit_rate_value = bpsMap[unit] * value;
+    } else {
+      bit_rate_value = bpsMap[25] * value;
+    }
+  } else {
+    bit_rate_value = value;
+  }
+
+  return bit_rate_value;
 }
