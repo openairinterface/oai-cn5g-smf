@@ -1666,6 +1666,7 @@ void smf_n2::set_ngap_bit_rate(
     Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit) {
   bit_rate.size = 8;
   bit_rate.buf  = (uint8_t*) calloc(8, sizeof(uint8_t));
-  uint64_t bit_rate_value = session_handler::parse_nas_value_unit_to_bps(value, unit);
+  uint64_t bit_rate_value =
+      session_handler::parse_nas_value_unit_to_bps(value, unit);
   INT64_TO_BUFFER(bit_rate_value, bit_rate.buf);
 }

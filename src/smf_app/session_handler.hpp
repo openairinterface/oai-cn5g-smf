@@ -177,12 +177,11 @@ class session_handler {
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
 
-
   static uint64_t set_ngap_bitrate(
-          Ngap_BitRate_t& ngap_bitrate,
-          const std::string& bitrate_string);
+      Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string);
 
-  static uint64_t parse_nas_value_unit_to_bps(const uint16_t& value, const uint8_t & unit);
+  static uint64_t parse_nas_value_unit_to_bps(
+      const uint16_t& value, const uint8_t& unit);
 
  private:
   std::shared_ptr<upf_graph> m_session_graph;

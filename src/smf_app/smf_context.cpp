@@ -900,21 +900,24 @@ void smf_context::get_session_ambr(
       Logger::smf_app().debug(
           "Default AMBR info from the DNN configuration, uplink %s, downlink "
           "%s",
-          sdc->session_ambr.uplink,
-          sdc->session_ambr.downlink);
+          sdc->session_ambr.uplink, sdc->session_ambr.downlink);
       // Downlink
-      bit_rate_dl = session_handler::set_ngap_bitrate(session_ambr.pDUSessionAggregateMaximumBitRateDL, sdc->session_ambr.downlink);
+      bit_rate_dl = session_handler::set_ngap_bitrate(
+          session_ambr.pDUSessionAggregateMaximumBitRateDL,
+          sdc->session_ambr.downlink);
 
       // Uplink
-      bit_rate_ul = session_handler::set_ngap_bitrate(session_ambr.pDUSessionAggregateMaximumBitRateUL, sdc->session_ambr.uplink);
+      bit_rate_ul = session_handler::set_ngap_bitrate(
+          session_ambr.pDUSessionAggregateMaximumBitRateUL,
+          sdc->session_ambr.uplink);
     }
   } else {
     session_ambr.pDUSessionAggregateMaximumBitRateDL.size = 8;
     session_ambr.pDUSessionAggregateMaximumBitRateDL.buf =
-            (uint8_t*) calloc(8, sizeof(uint8_t));
+        (uint8_t*) calloc(8, sizeof(uint8_t));
     session_ambr.pDUSessionAggregateMaximumBitRateUL.size = 8;
     session_ambr.pDUSessionAggregateMaximumBitRateUL.buf =
-            (uint8_t*) calloc(8, sizeof(uint8_t));
+        (uint8_t*) calloc(8, sizeof(uint8_t));
     INT64_TO_BUFFER(
         bit_rate_dl, session_ambr.pDUSessionAggregateMaximumBitRateDL.buf);
     INT64_TO_BUFFER(
