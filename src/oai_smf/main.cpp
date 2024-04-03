@@ -63,16 +63,15 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
-  std::cout << "Caught signal " << s << std::endl;
-  Logger::system().startup("exiting");
+  Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
   smf_app_inst->trigger_nf_deregistration();
   itti_inst->send_terminate_msg(TASK_SMF_APP);
   itti_inst->wait_tasks_end();
-  std::cout << "Freeing Allocated memory..." << std::endl;
+  Logger::system().debug("Freeing Allocated memory...");
   if (async_shell_cmd_inst) delete async_shell_cmd_inst;
   async_shell_cmd_inst = nullptr;
-  std::cout << "Async Shell CMD memory done." << std::endl;
+  Logger::system().debug("Async Shell CMD memory done.");
   if (smf_api_server_1) {
     smf_api_server_1->shutdown();
     delete smf_api_server_1;
@@ -83,14 +82,16 @@ void my_app_signal_handler(int s) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
   }
-  std::cout << "SMF API Server memory done." << std::endl;
-  if (itti_inst) delete itti_inst;
-  itti_inst = nullptr;
-  std::cout << "ITTI memory done." << std::endl;
+  Logger::system().debug("SMF API Server memory done.");
   if (smf_app_inst) delete smf_app_inst;
   smf_app_inst = nullptr;
-  std::cout << "SMF APP memory done." << std::endl;
-  std::cout << "Freeing Allocated memory done" << std::endl;
+  Logger::system().debug("SMF APP memory done.");
+  // itti_inst is used in a lot of code without any nullPtr check
+  // it has to be deallocated last
+  if (itti_inst) delete itti_inst;
+  itti_inst = nullptr;
+  Logger::system().debug("ITTI memory done.");
+  Logger::system().info("Freeing Allocated memory done.");
   exit(0);
 }
 //------------------------------------------------------------------------------
