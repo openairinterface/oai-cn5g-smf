@@ -932,5 +932,10 @@ void smf_http2_server::create_event_subscription_handler(
 
 //------------------------------------------------------------------------------
 void smf_http2_server::stop() {
+  Logger::smf_api_server().debug("HTTP2 server to be stopped");
   server.stop();
+  // asio_http2_server.h specifies that after the stop, do a join to wait for
+  // // all threads to gracefully finish
+  server.join();
+  Logger::smf_api_server().debug("HTTP2 server is fully stopped");
 }

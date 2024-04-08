@@ -66,19 +66,28 @@ void my_app_signal_handler(int s) {
   Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
   smf_app_inst->trigger_nf_deregistration();
+
+  if (smf_api_server_1) {
+    Logger::system().debug("Stopping HTTP/1 server.");
+    smf_api_server_1->shutdown();
+  }
+  if (smf_api_server_2) {
+    Logger::system().debug("Stopping HTTP/2 server.");
+    smf_api_server_2->stop();
+  }
+
   itti_inst->send_terminate_msg(TASK_SMF_APP);
   itti_inst->wait_tasks_end();
+
   Logger::system().debug("Freeing Allocated memory...");
   if (async_shell_cmd_inst) delete async_shell_cmd_inst;
   async_shell_cmd_inst = nullptr;
   Logger::system().debug("Async Shell CMD memory done.");
   if (smf_api_server_1) {
-    smf_api_server_1->shutdown();
     delete smf_api_server_1;
     smf_api_server_1 = nullptr;
   }
   if (smf_api_server_2) {
-    smf_api_server_2->stop();
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
   }
@@ -86,12 +95,14 @@ void my_app_signal_handler(int s) {
   if (smf_app_inst) delete smf_app_inst;
   smf_app_inst = nullptr;
   Logger::system().debug("SMF APP memory done.");
+
   // itti_inst is used in a lot of code without any nullPtr check
   // it has to be deallocated last
   if (itti_inst) delete itti_inst;
   itti_inst = nullptr;
   Logger::system().debug("ITTI memory done.");
   Logger::system().info("Freeing Allocated memory done.");
+  Logger::system().info("Bye.");
   exit(0);
 }
 //------------------------------------------------------------------------------
