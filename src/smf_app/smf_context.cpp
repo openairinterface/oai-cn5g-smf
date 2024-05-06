@@ -3298,24 +3298,25 @@ bool smf_context::handle_ho_execution(
       session_management_procedures_type_e::N2_HO_EXECUTION_PHASE;
 
   // Ngap_SecondaryRATDataUsageReportTransfer
-  std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
-      std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
-  int decode_status = smf_n2::get_instance().decode_n2_sm_information(
-      decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
-    // error, send error to AMF
-    Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_SecondaryRATDataUsageReportTransfer) "
-        "failed!");
-    // trigger to send reply to AMF
-    smf_app_inst->trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
-        PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR,
-        sm_context_request.get()->pid);
-    return false;
-  }
+  if (sm_context_request->req.n2_sm_info_is_set()){
+    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
+        std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
+    int decode_status = smf_n2::get_instance().decode_n2_sm_information(
+        decoded_msg, n2_sm_information);
+    if (decode_status == RETURNerror) {
+      // error, send error to AMF
+      Logger::smf_app().warn(
+          "Decode N2 SM (Ngap_SecondaryRATDataUsageReportTransfer) "
+          "failed!");
+      // trigger to send reply to AMF
+      smf_app_inst->trigger_update_context_error_response(
+          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR,
+          sm_context_request.get()->pid);
+      return false;
+    }
   // TODO: process Ngap_SecondaryRATDataUsageReportTransfer
-
+  }
   // Fill the content of SmContextUpdatedData
   nlohmann::json json_data = {};
   json_data["hoState"]     = "COMPLETED";
