@@ -184,32 +184,42 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   // Set forwarding_policy
   auto pcc_rules     = sps->policy_ptr->decision.getPccRules();
   auto traffic_conts = sps->policy_ptr->decision.getTraffContDecs();
-  
+
   oai::model::pcf::PccRule* selected_rule = nullptr;
   for (auto& pcc_rule : pcc_rules) {
-    if (pcc_rule.second.getPrecedence() == edge->precedence || edge->precedence == 0) {
-      // When edge->precedence == 0 Dynamic UPF selection failed and a default UPF was selected
-      // Therefore we assign the rule with the highest precedence. selected_rule is not null when
-      // this is not the first iteration and edge->precedence == 0 or there are multiple rules with
-      // same precedence value. This ensure we select the highest precedence rule in above case.
-      if (selected_rule && selected_rule->getPrecedence() > pcc_rule.second.getPrecedence()) {
+    if (pcc_rule.second.getPrecedence() == edge->precedence ||
+        edge->precedence == 0) {
+      // When edge->precedence == 0 Dynamic UPF selection failed and a default
+      // UPF was selected Therefore we assign the rule with the highest
+      // precedence. selected_rule is not null when this is not the first
+      // iteration and edge->precedence == 0 or there are multiple rules with
+      // same precedence value. This ensure we select the highest precedence
+      // rule in above case.
+      if (selected_rule &&
+          selected_rule->getPrecedence() > pcc_rule.second.getPrecedence()) {
         continue;
       }
       selected_rule = &(pcc_rule.second);
 
       std::string tc_data_id = selected_rule->getRefTcData()[0];
 
-      forwarding_policy_t forwarding_policy = {}; 
-      auto traffic_it = traffic_conts.find(tc_data_id);
-      if (edge->uplink && !traffic_it->second.getTrafficSteeringPolIdUl().empty()) {
-        forwarding_policy.forwarding_policy_identifier = traffic_it->second.getTrafficSteeringPolIdUl();
-        forwarding_policy.forwarding_policy_identifier_length = forwarding_policy.forwarding_policy_identifier.size();
+      forwarding_policy_t forwarding_policy = {};
+      auto traffic_it                       = traffic_conts.find(tc_data_id);
+      if (edge->uplink &&
+          !traffic_it->second.getTrafficSteeringPolIdUl().empty()) {
+        forwarding_policy.forwarding_policy_identifier =
+            traffic_it->second.getTrafficSteeringPolIdUl();
+        forwarding_policy.forwarding_policy_identifier_length =
+            forwarding_policy.forwarding_policy_identifier.size();
         forwarding_parameters.set(forwarding_policy);
       }
 
-      if (!edge->uplink && !traffic_it->second.getTrafficSteeringPolIdDl().empty()) {
-        forwarding_policy.forwarding_policy_identifier = traffic_it->second.getTrafficSteeringPolIdDl();
-        forwarding_policy.forwarding_policy_identifier_length = forwarding_policy.forwarding_policy_identifier.size();
+      if (!edge->uplink &&
+          !traffic_it->second.getTrafficSteeringPolIdDl().empty()) {
+        forwarding_policy.forwarding_policy_identifier =
+            traffic_it->second.getTrafficSteeringPolIdDl();
+        forwarding_policy.forwarding_policy_identifier_length =
+            forwarding_policy.forwarding_policy_identifier.size();
         forwarding_parameters.set(forwarding_policy);
       }
     }
@@ -535,8 +545,7 @@ smf_procedure_code smf_session_procedure::get_next_upf(
   }
 
   // at some point the graph has to return true, otherwise we are done
-  while (!graph->dfs_next_upf(dl_edges, ul_edges, next_upf))
-    ;
+  while (!graph->dfs_next_upf(dl_edges, ul_edges, next_upf));
 
   if (!next_upf) {
     Logger::smf_app().debug("UPF graph in SMF finished");
