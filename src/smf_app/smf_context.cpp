@@ -3298,7 +3298,7 @@ bool smf_context::handle_ho_execution(
       session_management_procedures_type_e::N2_HO_EXECUTION_PHASE;
 
   // Ngap_SecondaryRATDataUsageReportTransfer
-  if (sm_context_request->req.n2_sm_info_is_set()){
+  if (sm_context_request->req.n2_sm_info_is_set()) {
     std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
         std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
     int decode_status = smf_n2::get_instance().decode_n2_sm_information(
@@ -3315,7 +3315,7 @@ bool smf_context::handle_ho_execution(
           sm_context_request.get()->pid);
       return false;
     }
-  // TODO: process Ngap_SecondaryRATDataUsageReportTransfer
+    // TODO: process Ngap_SecondaryRATDataUsageReportTransfer
   }
   // Fill the content of SmContextUpdatedData
   nlohmann::json json_data = {};
