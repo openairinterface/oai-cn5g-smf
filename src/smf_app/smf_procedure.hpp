@@ -98,10 +98,15 @@ class smf_session_procedure : public smf_procedure {
 
   pfcp::create_urr pfcp_create_urr(const std::shared_ptr<qos_upf_edge>& edge);
 
+  pfcp::create_qer pfcp_create_qer(const std::shared_ptr<qos_upf_edge>& edge);
+
   static pfcp::remove_pdr pfcp_remove_pdr(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   static pfcp::remove_far pfcp_remove_far(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  static pfcp::remove_qer pfcp_remove_qer(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   pfcp::update_pdr pfcp_update_pdr(const std::shared_ptr<qos_upf_edge>& edge);

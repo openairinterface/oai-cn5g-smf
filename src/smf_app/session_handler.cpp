@@ -186,6 +186,18 @@ QOSRulesIE session_handler::qos_rule_from_edge(
   return qos_rule;
 }
 
+//------------------------------------------------------------------------------
+pfcp::qer_id_t session_handler::generate_qer_id() {
+  pfcp::qer_id_t qer_id;
+  qer_id.qer_id = m_qer_id_generator.get_uid();
+  return qer_id;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::release_qer_id(const pfcp::qer_id_t& qer_id) {
+  m_qer_id_generator.free_uid(qer_id.qer_id);
+}
+
 pfcp::urr_id_t session_handler::generate_urr_id() {
   pfcp::urr_id_t urr_id;
   urr_id.urr_id = m_urr_id_generator.get_uid();

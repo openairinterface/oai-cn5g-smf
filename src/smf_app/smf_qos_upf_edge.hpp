@@ -91,6 +91,7 @@ class qos_upf_edge {
   pfcp::pdr_id_t pdr_id{};
   pfcp::far_id_t far_id{};
   pfcp::urr_id_t urr_id{};
+  pfcp::qer_id_t qer_id{};
   uint8_t qos_rule_id{};
 
   std::string nw_instance{};

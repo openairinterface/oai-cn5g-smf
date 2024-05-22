@@ -308,6 +308,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // we take the FAR ID of the associated edge, so either from the same QFI or
   // from the same path for UL CL
   create_pdr.set(edge->associated_edge->far_id);
+  create_pdr.set(edge->associated_edge->qer_id);
 
   if (cfg.enable_usage_reporting()) {
     create_pdr.set(edge->urr_id);
@@ -354,6 +355,27 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
   create_urr.set(volume_threshold);
 
   return create_urr;
+}
+
+//------------------------------------------------------------------------------
+pfcp::create_qer smf_session_procedure::pfcp_create_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  // When we have a FAR and edge is uplink we know we are in an uplink procedure
+  //  e.g. FAR from N3 to N6, N6 is uplink edge -> uplink procedure
+
+  oai::config::smf::upf cfg         = edge->source_upf->get_upf_config();
+  pfcp::create_qer create_qer       = {};
+  pfcp::qfi_t qfi                   = {};
+
+
+  if (edge->qer_id.qer_id == 0) {
+    edge->qer_id = sps->get_session_handler()->generate_qer_id();
+  }
+
+  create_qer.set(edge->qfi);
+  create_qer.set(edge->qer_id);
+
+  return create_qer;
 }
 
 //------------------------------------------------------------------------------
@@ -420,6 +442,15 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   update_pdr.set(edge->associated_edge->far_id);
 
   return update_pdr;
+}
+
+//------------------------------------------------------------------------------
+pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
+    const shared_ptr<qos_upf_edge>& edge) {
+  pfcp::remove_qer remove_qer;
+  remove_qer.set(edge->qer_id);
+
+  return remove_qer;
 }
 
 pfcp::update_far smf_session_procedure::pfcp_update_far(
@@ -677,6 +708,9 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   }
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+  }
+  for (const auto& ul_edge : ul_edges) {
+    n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
   }
   for (const auto& dl_edge : dl_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));

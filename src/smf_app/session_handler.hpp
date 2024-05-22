@@ -141,6 +141,18 @@ class session_handler {
   void set_cause(const cause_value_5gsm_e& cause);
 
   /**
+   * Generates a unique QER ID
+   * @return QER ID
+   */
+  pfcp::qer_id_t generate_qer_id();
+
+  /**
+   * Releases QER ID so that it can be re-used
+   * @param qer_id
+   */
+  void release_qer_id(const pfcp::qer_id_t& qer_id);
+
+  /**
    * Generates a unique URR ID
    * @return URR ID
    */
@@ -188,6 +200,7 @@ class session_handler {
   util::uint_generator<uint16_t> m_pdr_id_generator;
   util::uint_generator<uint32_t> m_far_id_generator;
   util::uint_generator<uint32_t> m_urr_id_generator;
+  util::uint_generator<uint32_t> m_qer_id_generator;
 
   // TODO all of this is out-of-sync with new QoS handling, should update all in
   // UPF graph
