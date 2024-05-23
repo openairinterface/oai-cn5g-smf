@@ -837,6 +837,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
+  pfcp::up_function_features_s up_features =
+      current_upf->function_features.second;
+
   // TODO
   /*
   if (upf_cfg.enable_dl_pdr_in_session_establishment() &&
@@ -890,7 +893,13 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   auto all_qfis = sps->get_session_handler()->get_all_qfis();
-  check_if_all_qfis_are_handled(all_qfis, used_qfis);
+  if (up_features.ftup) {
+    check_if_all_qfis_are_handled(all_qfis, used_qfis);
+  } else {
+    // If UPF does not support TEID Creation then set all qfis to be updated in
+    // session handler
+    sps->get_session_handler()->set_qfis_to_be_updated(all_qfis);
+  }
 
   // TODO we have more than one QoS flow here, to adapt with new QoS framework
   for (const auto& flow :
