@@ -403,7 +403,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
 
-  if (!edge->uplink && !edge->flow_information.getFlowDescription().empty()) {
+  if (!edge->flow_information.getFlowDescription().empty()) {
     sdf_filter.fd               = 1;
     sdf_filter.flow_description = edge->flow_information.getFlowDescription();
     pdi.set(sdf_filter);
