@@ -182,45 +182,47 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
   // Set forwarding_policy
-  auto pcc_rules     = sps->policy_ptr->decision.getPccRules();
-  auto traffic_conts = sps->policy_ptr->decision.getTraffContDecs();
+  if (sps->policy_ptr) {
+    auto pcc_rules     = sps->policy_ptr->decision.getPccRules();
+    auto traffic_conts = sps->policy_ptr->decision.getTraffContDecs();
 
-  oai::model::pcf::PccRule* selected_rule = nullptr;
-  for (auto& pcc_rule : pcc_rules) {
-    if (pcc_rule.second.getPrecedence() == edge->precedence ||
-        edge->precedence == 0) {
-      // When edge->precedence == 0 Dynamic UPF selection failed and a default
-      // UPF was selected Therefore we assign the rule with the highest
-      // precedence. selected_rule is not null when this is not the first
-      // iteration and edge->precedence == 0 or there are multiple rules with
-      // same precedence value. This ensure we select the highest precedence
-      // rule in above case.
-      if (selected_rule &&
-          selected_rule->getPrecedence() > pcc_rule.second.getPrecedence()) {
-        continue;
-      }
-      selected_rule = &(pcc_rule.second);
+    oai::model::pcf::PccRule* selected_rule = nullptr;
+    for (auto& pcc_rule : pcc_rules) {
+      if (pcc_rule.second.getPrecedence() == edge->precedence ||
+          edge->precedence == 0) {
+        // When edge->precedence == 0 Dynamic UPF selection failed and a default
+        // UPF was selected Therefore we assign the rule with the highest
+        // precedence. selected_rule is not null when this is not the first
+        // iteration and edge->precedence == 0 or there are multiple rules with
+        // same precedence value. This ensure we select the highest precedence
+        // rule in above case.
+        if (selected_rule &&
+            selected_rule->getPrecedence() > pcc_rule.second.getPrecedence()) {
+          continue;
+        }
+        selected_rule = &(pcc_rule.second);
 
-      std::string tc_data_id = selected_rule->getRefTcData()[0];
+        std::string tc_data_id = selected_rule->getRefTcData()[0];
 
-      forwarding_policy_t forwarding_policy = {};
-      auto traffic_it                       = traffic_conts.find(tc_data_id);
-      if (edge->uplink &&
-          !traffic_it->second.getTrafficSteeringPolIdUl().empty()) {
-        forwarding_policy.forwarding_policy_identifier =
-            traffic_it->second.getTrafficSteeringPolIdUl();
-        forwarding_policy.forwarding_policy_identifier_length =
-            forwarding_policy.forwarding_policy_identifier.size();
-        forwarding_parameters.set(forwarding_policy);
-      }
+        forwarding_policy_t forwarding_policy = {};
+        auto traffic_it                       = traffic_conts.find(tc_data_id);
+        if (edge->uplink &&
+            !traffic_it->second.getTrafficSteeringPolIdUl().empty()) {
+          forwarding_policy.forwarding_policy_identifier =
+              traffic_it->second.getTrafficSteeringPolIdUl();
+          forwarding_policy.forwarding_policy_identifier_length =
+              forwarding_policy.forwarding_policy_identifier.size();
+          forwarding_parameters.set(forwarding_policy);
+        }
 
-      if (!edge->uplink &&
-          !traffic_it->second.getTrafficSteeringPolIdDl().empty()) {
-        forwarding_policy.forwarding_policy_identifier =
-            traffic_it->second.getTrafficSteeringPolIdDl();
-        forwarding_policy.forwarding_policy_identifier_length =
-            forwarding_policy.forwarding_policy_identifier.size();
-        forwarding_parameters.set(forwarding_policy);
+        if (!edge->uplink &&
+            !traffic_it->second.getTrafficSteeringPolIdDl().empty()) {
+          forwarding_policy.forwarding_policy_identifier =
+              traffic_it->second.getTrafficSteeringPolIdDl();
+          forwarding_policy.forwarding_policy_identifier_length =
+              forwarding_policy.forwarding_policy_identifier.size();
+          forwarding_parameters.set(forwarding_policy);
+        }
       }
     }
   }
