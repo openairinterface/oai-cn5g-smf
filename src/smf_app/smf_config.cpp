@@ -46,6 +46,7 @@ using namespace smf;
 using namespace oai::config::smf;
 using namespace oai::config;
 using namespace oai::model::nrf;
+using namespace oai::utils;
 
 smf_config::smf_config(
     const std::string& configPath, bool logStdout, bool logRotFile)

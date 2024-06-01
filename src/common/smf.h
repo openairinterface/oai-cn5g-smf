@@ -38,10 +38,6 @@ typedef uint64_t supi64_t;
 
 #define SUPI_DIGITS_MAX 15
 
-const uint32_t SD_NO_VALUE               = 0xFFFFFF;
-const std::string SD_NO_VALUE_STR        = "0xFFFFFF";
-const uint8_t SST_MAX_STANDARDIZED_VALUE = 127;
-
 typedef struct {
   uint32_t length;
   char data[SUPI_DIGITS_MAX + 1];
@@ -96,84 +92,6 @@ static std::string smf_supi64_to_string(const supi64_t& supi) {
   for (int i = 0; i < padded_len; i++) supi_str = "0" + supi_str;
   return supi_str;
 }
-
-typedef struct s_nssai  // section 28.4, TS23.003
-{
-  const uint8_t HASH_SEED   = 17;
-  const uint8_t HASH_FACTOR = 31;
-
-  uint8_t sst;
-  uint32_t sd;
-  s_nssai(const uint8_t& m_sst, const uint32_t m_sd) : sst(m_sst), sd(m_sd) {}
-  s_nssai(const uint8_t& m_sst, const std::string m_sd) : sst(m_sst) {
-    sd = SD_NO_VALUE;
-    if (m_sd.empty()) return;
-    uint8_t base = 10;
-    try {
-      if (m_sd.size() > 2) {
-        if (boost::iequals(m_sd.substr(0, 2), "0x")) {
-          base = 16;
-        }
-      }
-      sd = std::stoul(m_sd, nullptr, base);
-    } catch (const std::exception& e) {
-      Logger::smf_app().error(
-          "Error when converting from string to int for S-NSSAI SD, error: %s",
-          e.what());
-      sd = SD_NO_VALUE;
-    }
-  }
-  s_nssai() : sst(), sd() {}
-  s_nssai(const s_nssai& p) : sst(p.sst), sd(p.sd) {}
-  bool operator==(const struct s_nssai& s) const {
-    if ((s.sst == this->sst) && (s.sd == this->sd)) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  s_nssai& operator=(const struct s_nssai& s) {
-    sst = s.sst;
-    sd  = s.sd;
-    return *this;
-  }
-
-  std::string toString() const {
-    std::string s = {};
-    s.append("SST=").append(std::to_string(sst));
-    s.append(", SD=").append(std::to_string(sd));
-    return s;
-  }
-
-  nlohmann::json to_json() const {
-    nlohmann::json json_data = {};
-    json_data["sst"]         = sst;
-    json_data["sd"]          = sd;
-    return json_data;
-  }
-  // TODO remove, only temporary, in the future only use model SNSSAI
-  oai::model::common::Snssai to_model_snssai() const {
-    oai::model::common::Snssai snssai;
-    snssai.setSst(sst);
-    // TODO this puts a decimal string but SD should be a hex string
-    snssai.setSd(std::to_string(sd));
-    return snssai;
-  }
-
-  void from_json(nlohmann::json& json_data) {
-    this->sst = json_data["sst"].get<int>();
-    this->sd  = json_data["sd"].get<int>();
-  }
-
-  size_t operator()(const s_nssai&) const {
-    size_t res = HASH_SEED;
-    res        = res * HASH_FACTOR + std::hash<uint32_t>()(sd);
-    res        = res * HASH_FACTOR + std::hash<uint32_t>()(sst);
-    return res;
-  }
-
-} snssai_t;
 
 typedef uint8_t pdu_session_id;
 
@@ -566,11 +484,5 @@ typedef struct patch_item_s {
     return json_data;
   }
 } patch_item_t;
-
-// TODO: move to 23.003
-typedef struct guami_5g_s {
-  plmn_t plmn;
-  std::string amf_id;
-} guami_5g_t;
 
 #endif

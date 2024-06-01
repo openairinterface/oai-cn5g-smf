@@ -33,7 +33,7 @@
 
 using namespace smf;
 using namespace oai::model::pcf;
-using namespace oai::utils::conversions;
+using namespace oai::utils;
 
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {

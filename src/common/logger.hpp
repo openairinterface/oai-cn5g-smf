@@ -49,6 +49,8 @@ class Logger {
   static void init(
       const std::string& name, bool log_stdout, bool log_rot_file) {
     oai::logger::logger_registry::register_logger(
+        name, LOGGER_COMMON, log_stdout, log_rot_file);
+    oai::logger::logger_registry::register_logger(
         name, SMF_APP, log_stdout, log_rot_file);
     oai::logger::logger_registry::register_logger(
         name, SMF_SBI, log_stdout, log_rot_file);

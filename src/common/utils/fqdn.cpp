@@ -100,7 +100,8 @@ bool fqdn::resolve(pfcp::node_id_t& node_id) {
       }
       switch (addr_type) {
         case 0: {
-          node_id.u1.ipv4_address.s_addr = conv::fromString(ip_addr_str).s_addr;
+          node_id.u1.ipv4_address.s_addr =
+              oai::utils::conv::fromString(ip_addr_str).s_addr;
           Logger::smf_app().debug(
               "Resolve FQDN %s, IP Addr %s", node_id.fqdn.c_str(),
               ip_addr_str.c_str());
@@ -127,7 +128,7 @@ bool fqdn::resolve(pfcp::node_id_t& node_id) {
       return true;
     } else {
       std::string hostname = {};
-      std::string ip_str   = conv::toString(node_id.u1.ipv4_address);
+      std::string ip_str = oai::utils::conv::toString(node_id.u1.ipv4_address);
       if (!fqdn::reverse_resolve(ip_str, hostname)) {
         Logger::smf_app().warn(
             "Could not resolve hostname for IP address %s", ip_str.c_str());

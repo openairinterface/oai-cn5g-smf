@@ -63,16 +63,17 @@ class udp_server {
   udp_server(const struct in_addr& address, const uint16_t port_num)
       : app_(nullptr), port_(port_num) {
     recv_buffer_[0] = 0;
+    terminate_      = false;
     socket_         = create_socket(address, port_);
     if (socket_ > 0) {
       Logger::udp().debug(
-          "udp_server::udp_server(%s:%d)", conv::toString(address).c_str(),
-          port_);
+          "udp_server::udp_server(%s:%d)",
+          oai::utils::conv::toString(address).c_str(), port_);
       sa_family = AF_INET;
     } else {
       Logger::udp().error(
-          "udp_server::udp_server(%s:%d)", conv::toString(address).c_str(),
-          port_);
+          "udp_server::udp_server(%s:%d)",
+          oai::utils::conv::toString(address).c_str(), port_);
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       throw std::system_error(
           socket_, std::generic_category(), "GTPV1-U socket creation failed!");
@@ -83,16 +84,17 @@ class udp_server {
   udp_server(const struct in6_addr& address, const uint16_t port_num)
       : app_(nullptr), port_(port_num) {
     recv_buffer_[0] = 0;
+    terminate_      = false;
     socket_         = create_socket(address, port_);
     if (socket_ > 0) {
       Logger::udp().debug(
-          "udp_server::udp_server(%s:%d)", conv::toString(address).c_str(),
-          port_);
+          "udp_server::udp_server(%s:%d)",
+          oai::utils::conv::toString(address).c_str(), port_);
       sa_family = AF_INET6;
     } else {
       Logger::udp().error(
-          "udp_server::udp_server(%s:%d)", conv::toString(address).c_str(),
-          port_);
+          "udp_server::udp_server(%s:%d)",
+          oai::utils::conv::toString(address).c_str(), port_);
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       throw std::system_error(
           socket_, std::generic_category(), "GTPV1-U socket creation failed!");
@@ -114,7 +116,7 @@ class udp_server {
     }
   }
 
-  ~udp_server() { close(socket_); }
+  ~udp_server();
 
   void udp_read_loop(const util::thread_sched_params& thread_sched_params);
 
@@ -170,6 +172,7 @@ class udp_server {
 
   udp_application* app_;
   std::thread thread_;
+  bool terminate_;
   int socket_;
   uint16_t port_;
   sa_family_t sa_family;

@@ -44,6 +44,7 @@ extern "C" {
 }
 
 using namespace smf;
+using namespace oai::utils;
 extern smf_app* smf_app_inst;
 
 //-----------------------------------------------------------------------------------------------------
@@ -173,7 +174,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   if (paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4) {
     sm_msg->pdu_session_establishment_accept.pduaddress
         .pdu_address_information = bfromcstralloc(4, "\0");
-    util::ipv4_to_bstring(
+    ipv4_to_bstring(
         paa.ipv4_address, sm_msg->pdu_session_establishment_accept.pduaddress
                               .pdu_address_information);
     Logger::smf_n1().debug(
@@ -182,7 +183,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
       paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
     sm_msg->pdu_session_establishment_accept.pduaddress
         .pdu_address_information = bfromcstralloc(12, "\0");
-    util::ipv4v6_to_pdu_address_information(
+    ipv4v6_to_pdu_address_information(
         paa.ipv4_address, paa.ipv6_address,
         sm_msg->pdu_session_establishment_accept.pduaddress
             .pdu_address_information);
@@ -260,12 +261,12 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   std::string full_dnn =
       sm_context_res.get_dnn() + gprs;  //".mnc011.mcc110.gprs";
   std::string dotted;
-  util::string_to_dotted(full_dnn, dotted);
+  string_to_dotted(full_dnn, dotted);
   Logger::smf_n1().debug(
       "Full DNN %s, dotted DNN %s", full_dnn.c_str(), dotted.c_str());
   sm_msg->pdu_session_establishment_accept.dnn =
       bfromcstralloc(dotted.length() + 1, "\0");
-  util::string_to_dnn(dotted, sm_msg->pdu_session_establishment_accept.dnn);
+  string_to_dnn(dotted, sm_msg->pdu_session_establishment_accept.dnn);
 
   Logger::smf_n1().info("Encode PDU Session Establishment Accept");
   // Encode NAS message

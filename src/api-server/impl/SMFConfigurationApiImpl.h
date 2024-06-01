@@ -48,7 +48,7 @@ class SMFConfigurationApiImpl
 
  protected:
   static uint64_t generate_promise_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    return oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 };
 

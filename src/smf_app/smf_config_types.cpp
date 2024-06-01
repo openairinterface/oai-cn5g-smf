@@ -385,7 +385,8 @@ void upf::generate_node_id() {
   m_node_id = {};
   std::regex re(IPV4_ADDRESS_VALIDATOR_REGEX);
   if (std::regex_match(m_host.get_value(), re)) {
-    m_node_id.u1.ipv4_address = conv::fromString(m_host.get_value());
+    m_node_id.u1.ipv4_address =
+        oai::utils::conv::fromString(m_host.get_value());
     m_node_id.node_id_type =
         pfcp::node_id_type_value_e::NODE_ID_TYPE_IPV4_ADDRESS;
   } else {

@@ -28,7 +28,7 @@
 
 #include "udp.hpp"
 
-#include <cstdlib>
+using namespace oai::utils;
 
 //------------------------------------------------------------------------------
 void udp_application::handle_receive(
@@ -58,11 +58,35 @@ static std::string string_to_hex(const std::string& input) {
   return output;
 }
 //------------------------------------------------------------------------------
+udp_server::~udp_server() {
+  int res = 0;
+
+  terminate_ = true;
+  // closing a socket is not enough for a blocking API call to stop.
+  // shutdown is required. recvfrom will stop automically
+  // and bytes_received should be equal to 0.
+  res = shutdown(socket_, SHUT_RDWR);
+  if (res != 0) {
+    Logger::udp().error("shutdown on socket_ failed %s", strerror(errno));
+  }
+  // waiting for the thread to end
+  while (terminate_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  // now we can close the socket
+  res = close(socket_);
+  if (res != 0) {
+    Logger::udp().error("close on socket_ failed %s", strerror(errno));
+  }
+  Logger::udp().debug("Thread on udp_read_loop should have ended!");
+}
+//------------------------------------------------------------------------------
 void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
   endpoint r_endpoint   = {};
   size_t bytes_received = 0;
 
   sched_params.apply(TASK_NONE, Logger::udp());
+  terminate_ = false;
 
   while (1) {
     r_endpoint.addr_storage_len = sizeof(struct sockaddr_storage);
@@ -73,6 +97,10 @@ void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
       app_->handle_receive(recv_buffer_, bytes_received, r_endpoint);
     } else {
       Logger::udp().error("Recvfrom failed %s\n", strerror(errno));
+    }
+    if (terminate_) {
+      terminate_ = false;
+      return;
     }
   }
 }

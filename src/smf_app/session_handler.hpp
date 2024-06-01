@@ -189,12 +189,12 @@ class session_handler {
   cause_value_5gsm_e m_cause_value =
       cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED;  // for NGAP cause
   pdu_session_type_e m_pdu_session_type;
-  util::uint_generator<uint32_t> m_qos_rule_id_generator;
-  util::uint_generator<uint32_t> m_qfi_generator;
+  oai::utils::uint_generator<uint32_t> m_qos_rule_id_generator;
+  oai::utils::uint_generator<uint32_t> m_qfi_generator;
 
-  util::uint_generator<uint16_t> m_pdr_id_generator;
-  util::uint_generator<uint32_t> m_far_id_generator;
-  util::uint_generator<uint32_t> m_urr_id_generator;
+  oai::utils::uint_generator<uint16_t> m_pdr_id_generator;
+  oai::utils::uint_generator<uint32_t> m_far_id_generator;
+  oai::utils::uint_generator<uint32_t> m_urr_id_generator;
 
   // TODO all of this is out-of-sync with new QoS handling, should update all in
   // UPF graph

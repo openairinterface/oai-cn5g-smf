@@ -99,14 +99,14 @@ class smf_app {
   std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
-  util::uint_generator<uint32_t> sm_context_ref_generator;
+  oai::utils::uint_generator<uint32_t> sm_context_ref_generator;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
 
-  util::uint_generator<uint64_t> seid_generator;
+  oai::utils::uint_generator<uint64_t> seid_generator;
 
-  util::uint_generator<uint32_t> teid_generator;
+  oai::utils::uint_generator<uint32_t> teid_generator;
 
-  util::uint_generator<uint32_t> evsub_id_generator;
+  oai::utils::uint_generator<uint32_t> evsub_id_generator;
   std::map<
       std::pair<evsub_id_t, smf_event_t>, std::shared_ptr<smf_subscription>>
       smf_event_subscriptions;
@@ -800,7 +800,7 @@ class smf_app {
    * @return generated ID
    */
   static uint64_t generate_promise_id() {
-    return util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    return oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 
   /*

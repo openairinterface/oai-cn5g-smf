@@ -117,7 +117,8 @@ typedef struct ipv6_prefix_s {
   struct in6_addr prefix;
   uint8_t prefix_len;
   std::string to_string() const {
-    return conv::toString(prefix) + "/" + std::to_string(prefix_len);
+    return oai::utils::conv::toString(prefix) + "/" +
+           std::to_string(prefix_len);
   }
 
 } ipv6_prefix_t;
@@ -218,9 +219,9 @@ typedef struct ip_address_s {
 
   std::string to_string() const {
     if (IP_ADDRESS_TYPE_IPV4_ADDRESS == this->ip_address_type) {
-      return conv::toString(u1.ipv4_address);
+      return oai::utils::conv::toString(u1.ipv4_address);
     } else if (IP_ADDRESS_TYPE_IPV6_ADDRESS == this->ip_address_type) {
-      return conv::toString(u1.ipv6_address);
+      return oai::utils::conv::toString(u1.ipv6_address);
     } else if (IP_ADDRESS_TYPE_IPV6_PREFIX == this->ip_address_type) {
       return u1.ipv6_prefix.to_string();
     }
