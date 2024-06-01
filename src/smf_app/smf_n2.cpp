@@ -38,6 +38,7 @@
 #include "PreemptionCapability_anyOf.h"
 #include "PreemptionVulnerability_anyOf.h"
 #include "Helpers.h"
+#include "conversions.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"

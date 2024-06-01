@@ -84,6 +84,7 @@ extern "C" {
 
 using namespace smf;
 using namespace oai::utils;
+using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
@@ -835,9 +836,9 @@ void smf_context::get_session_ambr(
           (sdc->session_ambr).downlink.c_str(),
           (sdc->session_ambr).uplink.c_str());
 
-      oai::utils::conversions::bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
+      bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
       uint16_t ambr_dl_value, ambr_ul_value;
-      if (oai::utils::conversions::parse_bitrate_string(
+      if (parse_bitrate_string(
               sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
         session_ambr.uint_for_session_ambr_for_downlink =
             nas_ambr_from_bitrate_unit(ambr_dl_unit);
@@ -847,7 +848,7 @@ void smf_context::get_session_ambr(
             "Could not set AMBR downlink value, use default 1 MBPS");
       }
 
-      if (oai::utils::conversions::parse_bitrate_string(
+      if (parse_bitrate_string(
               sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
         session_ambr.uint_for_session_ambr_for_uplink =
             nas_ambr_from_bitrate_unit(ambr_ul_unit);
@@ -865,19 +866,19 @@ void smf_context::get_session_ambr(
 }
 
 uint8_t smf_context::nas_ambr_from_bitrate_unit(
-    const oai::utils::conversions::bitrate_unit_e& bitrate_unit) {
+    const bitrate_unit_e& bitrate_unit) {
   switch (bitrate_unit) {
-    case oai::utils::conversions::bitrate_unit_e::KBPS:
+    case bitrate_unit_e::KBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-    case oai::utils::conversions::bitrate_unit_e::MBPS:
+    case bitrate_unit_e::MBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    case oai::utils::conversions::bitrate_unit_e::GBPS:
+    case bitrate_unit_e::GBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case oai::utils::conversions::bitrate_unit_e::TBPS:
+    case bitrate_unit_e::TBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-    case oai::utils::conversions::bitrate_unit_e::PBPS:
+    case bitrate_unit_e::PBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case oai::utils::conversions::bitrate_unit_e::_256PBPS:
+    case bitrate_unit_e::_256PBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS;
   }
   Logger::smf_app().error("Unknown bitrate value, use default MBPS");

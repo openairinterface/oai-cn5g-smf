@@ -30,10 +30,12 @@
 #include "session_handler.hpp"
 #include "FlowDirection.h"
 #include "conversions.hpp"
+#include "conversions.h"
 
 using namespace smf;
 using namespace oai::model::pcf;
 using namespace oai::utils;
+using namespace oai::utils::sdf_conversions;
 
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {

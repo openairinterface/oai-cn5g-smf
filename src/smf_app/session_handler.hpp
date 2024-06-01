@@ -33,6 +33,7 @@
 #include <smf_pfcp_association.hpp>
 #include <QOSFlowDescriptions.h>
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
+#include "sdf_conversions.hpp"
 
 #pragma once
 
@@ -222,10 +223,10 @@ class session_handler {
 
   void set_port_filter(
       int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::conversions::port_range& port_range);
+      const oai::utils::sdf_conversions::port_range& port_range);
   void set_ip_filter(
       int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::conversions::ip_range& port_range);
+      const oai::utils::sdf_conversions::ip_range& port_range);
   void set_protocol_filter(
       int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
       uint8_t protocol_id);
@@ -233,7 +234,7 @@ class session_handler {
   QOSRulesIE qos_rule_from_edge(const std::shared_ptr<qos_upf_edge>& edge);
 
   static uint8_t nas_unit_from_bitrate_unit(
-      const oai::utils::conversions::bitrate_unit_e& bitrate_unit);
+      const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
 
   static void set_nas_bitrate(
       uint8_t type, const std::string& bitrate_string,
