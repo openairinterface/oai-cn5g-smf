@@ -270,6 +270,7 @@ void xgpp_conv::sm_context_create_from_openapi(
       context_data.getServingNetwork().getMnc().c_str());
   plmn_t p = {};
   plmn_from_model(context_data.getServingNetwork(), p);
+  pcr.set_plmn(p);
 
   // anType (AccessType)
   Logger::smf_app().debug("AN Type %s", context_data.getAnType().c_str());
