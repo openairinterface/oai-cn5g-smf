@@ -852,9 +852,8 @@ bool smf_sbi::get_sm_data(
     plmn_t plmn) {
   nlohmann::json jsonData = {};
   std::string query_str   = {};
-  std::string mcc         = {};
-  std::string mnc         = {};
-  conv::plmnToMccMnc(plmn, mcc, mnc);
+  std::string mcc         = plmn.mcc;
+  std::string mnc         = plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
               ",\"sd\":\"" + std::to_string(snssai.sd) + "\"}&dnn=" + dnn +
@@ -1006,36 +1005,22 @@ bool smf_sbi::get_sm_data(
           if (it.value().find("staticIpAddress") != it.value().end()) {
             for (const auto& ip_addr : it.value()["staticIpAddress"]) {
               if (ip_addr.find("ipv4Addr") != ip_addr.end()) {
-                struct in_addr ue_ipv4_addr = {};
                 std::string ue_ip_str = ip_addr["ipv4Addr"].get<std::string>();
-                // ip_addr.at("ipv4Addr").get_to(ue_ip_str);
-                IPV4_STR_ADDR_TO_INADDR(
-                    util::trim(ue_ip_str).c_str(), ue_ipv4_addr,
-                    "BAD IPv4 ADDRESS FORMAT FOR UE IP ADDR !");
+                in_addr ue_ipv4_addr =
+                    oai::utils::conv::fromString(oai::utils::trim(ue_ip_str));
                 ip_address_t ue_ip = {};
                 ue_ip              = ue_ipv4_addr;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               } else if (ip_addr.find("ipv6Addr") != ip_addr.end()) {
-                unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-                struct in6_addr ue_ipv6_addr;
                 std::string ue_ip_str = ip_addr["ipv6Addr"].get<std::string>();
-
-                if (inet_pton(
-                        AF_INET6, util::trim(ue_ip_str).c_str(),
-                        buf_in6_addr) == 1) {
-                  memcpy(&ue_ipv6_addr, buf_in6_addr, sizeof(struct in6_addr));
-                } else {
-                  Logger::smf_app().error(
-                      "Bad UE IPv6 Addr %s", ue_ip_str.c_str());
-                  ue_ipv6_addr = in6addr_any;
-                }
+                in6_addr ue_ipv6_addr =
+                    oai::utils::conv::fromStringV6(oai::utils::trim(ue_ip_str));
 
                 ip_address_t ue_ip = {};
                 ue_ip              = ue_ipv6_addr;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               } else if (ip_addr.find("ipv6Prefix") != ip_addr.end()) {
-                unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-                struct in6_addr ipv6_prefix;
+                in6_addr ipv6_prefix;
                 std::string prefix_str =
                     ip_addr["ipv6Prefix"].get<std::string>();
                 std::vector<std::string> words = {};
@@ -1047,22 +1032,15 @@ bool smf_sbi::get_sm_data(
                       "Bad value for UE IPv6 Prefix %s", prefix_str.c_str());
                   return RETURNerror;
                 }
-
-                if (inet_pton(
-                        AF_INET6, util::trim(words.at(0)).c_str(),
-                        buf_in6_addr) == 1) {
-                  memcpy(&ipv6_prefix, buf_in6_addr, sizeof(struct in6_addr));
-                } else {
-                  Logger::smf_app().error(
-                      "Bad UE IPv6 Addr %s", words.at(0).c_str());
-                  ipv6_prefix = in6addr_any;
-                }
+                ipv6_prefix = oai::utils::conv::fromStringV6(
+                    oai::utils::trim(words.at(0)));
 
                 ip_address_t ue_ip           = {};
                 ipv6_prefix_t ue_ipv6_prefix = {};
-                ue_ipv6_prefix.prefix_len = std::stoi(util::trim(words.at(1)));
-                ue_ipv6_prefix.prefix     = ipv6_prefix;
-                ue_ip                     = ue_ipv6_prefix;
+                ue_ipv6_prefix.prefix_len =
+                    std::stoi(oai::utils::trim(words.at(1)));
+                ue_ipv6_prefix.prefix = ipv6_prefix;
+                ue_ip                 = ue_ipv6_prefix;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               }
             }

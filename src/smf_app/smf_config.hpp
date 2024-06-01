@@ -93,7 +93,7 @@ typedef struct interface_cfg_s {
 
     if (boost::iequals(addr4_str, "read")) {
       struct in_addr net_mask_addr4 {};
-      if (get_inet_addr_infos_from_iface(
+      if (utils::get_inet_addr_infos_from_iface(
               this->if_name, this->addr4, net_mask_addr4, this->mtu)) {
         Logger::smf_app().error(
             "Could not read %s network interface configuration", this->if_name);
@@ -101,7 +101,7 @@ typedef struct interface_cfg_s {
       }
     } else {
       IPV4_STR_ADDR_TO_INADDR(
-          util::trim(addr4_str).c_str(), this->addr4,
+          utils::trim(addr4_str).c_str(), this->addr4,
           "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
       // TODO: addr6
       this->mtu  = json_data["mtu"].get<int>();
@@ -146,13 +146,13 @@ typedef struct dnn_s {
     std::string ue_pool_range_low_str = {};
     ue_pool_range_low_str = json_data["ue_pool_range_low"].get<std::string>();
     IPV4_STR_ADDR_TO_INADDR(
-        util::trim(ue_pool_range_low_str).c_str(), this->ue_pool_range_low,
+        utils::trim(ue_pool_range_low_str).c_str(), this->ue_pool_range_low,
         "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
 
     std::string ue_pool_range_high_str = {};
     ue_pool_range_high_str = json_data["ue_pool_range_high"].get<std::string>();
     IPV4_STR_ADDR_TO_INADDR(
-        util::trim(ue_pool_range_high_str).c_str(), this->ue_pool_range_high,
+        utils::trim(ue_pool_range_high_str).c_str(), this->ue_pool_range_high,
         "BAD IPv4 ADDRESS FORMAT FOR INTERFACE !");
 
     // TODO: pool_id_iv6

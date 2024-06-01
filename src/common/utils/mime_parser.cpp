@@ -87,7 +87,7 @@ unsigned char* mime_parser::format_string_as_hex(const std::string& str) {
   memcpy((void*) data, (void*) str.c_str(), str_len);
 
   unsigned char* data_hex = (uint8_t*) malloc(str_len / 2 + 1);
-  conv::ascii_to_hex(data_hex, (const char*) data);
+  oai::utils::conv::ascii_to_hex(data_hex, (const char*) data);
 
   Logger::smf_app().debug("Input string (%d bytes): %s ", str_len, str.c_str());
   Logger::smf_app().debug("Data (formatted):");

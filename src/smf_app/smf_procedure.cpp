@@ -61,7 +61,7 @@ extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 std::string smf_session_procedure::to_string_fteid(const pfcp::fteid_t& fteid) {
   return fmt::format(
       "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
-      conv::toString(fteid.ipv4_address));
+      oai::utils::conv::toString(fteid.ipv4_address));
 }
 
 pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
@@ -105,14 +105,16 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
           cfg.get_host());
       local_fteid.ipv4_address = cfg.get_node_id().u1.ipv4_address;
     } else {
-      local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
+      local_fteid.ipv4_address =
+          oai::utils::conv::fromString(cfg.get_local_n3_ip());
     }
     // TODO upon session release, we have to free this F-TEID again
     local_fteid.teid = smf_app_inst->generate_teid();
     fteid            = local_fteid;
     Logger::smf_app().info(
         "    UL F-TEID 0x%" PRIx32 " allocated for N3 IPv4 Addr : %s",
-        local_fteid.teid, conv::toString(local_fteid.ipv4_address).c_str());
+        local_fteid.teid,
+        oai::utils::conv::toString(local_fteid.ipv4_address).c_str());
   } else if (fteid.is_zero()) {
     local_fteid.ch   = 1;
     local_fteid.v4   = 1;
@@ -1028,6 +1030,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
+  pfcp::up_function_features_s up_features =
+      current_upf->function_features.second;
+
   // TODO
   /*
   if (upf_cfg.enable_dl_pdr_in_session_establishment() &&
@@ -1081,7 +1086,13 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   auto all_qfis = sps->get_session_handler()->get_all_qfis();
-  check_if_all_qfis_are_handled(all_qfis, used_qfis);
+  if (up_features.ftup) {
+    check_if_all_qfis_are_handled(all_qfis, used_qfis);
+  } else {
+    // If UPF does not support TEID Creation then set all qfis to be updated in
+    // session handler
+    sps->get_session_handler()->set_qfis_to_be_updated(all_qfis);
+  }
 
   for (const auto& flow :
        sps->get_session_handler()->get_qos_flows_context_updated()) {

@@ -199,7 +199,7 @@ bool pfcp_associations::resolve_upf_hostname(pfcp::node_id_t& node_id) {
     }
     switch (addr_type) {
       case 0:
-        node_id.u1.ipv4_address = conv::fromString(ip_addr);
+        node_id.u1.ipv4_address = oai::utils::conv::fromString(ip_addr);
         return true;
       case 1:
         // TODO
@@ -558,10 +558,10 @@ oai::config::smf::upf pfcp_associations::get_upf_config(
       host = node_id.fqdn;
       break;
     case pfcp::NODE_ID_TYPE_IPV4_ADDRESS:
-      host = conv::toString(node_id.u1.ipv4_address);
+      host = oai::utils::conv::toString(node_id.u1.ipv4_address);
       break;
     case pfcp::NODE_ID_TYPE_IPV6_ADDRESS:
-      host = conv::toString(node_id.u1.ipv6_address);
+      host = oai::utils::conv::toString(node_id.u1.ipv6_address);
       break;
     default:
       Logger::smf_app().error(

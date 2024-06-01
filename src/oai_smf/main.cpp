@@ -63,16 +63,15 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
-  std::cout << "Caught signal " << s << std::endl;
-  Logger::system().startup("exiting");
+  Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
   smf_app_inst->trigger_nf_deregistration();
   itti_inst->send_terminate_msg(TASK_SMF_APP);
   itti_inst->wait_tasks_end();
-  std::cout << "Freeing Allocated memory..." << std::endl;
+  Logger::system().debug("Freeing Allocated memory...");
   if (async_shell_cmd_inst) delete async_shell_cmd_inst;
   async_shell_cmd_inst = nullptr;
-  std::cout << "Async Shell CMD memory done." << std::endl;
+  Logger::system().debug("Async Shell CMD memory done.");
   if (smf_api_server_1) {
     smf_api_server_1->shutdown();
     delete smf_api_server_1;
@@ -83,14 +82,16 @@ void my_app_signal_handler(int s) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
   }
-  std::cout << "SMF API Server memory done." << std::endl;
-  if (itti_inst) delete itti_inst;
-  itti_inst = nullptr;
-  std::cout << "ITTI memory done." << std::endl;
+  Logger::system().debug("SMF API Server memory done.");
   if (smf_app_inst) delete smf_app_inst;
   smf_app_inst = nullptr;
-  std::cout << "SMF APP memory done." << std::endl;
-  std::cout << "Freeing Allocated memory done" << std::endl;
+  Logger::system().debug("SMF APP memory done.");
+  // itti_inst is used in a lot of code without any nullPtr check
+  // it has to be deallocated last
+  if (itti_inst) delete itti_inst;
+  itti_inst = nullptr;
+  Logger::system().debug("ITTI memory done.");
+  Logger::system().info("Freeing Allocated memory done.");
   exit(0);
 }
 //------------------------------------------------------------------------------
@@ -136,8 +137,9 @@ int main(int argc, char** argv) {
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
-  string pid_file_name = get_exe_absolute_path("/var/run", smf_cfg->instance);
-  if (!is_pid_file_lock_success(pid_file_name.c_str())) {
+  string pid_file_name =
+      oai::utils::get_exe_absolute_path("/var/run", smf_cfg->instance);
+  if (!oai::utils::is_pid_file_lock_success(pid_file_name.c_str())) {
     Logger::smf_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
     exit(-EDEADLK);
   }
@@ -161,7 +163,7 @@ int main(int argc, char** argv) {
   } else if (smf_cfg->get_http_version() == 2) {
     // SMF NGHTTP API server (HTTP2)
     smf_api_server_2 = new smf_http2_server(
-        conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
+        oai::utils::conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
         smf_app_inst);
     // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);

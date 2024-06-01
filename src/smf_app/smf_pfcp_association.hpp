@@ -248,7 +248,7 @@ class upf_graph {
 
   void release_qfi(uint8_t qfi);
 
-  util::uint_generator<uint8_t> qfi_generator;
+  oai::utils::uint_generator<uint8_t> qfi_generator;
 
  public:
   upf_graph() : adjacency_list(), visited_asynch(){};

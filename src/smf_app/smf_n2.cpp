@@ -20,12 +20,12 @@
  */
 
 /*! \file smf_n2.cpp
-\brief
-\author  Tien-Thinh NGUYEN, Keliang DU
-\company Eurecom
-\date 2019
-\email:  tien-thinh.nguyen@eurecom.fr
-*/
+ \brief
+ \author  Tien-Thinh NGUYEN, Keliang DU
+ \company Eurecom
+ \date 2019
+ \email:  tien-thinh.nguyen@eurecom.fr
+ */
 
 #include "smf_n2.hpp"
 
@@ -38,6 +38,7 @@
 #include "PreemptionCapability_anyOf.h"
 #include "PreemptionVulnerability_anyOf.h"
 #include "Helpers.h"
+#include "conversions.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -90,7 +91,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         "UL F-TEID, TEID "
         "0x%" PRIx32 ", IP Address %s",
         qos_flow.ul_fteid.teid,
-        conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
+        oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, 5QI: %d, Priority level %d, ARP priority "
         "level %d",
@@ -338,7 +339,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         "UL F-TEID, TEID "
         "0x%" PRIx32 ", IP Address %s",
         qos_flow.ul_fteid.teid,
-        conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
+        oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
         qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
@@ -580,12 +581,12 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
         "QoS Flow, UL F-TEID ID "
         "0x%" PRIx32 ", IP Address %s ",
         qos_flow.ul_fteid.teid,
-        conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
+        oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().debug(
         "QoS Flow, DL F-TEID ID"
         "0x%" PRIx32 ", IP Address %s",
         qos_flow.dl_fteid.teid,
-        conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
+        oai::utils::conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
   }
 
   Ngap_PDUSessionResourceModifyRequestTransfer_t* ngap_IEs = nullptr;

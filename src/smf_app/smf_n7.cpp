@@ -96,7 +96,7 @@ sm_policy_status_code smf_n7::create_sm_policy_association(
   if (res == sm_policy_status_code::CREATED) {
     if (association.id == 0) {
       association.id =
-          util::uint_uid_generator<uint64_t>::get_instance().get_uid();
+          oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
     }
     association.pcf_id = pcf_id;
 

@@ -60,6 +60,7 @@
 #include "PlmnId.h"
 #include "Snssai.h"
 #include "PduSessionType.h"
+#include "conversions.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -82,6 +83,8 @@ extern "C" {
 }
 
 using namespace smf;
+using namespace oai::utils;
+using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
@@ -833,9 +836,9 @@ void smf_context::get_session_ambr(
           (sdc->session_ambr).downlink.c_str(),
           (sdc->session_ambr).uplink.c_str());
 
-      oai::utils::conversions::bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
+      bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
       uint16_t ambr_dl_value, ambr_ul_value;
-      if (oai::utils::conversions::parse_bitrate_string(
+      if (parse_bitrate_string(
               sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
         session_ambr.uint_for_session_ambr_for_downlink =
             nas_ambr_from_bitrate_unit(ambr_dl_unit);
@@ -845,7 +848,7 @@ void smf_context::get_session_ambr(
             "Could not set AMBR downlink value, use default 1 MBPS");
       }
 
-      if (oai::utils::conversions::parse_bitrate_string(
+      if (parse_bitrate_string(
               sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
         session_ambr.uint_for_session_ambr_for_uplink =
             nas_ambr_from_bitrate_unit(ambr_ul_unit);
@@ -863,19 +866,19 @@ void smf_context::get_session_ambr(
 }
 
 uint8_t smf_context::nas_ambr_from_bitrate_unit(
-    const oai::utils::conversions::bitrate_unit_e& bitrate_unit) {
+    const bitrate_unit_e& bitrate_unit) {
   switch (bitrate_unit) {
-    case oai::utils::conversions::bitrate_unit_e::KBPS:
+    case bitrate_unit_e::KBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-    case oai::utils::conversions::bitrate_unit_e::MBPS:
+    case bitrate_unit_e::MBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    case oai::utils::conversions::bitrate_unit_e::GBPS:
+    case bitrate_unit_e::GBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case oai::utils::conversions::bitrate_unit_e::TBPS:
+    case bitrate_unit_e::TBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-    case oai::utils::conversions::bitrate_unit_e::PBPS:
+    case bitrate_unit_e::PBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case oai::utils::conversions::bitrate_unit_e::_256PBPS:
+    case bitrate_unit_e::_256PBPS:
       return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS;
   }
   Logger::smf_app().error("Unknown bitrate value, use default MBPS");
@@ -1228,7 +1231,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       addr = full_addr;
     }
     struct in_addr amf_ipv4_addr;
-    if (inet_pton(AF_INET, util::trim(addr).c_str(), &amf_ipv4_addr) == 0) {
+    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
       amf_addr_str = "http://" + full_addr;
@@ -3226,24 +3229,25 @@ bool smf_context::handle_ho_execution(
       session_management_procedures_type_e::N2_HO_EXECUTION_PHASE;
 
   // Ngap_SecondaryRATDataUsageReportTransfer
-  std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
-      std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
-  int decode_status = smf_n2::get_instance().decode_n2_sm_information(
-      decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
-    // error, send error to AMF
-    Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_SecondaryRATDataUsageReportTransfer) "
-        "failed!");
-    // trigger to send reply to AMF
-    smf_app_inst->trigger_update_context_error_response(
-        http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
-        PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR,
-        sm_context_request.get()->pid);
-    return false;
+  if (sm_context_request->req.n2_sm_info_is_set()) {
+    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
+        std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
+    int decode_status = smf_n2::get_instance().decode_n2_sm_information(
+        decoded_msg, n2_sm_information);
+    if (decode_status == RETURNerror) {
+      // error, send error to AMF
+      Logger::smf_app().warn(
+          "Decode N2 SM (Ngap_SecondaryRATDataUsageReportTransfer) "
+          "failed!");
+      // trigger to send reply to AMF
+      smf_app_inst->trigger_update_context_error_response(
+          http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN,
+          PDU_SESSION_APPLICATION_ERROR_N2_SM_ERROR,
+          sm_context_request.get()->pid);
+      return false;
+    }
+    // TODO: process Ngap_SecondaryRATDataUsageReportTransfer
   }
-  // TODO: process Ngap_SecondaryRATDataUsageReportTransfer
-
   // Fill the content of SmContextUpdatedData
   nlohmann::json json_data = {};
   json_data["hoState"]     = "COMPLETED";
@@ -3943,13 +3947,10 @@ void smf_context::handle_flexcn_event(
       // custom json e.g., for FlexCN
       nlohmann::json cj = {};
       // PLMN
-      plmn_t plmn     = {};
-      std::string mcc = {};
-      std::string mnc = {};
-      sc->get_plmn(plmn);
-      conv::plmnToMccMnc(plmn, mcc, mnc);
-      cj["plmn"]["mcc"] = mcc;
-      cj["plmn"]["mnc"] = mnc;
+      plmn_t _plmn = {};
+      sc->get_plmn(_plmn);
+      cj["plmn"]["mcc"] = _plmn.mcc;
+      cj["plmn"]["mnc"] = _plmn.mnc;
       // UE IPv4
       if (sp->ipv4) {
         cj["ue_ipv4_addr"] = conv::toString(sp->ipv4_address);
@@ -4145,13 +4146,11 @@ void smf_context::handle_plmn_change(
       ev_notif.set_timestamp(std::to_string(tv_ntp));
 
       // PLMN
-      plmn_t plmn = {};
-      std::string mcc, mnc;
-      sc->get_plmn(plmn);
-      conv::plmnToMccMnc(plmn, mcc, mnc);
+      plmn_t _plmn = {};
+      sc->get_plmn(_plmn);
       oai::model::common::PlmnId plmnid;
-      plmnid.setMcc(mcc);
-      plmnid.setMnc(mnc);
+      plmnid.setMcc(_plmn.mcc);
+      plmnid.setMnc(_plmn.mnc);
       ev_notif.set_PlmnId(plmnid);
       itti_msg->event_notifs.push_back(ev_notif);
     }

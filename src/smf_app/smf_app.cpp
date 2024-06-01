@@ -75,6 +75,7 @@ using namespace smf;
 using namespace oai::config::smf;
 using namespace oai::model::nrf;
 using namespace oai::smf_server::model;
+using namespace oai::utils;
 
 #define PFCP_ASSOC_RETRY_COUNT 10
 #define PFCP_ASSOC_RESP_WAIT 2
@@ -958,7 +959,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Step 3. check if the DNN requested is valid
   std::string nd_dnn = {};
-  util::dotted_to_string(dnn, nd_dnn);
+  dotted_to_string(dnn, nd_dnn);
   dnn = nd_dnn;
   // Update DNN
   smreq->req.set_dnn(dnn);

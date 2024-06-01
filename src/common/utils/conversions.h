@@ -103,6 +103,13 @@
     (buf)[3] = (x);                                                            \
   } while (0)
 
+#define INT64_TO_BUFFER(x, buf)                                                \
+  do {                                                                         \
+    (buf)[0] = (x) >> 56, (buf)[1] = (x) >> 48, (buf)[2] = (x) >> 40;          \
+    (buf)[3] = (x) >> 32, (buf)[4] = (x) >> 24, (buf)[5] = (x) >> 16;          \
+    (buf)[6] = (x) >> 8, (buf)[7] = (x);                                       \
+  } while (0)
+
 /* Convert an array of char containing vALUE to x */
 #define BUFFER_TO_INT32(buf, x)                                                \
   do {                                                                         \

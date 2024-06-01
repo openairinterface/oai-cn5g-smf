@@ -49,6 +49,7 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 
 file(GLOB SMF_API_SERVER_src_files
     ${SMF_API_SERVER_DIR}/smf-http2-server.cpp
