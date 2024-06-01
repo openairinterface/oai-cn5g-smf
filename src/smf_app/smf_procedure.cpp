@@ -52,7 +52,7 @@ using namespace smf;
 using namespace std;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
-using namespace oai::utils::conversions;
+using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;

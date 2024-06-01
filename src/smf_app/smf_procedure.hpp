@@ -61,7 +61,7 @@ class smf_procedure {
  public:
   static uint32_t generate_correlation_id() {
     return static_cast<uint32_t>(
-        util::uint_uid_generator<uint64_t>::get_instance().get_uid());
+        oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid());
   }
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
