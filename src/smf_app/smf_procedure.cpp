@@ -405,9 +405,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
 
-  if (!edge->flow_information.getFlowDescription().empty()) {
-    sdf_filter.fd               = 1;
-    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
     pdi.set(sdf_filter);
   }
 
@@ -512,6 +510,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   pfcp::update_pdr update_pdr                       = {};
   pfcp::precedence_t precedence                     = {};
   pfcp::pdi pdi                                     = {};
+  pfcp::sdf_filter_t sdf_filter                     = {};
   pfcp::source_interface_t source_interface         = {};
   pfcp::outer_header_removal_t outer_header_removal = {};
 
@@ -529,6 +528,10 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   }
 
   pdi.set(source_interface);
+
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
+    pdi.set(sdf_filter);
+  }
 
   if (cfg.enable_usage_reporting()) {
     pfcp::urr_id_t urr_id = edge->urr_id;
@@ -772,6 +775,30 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
 
   // set the values to be updated in session handler
   sps->get_session_handler()->set_qfis_to_be_updated(handled_qfis);
+}
+
+bool smf_session_procedure::pfcp_sdf_filter(
+    const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter) {
+  // UL and DL edge is reversed, as it is from UPF point of view
+  bool add_sdf_filter = false;
+  if (session_handler::is_uplink_flow_direction(edge->flow_information) &&
+      !edge->uplink) {
+    add_sdf_filter = true;
+  }
+  if (session_handler::is_downlink_flow_direction(edge->flow_information) &&
+      edge->uplink) {
+    add_sdf_filter = true;
+  }
+
+  if (add_sdf_filter) {
+    sdf_filter.fd               = 1;
+    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+    sdf_filter.length_of_flow_description =
+        sdf_filter.flow_description.length();
+    return true;
+  }
+
+  return false;
 }
 
 //------------------------------------------------------------------------------

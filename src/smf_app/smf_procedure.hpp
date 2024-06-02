@@ -137,6 +137,10 @@ class smf_session_procedure : public smf_procedure {
   static bool pfcp_mbr(
       const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& pcp_mbr);
 
+  static bool pfcp_sdf_filter(
+      const std::shared_ptr<qos_upf_edge>& edge,
+      pfcp::sdf_filter_t& sdf_filter);
+
  protected:
   /**
    * Helper function to get current UPF from graph in a safe way

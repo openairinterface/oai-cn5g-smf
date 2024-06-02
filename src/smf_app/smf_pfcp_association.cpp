@@ -1007,6 +1007,9 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   upf_selection_criteria previous_verify_criteria;
   for (const auto& rule : pcc_rules) {
     upf_selection_criteria selection_criteria = base_criteria;
+    // when we have PCC rules we set default QoS false, so we can handle all the
+    // values from the rules directly
+    selection_criteria.default_qos = false;
     upf_selection_criteria verify_criteria;
     verify_criteria.dnais = previous_verify_criteria.dnais;
 

@@ -196,6 +196,11 @@ class session_handler {
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
+  static bool is_uplink_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
+  static bool is_downlink_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
+
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
@@ -259,6 +264,9 @@ class session_handler {
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
 
   static map<uint8_t, uint64_t> bpsMap;
+
+  static bool is_flow_direction(
+      bool uplink, const oai::model::pcf::FlowInformation& flow_direction);
 };
 
 }  // namespace smf

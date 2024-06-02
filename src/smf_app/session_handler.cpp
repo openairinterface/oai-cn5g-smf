@@ -118,27 +118,24 @@ void session_handler::set_nas_filter_from_edge(
   auto flow                      = edge->flow_information;
   qos_rule.numberofpacketfilters = 0;
 
-  if (!flow.flowDescriptionIsSet() || !flow.isPacketFilterUsage()) {
+  if (!flow.flowDescriptionIsSet() || flow.getFlowDescription().empty()) {
+    Logger::smf_app().warn(
+        "Flow description is empty for rule: %ud. Not signaled towards UE",
+        qos_rule.qosruleidentifer);
     return;
   }
-  bool ue_rule;
 
-  switch (flow.getFlowDirection().getEnumValue()) {
-    case FlowDirection_anyOf::eFlowDirection_anyOf::
-        INVALID_VALUE_OPENAPI_GENERATED:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::UNSPECIFIED:
-      ue_rule = false;
-      break;
-    case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
-      ue_rule = true;
-      break;
+  if (!is_uplink_flow_direction(flow)) {
+    Logger::smf_app().debug(
+        "Flow %s is not signaled to UE as it is not uplink",
+        flow.getFlowDescription());
+    return;
   }
-  if (flow.getFlowDescription().empty() || !ue_rule) {
-    Logger::smf_app().warn(
-        "Flow description is empty for rule: %s", flow.getFlowDescription());
+
+  if (!flow.isPacketFilterUsage()) {
+    Logger::smf_app().debug(
+        "Flow %s is not signaled to UE as packetFilterUsage is disabled",
+        flow.getFlowDescription());
     return;
   }
 
@@ -589,8 +586,21 @@ std::vector<nlohmann::json> session_handler::create_qos_flows_json() {
 std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
   auto n3_edges = m_session_graph->get_access_edges();
 
+  std::vector<std::shared_ptr<qos_upf_edge>> qfi_edges;
   for (const auto& edge : n3_edges) {
     if (qfi == edge->qfi.qfi) {
+      qfi_edges.push_back(edge);
+    }
+  }
+
+  if (qfi_edges.size() == 1) {
+    return qfi_edges[0];
+  }
+
+  // if we have more than one edge for the same QFI, we use the default QoS
+  // (e.g. in a UL CL scenario)
+  for (const auto& edge : qfi_edges) {
+    if (edge->default_qos) {
       return edge;
     }
   }
@@ -739,4 +749,62 @@ uint64_t session_handler::parse_nas_value_unit_to_bps(
   }
 
   return bit_rate_value;
+}
+
+bool session_handler::is_uplink_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(true, flow_info);
+}
+
+bool session_handler::is_downlink_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(false, flow_info);
+}
+
+bool session_handler::is_flow_direction(
+    bool uplink, const FlowInformation& flow_info) {
+  if (!flow_info.flowDescriptionIsSet() ||
+      flow_info.getFlowDescription().empty()) {
+    return false;
+  }
+  FlowDirection_anyOf::eFlowDirection_anyOf flow_direction;
+  if (!flow_info.flowDirectionIsSet()) {
+    Logger::smf_app().info(
+        "Flow Direction of flow %s is not set, assume it is BIDIRECTIONAL",
+        flow_info.getFlowDescription());
+    flow_direction = FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL;
+  } else {
+    flow_direction = flow_info.getFlowDirection().getEnumValue();
+  }
+
+  switch (flow_direction) {
+    case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
+      return !uplink;
+    case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
+      return uplink;
+      // all from here are automatically true, either bidirectional or handled
+      // like bidirectional
+      // * Design Decision: to have null values as true so that
+      // the filter is set, otherwise this could lead to issues
+    case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
+      return true;
+    case FlowDirection_anyOf::eFlowDirection_anyOf::UNSPECIFIED:
+      /*
+       * 3GPP TS 29.512
+       * The corresponding filter applies for traffic to the UE (downlink), but
+       * has no specific direction declared. The service data flow detection
+       * shall apply the filter for uplink traffic as if the filter was
+       * bidirectional.
+       */
+    case FlowDirection_anyOf::eFlowDirection_anyOf::
+        INVALID_VALUE_OPENAPI_GENERATED:
+    case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
+      Logger::smf_app().info(
+          "Flow Direction of flow %s is UNSPECIFIED or NULL, assume it is "
+          "BIDIRECTIONAL",
+          flow_info.getFlowDescription());
+      return true;
+  }
+
+  return false;
 }
