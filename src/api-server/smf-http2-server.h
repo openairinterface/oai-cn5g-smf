@@ -81,6 +81,7 @@ class smf_http2_server {
   uint32_t m_port;
   http2 server;
   smf::smf_app* m_smf_app;
+  bool running_server;
 
  protected:
 };
