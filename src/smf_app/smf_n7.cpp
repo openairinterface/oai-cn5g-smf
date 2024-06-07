@@ -41,6 +41,7 @@ using namespace smf;
 using namespace smf::n7;
 using namespace oai::model::pcf;
 using namespace oai::model::common;
+using namespace oai::common::sbi;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern smf_sbi* smf_sbi_inst;
@@ -194,13 +195,13 @@ bool smf_pcf_client::discover_pcf_from_config_file(
   return true;
 }
 
-http_status_code_e smf_pcf_client::send_request(
+uint16_t smf_pcf_client::send_request(
     const std::string& uri, const std::string& body, const std::string& method,
     std::string& response_body, std::string& response_headers,
     bool use_response_headers) {
   if (uri.empty()) {
     Logger::smf_n7().warn("PCF URI is not set");
-    return http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR;
+    return http_status_code::INTERNAL_SERVER_ERROR;
   }
 
   // generate a promise for the curl handle
@@ -228,14 +229,14 @@ http_status_code_e smf_pcf_client::send_request(
     Logger::smf_n7().warn(
         "Could not create a new handle to send message to PCF");
     smf_sbi_inst->remove_promise(promise_id);
-    return http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR;
+    return http_status_code::INTERNAL_SERVER_ERROR;
   }
 
   uint32_t response_code = smf_sbi_inst->get_available_response(f);
 
   Logger::smf_n7().debug("Got result for promise ID %d", promise_id);
   Logger::smf_n7().debug("Response data %s", response_body.c_str());
-  return http_status_code_e(response_code);
+  return response_code;
 }
 
 sm_policy_status_code smf_pcf_client::create_policy_association(
@@ -248,11 +249,11 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   std::string response_data;
   std::string response_headers;
 
-  http_status_code_e response_code = send_request(
+  uint16_t response_code = send_request(
       root_uri, json_data.dump(), "POST", response_data, response_headers,
       true);
 
-  if (response_code == http_status_code_e::HTTP_STATUS_CODE_201_CREATED) {
+  if (response_code == http_status_code::CREATED) {
     std::regex rgx("[L|l]ocation: *(.*)");
     std::smatch match;
 
@@ -279,11 +280,11 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   std::string info;
   sm_policy_status_code response;
   switch (response_code) {
-    case http_status_code_e::HTTP_STATUS_CODE_403_FORBIDDEN:
+    case http_status_code::FORBIDDEN:
       info     = "SM Policy Association Creation Forbidden";
       response = sm_policy_status_code::CONTEXT_DENIED;
       break;
-    case http_status_code_e::HTTP_STATUS_CODE_400_BAD_REQUEST:
+    case http_status_code::BAD_REQUEST:
       if (problem_details.getCause() == "USER_UNKNOWN") {
         response = sm_policy_status_code::USER_UNKOWN;
         info     = "SM Policy Association Creation: Unknown User";
@@ -292,7 +293,7 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
         info     = "SM Policy Association Creation: Bad Request";
       }
       break;
-    case http_status_code_e::HTTP_STATUS_CODE_500_INTERNAL_SERVER_ERROR:
+    case http_status_code::INTERNAL_SERVER_ERROR:
       response = sm_policy_status_code::INTERNAL_ERROR;
       info     = "SM Policy Association Creation: Internal Error";
       break;
@@ -318,14 +319,14 @@ sm_policy_status_code smf_pcf_client::remove_policy_association(
   to_json(json_data, delete_data);
   std::string resp;
 
-  http_status_code_e response_code =
+  uint16_t response_code =
       send_request(uri, json_data.dump(), "POST", resp, resp, false);
 
   switch (response_code) {
-    case http_status_code_e::HTTP_STATUS_CODE_204_NO_CONTENT:
+    case http_status_code::NO_CONTENT:
       Logger::smf_n7().info("Successfully removed PCF Policy Association");
       return sm_policy_status_code::OK;
-    case http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND:
+    case http_status_code::NOT_FOUND:
       Logger::smf_n7().info(
           "Could not remove PCF Policy Association. Wrong PCF Location");
       return sm_policy_status_code::NOT_FOUND;
@@ -343,7 +344,7 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
   std::string resp;
   nlohmann::json json_data;
   to_json(json_data, update_data);
-  http_status_code_e response_code =
+  uint16_t response_code =
       send_request(uri, json_data.dump(), "POST", resp, resp, false);
 
   nlohmann::json json_resp;
@@ -353,12 +354,12 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
   // not standard-compliant
 
   switch (response_code) {
-    case http_status_code_e::HTTP_STATUS_CODE_200_OK:
+    case http_status_code::OK:
       json_resp = nlohmann::json::parse(resp);
       from_json(json_resp, association.decision);
       Logger::smf_n7().info("Successfully updated PCF association");
       return sm_policy_status_code::OK;
-    case http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND:
+    case http_status_code::NOT_FOUND:
       Logger::smf_n7().info(
           "Could not update PCF Policy Association. Wrong PCF Location");
       return sm_policy_status_code::NOT_FOUND;
@@ -374,12 +375,11 @@ sm_policy_status_code smf_pcf_client::get_policy_association(
   std::string uri = association.pcf_location;
   std::string resp;
   std::string empty;
-  http_status_code_e response_code =
-      send_request(uri, empty, "GET", resp, resp, false);
-  nlohmann::json j = nlohmann::json::parse(resp);
+  uint16_t response_code = send_request(uri, empty, "GET", resp, resp, false);
+  nlohmann::json j       = nlohmann::json::parse(resp);
   SmPolicyControl control;
   switch (response_code) {
-    case http_status_code_e::HTTP_STATUS_CODE_200_OK:
+    case http_status_code::OK:
 
       from_json(j, control);
       association.decision = control.getPolicy();
@@ -387,7 +387,7 @@ sm_policy_status_code smf_pcf_client::get_policy_association(
 
       Logger::smf_n7().info("Successfully retrieved PCF Policy Association");
       return sm_policy_status_code::OK;
-    case http_status_code_e::HTTP_STATUS_CODE_404_NOT_FOUND:
+    case http_status_code::NOT_FOUND:
       Logger::smf_n7().info(
           "Could not retrieve PCF Policy Association. Wrong PCF Location");
       return sm_policy_status_code::NOT_FOUND;

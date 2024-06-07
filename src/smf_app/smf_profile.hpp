@@ -41,6 +41,7 @@
 
 #include "logger.hpp"
 #include "smf.h"
+#include "3gpp_29.510.h"
 
 namespace smf {
 
@@ -369,21 +370,21 @@ class smf_profile : public nf_profile {
    * @param [std::vector<nf_service_t> &] n: nf_service
    * @return void
    */
-  void set_nf_services(const std::vector<nf_service_t>& n);
+  void set_nf_services(const std::vector<oai::common::sbi::nf_service_t>& n);
 
   /*
    * Add nf service
    * @param [snssai_t &] n: nf service
    * @return void
    */
-  void add_nf_service(const nf_service_t& n);
+  void add_nf_service(const oai::common::sbi::nf_service_t& n);
 
   /*
    * Get NF services
    * @param [std::vector<snssai_t> &] n: store instance's nf services
    * @return void:
    */
-  void get_nf_services(std::vector<nf_service_t>& n) const;
+  void get_nf_services(std::vector<oai::common::sbi::nf_service_t>& n) const;
 
   /*
    * Set custom info
@@ -404,21 +405,21 @@ class smf_profile : public nf_profile {
    * @param [smf_info_t &] s: smf info
    * @return void
    */
-  void set_smf_info(const smf_info_t& s);
+  void set_smf_info(const oai::common::sbi::smf_info_t& s);
 
   /*
    * Add an snssai_smf_info_item to the smf info
    * @param [const snssai_smf_info_item_t &] s: snssai_smf_info_item
    * @return void
    */
-  void add_smf_info_item(const snssai_smf_info_item_t& s);
+  void add_smf_info_item(const oai::common::sbi::snssai_smf_info_item_t& s);
 
   /*
    * Get NF instance smf info
    * @param [smf_info_t &] s: store instance's smf info
    * @return void:
    */
-  void get_smf_info(smf_info_t& s) const;
+  void get_smf_info(oai::common::sbi::smf_info_t& s) const;
 
   /*
    * Print related-information for NF profile
@@ -449,9 +450,9 @@ class smf_profile : public nf_profile {
   void handle_heartbeart_timeout(uint64_t ms);
 
  protected:
-  std::vector<nf_service_t> nf_services;
+  std::vector<oai::common::sbi::nf_service_t> nf_services;
   nlohmann::json custom_info;  // store extra json data
-  smf_info_t smf_info;
+  oai::common::sbi::smf_info_t smf_info;
 };
 
 class upf_profile : public nf_profile {
@@ -490,21 +491,21 @@ class upf_profile : public nf_profile {
    * @param [upf_info_t &] s: upf info
    * @return void
    */
-  void set_upf_info(const upf_info_t& s);
+  void set_upf_info(const oai::common::sbi::upf_info_t& s);
 
   /*
    * Add an snssai_upf_info_item to the upf info
    * @param [const snssai_upf_info_item_t &] s: snssai_upf_info_item
    * @return void
    */
-  void add_upf_info_item(const snssai_upf_info_item_t& s);
+  void add_upf_info_item(const oai::common::sbi::snssai_upf_info_item_t& s);
 
   /*
    * Get NF instance upf info
    * @param [upf_info_t &] s: store instance's upf info
    * @return void:
    */
-  void get_upf_info(upf_info_t& s) const;
+  void get_upf_info(oai::common::sbi::upf_info_t& s) const;
 
   /*
    * Print related-information for NF profile
@@ -536,7 +537,7 @@ class upf_profile : public nf_profile {
 
  protected:
   nlohmann::json custom_info;  // store extra json data
-  upf_info_t upf_info;
+  oai::common::sbi::upf_info_t upf_info;
 };
 
 }  // namespace smf

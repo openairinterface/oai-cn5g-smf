@@ -37,6 +37,7 @@
 
 using namespace std;
 using namespace smf;
+using namespace oai::common::sbi;
 
 //------------------------------------------------------------------------------
 void nf_profile::set_nf_instance_id(const std::string& instance_id) {
@@ -635,14 +636,14 @@ void upf_profile::from_json(const nlohmann::json& data) {
             }
             if (d.find("dnaiList") != d.end()) {
               dnn_item.dnai_list =
-                  d["dnaiList"].get<std::unordered_set<std::string>>();
+                  d["dnaiList"].get<std::vector<std::string>>();
             }
             if (d.find("dnaiNwInstanceList") != d.end()) {
               dnn_item.dnai_nw_instance_list =
                   d["dnaiNwInstanceList"]
                       .get<std::map<std::string, std::string>>();
             }
-            upf_info_item.dnn_upf_info_list.insert(dnn_item);
+            upf_info_item.dnn_upf_info_list.push_back(dnn_item);
           }
         }
         upf_info.snssai_upf_info_list.push_back(upf_info_item);

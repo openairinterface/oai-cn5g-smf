@@ -1370,7 +1370,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
   // n11_triggered_pending->res.set_cause(cause.cause_value);
   n11_triggered_pending->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);
+      oai::common::sbi::http_status_code::OK);
 
   return smf_procedure_code::OK;
 }
