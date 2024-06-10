@@ -34,10 +34,12 @@
 #include <boost/algorithm/string/split.hpp>
 #include "logger.hpp"
 #include "string.hpp"
+#include "SnssaiSmfInfoItem.h"
 
 using namespace std;
 using namespace smf;
 using namespace oai::common::sbi;
+using namespace oai::model::nrf;
 
 //------------------------------------------------------------------------------
 void nf_profile::set_nf_instance_id(const std::string& instance_id) {
@@ -202,10 +204,10 @@ void nf_profile::display() const {
   Logger::smf_app().debug("\tCapacity: %d", capacity);
   // SNSSAIs
   if (snssais.size() > 0) {
-    Logger::smf_app().debug("\tSNSSAI:");
+    Logger::smf_app().debug("\tSNSSAIs:");
   }
   for (auto s : snssais) {
-    Logger::smf_app().debug("\t\t SST %d, SD %ld (0x%x)", s.sst, s.sd, s.sd);
+    Logger::smf_app().debug("\n%s", s.to_model_snssai().to_string(0));
   }
   if (!fqdn.empty()) {
     Logger::smf_app().debug("\tFQDN: %s", fqdn.c_str());
@@ -386,14 +388,21 @@ void smf_profile::display() const {
   if (smf_info.snssai_smf_info_list.size() > 0) {
     Logger::smf_app().debug("\tSMF Info:");
   }
-  for (auto s : smf_info.snssai_smf_info_list) {
+  if (!smf_info.snssai_smf_info_list.empty()) {
     Logger::smf_app().debug("\t\tParameters supported by the SMF:");
-    Logger::smf_app().debug(
-        "\t\t\tSNSSAI (SST %d, SD %ld (0x%x))", s.snssai.sst, s.snssai.sd,
-        s.snssai.sd);
-    for (auto d : s.dnn_smf_info_list) {
-      Logger::smf_app().debug("\t\t\tDNN %s", d.dnn.c_str());
+  }
+  // we convert to re-use the existing to_string function
+  for (const auto& s : smf_info.snssai_smf_info_list) {
+    SnssaiSmfInfoItem item;
+    item.setSNssai(s.snssai.to_model_snssai());
+    std::vector<DnnSmfInfoItem> list_of_dnns;
+    for (const auto& d : s.dnn_smf_info_list) {
+      DnnSmfInfoItem dnn_item;
+      dnn_item.setDnn(d.dnn);
+      list_of_dnns.push_back(dnn_item);
     }
+    item.setDnnSmfInfoList(list_of_dnns);
+    Logger::smf_app().debug(item.to_string(1));
   }
 }
 
@@ -518,24 +527,22 @@ void upf_profile::display() const {
   if (upf_info.snssai_upf_info_list.size() > 0) {
     Logger::smf_app().debug("\tUPF Info:");
   }
+  // we convert to re-use the existing to_string function
   for (auto s : upf_info.snssai_upf_info_list) {
-    Logger::smf_app().debug("\t\tParameters supported by the UPF:");
-    Logger::smf_app().debug(
-        "\t\t\tSNSSAI (SST %d, SD %ld (0x%x))", s.snssai.sst, s.snssai.sd,
-        s.snssai.sd);
-    for (auto d : s.dnn_upf_info_list) {
-      Logger::smf_app().debug("\t\t\tDNN %s", d.dnn.c_str());
+    SnssaiUpfInfoItem item;
+    item.setSNssai(s.snssai.to_model_snssai());
+    std::vector<DnnUpfInfoItem> list_of_dnns;
 
-      for (auto dnai : d.dnai_list) {
-        Logger::smf_app().debug("\t\t\t\tDNAI List: %s", dnai.c_str());
-      }
-      for (auto nwinstance : d.dnai_nw_instance_list) {
-        Logger::smf_app().debug(
-            "\t\t\t\tDNAI NW Instance List: %s : "
-            "%s",
-            nwinstance.first.c_str(), nwinstance.second.c_str());
-      }
+    for (auto d : s.dnn_upf_info_list) {
+      DnnUpfInfoItem dnn_item;
+      dnn_item.setDnn(d.dnn);
+      dnn_item.setDnaiList(d.dnai_list);
+      dnn_item.setDnaiNwInstanceList(d.dnai_nw_instance_list);
+      Logger::smf_app().debug("\t\t\tDNN %s", d.dnn.c_str());
+      list_of_dnns.push_back(dnn_item);
     }
+    item.setDnnUpfInfoList(list_of_dnns);
+    Logger::smf_app().debug(item.to_string(1));
   }
   if (!upf_info.interface_upf_info_list.empty()) {
     for (auto s : upf_info.interface_upf_info_list) {
