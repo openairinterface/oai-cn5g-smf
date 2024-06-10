@@ -591,7 +591,7 @@ void smf_context::handle_itti_msg(
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
                 session_report_msg.get_snssai().sst;
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-                std::to_string(session_report_msg.get_snssai().sd);
+                session_report_msg.get_snssai().sd;
 
             session_report_msg.set_json_data(json_data);
 
@@ -2945,7 +2945,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
       itti_msg->msg.get_snssai().sst;
   json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-      std::to_string(itti_msg->msg.get_snssai().sd);
+      itti_msg->msg.get_snssai().sd;
   json_data["pduSessionId"] = itti_msg->msg.get_pdu_session_id();
   itti_msg->msg.set_json_data(json_data);
 
@@ -3339,7 +3339,7 @@ bool smf_context::handle_ho_cancellation(
 
 //------------------------------------------------------------------------------
 void smf_context::get_snssai_key(const snssai_t& snssai, uint32_t& key) {
-  key = (snssai.sd << 8 | snssai.sst);
+  key = (snssai.get_sd_int() << 8 | snssai.sst);
 }
 
 //------------------------------------------------------------------------------
@@ -4026,7 +4026,7 @@ void smf_context::handle_flexcn_event(
           sp->pdu_session_type.to_string();  // PDU Session Type
       // NSSAI
       cj["snssai"]["sst"] = sp->get_snssai().sst;
-      cj["snssai"]["sd"]  = std::to_string(sp->get_snssai().sd);
+      cj["snssai"]["sd"]  = sp->get_snssai().sd;
       cj["dnn"]           = sp->get_dnn();       // DNN
       cj["amf_addr"]      = sc->get_amf_addr();  // Serving AMF addr
 
@@ -4119,7 +4119,7 @@ void smf_context::handle_pdusesest(
       ev_notif.set_pdu_session_type(
           sp->pdu_session_type.to_string());  // PDU Session Type
       ev_notif.set_sst(sp->get_snssai().sst);
-      ev_notif.set_sd(std::to_string(sp->get_snssai().sd));
+      ev_notif.set_sd(sp->get_snssai().sd);
       ev_notif.set_dnn(sp->get_dnn());
 
       itti_msg->event_notifs.push_back(ev_notif);
@@ -4460,7 +4460,7 @@ void smf_context::send_pdu_session_create_response(
     json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
         resp->res.get_snssai().sst;
     json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-        std::to_string(resp->res.get_snssai().sd);
+        resp->res.get_snssai().sd;
     // N1N2MsgTxfrFailureNotification
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url() + NSMF_PDU_SESSION_BASE +

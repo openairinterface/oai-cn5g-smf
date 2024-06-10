@@ -850,7 +850,7 @@ bool smf_sbi::get_sm_data(
   std::string mnc         = plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
-              ",\"sd\":\"" + std::to_string(snssai.sd) + "\"}&dnn=" + dnn +
+              ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
               "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
   std::string url =
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
@@ -925,10 +925,7 @@ bool smf_sbi::get_sm_data(
     }
     if (jsonData["singleNssai"].find("sd") != jsonData["singleNssai"].end()) {
       std::string sd_str = jsonData["singleNssai"]["sd"];
-      uint32_t sd        = SD_NO_VALUE;
-      xgpp_conv::sd_string_to_int(
-          jsonData["singleNssai"]["sd"].get<std::string>(), sd);
-      if (sd != snssai.sd) {
+      if (sd_str != snssai.sd) {
         return false;
       }
     }

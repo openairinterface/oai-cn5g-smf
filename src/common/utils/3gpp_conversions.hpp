@@ -158,8 +158,6 @@ void update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response);
 
-void sd_string_to_int(const std::string& sd_str, uint32_t& sd);
-
 void plmn_from_model(const oai::model::common::PlmnId&, plmn_t& plmn);
 
 }  // namespace xgpp_conv

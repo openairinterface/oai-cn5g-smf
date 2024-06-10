@@ -203,15 +203,15 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // sm_msg->pdu_session_establishment_accept.gprstimer.timeValue = 0;
 
   // SNSSAI
-  if (sm_context_res.get_snssai().sd == SD_NO_VALUE) {
-    sm_msg->pdu_session_establishment_accept.snssai.len = SST_LENGTH;
+  if (sm_context_res.get_snssai().get_sd_int() == SD_NO_VALUE) {
+    sm_msg->pdu_session_establishment_accept.snssai.len = SST_LENGTH_NAS;
   } else {
     sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_LENGTH;
   }
   sm_msg->pdu_session_establishment_accept.snssai.sst =
       sm_context_res.get_snssai().sst;
   sm_msg->pdu_session_establishment_accept.snssai.sd =
-      sm_context_res.get_snssai().sd;
+      sm_context_res.get_snssai().get_sd_int();
 
   Logger::smf_n1().debug(
       "SNSSAI SST %d, SD %ld (0x%x)",
