@@ -564,6 +564,11 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   // get default QoS info
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
+  if (qos_flows.empty()) {
+    // Should not be empty, but could be because delete existing qos rule is not supported yet
+    Logger::smf_n2().error("OoS flow context to be updated list is empty");
+    return false;
+  }
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
     Logger::smf_n2().debug(
