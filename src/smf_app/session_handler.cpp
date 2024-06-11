@@ -69,14 +69,14 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 
     // add QoS rule to flow
     auto rule = qos_rule_from_edge(edge);
-    if (rule.numberofpacketfilters != 0) {
-      flow.add_qos_rule(rule);
-    } else {
+    //if (rule.numberofpacketfilters != 0) {*/
+    flow.add_qos_rule(rule);
+/*    } else {
       Logger::smf_n1().warn(
           "QoS rule %u does not have a packet filter. This rule is not sent to "
           "UE (NAS). Please set packetFilterUsage to true in the PCC rules.",
           edge->qos_rule_id);
-    }
+    }*/
 
     // add flow_description_content
     flow.set_qos_flow_descriptions(qos_flow_description_from_edge(edge));
