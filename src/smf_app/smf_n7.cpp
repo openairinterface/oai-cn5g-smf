@@ -36,15 +36,17 @@
 #include "uint_generator.hpp"
 #include "SmPolicyControl.h"
 #include <regex>
+#include "http_client.hpp"
 
 using namespace smf;
 using namespace smf::n7;
 using namespace oai::model::pcf;
 using namespace oai::model::common;
 using namespace oai::common::sbi;
+using namespace oai::http;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-extern smf_sbi* smf_sbi_inst;
+extern std::shared_ptr<oai::http::http_client> http_client_inst;
 
 uint32_t smf_n7::select_pcf(const SmPolicyContextData& context) {
   // TODO PCF selection
@@ -195,50 +197,6 @@ bool smf_pcf_client::discover_pcf_from_config_file(
   return true;
 }
 
-uint16_t smf_pcf_client::send_request(
-    const std::string& uri, const std::string& body, const std::string& method,
-    std::string& response_body, std::string& response_headers,
-    bool use_response_headers) {
-  if (uri.empty()) {
-    Logger::smf_n7().warn("PCF URI is not set");
-    return http_status_code::INTERNAL_SERVER_ERROR;
-  }
-
-  // generate a promise for the curl handle
-  uint32_t promise_id = smf::smf_sbi::generate_promise_id();
-
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  smf_sbi_inst->add_promise(promise_id, p);
-  bool res;
-  // Create a new curl easy handle and add to the multi handle
-  if (use_response_headers) {
-    res = smf_sbi_inst->curl_create_handle(
-        root_uri, body, response_body, response_headers, pid_ptr, method,
-        smf_cfg->http_version);
-  } else {
-    res = smf_sbi_inst->curl_create_handle(
-        root_uri, body, response_body, pid_ptr, method, smf_cfg->http_version);
-  }
-
-  if (!res) {
-    Logger::smf_n7().warn(
-        "Could not create a new handle to send message to PCF");
-    smf_sbi_inst->remove_promise(promise_id);
-    return http_status_code::INTERNAL_SERVER_ERROR;
-  }
-
-  uint32_t response_code = smf_sbi_inst->get_available_response(f);
-
-  Logger::smf_n7().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_n7().debug("Response data %s", response_body.c_str());
-  return response_code;
-}
-
 sm_policy_status_code smf_pcf_client::create_policy_association(
     policy_association& association) {
   nlohmann::json json_data;
@@ -246,40 +204,37 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
 
   Logger::smf_n7().info("Sending PCF SM policy association creation request");
 
-  std::string response_data;
-  std::string response_headers;
+  request req = http_client_inst->prepare_json_request(root_uri, json_data.dump());
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  uint16_t response_code = send_request(
-      root_uri, json_data.dump(), "POST", response_data, response_headers,
-      true);
-
-  if (response_code == http_status_code::CREATED) {
-    std::regex rgx("[L|l]ocation: *(.*)");
-    std::smatch match;
-
-    if (std::regex_search(response_headers, match, rgx)) {
-      association.pcf_location = match[1];
-      nlohmann::json j         = nlohmann::json::parse(response_data);
-      from_json(j, association.decision);
-      Logger::smf_n7().info(
-          "Successfully created SM Policy Association for SUPI %s",
-          association.context.getSupi().c_str());
-    } else {
+  if (resp.status_code ==  http_status_code::CREATED) {
+    for (const auto& hdr : resp.headers.list()) {
+      auto loc_header =
+              dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
+      if (loc_header) {
+        association.pcf_location = loc_header->location();
+        nlohmann::json j         = nlohmann::json::parse(resp.body);
+        from_json(j, association.decision);
+        Logger::smf_n7().info(
+                "Successfully created SM Policy Association for SUPI %s",
+                association.context.getSupi().c_str());
+        return sm_policy_status_code::CREATED;
+      }
+    }
+    if (association.pcf_location.empty()) {
       Logger::smf_n7().debug(
           "SM Policy Association response does not contain Location!");
       return sm_policy_status_code::INTERNAL_ERROR;
     }
-
-    return sm_policy_status_code::CREATED;
   }
 
   // failure case
   ProblemDetails problem_details;
-  from_json(response_data, problem_details);
+  from_json(resp.body, problem_details);
 
   std::string info;
   sm_policy_status_code response;
-  switch (response_code) {
+  switch (resp.status_code) {
     case http_status_code::FORBIDDEN:
       info     = "SM Policy Association Creation Forbidden";
       response = sm_policy_status_code::CONTEXT_DENIED;
@@ -302,7 +257,7 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
       info =
           "SM Policy Association Creation: Unknown Error Code from "
           "PCF: " +
-          std::to_string(response_code);
+          std::to_string(resp.status_code);
   }
 
   Logger::smf_n7().warn(
@@ -317,12 +272,11 @@ sm_policy_status_code smf_pcf_client::remove_policy_association(
   std::string uri = association.pcf_location + "/" + delete_suffix;
   nlohmann::json json_data;
   to_json(json_data, delete_data);
-  std::string resp;
 
-  uint16_t response_code =
-      send_request(uri, json_data.dump(), "POST", resp, resp, false);
+  request req   = http_client_inst->prepare_json_request(uri, json_data.dump());
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  switch (response_code) {
+  switch (resp.status_code) {
     case http_status_code::NO_CONTENT:
       Logger::smf_n7().info("Successfully removed PCF Policy Association");
       return sm_policy_status_code::OK;
@@ -341,11 +295,10 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
     const SmPolicyUpdateContextData& update_data,
     policy_association& association) {
   std::string uri = association.pcf_location + "/" + update_suffix;
-  std::string resp;
   nlohmann::json json_data;
   to_json(json_data, update_data);
-  uint16_t response_code =
-      send_request(uri, json_data.dump(), "POST", resp, resp, false);
+  request req   = http_client_inst->prepare_json_request(uri, json_data.dump());
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   nlohmann::json json_resp;
 
@@ -353,9 +306,9 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
   // but here we overwrite object this works because PCF does the same but it is
   // not standard-compliant
 
-  switch (response_code) {
+  switch (resp.status_code) {
     case http_status_code::OK:
-      json_resp = nlohmann::json::parse(resp);
+      json_resp = nlohmann::json::parse(resp.body);
       from_json(json_resp, association.decision);
       Logger::smf_n7().info("Successfully updated PCF association");
       return sm_policy_status_code::OK;
@@ -373,12 +326,14 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
 sm_policy_status_code smf_pcf_client::get_policy_association(
     policy_association& association) {
   std::string uri = association.pcf_location;
-  std::string resp;
   std::string empty;
-  uint16_t response_code = send_request(uri, empty, "GET", resp, resp, false);
-  nlohmann::json j       = nlohmann::json::parse(resp);
+  request req;
+  req.uri = uri;
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+  nlohmann::json j       = nlohmann::json::parse(resp.body);
+
   SmPolicyControl control;
-  switch (response_code) {
+  switch (resp.status_code) {
     case http_status_code::OK:
 
       from_json(j, control);

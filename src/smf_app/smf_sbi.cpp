@@ -47,6 +47,7 @@
 #include "smf.h"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
+#include "http_client.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -57,11 +58,13 @@ using namespace Pistache::Http::Mime;
 
 using namespace smf;
 using namespace oai::common::sbi;
+using namespace oai::http;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
+extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
 
 // To read content of the response from AMF
@@ -160,34 +163,7 @@ smf_sbi::smf_sbi() {
     Logger::smf_sbi().error("Cannot create task TASK_SMF_SBI");
     throw std::runtime_error("Cannot create task TASK_SMF_SBI");
   }
-  CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
-  curl_multi    = curl_multi_init();
-  handles       = {};
-  headers       = nullptr;
-  headers       = curl_slist_append(headers, "Accept: application/json");
-  headers       = curl_slist_append(headers, "Charsets: utf-8");
-  headers       = curl_slist_append(headers, "Content-Type: application/json");
-
-  if ((code < 0) or (curl_multi == nullptr) or (headers == nullptr)) {
-    Logger::smf_sbi().error("Cannot initialize Curl Multi Interface");
-    throw std::runtime_error("Cannot create task TASK_SMF_SBI");
-  }
   Logger::smf_sbi().startup("Started");
-}
-
-//------------------------------------------------------------------------------
-smf_sbi::~smf_sbi() {
-  Logger::smf_sbi().debug("Delete SMF SBI instance...");
-  // Remove handle, free memory
-  for (auto h : handles) {
-    curl_multi_remove_handle(curl_multi, h);
-    curl_easy_cleanup(h);
-  }
-
-  handles.clear();
-  curl_multi_cleanup(curl_multi);
-  curl_global_cleanup();
-  curl_slist_free_all(headers);
 }
 
 //------------------------------------------------------------------------------
@@ -219,49 +195,22 @@ void smf_sbi::send_n1n2_message_transfer_request(
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF, body %s", body.c_str());
 
-  uint32_t str_len           = body.length();
-  char data_str[str_len + 1] = {};
-  body.copy(data_str, str_len);
-  data_str[str_len] = '\0';
+  request req = http_client_inst->prepare_multipart_request(sm_context_res->res.get_amf_url(), body);
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  std::string response_data = {};
-
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
-
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          sm_context_res->res.get_amf_url(), data_str, str_len, response_data,
-          pid_ptr, "POST", true, sm_context_res->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t response_code = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
 
   // Get cause from the response
   json response_data_json = {};
   try {
-    response_data_json = json::parse(response_data);
+    response_data_json = json::parse(resp.body);
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", response_code,
+      "Response from AMF, Http Code: %d, cause %s", resp.body,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -269,7 +218,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
       std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
-  itti_msg->set_response_code(response_code);
+  itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
   itti_msg->set_scid(sm_context_res->scid);
   itti_msg->set_procedure_type(session_management_procedures_type_e::
                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
@@ -287,7 +236,6 @@ void smf_sbi::send_n1n2_message_transfer_request(
         "Could not send ITTI message %s to task TASK_SMF_APP",
         itti_msg->get_msg_name());
   }
-  return;
 }
 
 //------------------------------------------------------------------------------
@@ -316,44 +264,18 @@ void smf_sbi::send_n1n2_message_transfer_request(
         multipart_related_content_part_e::NAS);
   }
 
-  uint32_t str_len           = body.length();
-  char data_str[str_len + 1] = {};
-  body.copy(data_str, str_len);
-  data_str[str_len] = '\0';
+  request req = http_client_inst->prepare_multipart_request(sm_session_modification->msg.get_amf_url(), body);
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  std::string response_data = {};
-
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
-
-  // Create a new Curl Easy Handle and add to the Multi Handle
-  if (!curl_create_handle(
-          sm_session_modification->msg.get_amf_url(), data_str, str_len,
-          response_data, pid_ptr, "POST", true)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t response_code = get_available_response(f);
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
 
   json response_data_json = {};
   try {
-    response_data_json = json::parse(response_data);
+    response_data_json = json::parse(resp.body);
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
   }
-  Logger::smf_sbi().debug("Response from AMF, Http Code: %u", response_code);
+  Logger::smf_sbi().debug("Response from AMF, Http Code: %d", resp.status_code);
 }
 
 //------------------------------------------------------------------------------
@@ -382,47 +304,21 @@ void smf_sbi::send_n1n2_message_transfer_request(
         multipart_related_content_part_e::NGAP);
   }
 
-  uint32_t str_len           = body.length();
-  char data_str[str_len + 1] = {};
-  body.copy(data_str, str_len);
-  data_str[str_len] = '\0';
+  request req = http_client_inst->prepare_multipart_request(report_msg->res.get_amf_url(), body);
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  std::string response_data = {};
-
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
-
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          report_msg->res.get_amf_url(), data_str, str_len, response_data,
-          pid_ptr, "POST", true)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
 
   json response_data_json = {};
   try {
-    response_data_json = json::parse(response_data);
+    response_data_json = json::parse(resp.body);
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", httpCode,
+      "Response from AMF, Http Code: %d, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -430,7 +326,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
       std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
-  itti_msg->set_response_code(httpCode);
+  itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
   itti_msg->set_procedure_type(
       session_management_procedures_type_e::SERVICE_REQUEST_NETWORK_TRIGGERED);
   itti_msg->set_cause(response_data_json["cause"]);
@@ -460,30 +356,10 @@ void smf_sbi::send_sm_context_status_notification(
       sm_context_status->sm_context_status;
   std::string body = json_data.dump();
 
-  std::string response_data;
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req = http_client_inst->prepare_json_request(sm_context_status->amf_status_uri, body);
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          sm_context_status->amf_status_uri, body, response_data, pid_ptr,
-          "POST")) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t response_code = get_available_response(f);
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response code %u", response_code);
+  Logger::smf_sbi().debug("Response code %d", resp.status_code);
   // TODO: in case of "307 temporary redirect"
 }
 
@@ -546,32 +422,11 @@ void smf_sbi::notify_subscribed_event(
     json_data["eventNotifs"] = event_notifs;
     std::string body         = json_data.dump();
 
-    std::string response_data;
-    // Generate a promise and associate this promise to the curl handle
-    uint32_t promise_id = generate_promise_id();
-    Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-    uint32_t* pid_ptr = &promise_id;
-    boost::shared_ptr<boost::promise<uint32_t>> p =
-        boost::make_shared<boost::promise<uint32_t>>();
-    boost::shared_future<uint32_t> f;
-    f = p->get_future();
-    add_promise(promise_id, p);
+    request req = http_client_inst->prepare_json_request(i.get_notif_uri(), body);
+    response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-    std::string url = i.get_notif_uri();
-
-    // Create a new curl easy handle and add to the multi handle
-    if (!curl_create_handle(url, body, response_data, pid_ptr, "POST")) {
-      Logger::smf_sbi().warn("Could not create a new handle to send message");
-      remove_promise(promise_id);
-      return;
-    }
-
-    // Wait for the response back
-    uint32_t response_code = get_available_response(f);
-
-    Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-    Logger::smf_sbi().debug("Response code %u", response_code);
-    Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+    Logger::smf_sbi().debug("Response code %d", resp.status_code);
+    Logger::smf_sbi().debug("Response data %s", resp.body);
   }
   return;
 }
@@ -595,44 +450,24 @@ void smf_sbi::register_nf_instance(
       "Send NF Instance Registration to NRF, msg body: \n %s (bytes %d)",
       body.c_str(), body.size());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req = http_client_inst->prepare_json_request(url, body);
+  response resp = http_client_inst->send_http_request(method_e::PUT, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          url, body, response_data, pid_ptr, "PUT", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
+      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
 
   std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
       std::make_shared<itti_n11_register_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = httpCode;
+  itti_msg_response->http_response_code = static_cast<int16_t>(resp.status_code);
   itti_msg_response->http_version       = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
-  if (httpCode == http_status_code::CREATED) {
+  if (resp.status_code == http_status_code::CREATED) {
     json response_json = {};
     try {
-      response_json = json::parse(response_data);
+      response_json = json::parse(resp.body);
     } catch (json::exception& e) {
       Logger::smf_sbi().warn(
           "NF Instance Registration, could not parse json from the NRF "
@@ -676,35 +511,15 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req = http_client_inst->prepare_json_request(url, body);
+  response resp = http_client_inst->send_http_request(method_e::PATCH, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          url, body, response_data, pid_ptr, "PATCH", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
+      "NF Instance Registration, response from NRF, HTTP Code: %u", resp.status_code);
 
-  if ((httpCode == http_status_code::OK) or
-      (httpCode == http_status_code::NO_CONTENT)) {
+  if ((resp.status_code == http_status_code::OK) or
+      (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF Update, got successful response from NRF");
 
     // TODO: In case of response containing NF profile
@@ -712,7 +527,7 @@ void smf_sbi::update_nf_instance(
     std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
         std::make_shared<itti_n11_update_nf_instance_response>(
             TASK_SMF_SBI, TASK_SMF_APP);
-    itti_msg->http_response_code = httpCode;
+    itti_msg->http_response_code = static_cast<int16_t>(resp.status_code);
     itti_msg->http_version       = msg->http_version;
     itti_msg->smf_instance_id    = msg->smf_instance_id;
 
@@ -738,35 +553,16 @@ void smf_sbi::deregister_nf_instance(
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (NRF URL %s)", url.c_str());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req;
+  req.uri = url;
+  response resp = http_client_inst->send_http_request(method_e::DELETE, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          url, response_data, pid_ptr, "DELETE", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
+      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
 
-  if ((httpCode == http_status_code::OK) or
-      (httpCode == http_status_code::NO_CONTENT)) {
+  if ((resp.status_code == http_status_code::OK) or
+      (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF De-register, got successful response from NRF");
 
   } else {
@@ -787,41 +583,21 @@ void smf_sbi::subscribe_upf_status_notify(
   std::string body = msg->json_data.dump();
   Logger::smf_sbi().debug("Message body: %s", body.c_str());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req = http_client_inst->prepare_json_request(msg->url, body);
+  response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          msg->url, body, response_data, pid_ptr, "POST", msg->http_version)) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
+      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
 
   std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
       itti_msg_response =
           std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
               TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = httpCode;
+  itti_msg_response->http_response_code = static_cast<int16_t>(resp.status_code);
 
-  if ((httpCode == http_status_code::CREATED) or
-      (httpCode == http_status_code::NO_CONTENT)) {
+  if ((resp.status_code == http_status_code::CREATED) or
+      (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
     return;
@@ -863,46 +639,26 @@ bool smf_sbi::get_sm_data(
 
   Logger::smf_sbi().debug("UDM's URL: %s ", url.c_str());
 
-  std::string response_data = {};
-  // Generate a promise and associate this promise to the curl handle
-  uint32_t promise_id = generate_promise_id();
-  Logger::smf_sbi().debug("Promise ID generated %d", promise_id);
-  uint32_t* pid_ptr = &promise_id;
-  boost::shared_ptr<boost::promise<uint32_t>> p =
-      boost::make_shared<boost::promise<uint32_t>>();
-  boost::shared_future<uint32_t> f;
-  f = p->get_future();
-  add_promise(promise_id, p);
+  request req;
+  req.uri = url;
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
 
-  // Create a new curl easy handle and add to the multi handle
-  if (!curl_create_handle(
-          url, response_data, pid_ptr, "GET", smf_cfg->get_http_version())) {
-    Logger::smf_sbi().warn("Could not create a new handle to send message");
-    remove_promise(promise_id);
-    return false;
-  }
-
-  // Wait for the response back
-  uint32_t httpCode = get_available_response(f);
-
-  Logger::smf_sbi().debug("Got result for promise ID %d", promise_id);
-  Logger::smf_sbi().debug("Response data %s", response_data.c_str());
+  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
       "Session Management Subscription Data Retrieval, response from UDM, HTTP "
-      "Code: %u",
-      httpCode);
+      "Code: %d", resp.status_code);
 
-  if (httpCode == http_status_code::OK) {
+  if (resp.status_code == http_status_code::OK) {
     Logger::smf_sbi().debug(
-        "Got successful response from UDM, URL: %s ", url.c_str());
+        "Got successful response from UDM, URL: %s ", url);
     try {
-      jsonData = nlohmann::json::parse(response_data);
+      jsonData = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
       Logger::smf_sbi().warn("Could not parse json data from UDM");
     }
   } else {
     Logger::smf_sbi().warn(
-        "Could not get response from UDM, URL %s, retry ...", url.c_str());
+        "Could not get response from UDM, URL %s, retry ...", url);
     // retry
     // TODO
   }
@@ -1057,370 +813,6 @@ bool smf_sbi::get_sm_data(
 //------------------------------------------------------------------------------
 void smf_sbi::subscribe_sm_data() {
   // TODO:
-}
-
-//------------------------------------------------------------------------------
-bool smf_sbi::curl_create_handle(
-    const std::string& uri, const char* data, uint32_t data_len,
-    std::string& response_data, uint32_t* promise_id, const std::string& method,
-    bool is_multipart, uint8_t http_version) {
-  // Create handle for a curl request
-  CURL* curl = curl_easy_init();
-
-  headers = nullptr;
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Charsets: utf-8");
-
-  if (is_multipart) {
-    std::string content_type = "Content-type: multipart/related; boundary=" +
-                               std::string(CURL_MIME_BOUNDARY);
-    headers = curl_slist_append(headers, content_type.c_str());
-  } else {
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-  }
-
-  if ((curl == nullptr) or (headers == nullptr)) {
-    Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
-    return false;
-  }
-
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
-  if (method.compare("POST") == 0)
-    curl_easy_setopt(curl, CURLOPT_POST, 1);
-  else if (method.compare("PATCH") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-  else if (method.compare("PUT") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-  else
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, NF_CURL_TIMEOUT_MS);
-  curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg->sbi.if_name.c_str());
-
-  if (http_version == 2) {
-    if (Logger::should_log(spdlog::level::debug))
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    // We use a self-signed test server, skip verification during debugging
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(
-        curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-  }
-
-  // Hook up data handling function.
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data_len);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-
-  // Add to the multi handle
-  curl_multi_add_handle(curl_multi, curl);
-  handles.push_back(curl);
-
-  // The curl cmd will actually be performed in perform_curl_multi
-  perform_curl_multi(
-      0);  // TODO: current time as parameter if curl is performed per event
-
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool smf_sbi::curl_create_handle(
-    const std::string& uri, const std::string& data, std::string& response_data,
-    uint32_t* promise_id, const std::string& method, uint8_t http_version) {
-  // Create handle for a curl request
-  CURL* curl = curl_easy_init();
-
-  headers = nullptr;
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Charsets: utf-8");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
-  if ((curl == nullptr) or (headers == nullptr)) {
-    Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
-    return false;
-  }
-
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
-
-  if (method.compare("POST") == 0)
-    curl_easy_setopt(curl, CURLOPT_POST, 1);
-  else if (method.compare("PATCH") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-  else if (method.compare("PUT") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-  else
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, NF_CURL_TIMEOUT_MS);
-  curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg->sbi.if_name.c_str());
-
-  if (http_version == 2) {
-    if (Logger::should_log(spdlog::level::debug))
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    // We use a self-signed test server, skip verification during debugging
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(
-        curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-  }
-
-  // Hook up data handling function.
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-  if (method.compare("DELETE") != 0) {
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.length());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-  }
-  // Add to the multi handle
-  curl_multi_add_handle(curl_multi, curl);
-  handles.push_back(curl);
-
-  // Curl cmd will actually be performed in perform_curl_multi
-  perform_curl_multi(
-      0);  // TODO: current time as parameter if curl is performed per event
-  return true;
-}
-
-// TODO we should not repeat ourselves... propose to make a private function
-// which does curl_init
-//------------------------------------------------------------------------------
-bool smf_sbi::curl_create_handle(
-    const std::string& uri, const std::string& data, std::string& response_data,
-    std::string& response_headers, uint32_t* promise_id,
-    const std::string& method, uint8_t http_version) {
-  // Create handle for a curl request
-  CURL* curl = curl_easy_init();
-
-  headers = nullptr;
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Charsets: utf-8");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
-  if ((curl == nullptr) or (headers == nullptr)) {
-    Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
-    return false;
-  }
-
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
-
-  if (method.compare("POST") == 0)
-    curl_easy_setopt(curl, CURLOPT_POST, 1);
-  else if (method.compare("PATCH") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-  else if (method.compare("PUT") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-  else
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, NF_CURL_TIMEOUT_MS);
-  curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg->sbi.if_name.c_str());
-
-  if (http_version == 2) {
-    if (Logger::should_log(spdlog::level::debug))
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    // We use a self-signed test server, skip verification during debugging
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(
-        curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-  }
-
-  // Hook up data handling function.
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-  curl_easy_setopt(curl, CURLOPT_WRITEHEADER, &response_headers);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-  if (method.compare("DELETE") != 0) {
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.length());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-  }
-  // Add to the multi handle
-  curl_multi_add_handle(curl_multi, curl);
-  handles.push_back(curl);
-
-  // Curl cmd will actually be performed in perform_curl_multi
-  perform_curl_multi(
-      0);  // TODO: current time as parameter if curl is performed per event
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool smf_sbi::curl_create_handle(
-    const std::string& uri, std::string& response_data, uint32_t* promise_id,
-    const std::string& method, uint8_t http_version) {
-  // Create handle for a curl request
-  CURL* curl = curl_easy_init();
-
-  headers = nullptr;
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Charsets: utf-8");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
-  if ((curl == nullptr) or (headers == nullptr)) {
-    Logger::smf_sbi().error("Cannot initialize a new Curl Handle");
-    return false;
-  }
-
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
-  curl_easy_setopt(curl, CURLOPT_PRIVATE, promise_id);
-
-  if (method.compare("DELETE") == 0)
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-  else
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, NF_CURL_TIMEOUT_MS);
-  curl_easy_setopt(curl, CURLOPT_INTERFACE, smf_cfg->sbi.if_name.c_str());
-
-  if (http_version == 2) {
-    if (Logger::should_log(spdlog::level::debug))
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    // We use a self-signed test server, skip verification during debugging
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(
-        curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-  }
-
-  // Hook up data handling function.
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &callback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-  // Add to the multi handle
-  curl_multi_add_handle(curl_multi, curl);
-  handles.push_back(curl);
-
-  // Curl cmd will actually be performed in perform_curl_multi
-  perform_curl_multi(
-      0);  // TODO: current time as parameter if curl is performed per event
-
-  return true;
-}
-
-//------------------------------------------------------------------------------
-void smf_sbi::perform_curl_multi(uint64_t ms) {
-  //_unused(ms);
-  int still_running = 0;
-  int numfds        = 0;
-
-  CURLMcode code = curl_multi_perform(curl_multi, &still_running);
-
-  do {
-    code = curl_multi_wait(curl_multi, NULL, 0, 200000, &numfds);
-    if (code != CURLM_OK) {
-      Logger::smf_app().debug("curl_multi_wait() returned %d!", code);
-    }
-    curl_multi_perform(curl_multi, &still_running);
-  } while (still_running);
-
-  curl_release_handles();
-}
-
-//------------------------------------------------------------------------------
-void smf_sbi::curl_release_handles() {
-  CURLMsg* curl_msg = nullptr;
-  CURL* curl        = nullptr;
-  CURLcode code     = {};
-  int http_code     = 0;
-  int msgs_left     = 0;
-
-  while ((curl_msg = curl_multi_info_read(curl_multi, &msgs_left))) {
-    if (curl_msg && curl_msg->msg == CURLMSG_DONE) {
-      curl = curl_msg->easy_handle;
-      code = curl_msg->data.result;
-
-      if (code != CURLE_OK) {
-        Logger::smf_app().debug("CURL error code  %d!", curl_msg->data.result);
-        continue;
-      }
-      // Get HTTP code
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-      Logger::smf_app().debug("Got response with HTTP code  %d!", http_code);
-      uint32_t* promise_id = nullptr;
-      curl_easy_getinfo(curl, CURLINFO_PRIVATE, &promise_id);
-      if (promise_id) {
-        Logger::smf_app().debug(
-            "Prepare to make promise id %d ready!", *promise_id);
-        trigger_process_response(*promise_id, http_code);
-      }
-
-      curl_multi_remove_handle(curl_multi, curl);
-      curl_easy_cleanup(curl);
-
-      std::vector<CURL*>::iterator it;
-      it = find(handles.begin(), handles.end(), curl);
-      if (it != handles.end()) {
-        handles.erase(it);
-      }
-
-    } else if (curl_msg) {
-      curl = curl_msg->easy_handle;
-      Logger::smf_app().debug("Error after curl_multi_info_read()");
-      curl_multi_remove_handle(curl_multi, curl);
-      curl_easy_cleanup(curl);
-
-      std::vector<CURL*>::iterator it;
-      it = find(handles.begin(), handles.end(), curl);
-      if (it != handles.end()) {
-        handles.erase(it);
-      }
-    } else {
-      Logger::smf_app().debug("curl_msg null");
-    }
-  }
-}
-
-//---------------------------------------------------------------------------------------------
-uint32_t smf_sbi::get_available_response(boost::shared_future<uint32_t>& f) {
-  boost::future_status status;
-  // wait for timeout or ready
-  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
-  if (status == boost::future_status::ready) {
-    assert(f.is_ready());
-    assert(f.has_value());
-    assert(!f.has_exception());
-    uint32_t response_code = f.get();
-    return response_code;
-  } else {
-    return http_status_code::REQUEST_TIMEOUT;
-  }
-}
-
-//---------------------------------------------------------------------------------------------
-void smf_sbi::add_promise(
-    uint32_t id, boost::shared_ptr<boost::promise<uint32_t>>& p) {
-  std::unique_lock lock(m_curl_handle_promises);
-  curl_handle_promises.emplace(id, p);
-}
-
-//---------------------------------------------------------------------------------------------
-void smf_sbi::remove_promise(uint32_t id) {
-  std::unique_lock lock(m_curl_handle_promises);
-  curl_handle_promises.erase(id);
-}
-
-//------------------------------------------------------------------------------
-void smf_sbi::trigger_process_response(uint32_t pid, uint32_t http_code) {
-  Logger::smf_app().debug(
-      "Trigger process response: Set promise with ID %u "
-      "to ready",
-      pid);
-  std::unique_lock lock(m_curl_handle_promises);
-  if (curl_handle_promises.count(pid) > 0) {
-    curl_handle_promises[pid]->set_value(http_code);
-    // Remove this promise from list
-    curl_handle_promises.erase(pid);
-  }
 }
 
 //------------------------------------------------------------------------------
