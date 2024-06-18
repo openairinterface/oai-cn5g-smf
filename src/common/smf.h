@@ -27,6 +27,7 @@
 #include <nlohmann/json.hpp>
 #include <unordered_set>
 #include <vector>
+#include <sstream>
 
 #include "3gpp_24.501.h"
 #include "3gpp_29.274.h"
@@ -156,8 +157,12 @@ typedef struct s_nssai  // section 28.4, TS23.003
   oai::model::common::Snssai to_model_snssai() const {
     oai::model::common::Snssai snssai;
     snssai.setSst(sst);
-    // TODO this puts a decimal string but SD should be a hex string
-    snssai.setSd(std::to_string(sd));
+    // TODO: use the corresponding function from the common source
+    std::stringstream stream_str;
+    stream_str << std::hex << sd;
+    std::string sd_tmp(stream_str.str());
+    std::string sd_str = sd_tmp;
+    snssai.setSd(sd_str);
     return snssai;
   }
 
