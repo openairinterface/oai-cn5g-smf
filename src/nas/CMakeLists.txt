@@ -34,7 +34,12 @@ include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/utils)
 include_directories(${SRC_TOP_DIR}/common/utils/bstr)
 include_directories(${SRC_TOP_DIR}/common/nas)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
+# we only include the NAS utils, we should change that when we re-use common-src NAS lib
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
 
 file(GLOB NAS_src_files
     ${NAS_DIR}/*.c
@@ -50,6 +55,7 @@ file(GLOB NAS_src_files
     ${SRC_TOP_DIR}/common/*.c
     ${SRC_TOP_DIR}/ngap/asn1c/*.c
     ${SRC_TOP_DIR}/ngap/ies/*.c
+    ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.c
 )   
 
 add_library(NAS ${NAS_src_files} ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES})

@@ -78,14 +78,8 @@ struct policy_association {
       const pdu_session_type_t& pdu_session_type) {
     oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
-    std::string mnc_string = std::to_string(plmn.mnc_digit1) +
-                             std::to_string(plmn.mnc_digit2) +
-                             std::to_string(plmn.mnc_digit3);
-    std::string mcc_string = std::to_string(plmn.mcc_digit1) +
-                             std::to_string(plmn.mcc_digit2) +
-                             std::to_string(plmn.mcc_digit3);
-    plmn_id_model.setMnc(mnc_string);
-    plmn_id_model.setMcc(mcc_string);
+    plmn_id_model.setMcc(plmn.mcc);
+    plmn_id_model.setMnc(plmn.mnc);
     context = {};
 
     context.setPduSessionId(pdu_session_id);
@@ -235,7 +229,7 @@ class smf_pcf_client : public policy_storage {
       const oai::model::common::Snssai& snssai,
       const oai::model::common::PlmnId& plmn_id, const std::string& dnn);
 
-  http_status_code_e send_request(
+  uint16_t send_request(
       const std::string& uri, const std::string& body,
       const std::string& method, std::string& response_body,
       std::string& response_headers, bool use_response_headers = false);

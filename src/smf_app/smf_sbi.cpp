@@ -56,6 +56,7 @@ using namespace Pistache::Http;
 using namespace Pistache::Http::Mime;
 
 using namespace smf;
+using namespace oai::common::sbi;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
@@ -628,8 +629,7 @@ void smf_sbi::register_nf_instance(
   itti_msg_response->http_version       = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
-  if (static_cast<http_response_codes_e>(httpCode) ==
-      http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) {
+  if (httpCode == http_status_code::CREATED) {
     json response_json = {};
     try {
       response_json = json::parse(response_data);
@@ -703,10 +703,8 @@ void smf_sbi::update_nf_instance(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_OK) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::OK) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF Update, got successful response from NRF");
 
     // TODO: In case of response containing NF profile
@@ -767,10 +765,8 @@ void smf_sbi::deregister_nf_instance(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_OK) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::OK) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF De-register, got successful response from NRF");
 
   } else {
@@ -824,10 +820,8 @@ void smf_sbi::subscribe_upf_status_notify(
               TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code = httpCode;
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::CREATED) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
     return;
@@ -852,12 +846,11 @@ bool smf_sbi::get_sm_data(
     plmn_t plmn) {
   nlohmann::json jsonData = {};
   std::string query_str   = {};
-  std::string mcc         = {};
-  std::string mnc         = {};
-  conv::plmnToMccMnc(plmn, mcc, mnc);
+  std::string mcc         = plmn.mcc;
+  std::string mnc         = plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
-              ",\"sd\":\"" + std::to_string(snssai.sd) + "\"}&dnn=" + dnn +
+              ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
               "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
   std::string url =
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
@@ -899,8 +892,7 @@ bool smf_sbi::get_sm_data(
       "Code: %u",
       httpCode);
 
-  if (static_cast<http_response_codes_e>(httpCode) ==
-      http_response_codes_e::HTTP_RESPONSE_CODE_OK) {
+  if (httpCode == http_status_code::OK) {
     Logger::smf_sbi().debug(
         "Got successful response from UDM, URL: %s ", url.c_str());
     try {
@@ -933,10 +925,7 @@ bool smf_sbi::get_sm_data(
     }
     if (jsonData["singleNssai"].find("sd") != jsonData["singleNssai"].end()) {
       std::string sd_str = jsonData["singleNssai"]["sd"];
-      uint32_t sd        = SD_NO_VALUE;
-      xgpp_conv::sd_string_to_int(
-          jsonData["singleNssai"]["sd"].get<std::string>(), sd);
-      if (sd != snssai.sd) {
+      if (sd_str != snssai.sd) {
         return false;
       }
     }
@@ -1006,36 +995,22 @@ bool smf_sbi::get_sm_data(
           if (it.value().find("staticIpAddress") != it.value().end()) {
             for (const auto& ip_addr : it.value()["staticIpAddress"]) {
               if (ip_addr.find("ipv4Addr") != ip_addr.end()) {
-                struct in_addr ue_ipv4_addr = {};
                 std::string ue_ip_str = ip_addr["ipv4Addr"].get<std::string>();
-                // ip_addr.at("ipv4Addr").get_to(ue_ip_str);
-                IPV4_STR_ADDR_TO_INADDR(
-                    util::trim(ue_ip_str).c_str(), ue_ipv4_addr,
-                    "BAD IPv4 ADDRESS FORMAT FOR UE IP ADDR !");
+                in_addr ue_ipv4_addr =
+                    oai::utils::conv::fromString(oai::utils::trim(ue_ip_str));
                 ip_address_t ue_ip = {};
                 ue_ip              = ue_ipv4_addr;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               } else if (ip_addr.find("ipv6Addr") != ip_addr.end()) {
-                unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-                struct in6_addr ue_ipv6_addr;
                 std::string ue_ip_str = ip_addr["ipv6Addr"].get<std::string>();
-
-                if (inet_pton(
-                        AF_INET6, util::trim(ue_ip_str).c_str(),
-                        buf_in6_addr) == 1) {
-                  memcpy(&ue_ipv6_addr, buf_in6_addr, sizeof(struct in6_addr));
-                } else {
-                  Logger::smf_app().error(
-                      "Bad UE IPv6 Addr %s", ue_ip_str.c_str());
-                  ue_ipv6_addr = in6addr_any;
-                }
+                in6_addr ue_ipv6_addr =
+                    oai::utils::conv::fromStringV6(oai::utils::trim(ue_ip_str));
 
                 ip_address_t ue_ip = {};
                 ue_ip              = ue_ipv6_addr;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               } else if (ip_addr.find("ipv6Prefix") != ip_addr.end()) {
-                unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-                struct in6_addr ipv6_prefix;
+                in6_addr ipv6_prefix;
                 std::string prefix_str =
                     ip_addr["ipv6Prefix"].get<std::string>();
                 std::vector<std::string> words = {};
@@ -1047,22 +1022,15 @@ bool smf_sbi::get_sm_data(
                       "Bad value for UE IPv6 Prefix %s", prefix_str.c_str());
                   return RETURNerror;
                 }
-
-                if (inet_pton(
-                        AF_INET6, util::trim(words.at(0)).c_str(),
-                        buf_in6_addr) == 1) {
-                  memcpy(&ipv6_prefix, buf_in6_addr, sizeof(struct in6_addr));
-                } else {
-                  Logger::smf_app().error(
-                      "Bad UE IPv6 Addr %s", words.at(0).c_str());
-                  ipv6_prefix = in6addr_any;
-                }
+                ipv6_prefix = oai::utils::conv::fromStringV6(
+                    oai::utils::trim(words.at(0)));
 
                 ip_address_t ue_ip           = {};
                 ipv6_prefix_t ue_ipv6_prefix = {};
-                ue_ipv6_prefix.prefix_len = std::stoi(util::trim(words.at(1)));
-                ue_ipv6_prefix.prefix     = ipv6_prefix;
-                ue_ip                     = ue_ipv6_prefix;
+                ue_ipv6_prefix.prefix_len =
+                    std::stoi(oai::utils::trim(words.at(1)));
+                ue_ipv6_prefix.prefix = ipv6_prefix;
+                ue_ip                 = ue_ipv6_prefix;
                 dnn_configuration->static_ip_addresses.push_back(ue_ip);
               }
             }
@@ -1424,7 +1392,7 @@ uint32_t smf_sbi::get_available_response(boost::shared_future<uint32_t>& f) {
     uint32_t response_code = f.get();
     return response_code;
   } else {
-    return http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    return http_status_code::REQUEST_TIMEOUT;
   }
 }
 

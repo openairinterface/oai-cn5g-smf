@@ -1127,10 +1127,9 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param http_status
    */
   void send_pdu_session_establishment_response_reject(
-      const std::shared_ptr<itti_n11_create_sm_context_request> smreq,
+      const std::shared_ptr<itti_n11_create_sm_context_request>& smreq,
       cause_value_5gsm_e cause,
-      pdu_session_application_error_e application_error,
-      http_status_code_e http_status);
+      pdu_session_application_error_e application_error, uint16_t http_status);
 
   /**
    * Send a PDU session Create Response, based on the content of resp.

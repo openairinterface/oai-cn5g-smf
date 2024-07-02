@@ -118,7 +118,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
     std::string body         = {};
     bool n1_sm_msg_is_set    = false;
 
-    int http_code = http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    uint16_t http_code = common::sbi::http_status_code::REQUEST_TIMEOUT;
     if (sm_context_response.find("http_code") != sm_context_response.end()) {
       http_code = sm_context_response["http_code"].get<int>();
     }
@@ -136,7 +136,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
       n1_sm_msg_is_set = true;
     }
 
-    if (http_code == http_status_code_e::HTTP_STATUS_CODE_201_CREATED) {
+    if (http_code == common::sbi::http_status_code::CREATED) {
       if (sm_context_response.find("smf_context_uri") !=
           sm_context_response.end()) {
         response.headers().add<Pistache::Http::Header::Location>(

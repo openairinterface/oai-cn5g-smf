@@ -269,13 +269,8 @@ void xgpp_conv::sm_context_create_from_openapi(
       context_data.getServingNetwork().getMcc().c_str(),
       context_data.getServingNetwork().getMnc().c_str());
   plmn_t p = {};
-  if (conv::plmnFromString(
-          p, context_data.getServingNetwork().getMcc(),
-          context_data.getServingNetwork().getMnc())) {
-    pcr.set_plmn(p);
-  } else {
-    Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
-  }
+  plmn_from_model(context_data.getServingNetwork(), p);
+  pcr.set_plmn(p);
 
   // anType (AccessType)
   Logger::smf_app().debug("AN Type %s", context_data.getAnType().c_str());
@@ -285,12 +280,13 @@ void xgpp_conv::sm_context_create_from_openapi(
   if (context_data.guamiIsSet()) {
     // Logger::smf_app().debug("GUAMI %s", context_data.getGuami().c_str());
     guami_5g_t guami = {};
-    guami.amf_id     = context_data.getGuami().getAmfId();
-    if (!conv::plmnFromString(
-            guami.plmn, context_data.getGuami().getPlmnId().getMcc(),
-            context_data.getGuami().getPlmnId().getMnc())) {
-      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
+    try {
+      guami.amf_id = std::stoi(context_data.getGuami().getAmfId(), nullptr, 16);
+    } catch (std::invalid_argument& e) {
+      Logger::smf_app().error("Could not convert AMF ID: %s", e.what());
     }
+    guami.plmn.mcc = context_data.getGuami().getPlmnId().getMcc();
+    guami.plmn.mnc = context_data.getGuami().getPlmnId().getMnc();
     pcr.set_guami(guami);
   }
 
@@ -398,22 +394,16 @@ void xgpp_conv::sm_context_update_from_openapi(
     oai::smf_server::model::NgRanTargetId api_target_id =
         context_data.getTargetId();
     ng_ran_target_id_t ran_target_id = {};
-    if (!conv::plmnFromString(
-            ran_target_id.global_ran_node_id.plmn_id,
-            api_target_id.getTai().getPlmnId().getMcc(),
-            api_target_id.getTai().getPlmnId().getMnc())) {
-      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
-    }
+    plmn_from_model(
+        api_target_id.getTai().getPlmnId(),
+        ran_target_id.global_ran_node_id.plmn_id);
+
     ran_target_id.global_ran_node_id.gNbId.bit_length =
         api_target_id.getRanNodeId().getGNbId().getBitLength();
     ran_target_id.global_ran_node_id.gNbId.gNB_value =
         api_target_id.getRanNodeId().getGNbId().getGNBValue();
 
-    if (!conv::plmnFromString(
-            ran_target_id.tai.plmn, api_target_id.getTai().getPlmnId().getMcc(),
-            api_target_id.getTai().getPlmnId().getMnc())) {
-      Logger::smf_app().warn("Error while converting MCC, MNC to PLMN");
-    }
+    plmn_from_model(api_target_id.getTai().getPlmnId(), ran_target_id.tai.plmn);
 
     try {
       // string to uint16_t
@@ -596,7 +586,7 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
     std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
   ctx_response->http_version = ctx_request->http_version;
-  ctx_response->res.set_http_code(http_status_code_e::HTTP_STATUS_CODE_200_OK);
+  ctx_response->res.set_http_code(oai::common::sbi::http_status_code::OK);
   ctx_response->res.set_supi(ctx_request->req.get_supi());
   ctx_response->res.set_supi_prefix(ctx_request->req.get_supi_prefix());
   ctx_response->res.set_cause(
@@ -615,7 +605,7 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
   ct_response->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);  // default status code
+      oai::common::sbi::http_status_code::OK);  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());
   ct_response->res.set_supi_prefix(ct_request->req.get_supi_prefix());
   ct_response->res.set_cause(
@@ -625,22 +615,8 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
   ct_response->res.set_dnn(ct_request->req.get_dnn());
 }
 
-//------------------------------------------------------------------------------
-void xgpp_conv::sd_string_to_int(const std::string& sd_str, uint32_t& sd) {
-  sd = SD_NO_VALUE;
-  if (sd_str.empty()) return;
-  uint8_t base = 10;
-  try {
-    if (sd_str.size() > 2) {
-      if (boost::iequals(sd_str.substr(0, 2), "0x")) {
-        base = 16;
-      }
-    }
-    sd = std::stoul(sd_str, nullptr, base);
-  } catch (const std::exception& e) {
-    Logger::smf_app().error(
-        "Error when converting from string to int for S-NSSAI SD, error: %s",
-        e.what());
-    sd = SD_NO_VALUE;
-  }
+void xgpp_conv::plmn_from_model(
+    const oai::model::common::PlmnId& plmn_model, plmn_t& plmn) {
+  plmn.mcc = plmn_model.getMcc();
+  plmn.mnc = plmn_model.getMnc();
 }

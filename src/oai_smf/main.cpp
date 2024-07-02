@@ -137,8 +137,9 @@ int main(int argc, char** argv) {
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
-  string pid_file_name = get_exe_absolute_path("/var/run", smf_cfg->instance);
-  if (!is_pid_file_lock_success(pid_file_name.c_str())) {
+  string pid_file_name =
+      oai::utils::get_exe_absolute_path("/var/run", smf_cfg->instance);
+  if (!oai::utils::is_pid_file_lock_success(pid_file_name.c_str())) {
     Logger::smf_app().error("Lock PID file %s failed\n", pid_file_name.c_str());
     exit(-EDEADLK);
   }
@@ -162,7 +163,7 @@ int main(int argc, char** argv) {
   } else if (smf_cfg->get_http_version() == 2) {
     // SMF NGHTTP API server (HTTP2)
     smf_api_server_2 = new smf_http2_server(
-        conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
+        oai::utils::conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
         smf_app_inst);
     // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);

@@ -316,7 +316,8 @@ int smf_app::process_pco_dns_server_v6_request(
     std::string ipv6_addr_str((char*) str_addr6, INET6_ADDRSTRLEN);
     // Logger::smf_app().info(" Ipv6 address....: %s", ipv6_addr_str.c_str());
     unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-    if (inet_pton(AF_INET6, util::trim(ipv6_addr_str).c_str(), buf_in6_addr) ==
+    if (inet_pton(
+            AF_INET6, oai::utils::trim(ipv6_addr_str).c_str(), buf_in6_addr) ==
         1) {
       for (int i = 0; i <= 15; i++)
         dnsv6_array[i] = (uint8_t) (buf_in6_addr[i]);
@@ -386,7 +387,8 @@ int smf_app::process_pco_p_cscf_v6_request(
     std::string ipv6_addr_str((char*) str_addr6, INET6_ADDRSTRLEN);
     Logger::smf_app().info(" CSCF Ipv6 address....: %s", ipv6_addr_str.c_str());
     unsigned char buf_in6_addr[sizeof(struct in6_addr)];
-    if (inet_pton(AF_INET6, util::trim(ipv6_addr_str).c_str(), buf_in6_addr) ==
+    if (inet_pton(
+            AF_INET6, oai::utils::trim(ipv6_addr_str).c_str(), buf_in6_addr) ==
         1) {
       for (int i = 0; i <= 15; i++)
         cscfv6_array[i] = (uint8_t) (buf_in6_addr[i]);

@@ -28,7 +28,7 @@
 
 #include "udp.hpp"
 
-#include <cstdlib>
+using namespace oai::utils;
 
 //------------------------------------------------------------------------------
 void udp_application::handle_receive(
