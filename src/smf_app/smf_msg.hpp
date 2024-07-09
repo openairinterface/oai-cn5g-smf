@@ -83,7 +83,6 @@ class qos_flow_context_updated {
   void set_dl_fteid(const pfcp::fteid_t& teid);
   void add_qos_rule(const QOSRulesIE& rule);
   void set_qos_profile(const oai::model::pcf::QosData& profile);
-  void set_priority_level(uint8_t p);
   void set_qos_flow_descriptions(
       const QOSFlowDescriptionsContents& flow_description_content);
 

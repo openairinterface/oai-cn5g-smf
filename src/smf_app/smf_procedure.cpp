@@ -751,7 +751,9 @@ smf_procedure_code session_create_sm_context_procedure::run(
   arp.setPriorityLevel(default_qos.arp.priority_level);
 
   criteria.qos_profile.setArp(arp);
-  criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  if (default_qos.priority_level != 0) {
+    criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};

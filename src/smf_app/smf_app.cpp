@@ -2058,7 +2058,8 @@ bool smf_app::get_session_management_subscription_data(
   dnn_configuration->_5g_qos_profile.arp.priority_level = 1;
   dnn_configuration->_5g_qos_profile.arp.preempt_cap    = "NOT_PREEMPT";
   dnn_configuration->_5g_qos_profile.arp.preempt_vuln   = "NOT_PREEMPTABLE";
-  dnn_configuration->_5g_qos_profile.priority_level     = 1;
+  dnn_configuration->_5g_qos_profile.priority_level =
+      0;  // is set automatically based on 5QI
   // Session_ambr
   dnn_configuration->session_ambr.uplink   = "1000Mbps";
   dnn_configuration->session_ambr.downlink = "1000Mbps";

@@ -1580,6 +1580,30 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
           1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
       qos_flow.qos_profile.getR5qi();
+  if (qos_flow.qos_profile.priorityLevelIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->priorityLevelQos =
+        (Ngap_PriorityLevelQos_t*) (calloc(1, sizeof(Ngap_PriorityLevelQos_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->priorityLevelQos) = qos_flow.qos_profile.getPriorityLevel();
+  }
+
+  if (qos_flow.qos_profile.averWindowIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->averagingWindow =
+        (Ngap_AveragingWindow_t*) (calloc(1, sizeof(Ngap_AveragingWindow_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->averagingWindow) = qos_flow.qos_profile.getAverWindow();
+  }
+
+  if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->maximumDataBurstVolume    = (Ngap_MaximumDataBurstVolume_t*) (calloc(
+        1, sizeof(Ngap_MaximumDataBurstVolume_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->maximumDataBurstVolume) = qos_flow.qos_profile.getMaxDataBurstVol();
+  }
+
   qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
       qos_flow.qos_profile.getPriorityLevel();
   auto preemptCapEnumValue =
