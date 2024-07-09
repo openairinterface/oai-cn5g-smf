@@ -32,7 +32,7 @@
 #define SNSSAI_MAXIMUM_LENGTH_TLV 10
 
 typedef enum {
-  SST_LENGTH                                             = 0b00000001,
+  SST_LENGTH_NAS                                         = 0b00000001,
   SST_AND_MAPPEDHPLMNSST_LENGTH                          = 0b00000010,
   SST_AND_SD_LENGTH                                      = 0b00000100,
   SST_AND_SD_AND_MAPPEDHPLMNSST_LENGTH                   = 0b00000101,

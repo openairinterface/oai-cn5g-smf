@@ -586,7 +586,7 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
     std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
   ctx_response->http_version = ctx_request->http_version;
-  ctx_response->res.set_http_code(http_status_code_e::HTTP_STATUS_CODE_200_OK);
+  ctx_response->res.set_http_code(oai::common::sbi::http_status_code::OK);
   ctx_response->res.set_supi(ctx_request->req.get_supi());
   ctx_response->res.set_supi_prefix(ctx_request->req.get_supi_prefix());
   ctx_response->res.set_cause(
@@ -605,7 +605,7 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
   ct_response->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);  // default status code
+      oai::common::sbi::http_status_code::OK);  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());
   ct_response->res.set_supi_prefix(ct_request->req.get_supi_prefix());
   ct_response->res.set_cause(
@@ -613,26 +613,6 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
   ct_response->res.set_pdu_session_id(ct_request->req.get_pdu_session_id());
   ct_response->res.set_snssai(ct_request->req.get_snssai());
   ct_response->res.set_dnn(ct_request->req.get_dnn());
-}
-
-//------------------------------------------------------------------------------
-void xgpp_conv::sd_string_to_int(const std::string& sd_str, uint32_t& sd) {
-  sd = SD_NO_VALUE;
-  if (sd_str.empty()) return;
-  uint8_t base = 10;
-  try {
-    if (sd_str.size() > 2) {
-      if (boost::iequals(sd_str.substr(0, 2), "0x")) {
-        base = 16;
-      }
-    }
-    sd = std::stoul(sd_str, nullptr, base);
-  } catch (const std::exception& e) {
-    Logger::smf_app().error(
-        "Error when converting from string to int for S-NSSAI SD, error: %s",
-        e.what());
-    sd = SD_NO_VALUE;
-  }
 }
 
 void xgpp_conv::plmn_from_model(

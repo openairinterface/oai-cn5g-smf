@@ -277,7 +277,7 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
   }
   if (data.find("snssai") != data.end()) {
     if (data["snssai"].find("sd") != data["snssai"].end()) {
-      m_snssai.sd = data["snssai"]["sd"].get<int>();
+      m_snssai.sd = data["snssai"]["sd"].get<std::string>();
     }
   }
 
