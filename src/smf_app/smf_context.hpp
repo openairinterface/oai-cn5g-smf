@@ -77,6 +77,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     dnn                 = {};
     snssai              = {};
     pdu_session_type    = {};
+    ipv4FrameRoute      = {};
     seid                = 0;
     up_fseid            = {};
     default_qfi.qfi     = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
@@ -102,6 +103,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     dnn                         = {};
     snssai                      = {};
     pdu_session_type            = {};
+    ipv4FrameRoute              = {};
     seid                        = 0;
     up_fseid                    = {};
     default_qfi.qfi             = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
@@ -220,6 +222,10 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   void set_dnn(const std::string& d);
 
+  const pfcp::framed_route_t& getIpv4FrameRoute() const;
+
+  void setIpv4FrameRoute(const pfcp::framed_route_t& ipv4FrameRoute);
+
   /*
    * Get SNSSAI associated with this PDU Session
    * @param void
@@ -252,6 +258,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   pdu_session_type_t pdu_session_type;  // IPv4, IPv6, IPv4v6 or Non-IP
 
   bool released;  // release session request
+
+  pfcp::framed_route_t ipv4FrameRoute;
 
   std::shared_ptr<::smf::n7::policy_association> policy_ptr;
 
