@@ -204,20 +204,21 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
 
   Logger::smf_n7().info("Sending PCF SM policy association creation request");
 
-  request req = http_client_inst->prepare_json_request(root_uri, json_data.dump());
+  request req =
+      http_client_inst->prepare_json_request(root_uri, json_data.dump());
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
-  if (resp.status_code ==  http_status_code::CREATED) {
+  if (resp.status_code == http_status_code::CREATED) {
     for (const auto& hdr : resp.headers.list()) {
       auto loc_header =
-              dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
+          dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
       if (loc_header) {
         association.pcf_location = loc_header->location();
         nlohmann::json j         = nlohmann::json::parse(resp.body);
         from_json(j, association.decision);
         Logger::smf_n7().info(
-                "Successfully created SM Policy Association for SUPI %s",
-                association.context.getSupi().c_str());
+            "Successfully created SM Policy Association for SUPI %s",
+            association.context.getSupi().c_str());
         return sm_policy_status_code::CREATED;
       }
     }
@@ -328,9 +329,9 @@ sm_policy_status_code smf_pcf_client::get_policy_association(
   std::string uri = association.pcf_location;
   std::string empty;
   request req;
-  req.uri = uri;
-  response resp = http_client_inst->send_http_request(method_e::GET, req);
-  nlohmann::json j       = nlohmann::json::parse(resp.body);
+  req.uri          = uri;
+  response resp    = http_client_inst->send_http_request(method_e::GET, req);
+  nlohmann::json j = nlohmann::json::parse(resp.body);
 
   SmPolicyControl control;
   switch (resp.status_code) {

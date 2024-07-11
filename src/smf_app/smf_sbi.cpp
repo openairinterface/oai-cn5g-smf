@@ -195,7 +195,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF, body %s", body.c_str());
 
-  request req = http_client_inst->prepare_multipart_request(sm_context_res->res.get_amf_url(), body);
+  request req = http_client_inst->prepare_multipart_request(
+      sm_context_res->res.get_amf_url(), body);
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
@@ -264,7 +265,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
         multipart_related_content_part_e::NAS);
   }
 
-  request req = http_client_inst->prepare_multipart_request(sm_session_modification->msg.get_amf_url(), body);
+  request req = http_client_inst->prepare_multipart_request(
+      sm_session_modification->msg.get_amf_url(), body);
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
@@ -304,7 +306,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
         multipart_related_content_part_e::NGAP);
   }
 
-  request req = http_client_inst->prepare_multipart_request(report_msg->res.get_amf_url(), body);
+  request req = http_client_inst->prepare_multipart_request(
+      report_msg->res.get_amf_url(), body);
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
@@ -356,7 +359,8 @@ void smf_sbi::send_sm_context_status_notification(
       sm_context_status->sm_context_status;
   std::string body = json_data.dump();
 
-  request req = http_client_inst->prepare_json_request(sm_context_status->amf_status_uri, body);
+  request req = http_client_inst->prepare_json_request(
+      sm_context_status->amf_status_uri, body);
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response code %d", resp.status_code);
@@ -422,7 +426,8 @@ void smf_sbi::notify_subscribed_event(
     json_data["eventNotifs"] = event_notifs;
     std::string body         = json_data.dump();
 
-    request req = http_client_inst->prepare_json_request(i.get_notif_uri(), body);
+    request req =
+        http_client_inst->prepare_json_request(i.get_notif_uri(), body);
     response resp = http_client_inst->send_http_request(method_e::POST, req);
 
     Logger::smf_sbi().debug("Response code %d", resp.status_code);
@@ -450,18 +455,20 @@ void smf_sbi::register_nf_instance(
       "Send NF Instance Registration to NRF, msg body: \n %s (bytes %d)",
       body.c_str(), body.size());
 
-  request req = http_client_inst->prepare_json_request(url, body);
+  request req   = http_client_inst->prepare_json_request(url, body);
   response resp = http_client_inst->send_http_request(method_e::PUT, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %d",
+      resp.status_code);
 
   std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
       std::make_shared<itti_n11_register_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = static_cast<int16_t>(resp.status_code);
-  itti_msg_response->http_version       = msg->http_version;
+  itti_msg_response->http_response_code =
+      static_cast<int16_t>(resp.status_code);
+  itti_msg_response->http_version = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
   if (resp.status_code == http_status_code::CREATED) {
@@ -511,12 +518,13 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
 
-  request req = http_client_inst->prepare_json_request(url, body);
+  request req   = http_client_inst->prepare_json_request(url, body);
   response resp = http_client_inst->send_http_request(method_e::PATCH, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u", resp.status_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %u",
+      resp.status_code);
 
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -554,12 +562,13 @@ void smf_sbi::deregister_nf_instance(
       "Send NF De-register to NRF (NRF URL %s)", url.c_str());
 
   request req;
-  req.uri = url;
+  req.uri       = url;
   response resp = http_client_inst->send_http_request(method_e::DELETE, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %d",
+      resp.status_code);
 
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -583,18 +592,20 @@ void smf_sbi::subscribe_upf_status_notify(
   std::string body = msg->json_data.dump();
   Logger::smf_sbi().debug("Message body: %s", body.c_str());
 
-  request req = http_client_inst->prepare_json_request(msg->url, body);
+  request req   = http_client_inst->prepare_json_request(msg->url, body);
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d", resp.status_code);
+      "NF Instance Registration, response from NRF, HTTP Code: %d",
+      resp.status_code);
 
   std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
       itti_msg_response =
           std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
               TASK_SMF_SBI, TASK_SMF_APP);
-  itti_msg_response->http_response_code = static_cast<int16_t>(resp.status_code);
+  itti_msg_response->http_response_code =
+      static_cast<int16_t>(resp.status_code);
 
   if ((resp.status_code == http_status_code::CREATED) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -640,17 +651,17 @@ bool smf_sbi::get_sm_data(
   Logger::smf_sbi().debug("UDM's URL: %s ", url.c_str());
 
   request req;
-  req.uri = url;
+  req.uri       = url;
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
       "Session Management Subscription Data Retrieval, response from UDM, HTTP "
-      "Code: %d", resp.status_code);
+      "Code: %d",
+      resp.status_code);
 
   if (resp.status_code == http_status_code::OK) {
-    Logger::smf_sbi().debug(
-        "Got successful response from UDM, URL: %s ", url);
+    Logger::smf_sbi().debug("Got successful response from UDM, URL: %s ", url);
     try {
       jsonData = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
