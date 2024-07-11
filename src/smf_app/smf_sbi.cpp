@@ -803,6 +803,14 @@ bool smf_sbi::get_sm_data(
             }
           }
 
+          // Static Framed-Route (Optional)
+          if (it.value().find("ipv4FrameRouteList") != it.value().end()) {
+            for (const auto& framed_route : it.value()["ipv4FrameRouteList"]) {
+              dnn_configuration->ipv4FrameRouteList.push_back(
+                  framed_route["ipv4Mask"].get<std::string>());
+            }
+          }
+
           subscription->insert_dnn_configuration(it.key(), dnn_configuration);
           return true;
         } catch (nlohmann::json::exception& e) {

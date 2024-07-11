@@ -244,6 +244,7 @@ typedef struct dnn_configuration_s {
   session_ambr_t session_ambr;
   subscribed_default_qos_t _5g_qos_profile;
   std::vector<ip_address_t> static_ip_addresses;
+  std::vector<std::string> ipv4FrameRouteList;
 
   nlohmann::json to_json() const {
     nlohmann::json json_data       = {};
@@ -258,6 +259,14 @@ typedef struct dnn_configuration_s {
     for (const auto& a : static_ip_addresses) {
       nlohmann::json json_item = a.to_string();
       json_data["static_ip_addresses"].push_back(json_item);
+    }
+
+    if (ipv4FrameRouteList.size() > 0) {
+      json_data["ipv4FrameRouteList"] = nlohmann::json::array();
+    }
+    for (const auto& a : ipv4FrameRouteList) {
+      nlohmann::json json_item = a;
+      json_data["ipv4FrameRouteList"].push_back(json_item);
     }
 
     return json_data;
