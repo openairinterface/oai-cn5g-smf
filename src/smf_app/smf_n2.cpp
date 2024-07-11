@@ -250,14 +250,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
 
-    /* TODO Add getEnumString to ARP enums
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, ARP priority level %d, "
         "qos_flow.qos_profile.arp.preempt_cap %s, "
         "qos_flow.qos_profile.arp.preempt_vuln %s",
         qos_flow.qfi.qfi, qos_flow.qos_profile.getArp().getPriorityLevel(),
         qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString()); */
+        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
 
     i++;
   }
@@ -493,14 +492,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     ASN_SEQUENCE_ADD(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
-    /* TODO add getEnumString to ARP Enums
-        Logger::smf_n2().info(
-            "QoS parameters: QFI %d, ARP priority level %d, "
-            "qos_flow.qos_profile.arp.preempt_cap %d, "
-            "qos_flow.qos_profile.arp.preempt_vuln %d",
-            qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
-            qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-            qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());  */
+    Logger::smf_n2().info(
+        "QoS parameters: QFI %d, ARP priority level %d, "
+        "qos_flow.qos_profile.arp.preempt_cap %d, "
+        "qos_flow.qos_profile.arp.preempt_vuln %d",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
+        qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
+        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
     i++;
   }
 

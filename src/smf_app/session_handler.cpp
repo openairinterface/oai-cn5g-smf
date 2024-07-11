@@ -39,6 +39,8 @@ using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION = 0b10;
+
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {
   m_session_graph = upf_graph;
@@ -157,7 +159,7 @@ void session_handler::set_nas_filter_from_edge(
         (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
             1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilterdirection = 0b10;  // always uplink
+        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
         .packetfilteridentifier = 1;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
@@ -204,7 +206,7 @@ void session_handler::set_port_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const port_range& port_range) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint16_t port_low                 = htons(port_range.start);
   uint16_t port_high                = htons(port_range.end);
 
@@ -225,7 +227,7 @@ void session_handler::set_ip_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const ip_range& ip_range) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint64_t ip_snm =
       ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
   nas_filter.packetfiltercontents.component_type =
@@ -237,7 +239,7 @@ void session_handler::set_protocol_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   nas_filter.packetfiltercontents.component_type =
       QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
   nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
