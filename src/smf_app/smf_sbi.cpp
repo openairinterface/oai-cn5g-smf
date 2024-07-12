@@ -806,7 +806,7 @@ bool smf_sbi::get_sm_data(
           // Static Framed-Route (Optional)
           if (it.value().find("ipv4FrameRouteList") != it.value().end()) {
             for (const auto& framed_route : it.value()["ipv4FrameRouteList"]) {
-              dnn_configuration->ipv4FrameRouteList.push_back(
+              dnn_configuration->ipv4_frame_routes.push_back(
                   framed_route["ipv4Mask"].get<std::string>());
             }
           }
