@@ -644,7 +644,7 @@ void upf_profile::from_json(const nlohmann::json& data) {
                   d["dnaiNwInstanceList"]
                       .get<std::map<std::string, std::string>>();
             }
-            upf_info_item.dnn_upf_info_list.push_back(dnn_item);
+            upf_info_item.dnn_upf_info_list.insert(dnn_item);
           }
         }
         upf_info.snssai_upf_info_list.push_back(upf_info_item);
