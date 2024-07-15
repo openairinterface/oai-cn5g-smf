@@ -285,13 +285,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // Framed IPv4 Route
-  if (!edge->uplink and sps->framed_route) {
-    Logger::smf_app().debug(
-        "Set Framed Route: %s", sps->get_ipv4_frame_route().framed_route);
+  if (edge->uplink && sps->framed_route) {
     pdi.set(sps->get_ipv4_frame_route());
-    Logger::smf_app().debug(
-        "Set Framed Route: %s %s", (pdi.framed_route.first ? "true" : "false"),
-        pdi.framed_route.second.framed_route);
   }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
