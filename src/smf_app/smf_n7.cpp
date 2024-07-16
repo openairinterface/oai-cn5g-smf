@@ -209,23 +209,18 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   if (resp.status_code == http_status_code::CREATED) {
-    for (const auto& hdr : resp.headers.list()) {
-      auto loc_header =
-          dynamic_pointer_cast<Pistache::Http::Header::Location>(hdr);
-      if (loc_header) {
-        association.pcf_location = loc_header->location();
-        nlohmann::json j         = nlohmann::json::parse(resp.body);
-        from_json(j, association.decision);
-        Logger::smf_n7().info(
-            "Successfully created SM Policy Association for SUPI %s",
-            association.context.getSupi().c_str());
-        return sm_policy_status_code::CREATED;
-      }
-    }
-    if (association.pcf_location.empty()) {
+    if (resp.headers.find("location") == resp.headers.end()) {
       Logger::smf_n7().debug(
-          "SM Policy Association response does not contain Location!");
+              "SM Policy Association response does not contain Location!");
       return sm_policy_status_code::INTERNAL_ERROR;
+    } else {
+      association.pcf_location = resp.headers["location"];
+      nlohmann::json j         = nlohmann::json::parse(resp.body);
+      from_json(j, association.decision);
+      Logger::smf_n7().info(
+              "Successfully created SM Policy Association for SUPI %s",
+              association.context.getSupi().c_str());
+      return sm_policy_status_code::CREATED;
     }
   }
 
