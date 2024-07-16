@@ -4194,10 +4194,13 @@ void smf_context::update_qos_info(
           break;
         }
       }
-    } else if (qos_rules_ie.ruleoperationcode == DELETE_EXISTING_QOS_FLOW_DESCRIPTION) {
-      //TODO
+    } else if (
+        qos_rules_ie.ruleoperationcode ==
+        DELETE_EXISTING_QOS_FLOW_DESCRIPTION) {
+      // TODO
       Logger::smf_app().warn(
-              "Delete existing QRI %d requested but is not implemented yet", qos_rules_ie.qosruleidentifer);
+          "Delete existing QRI %d requested but is not implemented yet",
+          qos_rules_ie.qosruleidentifer);
     } else {  // update existing QRI
       Logger::smf_app().debug(
           "Update existing QRI %d", qos_rules_ie.qosruleidentifer);
