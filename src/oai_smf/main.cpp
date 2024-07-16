@@ -63,6 +63,9 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
+  // Setting log level arbitrarly to debug to show the whole
+  // shutdown procedure in the logs even in case of off-logging
+  Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
   smf_app_inst->trigger_nf_deregistration();
