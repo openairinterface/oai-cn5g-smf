@@ -27,6 +27,8 @@
 #include "pistache/http.h"
 #include "pistache/router.h"
 #include "smf-http2-server.h"
+#include "sbi_helper.hpp"
+#include "http_client.hpp"
 
 #include <iostream>
 #include <thread>
@@ -45,8 +47,9 @@ itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
 smf_app* smf_app_inst                 = nullptr;
 std::unique_ptr<smf_config> smf_cfg;
-SMFApiServer* smf_api_server_1     = nullptr;
-smf_http2_server* smf_api_server_2 = nullptr;
+SMFApiServer* smf_api_server_1                           = nullptr;
+smf_http2_server* smf_api_server_2                       = nullptr;
+std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -127,6 +130,11 @@ int main(int argc, char** argv) {
   // Inter-task Interface
   itti_inst = new itti_mw();
   itti_inst->start(smf_cfg->itti.itti_timer_sched_params);
+
+  // HTTP Client
+  http_client_inst = oai::http::http_client::create_instance(
+      Logger::smf_sbi(), oai::common::sbi::kNfDefaultHttpRequestTimeout,
+      smf_cfg->sbi.if_name, smf_cfg->http_version);
 
   // system command
   async_shell_cmd_inst =

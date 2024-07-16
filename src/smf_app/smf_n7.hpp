@@ -229,11 +229,6 @@ class smf_pcf_client : public policy_storage {
       const oai::model::common::Snssai& snssai,
       const oai::model::common::PlmnId& plmn_id, const std::string& dnn);
 
-  uint16_t send_request(
-      const std::string& uri, const std::string& body,
-      const std::string& method, std::string& response_body,
-      std::string& response_headers, bool use_response_headers = false);
-
   std::string root_uri;
 };
 
