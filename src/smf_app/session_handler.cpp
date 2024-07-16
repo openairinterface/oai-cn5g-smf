@@ -31,11 +31,15 @@
 #include "FlowDirection.h"
 #include "conversions.hpp"
 #include "conversions.h"
+#include "smf_config.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
+extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
+
+const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION = 0b10;
 
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {
@@ -63,6 +67,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     qos_flow_context_updated flow;
     flow.qfi         = edge->qfi;
     flow.qos_profile = edge->qos_profile;
+    set_default_qos_parameters(flow.qos_profile);
     flow.cause_value = static_cast<uint8_t>(m_cause_value);
     flow.set_dl_fteid(edge->next_hop_fteid);
     flow.set_ul_fteid(edge->fteid);
@@ -151,7 +156,7 @@ void session_handler::set_nas_filter_from_edge(
         (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
             1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilterdirection = 0b10;  // always uplink
+        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
         .packetfilteridentifier = 1;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
@@ -198,7 +203,7 @@ void session_handler::set_port_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const port_range& port_range) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint16_t port_low                 = htons(port_range.start);
   uint16_t port_high                = htons(port_range.end);
 
@@ -219,7 +224,7 @@ void session_handler::set_ip_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const ip_range& ip_range) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint64_t ip_snm =
       ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
   nas_filter.packetfiltercontents.component_type =
@@ -231,7 +236,7 @@ void session_handler::set_protocol_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
   nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = 0b11;  // always uplink
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   nas_filter.packetfiltercontents.component_type =
       QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
   nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
@@ -807,4 +812,61 @@ bool session_handler::is_flow_direction(
   }
 
   return false;
+}
+
+void session_handler::set_default_qos_parameters(QosData& qos_data) {
+  try {
+    uint8_t _5qi             = qos_data.getR5qi();
+    auto priority_level      = qos_priority_map.at(_5qi);
+    auto packet_delay_budget = qos_packet_delay_budget.at(_5qi);
+    auto packet_error_rate   = qos_packet_error_rate.at(_5qi);
+    auto max_burst_volume    = qos_max_burst_volume.at(_5qi);
+    auto averaging_window    = qos_averaging_window.at(_5qi);
+
+    // Here, we check for all the values if
+    // Characteristic not set, and we should send default values -> SET
+    // Characteristic set and the value is the same sa the default -> UNSET
+
+    bool send_values =
+        smf_cfg->smf()->get_ngap().send_default_qos_characteristics();
+
+    if (!qos_data.priorityLevelIsSet() && priority_level != 0 && send_values) {
+      qos_data.setPriorityLevel(priority_level);
+    } else if (qos_data.getPriorityLevel() == priority_level && !send_values) {
+      qos_data.unsetPriorityLevel();
+    }
+    if (!qos_data.packetDelayBudgetIsSet() && packet_delay_budget != 0 &&
+        send_values) {
+      qos_data.setPacketDelayBudget(packet_delay_budget);
+    } else if (
+        qos_data.getPacketDelayBudget() == packet_delay_budget &&
+        !send_values) {
+      qos_data.unsetPacketDelayBudget();
+    }
+    if (!qos_data.packetErrorRateIsSet() && !packet_error_rate.empty() &&
+        send_values) {
+      qos_data.setPacketErrorRate(packet_error_rate);
+    } else if (
+        qos_data.getPacketErrorRate() == packet_error_rate && !send_values) {
+      qos_data.unsetPacketErrorRate();
+    }
+    if (!qos_data.maxDataBurstVolIsSet() && max_burst_volume != 0 &&
+        send_values) {
+      qos_data.setMaxDataBurstVol(max_burst_volume);
+    } else if (
+        qos_data.getMaxDataBurstVol() == max_burst_volume && !send_values) {
+      qos_data.unsetMaxDataBurstVol();
+    }
+    if (!qos_data.averWindowIsSet() && averaging_window != 0 && send_values) {
+      qos_data.setAverWindow(averaging_window);
+    } else if (qos_data.getAverWindow() == averaging_window && !send_values) {
+      qos_data.unsetAverWindow();
+    }
+
+  } catch (std::out_of_range&) {
+    Logger::smf_app().error(
+        "5QI %d is not in the QoS characteristics map, we don't set the "
+        "default QoS characteristics",
+        qos_data.getR5qi());
+  }
 }

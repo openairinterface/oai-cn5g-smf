@@ -954,7 +954,9 @@ smf_procedure_code session_create_sm_context_procedure::run(
   arp.setPriorityLevel(default_qos.arp.priority_level);
 
   criteria.qos_profile.setArp(arp);
-  criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  if (default_qos.priority_level != 0) {
+    criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};
@@ -1591,7 +1593,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
   // n11_triggered_pending->res.set_cause(cause.cause_value);
   n11_triggered_pending->res.set_http_code(
-      http_status_code_e::HTTP_STATUS_CODE_200_OK);
+      oai::common::sbi::http_status_code::OK);
 
   return smf_procedure_code::OK;
 }

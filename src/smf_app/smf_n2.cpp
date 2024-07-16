@@ -250,14 +250,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
 
-    /* TODO Add getEnumString to ARP enums
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, ARP priority level %d, "
         "qos_flow.qos_profile.arp.preempt_cap %s, "
         "qos_flow.qos_profile.arp.preempt_vuln %s",
         qos_flow.qfi.qfi, qos_flow.qos_profile.getArp().getPriorityLevel(),
         qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString()); */
+        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
 
     i++;
   }
@@ -493,14 +492,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     ASN_SEQUENCE_ADD(
         &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
         &ngap_QosFlowSetupRequestItem[i]);
-    /* TODO add getEnumString to ARP Enums
-        Logger::smf_n2().info(
-            "QoS parameters: QFI %d, ARP priority level %d, "
-            "qos_flow.qos_profile.arp.preempt_cap %d, "
-            "qos_flow.qos_profile.arp.preempt_vuln %d",
-            qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
-            qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-            qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());  */
+    Logger::smf_n2().info(
+        "QoS parameters: QFI %d, ARP priority level %d, "
+        "qos_flow.qos_profile.arp.preempt_cap %d, "
+        "qos_flow.qos_profile.arp.preempt_vuln %d",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
+        qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
+        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
     i++;
   }
 
@@ -564,6 +562,12 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   // get default QoS info
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
+  if (qos_flows.empty()) {
+    // Should not be empty, but could be because delete existing qos rule is not
+    // supported yet
+    Logger::smf_n2().error("OoS flow context to be updated list is empty");
+    return false;
+  }
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
     Logger::smf_n2().debug(
@@ -1580,6 +1584,30 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
           1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
   qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
       qos_flow.qos_profile.getR5qi();
+  if (qos_flow.qos_profile.priorityLevelIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->priorityLevelQos =
+        (Ngap_PriorityLevelQos_t*) (calloc(1, sizeof(Ngap_PriorityLevelQos_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->priorityLevelQos) = qos_flow.qos_profile.getPriorityLevel();
+  }
+
+  if (qos_flow.qos_profile.averWindowIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->averagingWindow =
+        (Ngap_AveragingWindow_t*) (calloc(1, sizeof(Ngap_AveragingWindow_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->averagingWindow) = qos_flow.qos_profile.getAverWindow();
+  }
+
+  if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
+    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+        ->maximumDataBurstVolume    = (Ngap_MaximumDataBurstVolume_t*) (calloc(
+        1, sizeof(Ngap_MaximumDataBurstVolume_t)));
+    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
+          ->maximumDataBurstVolume) = qos_flow.qos_profile.getMaxDataBurstVol();
+  }
+
   qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
       qos_flow.qos_profile.getPriorityLevel();
   auto preemptCapEnumValue =

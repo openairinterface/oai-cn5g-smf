@@ -56,6 +56,7 @@ using namespace Pistache::Http;
 using namespace Pistache::Http::Mime;
 
 using namespace smf;
+using namespace oai::common::sbi;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
@@ -628,8 +629,7 @@ void smf_sbi::register_nf_instance(
   itti_msg_response->http_version       = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
-  if (static_cast<http_response_codes_e>(httpCode) ==
-      http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) {
+  if (httpCode == http_status_code::CREATED) {
     json response_json = {};
     try {
       response_json = json::parse(response_data);
@@ -703,10 +703,8 @@ void smf_sbi::update_nf_instance(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_OK) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::OK) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF Update, got successful response from NRF");
 
     // TODO: In case of response containing NF profile
@@ -767,10 +765,8 @@ void smf_sbi::deregister_nf_instance(
   Logger::smf_sbi().debug(
       "NF Instance Registration, response from NRF, HTTP Code: %u", httpCode);
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_OK) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::OK) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF De-register, got successful response from NRF");
 
   } else {
@@ -824,10 +820,8 @@ void smf_sbi::subscribe_upf_status_notify(
               TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code = httpCode;
 
-  if ((static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_CREATED) or
-      (static_cast<http_response_codes_e>(httpCode) ==
-       http_response_codes_e::HTTP_RESPONSE_CODE_NO_CONTENT)) {
+  if ((httpCode == http_status_code::CREATED) or
+      (httpCode == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
     return;
@@ -856,7 +850,7 @@ bool smf_sbi::get_sm_data(
   std::string mnc         = plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
-              ",\"sd\":\"" + std::to_string(snssai.sd) + "\"}&dnn=" + dnn +
+              ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
               "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
   std::string url =
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
@@ -898,8 +892,7 @@ bool smf_sbi::get_sm_data(
       "Code: %u",
       httpCode);
 
-  if (static_cast<http_response_codes_e>(httpCode) ==
-      http_response_codes_e::HTTP_RESPONSE_CODE_OK) {
+  if (httpCode == http_status_code::OK) {
     Logger::smf_sbi().debug(
         "Got successful response from UDM, URL: %s ", url.c_str());
     try {
@@ -932,10 +925,7 @@ bool smf_sbi::get_sm_data(
     }
     if (jsonData["singleNssai"].find("sd") != jsonData["singleNssai"].end()) {
       std::string sd_str = jsonData["singleNssai"]["sd"];
-      uint32_t sd        = SD_NO_VALUE;
-      xgpp_conv::sd_string_to_int(
-          jsonData["singleNssai"]["sd"].get<std::string>(), sd);
-      if (sd != snssai.sd) {
+      if (sd_str != snssai.sd) {
         return false;
       }
     }
@@ -981,11 +971,11 @@ bool smf_sbi::get_sm_data(
                 it.value()["5gQosProfile"]["arp"]["preemptCap"];
             dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
                 it.value()["5gQosProfile"]["arp"]["preemptVuln"];
-            // Optinal
-            if (it.value()["5gQosProfile"].find("") !=
+            // Optional
+            if (it.value()["5gQosProfile"].find("priorityLevel") !=
                 it.value()["5gQosProfile"].end()) {
               dnn_configuration->_5g_qos_profile.priority_level =
-                  it.value()["5gQosProfile"]["5QiPriorityLevel"];
+                  it.value()["5gQosProfile"]["priorityLevel"];
             }
           }
 
@@ -1402,7 +1392,7 @@ uint32_t smf_sbi::get_available_response(boost::shared_future<uint32_t>& f) {
     uint32_t response_code = f.get();
     return response_code;
   } else {
-    return http_status_code_e::HTTP_STATUS_CODE_408_REQUEST_TIMEOUT;
+    return http_status_code::REQUEST_TIMEOUT;
   }
 }
 

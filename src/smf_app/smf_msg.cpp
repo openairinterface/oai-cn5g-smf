@@ -72,14 +72,6 @@ void qos_flow_context_updated::set_qos_profile(
 }
 
 //-----------------------------------------------------------------------------
-void qos_flow_context_updated::set_priority_level(uint8_t p) {
-  // priority_level = p;
-  // qos_profile.priority_level = p;
-  int32_t priority = static_cast<int32_t>(p);
-  qos_profile.setPriorityLevel(priority);
-}
-
-//-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_qos_flow_descriptions(
     const QOSFlowDescriptionsContents& flow_description_content) {
   qos_flow_description_content = flow_description_content;
@@ -277,7 +269,7 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
   }
   if (data.find("snssai") != data.end()) {
     if (data["snssai"].find("sd") != data["snssai"].end()) {
-      m_snssai.sd = data["snssai"]["sd"].get<int>();
+      m_snssai.sd = data["snssai"]["sd"].get<std::string>();
     }
   }
 
