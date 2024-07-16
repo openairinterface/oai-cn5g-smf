@@ -211,15 +211,15 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   if (resp.status_code == http_status_code::CREATED) {
     if (resp.headers.find("location") == resp.headers.end()) {
       Logger::smf_n7().debug(
-              "SM Policy Association response does not contain Location!");
+          "SM Policy Association response does not contain Location!");
       return sm_policy_status_code::INTERNAL_ERROR;
     } else {
       association.pcf_location = resp.headers["location"];
       nlohmann::json j         = nlohmann::json::parse(resp.body);
       from_json(j, association.decision);
       Logger::smf_n7().info(
-              "Successfully created SM Policy Association for SUPI %s",
-              association.context.getSupi().c_str());
+          "Successfully created SM Policy Association for SUPI %s",
+          association.context.getSupi().c_str());
       return sm_policy_status_code::CREATED;
     }
   }
