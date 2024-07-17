@@ -58,7 +58,7 @@ using namespace oai::common::sbi;
 void smf_http2_server::start() {
   boost::system::error_code ec;
 
-  Logger::smf_api_server().info("HTTP2 server started");
+  Logger::smf_api_server().info("HTTP2 server being started");
   // Create SM Context Request
   server.handle(
       NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
@@ -383,9 +383,13 @@ void smf_http2_server::start() {
         });
       });
 
+  running_server = true;
   if (server.listen_and_serve(ec, m_address, std::to_string(m_port))) {
-    std::cerr << "HTTP Server error: " << ec.message() << std::endl;
+    Logger::smf_api_server().error("HTTP2 server error: %s", ec.message());
   }
+  running_server = false;
+  Logger::smf_api_server().info("HTTP2 server fully stopped");
+  return;
 }
 
 //------------------------------------------------------------------------------
@@ -933,5 +937,11 @@ void smf_http2_server::create_event_subscription_handler(
 
 //------------------------------------------------------------------------------
 void smf_http2_server::stop() {
+  Logger::smf_api_server().debug("HTTP2 server to be stopped");
   server.stop();
+  while (running_server) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  Logger::smf_api_server().debug("HTTP2 server should be fully stopped");
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
