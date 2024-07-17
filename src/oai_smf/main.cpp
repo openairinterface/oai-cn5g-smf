@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
 
   // HTTP Client
   http_client_inst = oai::http::http_client::create_instance(
-      Logger::smf_sbi(), oai::common::sbi::kNfDefaultHttpRequestTimeout,
+      Logger::smf_sbi(), smf_cfg->get_http_request_timeout(),
       smf_cfg->sbi.if_name, smf_cfg->http_version);
 
   // system command
