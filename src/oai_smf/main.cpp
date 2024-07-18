@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <stdlib.h>  // srand
 #include <unistd.h>  // get_pid(), pause()
+#include <chrono>
 
 using namespace smf;
 using namespace util;
@@ -66,6 +67,7 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
+  auto shutdown_start = std::chrono::system_clock::now();
   // Setting log level arbitrarly to debug to show the whole
   // shutdown procedure in the logs even in case of off-logging
   Logger::set_level(spdlog::level::debug);
@@ -113,7 +115,9 @@ void my_app_signal_handler(int s) {
     Logger::system().debug("ITTI memory done.");
   }
   Logger::system().info("Freeing Allocated memory done.");
-  Logger::system().info("Bye.");
+  auto elapsed = std::chrono::system_clock::now() - shutdown_start;
+  auto ms_diff = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+  Logger::system().info("Bye. Shutdown Procedure took %d ms", ms_diff.count());
   exit(0);
 }
 //------------------------------------------------------------------------------
