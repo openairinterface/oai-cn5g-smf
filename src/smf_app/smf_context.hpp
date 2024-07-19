@@ -68,7 +68,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   smf_pdu_session() : m_pdu_session_mutex() { clear(); }
 
   smf_pdu_session(pdu_session_id_t psi)
-      : pdu_session_id(psi), m_pdu_session_mutex() {
+      : pdu_session_id(psi), m_pdu_session_mutex(), ipv4_frame_route() {
     ipv4                = false;
     ipv6                = false;
     ipv4_address.s_addr = INADDR_ANY;
@@ -77,8 +77,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     dnn                 = {};
     snssai              = {};
     pdu_session_type    = {};
-    framed_route        = false;
-    ipv4_frame_route    = {};
     seid                = 0;
     up_fseid            = {};
     default_qfi.qfi     = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
@@ -95,17 +93,16 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   }
 
   void clear() {
-    ipv4                        = false;
-    ipv6                        = false;
-    ipv4_address.s_addr         = INADDR_ANY;
-    ipv6_address                = in6addr_any;
-    released                    = false;
-    pdu_session_id              = 0;
-    dnn                         = {};
-    snssai                      = {};
-    pdu_session_type            = {};
-    framed_route                = false;
-    ipv4_frame_route            = {};
+    ipv4                = false;
+    ipv6                = false;
+    ipv4_address.s_addr = INADDR_ANY;
+    ipv6_address        = in6addr_any;
+    released            = false;
+    pdu_session_id      = 0;
+    dnn                 = {};
+    snssai              = {};
+    pdu_session_type    = {};
+    ipv4_frame_route.clear();
     seid                        = 0;
     up_fseid                    = {};
     default_qfi.qfi             = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
@@ -224,9 +221,9 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   void set_dnn(const std::string& d);
 
-  const pfcp::framed_route_t& get_ipv4_frame_route() const;
+  const vector<pfcp::framed_route_t>& get_ipv4_frame_route() const;
 
-  void set_ipv4_frame_route(const pfcp::framed_route_t& framed_route);
+  void add_ipv4_frame_route(const pfcp::framed_route_t& framed_route);
 
   /*
    * Get SNSSAI associated with this PDU Session
@@ -261,8 +258,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   bool released;  // release session request
 
-  bool framed_route;
-  pfcp::framed_route_t ipv4_frame_route;
+  vector<pfcp::framed_route_t> ipv4_frame_route;
 
   std::shared_ptr<::smf::n7::policy_association> policy_ptr;
 

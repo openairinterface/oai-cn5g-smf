@@ -351,14 +351,14 @@ uint8_t smf_pdu_session::get_number_retransmission_T3592() const {
   return number_retransmission_T3592;
 }
 
-const pfcp::framed_route_t& smf_pdu_session::get_ipv4_frame_route() const {
+const std::vector<pfcp::framed_route_t>& smf_pdu_session::get_ipv4_frame_route()
+    const {
   return ipv4_frame_route;
 }
 
-void smf_pdu_session::set_ipv4_frame_route(
-    const pfcp::framed_route_t& framedRoute) {
-  smf_pdu_session::framed_route     = true;
-  smf_pdu_session::ipv4_frame_route = framedRoute;
+void smf_pdu_session::add_ipv4_frame_route(
+    const pfcp::framed_route_t& ipv4_fr) {
+  smf_pdu_session::ipv4_frame_route.push_back(ipv4_fr);
 }
 
 //------------------------------------------------------------------------------
@@ -1192,11 +1192,10 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       }
 
       // IPv4 Framed Route
-      if (!sdc->ipv4_frame_routes.empty()) {
+      for (auto ipv4_frame_route : sdc->ipv4_frame_routes) {
         pfcp::framed_route_s framed_route;
-        framed_route.framed_route =
-            sdc->ipv4_frame_routes[0];  // TODO whole list
-        sp->set_ipv4_frame_route(framed_route);
+        framed_route.framed_route = ipv4_frame_route;
+        sp->add_ipv4_frame_route(framed_route);
       }
     }
   }
