@@ -23,7 +23,6 @@ set(SMF_API_SERVER_DIR "${SRC_TOP_DIR}/api-server")
 
 include_directories(${SMF_API_SERVER_DIR}/api)
 include_directories(${SMF_API_SERVER_DIR}/impl)
-include_directories(${SMF_API_SERVER_DIR}/model)
 include_directories(${SMF_API_SERVER_DIR}/)
 include_directories(${SRC_TOP_DIR}/smf_app)
 include_directories(${SRC_TOP_DIR}/itti)
@@ -46,6 +45,7 @@ include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
@@ -56,7 +56,6 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
 file(GLOB SMF_API_SERVER_src_files
     ${SMF_API_SERVER_DIR}/smf-http2-server.cpp
     ${SMF_API_SERVER_DIR}/smf-api-server.cpp
-    ${SMF_API_SERVER_DIR}/model/*.cpp
     ${SMF_API_SERVER_DIR}/api/*.cpp
     ${SMF_API_SERVER_DIR}/impl/*.cpp
 )
