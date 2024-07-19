@@ -285,8 +285,16 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // Framed IPv4 Route
-  if (edge->uplink && sps->framed_route) {
-    pdi.set(sps->get_ipv4_frame_route());
+  if (edge->uplink && !sps->ipv4_frame_route.empty()) {
+    if (up_features.frrt) {
+      for (auto framed_route : sps->ipv4_frame_route) {
+        pdi.set(framed_route);
+      }
+    } else {
+      Logger::smf_app().warn(
+          "Received framed routing information from UDM but UPF does not "
+          "support framed routing.");
+    }
   }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
