@@ -378,7 +378,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // Framed IPv4 Route
-  if (edge->uplink && sps->framed_route) {
+  if (sps->framed_route) {
     pdi.set(sps->get_ipv4_frame_route());
   }
   // TODO: Traffic Endpoint ID
