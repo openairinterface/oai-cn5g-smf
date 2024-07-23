@@ -61,6 +61,7 @@
 #include "Snssai.h"
 #include "PduSessionType.h"
 #include "conversions.h"
+#include "http_client.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"

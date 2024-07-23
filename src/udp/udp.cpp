@@ -96,7 +96,7 @@ void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
              &r_endpoint.addr_storage_len)) > 0) {
       app_->handle_receive(recv_buffer_, bytes_received, r_endpoint);
     } else {
-      Logger::udp().error("Recvfrom failed %s\n", strerror(errno));
+      Logger::udp().error("Recvfrom failed %s", strerror(errno));
     }
     if (terminate_) {
       terminate_ = false;
