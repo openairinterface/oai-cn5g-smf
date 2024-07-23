@@ -108,21 +108,22 @@ smf_config::smf_config(
 int smf_config::get_pfcp_node_id(pfcp::node_id_t& node_id) {
   oai::config::local_interface _n4 = smf()->get_n4();
   // if we give a FQDN here, the IP address will be empty
-  if (!conv::fromString(local().get_host()).s_addr) {
+
+  std::regex re_ipv4(IPV4_ADDRESS_VALIDATOR_REGEX);
+  std::regex re_ipv6(IPV6_ADDRESS_VALIDATOR_REGEX);
+  std::regex re_host(HOSTNAME_VALIDATOR_REGEX);
+  if (std::regex_match(local().get_host(), re_ipv4)) {
+    node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
+    node_id.u1.ipv4_address = _n4.get_addr4();
+    return RETURNok;
+  } else if (std::regex_match(local().get_host(), re_host)) {
     node_id.node_id_type = pfcp::NODE_ID_TYPE_FQDN;
     node_id.fqdn         = local().get_host();
     return RETURNok;
-  } else {
-    if (_n4.get_addr4().s_addr) {
-      node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV4_ADDRESS;
-      node_id.u1.ipv4_address = _n4.get_addr4();
-      return RETURNok;
-    }
-    if (!IN6_IS_ADDR_UNSPECIFIED(&_n4.get_addr6())) {
-      node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV6_ADDRESS;
-      node_id.u1.ipv6_address = _n4.get_addr6();
-      return RETURNok;
-    }
+  } else if (std::regex_match(local().get_host(), re_ipv6)) {
+    node_id.node_id_type    = pfcp::NODE_ID_TYPE_IPV6_ADDRESS;
+    node_id.u1.ipv6_address = _n4.get_addr6();
+    return RETURNok;
   }
   return RETURNerror;
 }
