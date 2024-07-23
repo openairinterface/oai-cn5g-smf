@@ -172,18 +172,6 @@ bool smf_support_features::use_local_pcc_rules() const {
   return m_local_pcc_rules.get_value();
 }
 
-bool smf_support_features::use_external_ausf() const {
-  return m_external_ausf.get_value();
-}
-
-bool smf_support_features::use_external_udm() const {
-  return m_external_udm.get_value();
-}
-
-bool smf_support_features::use_external_nssf() const {
-  return m_external_nssf.get_value();
-}
-
 upf::upf(
     const std::string& host, int port, bool enable_usage_reporting,
     bool enable_dl_pdr_in_session_establishment,
@@ -526,6 +514,15 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     nlohmann::json j =
         oai::utils::conversions::yaml_to_json(node["smf_info"], false);
     nlohmann::from_json(j, m_smf_info);
+
+    std::vector<SnssaiSmfInfoItem> snssai_list;
+    for (auto& snssai_info : m_smf_info.getSNssaiSmfInfoList()) {
+      auto snssai = snssai_info.getSNssai();
+      snssai.parse_sd_int_with_hex();
+      snssai_info.setSNssai(snssai);
+      snssai_list.push_back(snssai_info);
+    }
+    m_smf_info.setSNssaiSmfInfoList(snssai_list);
   }
   if (node["local_subscription_infos"]) {
     // any default subscription is deleted if people configure it
@@ -686,6 +683,7 @@ void subscription_info_config::from_yaml(const YAML::Node& node) {
     nlohmann::json j =
         oai::utils::conversions::yaml_to_json(node["single_nssai"], false);
     nlohmann::from_json(j, m_snssai);
+    m_snssai.parse_sd_int_with_hex();
   }
   if (node["qos_profile"]) {
     m_qos_profile.from_yaml(node["qos_profile"]);
