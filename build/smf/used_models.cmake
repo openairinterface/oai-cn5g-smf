@@ -106,14 +106,23 @@ list(APPEND USED_COMMON_MODEL_SRC_FILES
         ${COMMON_MODEL_DIR}/SecondaryRatUsageInfo.cpp
         ${COMMON_MODEL_DIR}/QosFlowUsageReport.cpp
         ${COMMON_MODEL_DIR}/VolumeTimedReport.cpp
+        ${COMMON_MODEL_DIR}/NotificationControl.cpp
+        ${COMMON_MODEL_DIR}/NotificationControl_anyOf.cpp
+        ${COMMON_MODEL_DIR}/UpSecurity.cpp
+        ${COMMON_MODEL_DIR}/UpIntegrity.cpp
+        ${COMMON_MODEL_DIR}/UpIntegrity_anyOf.cpp        
+        ${COMMON_MODEL_DIR}/UpConfidentiality.cpp
+        ${COMMON_MODEL_DIR}/NonDynamic5Qi.cpp
+        ${COMMON_MODEL_DIR}/Dynamic5Qi.cpp
+        ${COMMON_MODEL_DIR}/ReflectiveQoSAttribute.cpp
+        ${COMMON_MODEL_DIR}/ReflectiveQoSAttribute_anyOf.cpp
+        ${COMMON_MODEL_DIR}/AdditionalQosFlowInfo.cpp        
         )
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 
 list(APPEND USED_SMF_MODEL_SRC_FILES
-        ${SMF_MODEL_DIR}/DnnSelectionMode.cpp
-        ${SMF_MODEL_DIR}/DnnSelectionMode_anyOf.cpp
-        ${SMF_MODEL_DIR}/VplmnQos.cpp
+        ${SMF_MODEL_DIR}/*.cpp
         )
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
