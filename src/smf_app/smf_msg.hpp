@@ -29,7 +29,6 @@
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
-#include "smf.h"
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
@@ -37,11 +36,12 @@
 #include "3gpp_29.508.h"
 #include "3gpp_29.518.h"
 #include "3gpp_29.571.h"
-#include "NgRanTargetId.h"
-#include "pistache/http.h"
-#include "smf_profile.hpp"
-#include "PlmnId.h"
 #include "DddStatus.h"
+#include "NgRanTargetId.h"
+#include "PlmnId.h"
+#include "pistache/http.h"
+#include "smf.h"
+#include "smf_profile.hpp"
 
 extern "C" {
 #include "QOSRules.h"
@@ -637,8 +637,8 @@ class event_notification {
   bool is_plmnid_is_set() const;
 
   // ddds change
-  void set_Ddds(oai::smf_server::model::DddStatus const& value);
-  oai::smf_server::model::DddStatus get_ddds() const;
+  void set_Ddds(oai::model::smf::DddStatus const& value);
+  oai::model::smf::DddStatus get_ddds() const;
   bool is_ddds_is_set() const;
 
   void set_dnn(std::string const& value);
@@ -690,7 +690,7 @@ class event_notification {
   bool m_PlmnIdIsSet;
 
   // for ddds change
-  oai::smf_server::model::DddStatus m_DddStatus;
+  oai::model::smf::DddStatus m_DddStatus;
   bool m_DddStatusIsSet;
 
   bool m_dnn_is_set;

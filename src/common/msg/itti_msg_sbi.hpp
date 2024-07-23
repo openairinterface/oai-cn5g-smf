@@ -29,10 +29,10 @@
 #ifndef ITTI_MSG_SBI_HPP_INCLUDED_
 #define ITTI_MSG_SBI_HPP_INCLUDED_
 
+#include "NotificationData.h"
 #include "itti_msg.hpp"
 #include "pistache/http.h"
 #include "smf_msg.hpp"
-#include "NotificationData.h"
 
 class itti_sbi_msg : public itti_msg {
  public:
@@ -87,7 +87,7 @@ class itti_sbi_notification_data : public itti_sbi_msg {
         notification_msg(i.notification_msg),
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
-  oai::smf_server::model::NotificationData notification_msg;
+  oai::model::smf::NotificationData notification_msg;
   uint8_t http_version;
 };
 

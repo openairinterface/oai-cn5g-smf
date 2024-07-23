@@ -28,26 +28,27 @@
  */
 
 #include "smf-http2-server.h"
-#include <string>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
 
-#include "logger.hpp"
-#include "smf_msg.hpp"
-#include "itti_msg_n11.hpp"
-#include "3gpp_29.502.h"
-#include "mime_parser.hpp"
 #include "3gpp_29.500.h"
-#include "smf_config.hpp"
-#include "smf.h"
+#include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
 #include "http_client.hpp"
+#include "itti_msg_n11.hpp"
+#include "logger.hpp"
+#include "mime_parser.hpp"
+#include "smf.h"
+#include "smf_config.hpp"
+#include "smf_msg.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 using namespace oai::model::common;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
