@@ -1,5 +1,25 @@
 # RELEASE NOTES: #
 
+## v2.1.0 -- August 2024 ##
+
+* Features
+  - Use HTTP Request Timeout parameter from Conf file
+* Fixes
+  - Fix multiple PDU session SEID handling
+  - Fix issue for PDU session establishment
+  - Fix: properly ending any thread and not generating seg fault when stopping smf process
+  - Fix(handover): Check if N2 SM Info is set in HO Complete
+  - Fix: smf expecting CreatedPDR in n4_session_establishment_response when UPF that does not support TEID Creation
+  - Fix: Allow lower-case SD values and also allow 0xSD values in config
+  - Fix HTTP/2 server shutdown
+  - Fix error message upon PFCP session establishment request
+* Tech Debt
+  - Stopping support for RHEL8/Rocky8 in favor of RHEL9/Rocky9
+  - Graph refactor, preparation for QoS handling
+  - Resynch SMF with common source git-submodule and use utils from there
+  - Move SMF SBI models to common src git submodule
+  - HTTP client cpr library refactoring effort
+
 ## v2.0.1 -- January 2024 ##
 
 * Features
