@@ -287,7 +287,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // Framed IPv4 Route
   if (!sps->ipv4_frame_route.empty()) {
     if (up_features.frrt) {
-      for (auto framed_route : sps->ipv4_frame_route) {
+      for (const auto& framed_route : sps->ipv4_frame_route) {
         pdi.set(framed_route);
       }
     } else {

@@ -9054,10 +9054,12 @@ class pfcp_pdi_ie : public pfcp_grouped_ie {
       std::shared_ptr<pfcp_qfi_ie> sie(new pfcp_qfi_ie(b.qfi.second));
       add_ie(sie);
     }
-    for (auto framed_route : b.framed_route) {
-      std::shared_ptr<pfcp_framed_route_ie> sie(
-          new pfcp_framed_route_ie(framed_route));
-      add_ie(sie);
+    if (b.framed_route.first) {
+      for (const auto& framed_route : b.framed_route.second) {
+        std::shared_ptr<pfcp_framed_route_ie> sie(
+            new pfcp_framed_route_ie(framed_route));
+        add_ie(sie);
+      }
     }
     // if(b.framed_routing.first) {std::shared_ptr<pfcp_framed_routing_ie>
     // sie(new pfcp_framed_routing_ie(b.framed_routing.second)); add_ie(sie);}

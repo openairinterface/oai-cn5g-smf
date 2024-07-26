@@ -1689,7 +1689,7 @@ class pdi : public pfcp::pfcp_ies_container {
   std::pair<bool, pfcp::application_id_t> application_id;
   std::pair<bool, pfcp::ethernet_packet_filter> ethernet_packet_filter;
   std::pair<bool, pfcp::qfi_t> qfi;
-  std::vector<pfcp::framed_route_t> framed_route;
+  std::pair<bool, std::vector<pfcp::framed_route_t>> framed_route;
   std::pair<bool, pfcp::framed_routing_t> framed_routing;
   std::pair<bool, pfcp::framed_ipv6_route_t> framed_ipv6_route;
   std::pair<bool, pfcp::_3gpp_interface_type_t> _3gpp_interface_type;
@@ -1759,7 +1759,10 @@ class pdi : public pfcp::pfcp_ies_container {
     qfi.first  = true;
     qfi.second = v;
   }
-  void set(const pfcp::framed_route_t& v) { framed_route.push_back(v); }
+  void set(const pfcp::framed_route_t& v) {
+    framed_route.first = true;
+    framed_route.second.push_back(v);
+  }
   void set(const pfcp::framed_routing_t& v) {
     framed_routing.first  = true;
     framed_routing.second = v;
@@ -1837,10 +1840,10 @@ class pdi : public pfcp::pfcp_ies_container {
     return false;
   }
   bool get(std::vector<pfcp::framed_route_t>& v) const {
-    if (framed_route.empty()) {
+    if (framed_route.first) {
       return false;
     } else {
-      v = framed_route;
+      v = framed_route.second;
       return true;
     }
   }
