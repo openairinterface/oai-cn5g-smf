@@ -4,15 +4,20 @@
 
 * Features
   - Use HTTP Request Timeout parameter from Conf file
+  - Support advanced `UpfInfo` from config file, allows to configure different UPF flavors without NRF
+  - Resolve UPF from config file 10 times every 2 seconds, allowing flexibility in start order
 * Fixes
   - Fix multiple PDU session SEID handling
   - Fix issue for PDU session establishment
   - Fix: properly ending any thread and not generating seg fault when stopping smf process
+  - Fix N1/N2 handling between AMF and SMF when gNB exits
   - Fix(handover): Check if N2 SM Info is set in HO Complete
   - Fix: smf expecting CreatedPDR in n4_session_establishment_response when UPF that does not support TEID Creation
+  - Fix: NGAP S-AMBR encoding from bitrate string
   - Fix: Allow lower-case SD values and also allow 0xSD values in config
   - Fix HTTP/2 server shutdown
   - Fix error message upon PFCP session establishment request
+  - Fix SMF crash on startup when peer UPF is not reachable
 * Tech Debt
   - Stopping support for RHEL8/Rocky8 in favor of RHEL9/Rocky9
   - Graph refactor, preparation for QoS handling
