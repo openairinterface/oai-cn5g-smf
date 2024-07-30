@@ -40,6 +40,8 @@
 #include <thread>
 
 #include "3gpp_29.502.h"
+#include "ProblemDetails.h"
+#include "UpfInfo.h"
 #include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
@@ -49,8 +51,6 @@
 #include "smf_pco.hpp"
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
-#include "ProblemDetails.h"
-#include "UpfInfo.h"
 
 namespace smf {
 
@@ -585,7 +585,7 @@ class smf_app {
   /*
    * Handle NF status notification (e.g., when an UPF becomes available)
    * @param [std::shared_ptr<itti_sbi_notification_data>& ] msg: message
-   * @param [oai::smf_server::model::ProblemDetails& ] problem_details
+   * @param [oai::model::smf::ProblemDetails& ] problem_details
    * @param [uint8_t&] http_code
    * @return true if handle sucessfully, otherwise return false
    */

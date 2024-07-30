@@ -61,14 +61,9 @@ class smf_support_features : public config_type {
   nlohmann::json to_json() override;
   bool from_json(const nlohmann::json& json_data) override;
 
-  // TODO can we unify SMF-style use_local_subscription_infos and AMF
-  // use_external_UDM?
   [[nodiscard]] std::string to_string(const std::string& indent) const override;
   [[nodiscard]] bool use_local_subscription_info() const;
   [[nodiscard]] bool use_local_pcc_rules() const;
-  [[nodiscard]] bool use_external_ausf() const;
-  [[nodiscard]] bool use_external_udm() const;
-  [[nodiscard]] bool use_external_nssf() const;
 };
 
 class upf : public config_type {

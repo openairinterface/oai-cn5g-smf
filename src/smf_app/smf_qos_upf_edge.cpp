@@ -33,7 +33,7 @@
 #include "Helpers.h"
 
 using namespace oai::config::smf;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
 using namespace oai::model::common;

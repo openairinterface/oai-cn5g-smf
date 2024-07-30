@@ -27,21 +27,22 @@
  */
 #include "3gpp_conversions.hpp"
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+
 #include <boost/algorithm/string.hpp>
 
-#include "SmContextCreateData.h"
-#include "SmContextUpdateData.h"
-#include "SmContextReleaseData.h"
-#include "EventSubscription.h"
-#include "3gpp_29.500.h"
 #include "3gpp_24.501.h"
-#include "conversions.hpp"
+#include "3gpp_29.500.h"
+#include "EventSubscription.h"
 #include "NgRanTargetId.h"
+#include "SmContextCreateData.h"
+#include "SmContextReleaseData.h"
+#include "SmContextUpdateData.h"
+#include "conversions.hpp"
 
 //------------------------------------------------------------------------------
 void xgpp_conv::paa_to_pfcp_ue_ip_address(
@@ -159,13 +160,13 @@ void xgpp_conv::pco_core_to_nas(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
-    const oai::smf_server::model::SmContextMessage& scd,
+    const oai::model::smf::SmContextMessage& scd,
     smf::pdu_session_create_sm_context_request& pcr) {
   Logger::smf_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
 
-  oai::smf_server::model::SmContextCreateData context_data = {};
+  oai::model::smf::SmContextCreateData context_data = {};
   if (scd.jsonDataIsSet()) {
     context_data = scd.getJsonData();
   } else {
@@ -304,13 +305,13 @@ void xgpp_conv::sm_context_create_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_update_from_openapi(
-    const oai::smf_server::model::SmContextUpdateMessage& scu,
+    const oai::model::smf::SmContextUpdateMessage& scu,
     smf::pdu_session_update_sm_context_request& pur) {
   Logger::smf_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
 
-  oai::smf_server::model::SmContextUpdateData context_data = scu.getJsonData();
+  oai::model::smf::SmContextUpdateData context_data = scu.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -391,9 +392,8 @@ void xgpp_conv::sm_context_update_from_openapi(
   }
   // Target ID
   if (context_data.targetIdIsSet()) {
-    oai::smf_server::model::NgRanTargetId api_target_id =
-        context_data.getTargetId();
-    ng_ran_target_id_t ran_target_id = {};
+    oai::model::smf::NgRanTargetId api_target_id = context_data.getTargetId();
+    ng_ran_target_id_t ran_target_id             = {};
     plmn_from_model(
         api_target_id.getTai().getPlmnId(),
         ran_target_id.global_ran_node_id.plmn_id);
@@ -426,13 +426,13 @@ void xgpp_conv::sm_context_update_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_release_from_openapi(
-    const oai::smf_server::model::SmContextReleaseMessage& srm,
+    const oai::model::smf::SmContextReleaseMessage& srm,
     smf::pdu_session_release_sm_context_request& prr) {
   Logger::smf_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
 
-  oai::smf_server::model::SmContextReleaseData context_data = srm.getJsonData();
+  oai::model::smf::SmContextReleaseData context_data = srm.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -457,7 +457,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
-    const oai::smf_server::model::NsmfEventExposure& nee,
+    const oai::model::smf::NsmfEventExposure& nee,
     smf::event_exposure_msg& eem) {
   Logger::smf_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "
@@ -490,8 +490,7 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
   eem.set_notif_id(nee.getNotifId());    // NotifId
   eem.set_notif_uri(nee.getNotifUri());  // NotifUri
 
-  std::vector<oai::smf_server::model::EventSubscription> event_subcription_api =
-      {};
+  std::vector<oai::model::smf::EventSubscription> event_subcription_api = {};
   nee.getEventSubs(event_subcription_api);
 
   std::vector<event_subscription_t> event_subscriptions = {};
