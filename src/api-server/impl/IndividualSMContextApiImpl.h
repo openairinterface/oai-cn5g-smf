@@ -66,7 +66,7 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 
 class IndividualSMContextApiImpl
     : public oai::smf_server::api::IndividualSMContextApi {

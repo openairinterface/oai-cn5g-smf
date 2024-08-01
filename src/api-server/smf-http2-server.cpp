@@ -28,25 +28,27 @@
  */
 
 #include "smf-http2-server.h"
-#include <string>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
 
-#include "logger.hpp"
-#include "smf_msg.hpp"
-#include "itti_msg_n11.hpp"
-#include "3gpp_29.502.h"
-#include "mime_parser.hpp"
 #include "3gpp_29.500.h"
-#include "smf_config.hpp"
-#include "smf.h"
+#include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
+#include "http_client.hpp"
+#include "itti_msg_n11.hpp"
+#include "logger.hpp"
+#include "mime_parser.hpp"
+#include "smf.h"
+#include "smf_config.hpp"
+#include "smf_msg.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 using namespace oai::model::common;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
@@ -57,7 +59,7 @@ using namespace oai::common::sbi;
 void smf_http2_server::start() {
   boost::system::error_code ec;
 
-  Logger::smf_api_server().info("HTTP2 server started");
+  Logger::smf_api_server().info("HTTP2 server being started");
   // Create SM Context Request
   server.handle(
       NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
@@ -382,9 +384,13 @@ void smf_http2_server::start() {
         });
       });
 
+  running_server = true;
   if (server.listen_and_serve(ec, m_address, std::to_string(m_port))) {
-    std::cerr << "HTTP Server error: " << ec.message() << std::endl;
+    Logger::smf_api_server().error("HTTP2 server error: %s", ec.message());
   }
+  running_server = false;
+  Logger::smf_api_server().info("HTTP2 server fully stopped");
+  return;
 }
 
 //------------------------------------------------------------------------------
@@ -479,32 +485,32 @@ void smf_http2_server::create_sm_contexts_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
@@ -621,32 +627,32 @@ void smf_http2_server::update_sm_context_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::CURL_MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
@@ -932,5 +938,11 @@ void smf_http2_server::create_event_subscription_handler(
 
 //------------------------------------------------------------------------------
 void smf_http2_server::stop() {
+  Logger::smf_api_server().debug("HTTP2 server to be stopped");
   server.stop();
+  while (running_server) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  Logger::smf_api_server().debug("HTTP2 server should be fully stopped");
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }

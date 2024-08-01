@@ -27,6 +27,8 @@
 #include "pistache/http.h"
 #include "pistache/router.h"
 #include "smf-http2-server.h"
+#include "sbi_helper.hpp"
+#include "http_client.hpp"
 
 #include <iostream>
 #include <thread>
@@ -34,6 +36,7 @@
 #include <stdint.h>
 #include <stdlib.h>  // srand
 #include <unistd.h>  // get_pid(), pause()
+#include <chrono>
 
 using namespace smf;
 using namespace util;
@@ -45,8 +48,9 @@ itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
 smf_app* smf_app_inst                 = nullptr;
 std::unique_ptr<smf_config> smf_cfg;
-SMFApiServer* smf_api_server_1     = nullptr;
-smf_http2_server* smf_api_server_2 = nullptr;
+SMFApiServer* smf_api_server_1                           = nullptr;
+smf_http2_server* smf_api_server_2                       = nullptr;
+std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -63,35 +67,57 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
+  auto shutdown_start = std::chrono::system_clock::now();
+  // Setting log level arbitrarly to debug to show the whole
+  // shutdown procedure in the logs even in case of off-logging
+  Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
   smf_app_inst->trigger_nf_deregistration();
   itti_inst->send_terminate_msg(TASK_SMF_APP);
   itti_inst->wait_tasks_end();
-  Logger::system().debug("Freeing Allocated memory...");
-  if (async_shell_cmd_inst) delete async_shell_cmd_inst;
-  async_shell_cmd_inst = nullptr;
-  Logger::system().debug("Async Shell CMD memory done.");
+
   if (smf_api_server_1) {
+    Logger::system().debug("Stopping HTTP/1 server.");
     smf_api_server_1->shutdown();
+  }
+  if (smf_api_server_2) {
+    Logger::system().debug("Stopping HTTP/2 server.");
+    smf_api_server_2->stop();
+  }
+
+  Logger::system().debug("Freeing Allocated memory...");
+  if (async_shell_cmd_inst) {
+    delete async_shell_cmd_inst;
+    async_shell_cmd_inst = nullptr;
+    Logger::system().debug("Async Shell CMD memory done.");
+  }
+  if (smf_api_server_1) {
     delete smf_api_server_1;
     smf_api_server_1 = nullptr;
   }
   if (smf_api_server_2) {
-    smf_api_server_2->stop();
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
   }
   Logger::system().debug("SMF API Server memory done.");
-  if (smf_app_inst) delete smf_app_inst;
-  smf_app_inst = nullptr;
-  Logger::system().debug("SMF APP memory done.");
+  if (smf_app_inst) {
+    delete smf_app_inst;
+    smf_app_inst = nullptr;
+    Logger::system().debug("SMF APP memory done.");
+  }
+
   // itti_inst is used in a lot of code without any nullPtr check
   // it has to be deallocated last
-  if (itti_inst) delete itti_inst;
-  itti_inst = nullptr;
-  Logger::system().debug("ITTI memory done.");
+  if (itti_inst) {
+    delete itti_inst;
+    itti_inst = nullptr;
+    Logger::system().debug("ITTI memory done.");
+  }
   Logger::system().info("Freeing Allocated memory done.");
+  auto elapsed = std::chrono::system_clock::now() - shutdown_start;
+  auto ms_diff = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+  Logger::system().info("Bye. Shutdown Procedure took %d ms", ms_diff.count());
   exit(0);
 }
 //------------------------------------------------------------------------------
@@ -127,6 +153,11 @@ int main(int argc, char** argv) {
   // Inter-task Interface
   itti_inst = new itti_mw();
   itti_inst->start(smf_cfg->itti.itti_timer_sched_params);
+
+  // HTTP Client
+  http_client_inst = oai::http::http_client::create_instance(
+      Logger::smf_sbi(), smf_cfg->get_http_request_timeout(),
+      smf_cfg->sbi.if_name, smf_cfg->http_version);
 
   // system command
   async_shell_cmd_inst =

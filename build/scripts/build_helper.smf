@@ -36,6 +36,7 @@ source $THIS_SCRIPT_PATH/../common-build/installation/build_helper.pistache
 source $THIS_SCRIPT_PATH/../common-build/installation/build_helper.nlohmann
 source $THIS_SCRIPT_PATH/../common-build/installation/build_helper.nghttp2
 source $THIS_SCRIPT_PATH/../common-build/installation/build_helper.yamlcpp
+source $THIS_SCRIPT_PATH/../common-build/installation/build_helper.cpr
 
 #-------------------------------------------------------------------------------
 #arg1 is force (0 or 1) (no interactive script)
@@ -160,6 +161,9 @@ check_install_smf_deps() {
   ret=$?;[[ $ret -ne 0 ]] && return $ret
 
   install_nghttp2_from_git $1 $2
+  ret=$?;[[ $ret -ne 0 ]] && return $ret
+
+  install_cpr_from_git $1 $2
   ret=$?;[[ $ret -ne 0 ]] && return $ret
 
   # latest usage of yaml-cpp suggests that we should be using 0.7+ version

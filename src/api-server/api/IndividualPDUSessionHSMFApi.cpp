@@ -22,7 +22,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::common::helpers;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 
 IndividualPDUSessionHSMFApi::IndividualPDUSessionHSMFApi(
     std::shared_ptr<Pistache::Rest::Router> rtr) {

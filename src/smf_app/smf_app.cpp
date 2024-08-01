@@ -29,8 +29,8 @@
 
 #include "smf_app.hpp"
 
-#include <boost/uuid/random_generator.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -51,20 +51,20 @@
 #include "async_shell_cmd.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
+#include "fqdn.hpp"
 #include "itti.hpp"
 #include "itti_msg_nx.hpp"
 #include "logger.hpp"
 #include "pfcp.hpp"
 #include "smf.h"
+#include "smf_config.hpp"
 #include "smf_event.hpp"
 #include "smf_n1.hpp"
-#include "smf_sbi.hpp"
 #include "smf_n4.hpp"
 #include "smf_paa_dynamic.hpp"
-#include "string.hpp"
-#include "fqdn.hpp"
-#include "smf_config.hpp"
 #include "smf_pfcp_association.hpp"
+#include "smf_sbi.hpp"
+#include "string.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -74,7 +74,7 @@ extern "C" {
 using namespace smf;
 using namespace oai::config::smf;
 using namespace oai::model::nrf;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 using namespace oai::utils;
 using namespace oai::common::sbi;
 
@@ -2081,9 +2081,9 @@ void smf_app::trigger_create_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of Server");
 
-  oai::smf_server::model::SmContextCreateError sm_context = {};
-  oai::model::common::ProblemDetails problem_details      = {};
-  oai::model::common::RefToBinaryData refToBinaryData     = {};
+  oai::model::smf::SmContextCreateError sm_context    = {};
+  oai::model::common::ProblemDetails problem_details  = {};
+  oai::model::common::RefToBinaryData refToBinaryData = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   sm_context.setError(problem_details);
@@ -2106,8 +2106,8 @@ void smf_app::trigger_update_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of API Server");
 
-  oai::smf_server::model::SmContextUpdateError smContextUpdateError = {};
-  oai::model::common::ProblemDetails problem_details                = {};
+  oai::model::smf::SmContextUpdateError smContextUpdateError = {};
+  oai::model::common::ProblemDetails problem_details         = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 
@@ -2127,8 +2127,8 @@ void smf_app::trigger_update_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
 
-  oai::smf_server::model::SmContextUpdateError smContextUpdateError = {};
-  oai::model::common::ProblemDetails problem_details                = {};
+  oai::model::smf::SmContextUpdateError smContextUpdateError = {};
+  oai::model::common::ProblemDetails problem_details         = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 

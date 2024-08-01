@@ -47,6 +47,7 @@
 #include <boost/chrono/chrono.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
+#include "http_client.hpp"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -54,7 +55,7 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
@@ -147,13 +148,13 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
 
     if (n1_sm_msg_is_set) {  // add N1 container if available
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (!json_data.empty()) {  // if not, include json data if available
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));

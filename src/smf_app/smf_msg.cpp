@@ -1102,12 +1102,11 @@ smf_event_t event_notification::get_smf_event() const {
 
 //-----------------------------------------------------------------------------
 // ddds change
-void event_notification::set_Ddds(
-    oai::smf_server::model::DddStatus const& value) {
+void event_notification::set_Ddds(oai::model::smf::DddStatus const& value) {
   m_DddStatus      = value;
   m_DddStatusIsSet = true;
 }
-oai::smf_server::model::DddStatus event_notification::get_ddds() const {
+oai::model::smf::DddStatus event_notification::get_ddds() const {
   return m_DddStatus;
 }
 

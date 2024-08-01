@@ -30,19 +30,20 @@
 #ifndef FILE_SMF_HTTP2_SERVER_SEEN
 #define FILE_SMF_HTTP2_SERVER_SEEN
 
-#include "smf_app.hpp"
 #include <nghttp2/asio_http2_server.h>
-#include "SmContextUpdateMessage.h"
+
+#include "NFStatusNotifyApiImpl.h"
 #include "NsmfEventExposure.h"
 #include "SmContextMessage.h"
 #include "SmContextReleaseMessage.h"
-#include "NFStatusNotifyApiImpl.h"
-#include "uint_generator.hpp"
+#include "SmContextUpdateMessage.h"
 #include "smf.h"
+#include "smf_app.hpp"
+#include "uint_generator.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 
 class smf_http2_server {
  public:
@@ -81,6 +82,7 @@ class smf_http2_server {
   uint32_t m_port;
   http2 server;
   smf::smf_app* m_smf_app;
+  bool running_server;
 
  protected:
 };

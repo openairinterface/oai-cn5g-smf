@@ -43,12 +43,12 @@
 #include "common_root_types.h"
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
+#include "session_handler.hpp"
 #include "smf_event.hpp"
-#include "smf_procedure.hpp"
-#include "uint_generator.hpp"
 #include "smf_n7.hpp"
 #include "smf_pfcp_association.hpp"
-#include "session_handler.hpp"
+#include "smf_procedure.hpp"
+#include "uint_generator.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
@@ -1006,11 +1006,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   void trigger_qos_monitoring(
       const seid_t& seid,
-      const oai::smf_server::model::EventNotification& ev_notif_model,
+      const oai::model::smf::EventNotification& ev_notif_model,
       const uint8_t& http_version) const;
   void handle_qos_monitoring(
       const seid_t& seid,
-      const oai::smf_server::model::EventNotification& ev_notif_model,
+      const oai::model::smf::EventNotification& ev_notif_model,
       const uint8_t& http_version) const;
 
   void trigger_flexcn_event(

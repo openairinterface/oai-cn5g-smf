@@ -36,48 +36,49 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "SmContextCreatedData.h"
+#include "3gpp_conversions.hpp"
+#include "EventNotification.h"
+#include "PduSessionType.h"
+#include "PlmnId.h"
 #include "RefToBinaryData.h"
+#include "SmContextCreatedData.h"
 #include "SmContextUpdateError.h"
+#include "SmPolicyContextData.h"
+#include "SmPolicyDecision.h"
+#include "SmPolicyDeleteData.h"
+#include "Snssai.h"
+#include "conversions.h"
+#include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
 #include "smf_event.hpp"
 #include "smf_n1.hpp"
-#include "smf_sbi.hpp"
 #include "smf_n2.hpp"
 #include "smf_n7.hpp"
 #include "smf_paa_dynamic.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_sbi.hpp"
 #include "string.hpp"
-#include "EventNotification.h"
-#include "SmPolicyContextData.h"
-#include "SmPolicyDecision.h"
-#include "SmPolicyDeleteData.h"
-#include "PlmnId.h"
-#include "Snssai.h"
-#include "PduSessionType.h"
-#include "conversions.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
 #include "Ngap_GTPTunnel.h"
+#include "Ngap_HandoverRequestAcknowledgeTransfer.h"
+#include "Ngap_HandoverRequiredTransfer.h"
+#include "Ngap_HandoverResourceAllocationUnsuccessfulTransfer.h"
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
 #include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
 #include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
 #include "Ngap_PDUSessionResourceSetupUnsuccessfulTransfer.h"
+#include "Ngap_PathSwitchRequestSetupFailedTransfer.h"
+#include "Ngap_PathSwitchRequestTransfer.h"
+#include "Ngap_QosFlowAcceptedItem.h"
 #include "Ngap_QosFlowAddOrModifyResponseItem.h"
 #include "Ngap_QosFlowAddOrModifyResponseList.h"
-#include "Ngap_PathSwitchRequestTransfer.h"
-#include "Ngap_PathSwitchRequestSetupFailedTransfer.h"
-#include "Ngap_QosFlowAcceptedItem.h"
-#include "Ngap_HandoverRequiredTransfer.h"
-#include "Ngap_HandoverRequestAcknowledgeTransfer.h"
 #include "Ngap_QosFlowItemWithDataForwarding.h"
-#include "Ngap_HandoverResourceAllocationUnsuccessfulTransfer.h"
 #include "Ngap_SecondaryRATDataUsageReportTransfer.h"
 #include "dynamic_memory_check.h"
 }
@@ -661,8 +662,8 @@ void smf_context::handle_itti_msg(
         // Trigger QoS Monitoring Event report notification
         std::shared_ptr<smf_context> pc = {};
         if (smf_app_inst->seid_2_smf_context(req->seid, pc)) {
-          oai::smf_server::model::EventNotification ev_notif = {};
-          oai::smf_server::model::UsageReport ur_model       = {};
+          oai::model::smf::EventNotification ev_notif = {};
+          oai::model::smf::UsageReport ur_model       = {};
           if (ur.get(vm)) {
             ur_model.setSEndID(req->seid);
             if (ur.get(seqn)) ur_model.seturSeqN(seqn.ur_seqn);
@@ -3184,9 +3185,9 @@ bool smf_context::handle_ho_preparation_request_fail(
   conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
 
   // Prepare SmContextUpdateError
-  oai::smf_server::model::SmContextUpdateError sm_context = {};
-  oai::model::common::ProblemDetails problem_details      = {};
-  oai::model::common::RefToBinaryData refToBinaryData     = {};
+  oai::model::smf::SmContextUpdateError sm_context    = {};
+  oai::model::common::ProblemDetails problem_details  = {};
+  oai::model::common::RefToBinaryData refToBinaryData = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(
       PDU_SESSION_APPLICATION_ERROR_HANDOVER_RESOURCE_ALLOCATION_FAILURE));
@@ -3691,8 +3692,7 @@ void smf_context::handle_ddds(
 
       // DDDS Status
       // TODO: where to get this information in SMF???
-      oai::smf_server::model::DddStatus ddds =
-          oai::smf_server::model::DddStatus();
+      oai::model::smf::DddStatus ddds = oai::model::smf::DddStatus();
       ev_notif.set_Ddds(ddds);
       itti_msg->event_notifs.push_back(ev_notif);
     }
@@ -3799,7 +3799,7 @@ void smf_context::trigger_ue_ip_change(
 //------------------------------------------------------------------------------
 void smf_context::handle_qos_monitoring(
     const seid_t& seid,
-    const oai::smf_server::model::EventNotification& ev_notif_model,
+    const oai::model::smf::EventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   Logger::smf_app().debug(
       "Send request to N11 to trigger QoS Monitoring (Usage Report) Event, "
@@ -3864,7 +3864,7 @@ void smf_context::handle_qos_monitoring(
 //------------------------------------------------------------------------------
 void smf_context::trigger_qos_monitoring(
     const seid_t& seid,
-    const oai::smf_server::model::EventNotification& ev_notif_model,
+    const oai::model::smf::EventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   event_sub.ee_qos_monitoring(seid, ev_notif_model, http_version);
 }

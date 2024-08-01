@@ -36,12 +36,13 @@
 #include <nghttp2/asio_http2_server.h>
 #include "mime_parser.hpp"
 #include "3gpp_conversions.hpp"
+#include "http_client.hpp"
 
 namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::smf_server::model;
+using namespace oai::model::smf;
 
 IndividualSMContextApiImpl::IndividualSMContextApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
@@ -192,32 +193,32 @@ void IndividualSMContextApiImpl::update_sm_context(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(CURL_MIME_BOUNDARY)));
+              std::string(http::CURL_MIME_BOUNDARY)));
     } else if (json_data.size() > 0) {
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));
