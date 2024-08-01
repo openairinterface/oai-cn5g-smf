@@ -571,7 +571,7 @@ oai::config::smf::upf pfcp_associations::get_upf_config(
   }
   upf_cfg = oai::config::smf::upf(
       host, upf_cfg.get_port(), upf_cfg.enable_usage_reporting(),
-      upf_cfg.enable_dl_pdr_in_session_establishment(),
+      upf_cfg.enable_qers(), upf_cfg.enable_dl_pdr_in_session_establishment(),
       upf_cfg.get_local_n3_ip());
 
   upf_cfg.set_upf_info(info);

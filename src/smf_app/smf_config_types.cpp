@@ -174,12 +174,13 @@ bool smf_support_features::use_local_pcc_rules() const {
 
 upf::upf(
     const std::string& host, int port, bool enable_usage_reporting,
-    bool enable_dl_pdr_in_session_establishment,
+    bool enable_qers, bool enable_dl_pdr_in_session_establishment,
     const std::string& local_n3_ip) {
   m_host = string_config_value("host", host);
   m_port = int_config_value("port", port);
   m_usage_reporting =
       option_config_value("enable_usage_reporting", enable_usage_reporting);
+  m_qers = option_config_value("enable_qers", enable_qers);
   m_dl_pdr_in_session_establishment = option_config_value(
       "enable_dl_pdr_in_session_establishment",
       enable_dl_pdr_in_session_establishment);
@@ -220,6 +221,9 @@ void upf::from_yaml(const YAML::Node& node) {
     if (node["config"]["enable_usage_reporting"]) {
       m_usage_reporting.from_yaml(node["config"]["enable_usage_reporting"]);
     }
+    if (node["config"]["enable_qers"]) {
+      m_qers.from_yaml(node["config"]["enable_qers"]);
+    }
     if (node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]) {
       m_dl_pdr_in_session_establishment.from_yaml(
           node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]);
@@ -242,6 +246,7 @@ nlohmann::json upf::to_json() {
   json_data[m_port.get_config_name()] = m_port.get_value();
   json_data["config"][m_usage_reporting.get_config_name()] =
       m_usage_reporting.get_value();
+  json_data["config"][m_qers.get_config_name()] = m_qers.get_value();
   json_data["config"][m_dl_pdr_in_session_establishment.get_config_name()] =
       m_dl_pdr_in_session_establishment.get_value();
   json_data["config"][m_local_n3_ipv4.get_config_name()] =
@@ -265,6 +270,10 @@ bool upf::from_json(const nlohmann::json& json_data) {
           json_data.end()) {
         m_usage_reporting.from_json(
             json_data["config"][m_usage_reporting.get_config_name()]);
+      }
+      if (json_data["config"].find(m_qers.get_config_name()) !=
+          json_data.end()) {
+        m_qers.from_json(json_data["config"][m_qers.get_config_name()]);
       }
       if (json_data["config"].find(
               m_dl_pdr_in_session_establishment.get_config_name()) !=
@@ -304,6 +313,8 @@ std::string upf::to_string(const std::string& indent) const {
   out.append(fmt::format(
       fmt_value, m_usage_reporting.get_config_name(),
       m_usage_reporting.to_string("")));
+  out.append(
+      fmt::format(fmt_value, m_qers.get_config_name(), m_qers.to_string("")));
   out.append(fmt::format(
       fmt_value, m_dl_pdr_in_session_establishment.get_config_name(),
       m_dl_pdr_in_session_establishment.to_string("")));
@@ -342,6 +353,10 @@ bool upf::enable_usage_reporting() const {
 
 bool upf::enable_dl_pdr_in_session_establishment() const {
   return m_dl_pdr_in_session_establishment.get_value();
+}
+
+bool upf::enable_qers() const {
+  return m_qers.get_value();
 }
 
 const std::string& upf::get_local_n3_ip() const {
@@ -502,8 +517,7 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     // any default UPF is deleted if people configure UPFs
     m_upfs.clear();
     for (const auto& yaml_upf : node["upfs"]) {
-      // TODO should we have a default host here?
-      upf u = upf("", 8805, false, false, "");
+      upf u = upf("", 8805, false, false, false, "");
       u.from_yaml(yaml_upf);
       m_upfs.push_back(u);
     }

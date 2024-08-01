@@ -66,7 +66,7 @@ const subscribed_default_qos_t DEFAULT_QOS{
     9,
     {1, "NOT_PREEMPT", "NOT_PREEMPTABLE"},
     0};  // will be set based on 5QI if users dont override it
-const upf DEFAULT_UPF{"oai-upf", 8805, false, false, ""};
+const upf DEFAULT_UPF{"oai-upf", 8805, false, false, false, ""};
 
 typedef struct interface_cfg_s {
   std::string if_name;

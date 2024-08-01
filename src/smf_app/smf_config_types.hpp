@@ -72,6 +72,7 @@ class upf : public config_type {
   int_config_value m_port;
   option_config_value m_usage_reporting;
   option_config_value m_dl_pdr_in_session_establishment;
+  option_config_value m_qers;
   string_config_value m_local_n3_ipv4;
   oai::model::nrf::UpfInfo m_upf_info;
   bool m_upf_info_is_set = true;
@@ -82,7 +83,7 @@ class upf : public config_type {
  public:
   explicit upf(
       const std::string& host, int port, bool enable_usage_reporting,
-      bool enable_dl_pdr_in_session_establishment,
+      bool enable_qers, bool enable_dl_pdr_in_session_establishment,
       const std::string& local_n3_ip);
 
   void from_yaml(const YAML::Node& node) override;
@@ -99,6 +100,7 @@ class upf : public config_type {
 
   [[nodiscard]] bool enable_usage_reporting() const;
   [[nodiscard]] bool enable_dl_pdr_in_session_establishment() const;
+  [[nodiscard]] bool enable_qers() const;
   [[nodiscard]] const std::string& get_local_n3_ip() const;
   [[nodiscard]] const oai::model::nrf::UpfInfo& get_upf_info() const;
   [[nodiscard]] const pfcp::node_id_t& get_node_id() const;

@@ -426,7 +426,9 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // Assign the QER ID from the associated edge to the PDR object. Establish a
   // relationship between the PDR and a specific QER that dictates how QoS
   // policies should be enforced for traffic handled by this PDR.
-  create_pdr.set(edge->associated_edge->qer_id);
+  if (cfg.enable_qers()) {
+    create_pdr.set(edge->associated_edge->qer_id);
+  }
 
   if (cfg.enable_usage_reporting()) {
     create_pdr.set(edge->urr_id);
@@ -882,7 +884,9 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   }
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
-    n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+    }
   }
   for (const auto& dl_edge : dl_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
@@ -891,11 +895,15 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
-      n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      }
     }
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
-      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+      }
     }
 
     Logger::smf_app().info(
@@ -1168,7 +1176,9 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
   for (const auto& dl_edge : dl_edges_to_use) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
-    n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+    }
   }
 
   for (const auto& ul_edge : ul_edges_to_use) {
@@ -1329,13 +1339,17 @@ smf_procedure_code session_update_sm_context_procedure::run(
           // then tell it to UPF with Update FAR
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
-          n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
+          }
           send_n4 = true;
         } else {
           // handover, but FAR ID is not existing yet, we create new one
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
-          n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+          }
           send_n4 = true;
         }
       }
@@ -1379,7 +1393,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
       for (const auto& ul_edge : ul_edges_to_update) {
         ul_edge->precedence += 1;
         n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
-        n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+        if (upf_cfg.enable_qers()) {
+          n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+        }
       }
       for (const auto& dl_edge : dl_edges_to_update) {
         dl_edge->precedence += 1;
