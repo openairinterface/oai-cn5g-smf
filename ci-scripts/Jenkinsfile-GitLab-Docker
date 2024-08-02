@@ -119,8 +119,9 @@ pipeline {
 
             shortenShaOne = sh returnStdout: true, script: 'git log -1 --pretty=format:"%h" --abbrev=8 ' + env.GIT_COMMIT
             shortenShaOne = shortenShaOne.trim()
-            smf_tag       = 'develop-' + shortenShaOne
-            smf_branch    = env.GIT_COMMIT
+            // Being able to handle master and develop as target branches
+            smf_branch    = env.GIT_BRANCH.replaceAll("origin/", "")
+            smf_tag       = smf_branch + '-' + shortenShaOne
 
             echo "======== THIS IS A PUSH REQUEST ========"
             echo "Git Branch      is ${GIT_BRANCH}"
@@ -442,7 +443,8 @@ pipeline {
         lock(ubuntuBuildResource) {
           script {
             // Only in case of push to target branch!
-            if ("PUSH".equals(env.gitlabActionType)) {
+            // Push when doing hot patches to master are done manually
+            if ("PUSH".equals(env.gitlabActionType) && (smf_branch == 'develop')) {
               withCredentials([
                 [$class: 'UsernamePasswordMultiBinding', credentialsId: "${params.DockerHubCredentials}", usernameVariable: 'DH_Username', passwordVariable: 'DH_Password']
               ]) {
