@@ -185,14 +185,9 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
     const std::shared_ptr<qos_upf_edge>& edge) {
   oai::config::smf::upf cfg   = edge->source_upf->get_upf_config();
   pfcp::create_qer create_qer = {};
-  pfcp::qer_correlation_id_t qer_correlation_id;
   pfcp::gate_status_t gate_status;
   pfcp::mbr_t maximum_bitrate;
   pfcp::gbr_t guaranteed_bitrate;
-  pfcp::packet_rate_t packet_rate;
-  pfcp::dl_flow_level_marking_t dl_flow_level_marking = {};
-  pfcp::qfi_t qos_flow_identifier                     = {};
-  pfcp::rqi_t reflective_qos;
 
   // Check if the qer_id in edge is 0, if so, generate a new qer_id using the
   // session handler and assign it to edge->qer_id. Set the new QER ID in the
@@ -204,27 +199,10 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
 
   if (edge->uplink) {
     gate_status.ul_gate = OPEN;
-    // packet_rate.ulpr                       = 1;
-    // packet_rate.uplink_time_unit           = 0;
-    // packet_rate.maximum_uplink_packet_rate = 50;
   } else {
     gate_status.dl_gate = OPEN;
-    // packet_rate.dlpr                         = 1;
-    // packet_rate.downlink_time_unit           = 0;
-    // packet_rate.maximum_downlink_packet_rate = 100;
   }
 
-  qer_correlation_id.qer_correlation_id = generate_correlation_id();
-  dl_flow_level_marking.sci             = 0;
-  dl_flow_level_marking.ttc             = 0;
-  // uint8_t tos_field = 0x8A;
-  // uint8_t mask_field = 0x03;
-  // dl_flow_level_marking.tos_traffic_class = std::string(1, tos_field) +
-  // std::string(1, mask_field); dl_flow_level_marking.service_class_indicator =
-  // "\x00\x00";
-  reflective_qos.rqi = 0;
-
-  create_qer.set(qer_correlation_id);
   create_qer.set(gate_status);
 
   if (pfcp_mbr(edge, maximum_bitrate)) {
@@ -233,10 +211,7 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   if (pfcp_gbr(edge, guaranteed_bitrate)) {
     create_qer.set(guaranteed_bitrate);
   }
-  // create_qer.set(packet_rate);
-  // create_qer.set(reflective_qos);
   create_qer.set(edge->qfi);
-  // create_qer.set(dl_flow_level_marking);
 
   return create_qer;
 }

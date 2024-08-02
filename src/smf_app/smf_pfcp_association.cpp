@@ -1020,7 +1020,6 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       auto qos_it = qos_decs.find(rule.second.getRefQosData()[0]);
       if (qos_it != qos_decs.end()) {
         selection_criteria.qos_profile = qos_it->second;
-        selection_criteria.default_qos = false;
         generate_new_qfi               = true;
       }
     }
