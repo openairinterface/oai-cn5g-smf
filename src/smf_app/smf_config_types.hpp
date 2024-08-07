@@ -132,6 +132,23 @@ class ims_config : public config_type {
   [[nodiscard]] const in6_addr& get_pcscf_v6() const;
 };
 
+class ngap_config_value : public config_type {
+ private:
+  option_config_value m_send_default_qos_characteristics;
+
+ public:
+  explicit ngap_config_value();
+  void from_yaml(const YAML::Node& node) override;
+  nlohmann::json to_json() override;
+  bool from_json(const nlohmann::json& json_data) override;
+
+  [[nodiscard]] std::string to_string(const std::string& indent) const override;
+
+  void validate() override;
+
+  [[nodiscard]] bool send_default_qos_characteristics() const;
+};
+
 class qos_profile_config_value : public config_type {
   // TODO this is not ideal we should merge this ( and also the validation) with
   // the QosProfile from the UDM API
@@ -205,6 +222,7 @@ class smf_config_type : public nf {
   local_interface m_n4;
 
   int_config_value m_ue_mtu;
+  ngap_config_value m_ngap_config;
 
  public:
   explicit smf_config_type(
@@ -228,6 +246,7 @@ class smf_config_type : public nf {
   [[nodiscard]] std::vector<subscription_info_config>& get_subscription_info();
   [[nodiscard]] const oai::model::nrf::SmfInfo& get_smf_info();
   [[nodiscard]] const local_interface& get_n4() const;
+  [[nodiscard]] ngap_config_value get_ngap() const;
 };
 
 }  // namespace oai::config::smf

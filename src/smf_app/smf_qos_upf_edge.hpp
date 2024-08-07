@@ -32,6 +32,7 @@
 #include "3gpp_29.244.h"
 #include "UPInterfaceType.h"
 #include "RedirectInformation.h"
+#include "QosData.h"
 #include "smf.h"
 #include "smf_pfcp_association.hpp"
 #include "config.hpp"
@@ -47,8 +48,10 @@ struct upf_selection_criteria {
   oai::model::common::Snssai snssai{};
   std::string dnn{};
   std::unordered_set<std::string> dnais;
-  qos_profile_t qos_profile{};  // QoS profile
-
+  oai::model::pcf::QosData qos_profile{};  // QoS profile
+  // we dont use the default QoS model here because it is a subset of this model
+  bool default_qos      = true;
+  bool generate_new_qfi = true;
   // internal information used and set within graph
   oai::model::pcf::FlowInformation flow_information =
       get_default_flow_information();
@@ -107,9 +110,7 @@ class qos_upf_edge {
   pfcp::fteid_t fteid{};
   // for N3 or N9
   pfcp::fteid_t next_hop_fteid{};
-  // we could also use QoSData from models, but this qos_profile is really used
-  // at many places
-  qos_profile_t qos_profile{};  // QoS profile
+  oai::model::pcf::QosData qos_profile{};
 
   std::shared_ptr<qos_upf_edge> associated_edge{};
   std::shared_ptr<pfcp_association> destination_upf{};

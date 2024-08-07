@@ -29,10 +29,14 @@
 
 #include "smf_qos_upf_edge.hpp"
 
+// TODO remove again after putting in model directly
+#include "Helpers.h"
+
 using namespace oai::config::smf;
 using namespace oai::model::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
+using namespace oai::model::common;
 using namespace smf;
 
 //------------------------------------------------------------------------------
@@ -218,6 +222,7 @@ bool qos_upf_edge::serves_network(const upf_selection_criteria& criteria) {
   qos_profile          = criteria.qos_profile;
   precedence           = criteria.precedence;
   qfi.qfi              = criteria.qfi;
+  default_qos          = criteria.default_qos;
 
   if (criteria.dnais.empty()) {
     return serves;

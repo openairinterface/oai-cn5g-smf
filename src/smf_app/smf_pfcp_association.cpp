@@ -20,11 +20,11 @@
  */
 
 /*! \file smf_pfcp_association.cpp
- \brief
- \author  Lionel GAUTHIER
- \date 2019
- \email: lionel.gauthier@eurecom.fr
- */
+\brief
+\author  Lionel GAUTHIER
+\date 2019
+\email: lionel.gauthier@eurecom.fr
+*/
 
 #include "smf_pfcp_association.hpp"
 
@@ -966,28 +966,61 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     const upf_selection_criteria& base_criteria) {
   std::shared_lock graph_lock(graph_mutex);
 
-  // TODO also allow for QoS rules only without traffic rules
-  if (!policy_decision.pccRulesIsSet() ||
-      !policy_decision.traffContDecsIsSet()) {
+  if (!policy_decision.pccRulesIsSet() && !policy_decision.sessRulesIsSet()) {
     Logger::smf_app().warn(
-        "Cannot build UPF graph for PDU session when pcc rules or traffic "
-        "control description is missing");
+        "Cannot build UPF graph for PDU session when pcc and session rules are "
+        "missing");
+    return nullptr;
   }
 
   auto pcc_rules     = policy_decision.getPccRules();
+  auto session_rules = policy_decision.getSessRules();
   auto traffic_conts = policy_decision.getTraffContDecs();
+  auto qos_decs      = policy_decision.getQosDecs();
   std::unordered_set<uint32_t> precedences;
 
   std::shared_ptr<upf_graph> sub_graph_ptr = {};
-  upf_selection_criteria verify_criteria;
 
-  // run DFS for each PCC rule, get different graphs and merge them
-
-  upf_selection_criteria selection_criteria = base_criteria;
+  // Run DFS for each PCC rule, get different graphs and merge them
+  std::vector<upf_selection_criteria> selection_criterias;
+  std::vector<upf_selection_criteria> verify_criterias;
+  QosData default_qos_to_use = base_criteria.qos_profile;
+  bool session_rule_exists   = false;
+  bool remove_session_rule   = false;
+  // we only use one session rule here
+  if (!session_rules.empty()) {
+    auto rule_it                    = session_rules.begin();
+    upf_selection_criteria criteria = base_criteria;
+    if (rule_it->second.authDefQosIsSet()) {
+      criteria.default_qos  = true;
+      session_rule_exists   = true;
+      auto auth_default_qos = rule_it->second.getAuthDefQos();
+      default_qos_to_use.setPriorityLevel(auth_default_qos.getPriorityLevel());
+      default_qos_to_use.setArp(auth_default_qos.getArp());
+      default_qos_to_use.setR5qi(auth_default_qos.getR5qi());
+    }
+    selection_criterias.push_back(criteria);
+    verify_criterias.push_back(criteria);
+    // TODO also update AMBR
+  }
+  bool generate_new_qfi = true;
+  upf_selection_criteria previous_verify_criteria;
   for (const auto& rule : pcc_rules) {
-    selection_criteria.dnais.clear();
-    // TODO without Qos we only have one QFI, we should include the QOS data
-    // from PCF here and generate a QFI for each of the QoS flows
+    upf_selection_criteria selection_criteria = base_criteria;
+    upf_selection_criteria verify_criteria;
+    verify_criteria.dnais = previous_verify_criteria.dnais;
+
+    selection_criteria.qos_profile = default_qos_to_use;
+
+    if (!rule.second.getRefQosData().empty()) {
+      // take first QoS rule (see Note 1 in table 5.6.2.6-1 in TS29.512)
+      auto qos_it = qos_decs.find(rule.second.getRefQosData()[0]);
+      if (qos_it != qos_decs.end()) {
+        selection_criteria.qos_profile = qos_it->second;
+        selection_criteria.default_qos = false;
+        generate_new_qfi               = true;
+      }
+    }
 
     if (!rule.second.getRefTcData().empty()) {
       // we just take the first traffic control, as defined in the standard
@@ -1011,12 +1044,6 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
           Logger::smf_app().info("Route to location is not set in PCC rules");
         }
       }
-      // TODO at this point add and convert QoS information from PCC rules
-      // TODO if we want the graph function to generate a new QFI, we have to
-      // set qfi to 0 here
-
-    } else {
-      continue;
     }
     if (rule.second.flowInfosIsSet() && !rule.second.getFlowInfos().empty()) {
       auto flow_info = rule.second.getFlowInfos()[0];
@@ -1029,27 +1056,13 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
             FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL);
         flow_info.setFlowDirection(flow_direction);
       }
-      // TODO 29.512 defines this as false per default, but we take the filter
-      // here to build the NAS filter list we should take it from default QoS
-      // from session rules, if we don't set it to true here, COTS UEs will
-      // complain
 
-      flow_info.setPacketFilterUsage(true);
-
-      selection_criteria.flow_information = rule.second.getFlowInfos()[0];
+      selection_criteria.flow_information = flow_info;
     } else {
       Logger::smf_app().warn(
           "Flow Description is empty. Skip PCC rule %s", rule.first.c_str());
       continue;
     }
-
-    std::unordered_map<
-        std::shared_ptr<pfcp_association>, bool,
-        std::hash<std::shared_ptr<pfcp_association>>>
-        visited;
-
-    // here we start the DFS algorithm for all start nodes because we can
-    // have disconnected graphs
 
     uint32_t precedence = rule.second.getPrecedence();
     if (auto it = precedences.find(precedence) != precedences.end()) {
@@ -1061,11 +1074,55 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     precedences.insert(precedence);
     selection_criteria.precedence = precedence;
 
-    select_upf_nodes(selection_criteria, sub_graph_ptr, verify_criteria);
+    if (selection_criteria.flow_information.getFlowDescription() ==
+        DEFAULT_FLOW_DESCRIPTION) {
+      // we have an 'any' PCC rule, so we don't have to run the algorithm for
+      // the session rule
+      remove_session_rule            = true;
+      selection_criteria.default_qos = true;
+      selection_criteria.flow_information.setPacketFilterUsage(true);
+    }
+    selection_criteria.generate_new_qfi = generate_new_qfi;
+    selection_criterias.push_back(selection_criteria);
+    verify_criterias.push_back(verify_criteria);
+    // We always add more and more DNAIs, if we need to remove them we need a
+    // different logic
+    previous_verify_criteria = verify_criteria;
+    generate_new_qfi         = false;
   }
 
+  if (remove_session_rule && session_rule_exists) {
+    verify_criterias.erase(verify_criterias.begin());
+    selection_criterias.erase(selection_criterias.begin());
+  }
+
+  // Now we have gathered all the information, run the DFS algorithm for each
+  // PCC rule (e.g. graph path or QoS flow)
+  uint8_t generated_qfi;
+  for (int i = 0; i < selection_criterias.size(); i++) {
+    auto verify_criteria    = verify_criterias[i];
+    auto selection_criteria = selection_criterias[i];
+    // if we have traffic rules, we keep the previously allocated QFI
+    if (!selection_criteria.generate_new_qfi) {
+      selection_criteria.qfi = generated_qfi;
+    }
+
+    std::unordered_map<
+        std::shared_ptr<pfcp_association>, bool,
+        std::hash<std::shared_ptr<pfcp_association>>>
+        visited;
+
+    // here we start the DFS algorithm for all start nodes because we can
+    // have disconnected graphs
+
+    select_upf_nodes(selection_criteria, sub_graph_ptr, verify_criteria);
+    generated_qfi = selection_criteria.qfi;
+  }
+
+  auto last_verify_criteria = verify_criterias.back();
+
   // Now we verify the merged graph
-  if (sub_graph_ptr && sub_graph_ptr->verify(verify_criteria)) {
+  if (sub_graph_ptr && sub_graph_ptr->verify(last_verify_criteria)) {
     Logger::smf_app().info("Dynamic UPF selection successful.");
     sub_graph_ptr->print_graph();
 
@@ -1112,6 +1169,7 @@ bool upf_graph::select_upf_nodes(
       }
       if (criteria.qfi == 0) {
         criteria.qfi = sub_graph_ptr->generate_qfi();
+        sub_graph_ptr->qfi_count++;
       }
 
       create_subgraph_dfs(sub_graph_ptr, upf, visited, criteria);
@@ -1120,7 +1178,8 @@ bool upf_graph::select_upf_nodes(
         // in case copy is empty, new subgraph_ptr is also empty, and we
         // create a new upf graph
         sub_graph_ptr = sub_graph_copy_ptr;
-        criteria.qfi  = 0;
+        release_qfi(criteria.qfi);
+        criteria.qfi = 0;
       } else {
         return true;
       }
@@ -1248,7 +1307,7 @@ void upf_graph::create_subgraph_dfs(
       auto edge_to_use = std::make_shared<qos_upf_edge>(*edge_it);
       if (!edge_to_use->serves_network(selection_criteria)) {
         continue;  // do not consider this edge, does not serve DNN or SNSSAI or
-                   // any DNAI
+        // any DNAI
       }
       if (!edge_to_use->used_dnai.empty()) {
         sub_graph->served_dnais.insert(edge_to_use->used_dnai);
@@ -1261,7 +1320,8 @@ void upf_graph::create_subgraph_dfs(
       n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
       if (edge_to_use->type == n3_type) {
-        if (simple_mode && sub_graph->access_edge_count == 1) {
+        if (simple_mode &&
+            sub_graph->access_edge_count == sub_graph->qfi_count) {
           continue;
         }
         sub_graph->access_edge_count++;

@@ -31,6 +31,7 @@
 #define FILE_SMF_N2_HPP_SEEN
 
 #include <string>
+#include <Ngap_QosFlowSetupRequestItem.h>
 
 #include "smf.h"
 #include "smf_app.hpp"
@@ -52,6 +53,15 @@ namespace smf {
 
 class smf_n2 {
  private:
+  static void set_ngap_bit_rate(
+      Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit);
+
+  static Ngap_QosFlowSetupRequestItem get_QoSFlowSetupRequestItem(
+      const qos_flow_context_updated& qos_flow);
+
+  static Ngap_QosFlowLevelQosParameters get_QoSFlowLevelQosParameters(
+      const qos_flow_context_updated& qos_flow);
+
  public:
   smf_n2(){};
   smf_n2(smf_n2 const&) = delete;

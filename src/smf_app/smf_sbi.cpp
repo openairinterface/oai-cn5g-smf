@@ -738,11 +738,11 @@ bool smf_sbi::get_sm_data(
                 it.value()["5gQosProfile"]["arp"]["preemptCap"];
             dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
                 it.value()["5gQosProfile"]["arp"]["preemptVuln"];
-            // Optinal
-            if (it.value()["5gQosProfile"].find("") !=
+            // Optional
+            if (it.value()["5gQosProfile"].find("priorityLevel") !=
                 it.value()["5gQosProfile"].end()) {
               dnn_configuration->_5g_qos_profile.priority_level =
-                  it.value()["5gQosProfile"]["5QiPriorityLevel"];
+                  it.value()["5gQosProfile"]["priorityLevel"];
             }
           }
 

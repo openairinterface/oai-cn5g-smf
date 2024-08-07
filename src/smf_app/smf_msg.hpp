@@ -29,6 +29,7 @@
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
+#include <QOSFlowDescriptions.h>
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
@@ -39,6 +40,7 @@
 #include "DddStatus.h"
 #include "NgRanTargetId.h"
 #include "PlmnId.h"
+#include "QosData.h"
 #include "pistache/http.h"
 #include "smf.h"
 #include "smf_profile.hpp"
@@ -80,15 +82,17 @@ class qos_flow_context_updated {
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
   void add_qos_rule(const QOSRulesIE& rule);
-  void set_qos_profile(const qos_profile_t& profile);
-  void set_priority_level(uint8_t p);
+  void set_qos_profile(const oai::model::pcf::QosData& profile);
+  void set_qos_flow_descriptions(
+      const QOSFlowDescriptionsContents& flow_description_content);
 
   uint8_t cause_value;
   pfcp::qfi_t qfi;
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
   std::map<uint8_t, QOSRulesIE> qos_rules;
-  qos_profile_t qos_profile;
+  QOSFlowDescriptionsContents qos_flow_description_content;
+  oai::model::pcf::QosData qos_profile;
   bool to_be_removed;
 };
 
@@ -180,6 +184,11 @@ class pdu_session_msg {
   bool m_n2_sm_info_is_set;
   std::string m_n2_sm_info_type;
   bool m_n2_sm_info_type_is_set;
+
+ protected:
+  static void add_qos_flow_to_list(
+      std::map<uint8_t, qos_flow_context_updated>& flow_list,
+      const qos_flow_context_updated& flow);
 };
 
 //---------------------------------------------------------------------------------------
@@ -320,8 +329,9 @@ class pdu_session_create_sm_context_response
 
   void set_paa(const paa_t& paa);
   paa_t get_paa() const;
-  void set_qos_flow_context(const qos_flow_context_updated& qos_flow);
-  qos_flow_context_updated get_qos_flow_context() const;
+  void add_qos_flow_context(const qos_flow_context_updated& qos_flow);
+  void get_all_qos_flow_context_created(
+      std::map<uint8_t, qos_flow_context_updated>& all_flows);
   void set_amf_url(const std::string& value);
   std::string get_amf_url() const;
   void set_smf_context_uri(const std::string& value);
@@ -334,7 +344,7 @@ class pdu_session_create_sm_context_response
 
  private:
   paa_t m_paa;
-  qos_flow_context_updated m_qos_flow_context;
+  std::map<uint8_t, qos_flow_context_updated> m_qos_flow_context;
   std::string m_amf_url;
   std::string m_smf_context_uri;
   protocol_configuration_options_t m_epco;

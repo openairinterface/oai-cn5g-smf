@@ -189,10 +189,9 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
 
   create_far.set(edge->far_id);
   create_far.set(apply_action);
-  create_far.set(
-      forwarding_parameters);  // should check since destination
-                               // interface is directly set to FAR (as
-                               // described in Table 5.8.2.11.6-1)
+  create_far.set(forwarding_parameters);  // should check since destination
+  // interface is directly set to FAR (as
+  // described in Table 5.8.2.11.6-1)
   return create_far;
 }
 
@@ -531,18 +530,21 @@ bool smf_session_procedure::is_qfi_served_in_edges(
         "because of an earlier reject");
     return false;
   }
+  bool found_qfi = false;
   for (const auto& qfi : qfis) {
-    bool found_qfi = false;
     for (const auto& edge : edges) {
-      if (qfi == edge->qfi) found_qfi = true;
-      served_edges.push_back(edge);
+      if (qfi == edge->qfi) {
+        found_qfi = true;
+        served_edges.push_back(edge);
+      }
     }
-    if (!found_qfi) {
-      Logger::smf_app().error(
-          "Requested QFI %d does not exist in PDU session. Cannot modify PFCP "
-          "session");
-      return false;
-    }
+  }
+
+  if (!found_qfi) {
+    Logger::smf_app().error(
+        "Requested QFIs does not exist in PDU session. Cannot modify PFCP "
+        "session");
+    return false;
   }
   return true;
 }
@@ -561,8 +563,9 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
       for (const auto& edge : edges) {
         if (edge->pdr_id == pdr_id && it.get(edge->fteid)) {
           Logger::smf_app().debug(
-              "Successfully associate PDR %u with %s", edge->pdr_id.rule_id,
-              to_string_fteid(edge->fteid));
+              "Successfully associate PDR %u with %s (QFI: %d)",
+              edge->pdr_id.rule_id, to_string_fteid(edge->fteid),
+              edge->qfi.qfi);
           used_qfis.insert(edge->qfi.qfi);
           sps->get_session_handler()
               ->get_session_graph()
@@ -734,9 +737,23 @@ smf_procedure_code session_create_sm_context_procedure::run(
       sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn(),
       default_qos);
 
-  criteria.qos_profile._5qi           = default_qos._5qi;
-  criteria.qos_profile.arp            = default_qos.arp;
-  criteria.qos_profile.priority_level = default_qos.priority_level;
+  criteria.qos_profile.setR5qi(default_qos._5qi);
+
+  // TODO this conversion should be somewhere else but is only used once so far
+  oai::model::common::Arp arp;
+  oai::model::common::PreemptionVulnerability preempt_vuln;
+  from_json(default_qos.arp.preempt_vuln, preempt_vuln);
+  oai::model::common::PreemptionCapability preempt_cap;
+  from_json(default_qos.arp.preempt_cap, preempt_cap);
+
+  arp.setPreemptCap(preempt_cap);
+  arp.setPreemptVuln(preempt_vuln);
+  arp.setPriorityLevel(default_qos.arp.priority_level);
+
+  criteria.qos_profile.setArp(arp);
+  if (default_qos.priority_level != 0) {
+    criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};
@@ -903,10 +920,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     sps->get_session_handler()->set_qfis_to_be_updated(all_qfis);
   }
 
-  // TODO we have more than one QoS flow here, to adapt with new QoS framework
   for (const auto& flow :
        sps->get_session_handler()->get_qos_flows_context_updated()) {
-    n11_triggered_pending->res.set_qos_flow_context(flow);
+    n11_triggered_pending->res.add_qos_flow_context(flow);
   }
 
   return smf_procedure_code::OK;
