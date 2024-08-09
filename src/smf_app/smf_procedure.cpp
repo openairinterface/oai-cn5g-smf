@@ -58,12 +58,14 @@ extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+//------------------------------------------------------------------------------
 std::string smf_session_procedure::to_string_fteid(const pfcp::fteid_t& fteid) {
   return fmt::format(
       "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
       oai::utils::conv::toString(fteid.ipv4_address));
 }
 
+//------------------------------------------------------------------------------
 pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
     const std::shared_ptr<qos_upf_edge>& edge) {
   // only used in PDR,so when it is a downlink edge, we are in UL procedure
@@ -128,6 +130,7 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
   return local_fteid;
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_gbr(
     const std::shared_ptr<qos_upf_edge>& edge, pfcp::gbr_t& gbr_pfcp) {
   gbr_pfcp = {};
@@ -154,6 +157,7 @@ bool smf_session_procedure::pfcp_gbr(
   return true;
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_mbr(
     const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& mbr_pfcp) {
   mbr_pfcp = {};
@@ -478,6 +482,7 @@ pfcp::remove_far smf_session_procedure::pfcp_remove_far(
   return remove_far;
 }
 
+//------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
     const shared_ptr<qos_upf_edge>& edge) {
   // TODO some duplicated code from create_pdr
@@ -532,6 +537,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   return update_pdr;
 }
 
+//------------------------------------------------------------------------------
 pfcp::update_qer smf_session_procedure::pfcp_update_qer(
     const std::shared_ptr<qos_upf_edge>& edge) {
   // Retrieve the existing QER associated with the edge for updating
@@ -544,21 +550,13 @@ pfcp::update_qer smf_session_procedure::pfcp_update_qer(
   pfcp::gate_status_t gate_status;
   pfcp::mbr_t maximum_bitrate;
   pfcp::gbr_t guaranteed_bitrate;
-  pfcp::packet_rate_t packet_rate;
-  pfcp::rqi_t reflective_qos;
+  // TODO: Update Packet Rate
+  // TODO: Update Reflective QoS
 
   if (edge->uplink) {
     gate_status.ul_gate = OPEN;
-    // packet_rate.ulpr             = 1;
-    // packet_rate.uplink_time_unit = 0;
-    // packet_rate.maximum_uplink_packet_rate = 60;  // Updated maximum uplink
-    // packet rate
   } else {
     gate_status.dl_gate = OPEN;
-    // packet_rate.dlpr               = 1;
-    // packet_rate.downlink_time_unit = 0;
-    // packet_rate.maximum_downlink_packet_rate =
-    120;  // Updated maximum downlink packet rate
   }
 
   update_qer.set(qer_id);
@@ -569,13 +567,13 @@ pfcp::update_qer smf_session_procedure::pfcp_update_qer(
   if (pfcp_gbr(edge, guaranteed_bitrate)) {
     update_qer.set(guaranteed_bitrate);
   }
-  // update_qer.set(packet_rate);
-  // update_qer.set(reflective_qos);
+
   update_qer.set(edge->qfi);
 
   return update_qer;
 }
 
+//------------------------------------------------------------------------------
 pfcp::update_far smf_session_procedure::pfcp_update_far(
     const shared_ptr<qos_upf_edge>& edge) {
   // TODO there is some duplicated code from create_far
@@ -605,6 +603,7 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
   return update_far;
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
     const shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
@@ -754,6 +753,7 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
   sps->get_session_handler()->set_qfis_to_be_updated(handled_qfis);
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_sdf_filter(
     const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter) {
   // UL and DL edge is reversed, as it is from UPF point of view
