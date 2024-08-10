@@ -571,7 +571,7 @@ oai::config::smf::upf pfcp_associations::get_upf_config(
   }
   upf_cfg = oai::config::smf::upf(
       host, upf_cfg.get_port(), upf_cfg.enable_usage_reporting(),
-      upf_cfg.enable_dl_pdr_in_session_establishment(),
+      upf_cfg.enable_qers(), upf_cfg.enable_dl_pdr_in_session_establishment(),
       upf_cfg.get_local_n3_ip());
 
   upf_cfg.set_upf_info(info);
@@ -1007,6 +1007,9 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   upf_selection_criteria previous_verify_criteria;
   for (const auto& rule : pcc_rules) {
     upf_selection_criteria selection_criteria = base_criteria;
+    // when we have PCC rules we set default QoS false, so we can handle all the
+    // values from the rules directly
+    selection_criteria.default_qos = false;
     upf_selection_criteria verify_criteria;
     verify_criteria.dnais = previous_verify_criteria.dnais;
 
@@ -1017,7 +1020,6 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       auto qos_it = qos_decs.find(rule.second.getRefQosData()[0]);
       if (qos_it != qos_decs.end()) {
         selection_criteria.qos_profile = qos_it->second;
-        selection_criteria.default_qos = false;
         generate_new_qfi               = true;
       }
     }

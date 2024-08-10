@@ -155,6 +155,18 @@ class session_handler {
   void release_urr_id(const pfcp::urr_id_t& urr_id);
 
   /**
+   * Generates a unique QER ID
+   * @return QER ID
+   */
+  pfcp::qer_id_t generate_qer_id();
+
+  /**
+   * Releases QER ID so that it can be re-used
+   * @param qer_id
+   */
+  void release_qer_id(const pfcp::qer_id_t& qer_id);
+
+  /**
    * Generates a unique FAR ID
    * @return FAR ID
    */
@@ -184,6 +196,11 @@ class session_handler {
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
+  static bool is_uplink_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
+  static bool is_downlink_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
+
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
@@ -194,6 +211,7 @@ class session_handler {
   oai::utils::uint_generator<uint32_t> m_qfi_generator;
 
   oai::utils::uint_generator<uint16_t> m_pdr_id_generator;
+  oai::utils::uint_generator<uint32_t> m_qer_id_generator;
   oai::utils::uint_generator<uint32_t> m_far_id_generator;
   oai::utils::uint_generator<uint32_t> m_urr_id_generator;
 
@@ -246,6 +264,9 @@ class session_handler {
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
 
   static map<uint8_t, uint64_t> bpsMap;
+
+  static bool is_flow_direction(
+      bool uplink, const oai::model::pcf::FlowInformation& flow_direction);
 
   void set_default_qos_parameters(oai::model::pcf::QosData& qos_data);
 

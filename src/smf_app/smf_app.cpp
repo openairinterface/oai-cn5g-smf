@@ -1404,11 +1404,11 @@ bool smf_app::handle_nf_status_notification(
             host);
         // we use the same default behavior for locally configured and
         // NRF-received UPF
-        local_upf_cfg =
-            upf(host, local_upf_cfg.get_port(),
-                local_upf_cfg.enable_usage_reporting(),
-                local_upf_cfg.enable_dl_pdr_in_session_establishment(),
-                local_upf_cfg.get_local_n3_ip());
+        local_upf_cfg = upf(
+            host, local_upf_cfg.get_port(),
+            local_upf_cfg.enable_usage_reporting(), local_upf_cfg.enable_qers(),
+            local_upf_cfg.enable_dl_pdr_in_session_establishment(),
+            local_upf_cfg.get_local_n3_ip());
       }
       local_upf_cfg.set_upf_info(profile.getUpfInfo());
 
