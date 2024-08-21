@@ -211,7 +211,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", resp.body,
+      "Response from AMF, Http Code: %d, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -277,7 +277,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
   }
-  Logger::smf_sbi().debug("Response from AMF, Http Code: %d", resp.status_code);
+  Logger::smf_sbi().debug("Response from AMF, Http Code: %i", resp.status_code);
 }
 
 //------------------------------------------------------------------------------
@@ -321,7 +321,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", resp.status_code,
+      "Response from AMF, Http Code: %i, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
