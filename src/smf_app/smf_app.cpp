@@ -367,6 +367,12 @@ smf_app::smf_app(const std::string& config_file)
     throw;
   }
 
+  // Generate NF Instance ID (UUID)
+  generate_uuid();
+
+  // Generate NF profile for this instance
+  generate_smf_profile();
+
   Logger::smf_app().startup("Started");
 }
 
@@ -376,6 +382,23 @@ smf_app::~smf_app() {
   // TODO: Unregister NRF
   if (smf_n4_inst) delete smf_n4_inst;
   if (smf_sbi_inst) delete smf_sbi_inst;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::start() {
+  if (smf_app_inst) {
+    // Register to NRF if needed
+    if (smf_cfg->register_nrf()) {
+      register_to_nrf();
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::stop() {
+  if (smf_app_inst) {
+    smf_app_inst->deregister_to_nrf();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -754,14 +777,32 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
   Logger::smf_app().debug("NF Update NF response");
 
-  Logger::smf_app().debug(
-      "Set NRF Heartbeat timer (%d)",
-      nf_instance_profile.get_nf_heartBeat_timer());
+  if ((u.http_response_code == oai::common::sbi::http_status_code::OK) or
+      (u.http_response_code ==
+       oai::common::sbi::http_status_code::NO_CONTENT)) {
+    Logger::smf_app().debug("SMF has successfully registered to NRF.");
+    /*
+    //TODO: Update profile accordingly
+    nf_instance_profile = u.profile;
+    // Set heartbeat timer
+    Logger::smf_app().debug(
+        "Set value of NRF Heartbeat timer to %d",
+        r.profile.get_nf_heartBeat_timer());
+*/
+    Logger::smf_app().debug(
+        "Set NRF Heartbeat timer (%d)",
+        nf_instance_profile.get_nf_heartBeat_timer());
 
-  // Set heartbeat timer
-  //  timer_nrf_heartbeat = itti_inst->timer_setup(
-  //      nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
-  //      TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0); //TODO arg2_user
+    timer_nrf_heartbeat = itti_inst->timer_setup(
+        nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
+        TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT, 0);  // TODO arg2_user
+
+  } else {
+    Logger::smf_app().warn(
+        "Issue while updating NF instance (NF Instance Update), try "
+        "again ...");
+    register_to_nrf();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -1880,14 +1921,6 @@ void smf_app::timer_nrf_heartbeat_timeout(
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
-  } else {
-    Logger::smf_app().debug(
-        "Set a timer to the next Heart-beat (%d)",
-        nf_instance_profile.get_nf_heartBeat_timer());
-    timer_nrf_heartbeat = itti_inst->timer_setup(
-        nf_instance_profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
-        TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT,
-        0);  // TODO arg2_user
   }
 }
 
@@ -1903,7 +1936,7 @@ void smf_app::timer_nrf_deregistration(
     timer_id_t timer_id, uint64_t arg2_user) {
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to trigger NRF Deregistration");
-  trigger_nf_deregistration();
+  deregister_to_nrf();
 }
 
 //---------------------------------------------------------------------------------------------
@@ -2245,14 +2278,17 @@ void smf_app::get_ee_subscriptions(
   }
 }
 
+//------------------------------------------------------------------------------
+void smf_app::generate_uuid() {
+  smf_instance_id = to_string(boost::uuids::random_generator()());
+}
+
 //---------------------------------------------------------------------------------------------
 void smf_app::generate_smf_profile() {
   // TODO: remove hardcoded values
 
   nf_instance_profile = smf_profile();
 
-  // generate UUID
-  generate_uuid();
   nf_instance_profile.set_nf_instance_id(smf_instance_id);
   nf_instance_profile.set_nf_instance_name("OAI-SMF");
   nf_instance_profile.set_nf_type("SMF");
@@ -2319,19 +2355,8 @@ void smf_app::generate_smf_profile() {
 //---------------------------------------------------------------------------------------------
 void smf_app::register_to_nrf() {
   Logger::smf_app().debug("Register SMF with NRF");
-  // Create a NF profile to this instance
-  generate_smf_profile();
   // Send request to N11 to send NF registration to NRF
-  trigger_nf_registration_request();
-}
 
-//------------------------------------------------------------------------------
-void smf_app::generate_uuid() {
-  smf_instance_id = to_string(boost::uuids::random_generator()());
-}
-
-//------------------------------------------------------------------------------
-void smf_app::trigger_nf_registration_request() {
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to trigger the registration request to NRF");
 
@@ -2349,11 +2374,11 @@ void smf_app::trigger_nf_registration_request() {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::trigger_nf_deregistration() {
+void smf_app::deregister_to_nrf() {
   if (!smf_cfg->register_nrf()) return;
 
   Logger::smf_app().debug(
-      "Send ITTI msg to N11 task to trigger the deregistration request to "
+      "Send ITTI msg to SBI task to trigger the deregistration request to "
       "NRF");
 
   std::shared_ptr<itti_n11_deregister_nf_instance> itti_msg =

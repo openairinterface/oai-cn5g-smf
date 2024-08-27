@@ -123,6 +123,16 @@ class smf_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
+  /**
+   * Start SMF App
+   */
+  void start();
+
+  /**
+   * Stop all the ongoing processes and send NF deregistration towards NRF
+   */
+  void stop();
+
   /*
    * Apply the config from the configuration file for DNN pools
    * @return
@@ -933,13 +943,6 @@ class smf_app {
       std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
 
   /*
-   * Trigger NF instance registration to NRF
-   * @param [void]
-   * @return void
-   */
-  void register_to_nrf();
-
-  /*
    * Generate a random UUID for SMF instance
    * @param [void]
    * @return void
@@ -954,18 +957,18 @@ class smf_app {
   void generate_smf_profile();
 
   /*
-   * Send request to N11 task to trigger NF instance registration to NRF
+   * Trigger NF instance registration to NRF
    * @param [void]
    * @return void
    */
-  void trigger_nf_registration_request();
+  void register_to_nrf();
 
   /*
    * Send request to N11 task to trigger NF instance deregistration to NRF
    * @param [void]
    * @return void
    */
-  void trigger_nf_deregistration();
+  void deregister_to_nrf();
 
   /*
    * Send request to N11 task to trigger NFSubscribeStatus to NRF

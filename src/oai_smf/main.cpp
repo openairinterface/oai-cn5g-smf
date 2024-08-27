@@ -73,7 +73,7 @@ void my_app_signal_handler(int s) {
   Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
   // we have to trigger ITTI message before terminate
-  smf_app_inst->trigger_nf_deregistration();
+  smf_app_inst->deregister_to_nrf();
   itti_inst->send_terminate_msg(TASK_SMF_APP);
   itti_inst->wait_tasks_end();
 

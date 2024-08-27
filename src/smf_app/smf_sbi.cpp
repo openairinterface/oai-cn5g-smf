@@ -526,28 +526,31 @@ void smf_sbi::update_nf_instance(
       "NF Instance Registration, response from NRF, HTTP Code: %u",
       resp.status_code);
 
-  if ((resp.status_code == http_status_code::OK) or
-      (resp.status_code == http_status_code::NO_CONTENT)) {
-    Logger::smf_sbi().debug("NF Update, got successful response from NRF");
+  // if ((resp.status_code == http_status_code::OK) or
+  //    (resp.status_code == http_status_code::NO_CONTENT)) {
+  // Logger::smf_sbi().debug("NF Update, got successful response from NRF");
 
-    // TODO: In case of response containing NF profile
-    // Send response to APP to process
-    std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
-        std::make_shared<itti_n11_update_nf_instance_response>(
-            TASK_SMF_SBI, TASK_SMF_APP);
-    itti_msg->http_response_code = static_cast<int16_t>(resp.status_code);
-    itti_msg->http_version       = msg->http_version;
-    itti_msg->smf_instance_id    = msg->smf_instance_id;
+  Logger::smf_sbi().debug(
+      "NF Update, response from NRF: \n %s", resp.body.c_str());
 
-    int ret = itti_inst->send_msg(itti_msg);
-    if (RETURNok != ret) {
-      Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
-          itti_msg->get_msg_name());
-    }
-  } else {
-    Logger::smf_sbi().warn("NF Update, could not get response from NRF");
+  // TODO: In case of response containing NF profile
+  // Send response to APP to process
+  std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
+      std::make_shared<itti_n11_update_nf_instance_response>(
+          TASK_SMF_SBI, TASK_SMF_APP);
+  itti_msg->http_response_code = resp.status_code;
+  itti_msg->http_version       = msg->http_version;
+  itti_msg->smf_instance_id    = msg->smf_instance_id;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_sbi().error(
+        "Could not send ITTI message %s to task TASK_SMF_APP",
+        itti_msg->get_msg_name());
   }
+  //} else {
+  //  Logger::smf_sbi().warn("NF Update, could not get response from NRF");
+  //}
 }
 
 //-----------------------------------------------------------------------------------------------------
