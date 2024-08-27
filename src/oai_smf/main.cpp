@@ -68,11 +68,12 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
   auto shutdown_start = std::chrono::system_clock::now();
-  // Setting log level arbitrarly to debug to show the whole
+  // Setting log level arbitrary to debug to show the whole
   // shutdown procedure in the logs even in case of off-logging
   Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
 
+  // Stop on-going tasks
   if (smf_api_server_1) {
     Logger::system().debug("Stopping HTTP/1 server.");
     smf_api_server_1->shutdown();
@@ -90,7 +91,7 @@ void my_app_signal_handler(int s) {
     itti_inst->wait_tasks_end();
   }
 
-  Logger::system().debug("Freeing Allocated memory...");
+  Logger::system().debug("Freeing allocated memory...");
   if (async_shell_cmd_inst) {
     delete async_shell_cmd_inst;
     async_shell_cmd_inst = nullptr;
@@ -99,12 +100,14 @@ void my_app_signal_handler(int s) {
   if (smf_api_server_1) {
     delete smf_api_server_1;
     smf_api_server_1 = nullptr;
+    Logger::system().debug("SMF API Server (HTTP/1) memory done.");
   }
   if (smf_api_server_2) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
+    Logger::system().debug("SMF API Server (HTTP/2) memory done.");
   }
-  Logger::system().debug("SMF API Server memory done.");
+
   if (smf_app_inst) {
     delete smf_app_inst;
     smf_app_inst = nullptr;
@@ -187,7 +190,6 @@ int main(int argc, char** argv) {
         Pistache::Port(smf_cfg->sbi.port));
     smf_api_server_1 = new SMFApiServer(addr, smf_app_inst);
     smf_api_server_1->init(2);
-    // smf_api_server_1->start();
     std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
     // Quick fix: without sleep, http server is not ready for NF Subscribe
     // Notify
@@ -200,7 +202,6 @@ int main(int argc, char** argv) {
     smf_api_server_2 = new smf_http2_server(
         oai::utils::conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
         smf_app_inst);
-    // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
     // Quick fix: without sleep, http server is not ready for NF Subscribe
     // Notify

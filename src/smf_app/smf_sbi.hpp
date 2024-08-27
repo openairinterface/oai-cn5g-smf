@@ -29,31 +29,18 @@
 #ifndef FILE_SMF_SBI_HPP_SEEN
 #define FILE_SMF_SBI_HPP_SEEN
 
-#include <map>
 #include <thread>
 
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
-#include <curl/curl.h>
 #include "3gpp_29.503.h"
 #include "smf.h"
 #include "smf_context.hpp"
 
 namespace smf {
 
-#define TASK_SMF_SBI_TIMEOUT_NRF_HEARTBEAT_REQUEST 1
-
 class smf_sbi {
  private:
-  CURLM* curl_multi;
-  std::vector<CURL*> handles;
-  struct curl_slist* headers;
-
-  mutable std::shared_mutex m_curl_handle_promises;
-
-  std::map<uint32_t, boost::shared_ptr<boost::promise<uint32_t>>>
-      curl_handle_promises;
-
   std::thread::id thread_id;
   std::thread thread;
   /**

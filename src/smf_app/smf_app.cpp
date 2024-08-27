@@ -1481,9 +1481,9 @@ void smf_app::handle_sbi_get_configuration(
   if (read_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data["httpResponseCode"] = http_status_code::OK;
+    response_data[kSbiResponseHttpResponseCode] = http_status_code::OK;
   } else {
-    response_data["httpResponseCode"] = http_status_code::BAD_REQUEST;
+    response_data[kSbiResponseHttpResponseCode] = http_status_code::BAD_REQUEST;
     oai::model::common::ProblemDetails problem_details = {};
     // TODO set problem_details
     to_json(response_data["ProblemDetails"], problem_details);
@@ -1511,8 +1511,7 @@ void smf_app::handle_sbi_update_configuration(
   if (update_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data["httpResponseCode"] =
-        static_cast<uint32_t>(http_status_code::OK);
+    response_data[kSbiResponseHttpResponseCode] = http_status_code::OK;
 
     // Update SMF profile
     generate_smf_profile();
@@ -1522,7 +1521,8 @@ void smf_app::handle_sbi_update_configuration(
     if (smf_cfg->register_nrf()) register_to_nrf();
 
   } else {
-    response_data["httpResponseCode"] = http_status_code::NOT_ACCEPTABLE;
+    response_data[kSbiResponseHttpResponseCode] =
+        http_status_code::NOT_ACCEPTABLE;
     oai::model::common::ProblemDetails problem_details = {};
     // TODO set problem_details
     to_json(response_data["ProblemDetails"], problem_details);

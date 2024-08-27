@@ -31,12 +31,10 @@
 
 #include <stdexcept>
 
-#include <curl/curl.h>
-#include <pistache/http.h>
-#include <pistache/mime.h>
+//#include <pistache/http.h>
+//#include <pistache/mime.h>
 #include <nlohmann/json.hpp>
 #include <boost/algorithm/string/split.hpp>
-//#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #include "common_defs.h"
