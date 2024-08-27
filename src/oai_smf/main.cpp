@@ -72,10 +72,6 @@ void my_app_signal_handler(int s) {
   // shutdown procedure in the logs even in case of off-logging
   Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
-  // we have to trigger ITTI message before terminate
-  smf_app_inst->deregister_to_nrf();
-  itti_inst->send_terminate_msg(TASK_SMF_APP);
-  itti_inst->wait_tasks_end();
 
   if (smf_api_server_1) {
     Logger::system().debug("Stopping HTTP/1 server.");
@@ -84,6 +80,14 @@ void my_app_signal_handler(int s) {
   if (smf_api_server_2) {
     Logger::system().debug("Stopping HTTP/2 server.");
     smf_api_server_2->stop();
+  }
+  if (smf_app_inst) {
+    smf_app_inst->stop();
+  }
+  if (itti_inst) {
+    // we have to trigger ITTI message before terminate
+    itti_inst->send_terminate_msg(TASK_SMF_APP);
+    itti_inst->wait_tasks_end();
   }
 
   Logger::system().debug("Freeing Allocated memory...");
@@ -165,6 +169,7 @@ int main(int argc, char** argv) {
 
   // SMF application layer
   smf_app_inst = new smf_app(Options::getlibconfigConfig());
+  smf_app_inst->start();
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
@@ -184,12 +189,11 @@ int main(int argc, char** argv) {
     smf_api_server_1->init(2);
     // smf_api_server_1->start();
     std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
-    // Register to NRF and discover appropriate UPFs
-
-    // Quick fix: without sleep, http server is not ready for nr registration
+    // Quick fix: without sleep, http server is not ready for NF Subscribe
+    // Notify
     std::this_thread::sleep_for(1000ms);
-
-    smf_app_inst->start_nf_registration_discovery();
+    // Subscribe to be notified when UPFs become available
+    smf_app_inst->start_nf_discovery();
     smf_http1_manager.join();
   } else if (smf_cfg->get_http_version() == 2) {
     // SMF NGHTTP API server (HTTP2)
@@ -198,12 +202,11 @@ int main(int argc, char** argv) {
         smf_app_inst);
     // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
-    // Register to NRF and discover appropriate UPFs
-
-    // Quick fix: without sleep, http server is not ready for nr registration
+    // Quick fix: without sleep, http server is not ready for NF Subscribe
+    // Notify
     std::this_thread::sleep_for(1000ms);
-
-    smf_app_inst->start_nf_registration_discovery();
+    // Subscribe to be notified when UPFs become available
+    smf_app_inst->start_nf_discovery();
     smf_http2_manager.join();
   }
 

@@ -570,7 +570,7 @@ void smf_sbi::deregister_nf_instance(
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d",
+      "NF Instance De-registration, response from NRF, HTTP Code: %d",
       resp.status_code);
 
   if ((resp.status_code == http_status_code::OK) or

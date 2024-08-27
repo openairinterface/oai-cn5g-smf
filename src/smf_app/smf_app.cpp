@@ -402,7 +402,7 @@ void smf_app::stop() {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::start_nf_registration_discovery() {
+void smf_app::start_nf_discovery() {
   if (smf_cfg->register_nrf()) {
     trigger_upf_status_notification_subscribe();
   } else {
@@ -419,13 +419,6 @@ void smf_app::start_nf_registration_discovery() {
           break;
       }
     }
-  }
-
-  // Register to NRF (if this option is enabled)
-  if (smf_cfg->register_nrf()) {
-    unsigned int microsecond = 10000;  // 10ms
-    usleep(microsecond);
-    register_to_nrf();
   }
 }
 
@@ -781,14 +774,6 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
       (u.http_response_code ==
        oai::common::sbi::http_status_code::NO_CONTENT)) {
     Logger::smf_app().debug("SMF has successfully registered to NRF.");
-    /*
-    //TODO: Update profile accordingly
-    nf_instance_profile = u.profile;
-    // Set heartbeat timer
-    Logger::smf_app().debug(
-        "Set value of NRF Heartbeat timer to %d",
-        r.profile.get_nf_heartBeat_timer());
-*/
     Logger::smf_app().debug(
         "Set NRF Heartbeat timer (%d)",
         nf_instance_profile.get_nf_heartBeat_timer());
@@ -799,9 +784,10 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
 
   } else {
     Logger::smf_app().warn(
-        "Issue while updating NF instance (NF Instance Update), try "
+        "Issue when updating NF instance (NF Instance Update), try "
         "again ...");
     register_to_nrf();
+    trigger_upf_status_notification_subscribe();
   }
 }
 

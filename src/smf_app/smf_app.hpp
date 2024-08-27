@@ -123,16 +123,6 @@ class smf_app {
   std::string smf_instance_id;      // SMF instance id
   timer_id_t timer_nrf_heartbeat;
 
-  /**
-   * Start SMF App
-   */
-  void start();
-
-  /**
-   * Stop all the ongoing processes and send NF deregistration towards NRF
-   */
-  void stop();
-
   /*
    * Apply the config from the configuration file for DNN pools
    * @return
@@ -232,6 +222,16 @@ class smf_app {
   virtual ~smf_app();
 
   void operator=(smf_app const&) = delete;
+
+  /**
+   * Start SMF App
+   */
+  void start();
+
+  /**
+   * Stop all the ongoing processes and send NF deregistration towards NRF
+   */
+  void stop();
 
   /*
    * Set the association between Seid and SM Context
@@ -772,11 +772,11 @@ class smf_app {
   void start_upf_association(oai::config::smf::upf& upf_cfg);
 
   /*
-   * To start NF registration with NRF and subscribe to UPF event notification
+   * To subscribe to UPF event notification
    * @param void
    * @return void
    */
-  void start_nf_registration_discovery();
+  void start_nf_discovery();
 
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
