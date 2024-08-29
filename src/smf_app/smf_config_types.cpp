@@ -29,7 +29,6 @@
 
 #include "smf_config_types.hpp"
 #include "smf_config.hpp"
-#include "conv.hpp"
 
 using namespace oai::config::smf;
 using namespace oai::config;
@@ -234,7 +233,7 @@ void upf::from_yaml(const YAML::Node& node) {
   }
   if (node["upf_info"]) {
     nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["upf_info"], false);
+        oai::utils::conv::yaml_to_json(node["upf_info"], false);
     nlohmann::from_json(j, m_upf_info);
   }
   generate_node_id();
@@ -526,7 +525,7 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     // any default SNSSAI info list is deleted if people configure a profile
     m_smf_info.getSNssaiSmfInfoList().clear();
     nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["smf_info"], false);
+        oai::utils::conv::yaml_to_json(node["smf_info"], false);
     nlohmann::from_json(j, m_smf_info);
 
     std::vector<SnssaiSmfInfoItem> snssai_list;
@@ -703,7 +702,7 @@ void subscription_info_config::from_yaml(const YAML::Node& node) {
   }
   if (node["single_nssai"]) {
     nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["single_nssai"], false);
+        oai::utils::conv::yaml_to_json(node["single_nssai"], false);
     nlohmann::from_json(j, m_snssai);
     m_snssai.parse_sd_int_with_hex();
   }
