@@ -44,7 +44,7 @@
 #include "pistache/http.h"
 #include "smf.h"
 #include "smf_profile.hpp"
-
+#include "3gpp_24.501.hpp"
 extern "C" {
 #include "QOSRules.h"
 }

@@ -290,7 +290,7 @@ add_definitions("-DPACKAGE_NAME=\"SMF\"")
 
 include_directories(${SRC_TOP_DIR}/smf_app)
 include_directories(${SRC_TOP_DIR}/oai_smf)
-include_directories(${SRC_TOP_DIR}/itti)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/nas)
@@ -316,8 +316,8 @@ include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
   ${SRC_TOP_DIR}/oai_smf/options.cpp
-  ${SRC_TOP_DIR}/itti/itti.cpp
-  ${SRC_TOP_DIR}/itti/itti_msg.cpp
+  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti/itti.cpp
+  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti/itti_msg.cpp
   )
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
