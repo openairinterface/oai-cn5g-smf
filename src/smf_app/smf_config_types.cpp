@@ -232,8 +232,7 @@ void upf::from_yaml(const YAML::Node& node) {
     }
   }
   if (node["upf_info"]) {
-    nlohmann::json j =
-        oai::utils::conv::yaml_to_json(node["upf_info"], false);
+    nlohmann::json j = oai::utils::conv::yaml_to_json(node["upf_info"], false);
     nlohmann::from_json(j, m_upf_info);
   }
   generate_node_id();
@@ -524,8 +523,7 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
   if (node["smf_info"]) {
     // any default SNSSAI info list is deleted if people configure a profile
     m_smf_info.getSNssaiSmfInfoList().clear();
-    nlohmann::json j =
-        oai::utils::conv::yaml_to_json(node["smf_info"], false);
+    nlohmann::json j = oai::utils::conv::yaml_to_json(node["smf_info"], false);
     nlohmann::from_json(j, m_smf_info);
 
     std::vector<SnssaiSmfInfoItem> snssai_list;
