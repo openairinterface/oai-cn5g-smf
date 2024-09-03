@@ -32,7 +32,6 @@
 
 #include "assertions.h"
 #include "BIT_STRING.h"
-#include "asn1_conversions.h"
 
 #ifndef FILE_CONVERSIONS_SEEN
 #define FILE_CONVERSIONS_SEEN
