@@ -39,7 +39,7 @@
 #include <chrono>
 
 using namespace smf;
-using namespace util;
+using namespace oai::utils;
 using namespace std;
 using namespace oai::smf_server::api;
 using namespace oai::config::smf;
