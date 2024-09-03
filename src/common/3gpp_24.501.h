@@ -33,7 +33,6 @@
 
 #ifdef __cplusplus
 #include <nlohmann/json.hpp>
-#include "pdu_session_type.hpp"
 extern "C" {
 #endif
 
