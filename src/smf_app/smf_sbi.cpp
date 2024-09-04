@@ -31,8 +31,6 @@
 
 #include <stdexcept>
 
-//#include <pistache/http.h>
-//#include <pistache/mime.h>
 #include <nlohmann/json.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -51,8 +49,8 @@ extern "C" {
 #include "dynamic_memory_check.h"
 }
 
-using namespace Pistache::Http;
-using namespace Pistache::Http::Mime;
+// using namespace Pistache::Http;
+// using namespace Pistache::Http::Mime;
 
 using namespace smf;
 using namespace oai::common::sbi;
@@ -546,9 +544,6 @@ void smf_sbi::update_nf_instance(
         "Could not send ITTI message %s to task TASK_SMF_APP",
         itti_msg->get_msg_name());
   }
-  //} else {
-  //  Logger::smf_sbi().warn("NF Update, could not get response from NRF");
-  //}
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -557,13 +552,11 @@ void smf_sbi::deregister_nf_instance(
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (HTTP version %d)", msg->http_version);
 
-  std::string url = get_nrf_base_url() + msg->smf_instance_id;
-
-  Logger::smf_sbi().debug(
-      "Send NF De-register to NRF (NRF URL %s)", url.c_str());
-
   request req;
-  req.uri       = url;
+  req.uri = get_nrf_base_url() + msg->smf_instance_id;
+  Logger::smf_sbi().debug(
+      "Send NF De-register to NRF (NRF URL %s)", req.uri.c_str());
+
   response resp = http_client_inst->send_http_request(method_e::DELETE, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
