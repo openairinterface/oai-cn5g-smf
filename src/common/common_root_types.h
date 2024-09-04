@@ -32,16 +32,6 @@
 #include <inttypes.h>
 #include <arpa/inet.h>
 
-//------------------------------------------------------------------------------
-#define PRIORITY_LEVEL_MAX (15)
-#define PRIORITY_LEVEL_MIN (1)
-#define BEARERS_PER_UE (11)
-#define IMEI_DIGITS_MAX (15)
-#define IMEISV_DIGITS_MAX (16)
-#define MAX_APN_PER_UE (5)
-
-#define PROC_ID_FMT "0x%" PRIx64
-
 // TEIDs
 typedef uint32_t teid_t;
 #define TEID_FMT "0x%" PRIx32

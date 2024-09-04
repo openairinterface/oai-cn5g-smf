@@ -39,7 +39,8 @@ void udp_application::handle_receive(
 
 //------------------------------------------------------------------------------
 void udp_application::start_receive(
-    udp_application* gtp_stack, const util::thread_sched_params& sched_params) {
+    udp_application* gtp_stack,
+    const oai::utils::thread_sched_params& sched_params) {
   Logger::udp().warn("Missing implementation of interface udp_application\n");
 }
 
@@ -81,7 +82,8 @@ udp_server::~udp_server() {
   Logger::udp().debug("Thread on udp_read_loop should have ended!");
 }
 //------------------------------------------------------------------------------
-void udp_server::udp_read_loop(const util::thread_sched_params& sched_params) {
+void udp_server::udp_read_loop(
+    const oai::utils::thread_sched_params& sched_params) {
   endpoint r_endpoint   = {};
   size_t bytes_received = 0;
 
@@ -202,7 +204,7 @@ int udp_server::create_socket(const char* address, const uint16_t port_num) {
 }
 //------------------------------------------------------------------------------
 void udp_server::start_receive(
-    udp_application* app, const util::thread_sched_params& sched_params) {
+    udp_application* app, const oai::utils::thread_sched_params& sched_params) {
   app_ = app;
   Logger::udp().trace("udp_server::start_receive");
   thread_ = std::thread(&udp_server::udp_read_loop, this, sched_params);

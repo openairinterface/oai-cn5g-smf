@@ -81,7 +81,7 @@ using namespace oai::common::sbi;
 #define PFCP_ASSOC_RETRY_COUNT 10
 #define PFCP_ASSOC_RESP_WAIT 2
 
-extern util::async_shell_cmd* async_shell_cmd_inst;
+extern oai::utils::async_shell_cmd* async_shell_cmd_inst;
 extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 smf_n4* smf_n4_inst   = nullptr;

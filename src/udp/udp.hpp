@@ -55,7 +55,7 @@ class udp_application {
       const endpoint& r_endpoint);
   virtual void start_receive(
       udp_application* gtp_stack,
-      const util::thread_sched_params& sched_params);
+      const oai::utils::thread_sched_params& sched_params);
 };
 
 class udp_server {
@@ -118,7 +118,8 @@ class udp_server {
 
   ~udp_server();
 
-  void udp_read_loop(const util::thread_sched_params& thread_sched_params);
+  void udp_read_loop(
+      const oai::utils::thread_sched_params& thread_sched_params);
 
   //------------------------------------------------------------------------------
   void async_send_to(
@@ -159,7 +160,7 @@ class udp_server {
 
   void start_receive(
       udp_application* gtp_stack,
-      const util::thread_sched_params& sched_params);
+      const oai::utils::thread_sched_params& sched_params);
 
  protected:
   int create_socket(const struct in_addr& address, const uint16_t port);
