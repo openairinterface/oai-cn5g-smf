@@ -400,7 +400,7 @@ class itti_n11_register_nf_instance_response : public itti_n11_msg {
 
   smf::smf_profile profile;
   uint8_t http_version;
-  uint8_t http_response_code;
+  uint32_t http_response_code;
 };
 
 //-----------------------------------------------------------------------------
@@ -428,7 +428,7 @@ class itti_n11_update_nf_instance_response : public itti_n11_msg {
 
   uint8_t http_version;
   std::string smf_instance_id;
-  uint8_t http_response_code;
+  uint32_t http_response_code;
 };
 
 //-----------------------------------------------------------------------------

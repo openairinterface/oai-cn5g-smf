@@ -9487,6 +9487,10 @@ class pfcp_update_pdr_ie : public pfcp_grouped_ie {
       std::shared_ptr<pfcp_far_id_ie> sie(new pfcp_far_id_ie(b.far_id.second));
       add_ie(sie);
     }
+    if (b.qer_id.first) {
+      std::shared_ptr<pfcp_qer_id_ie> sie(new pfcp_qer_id_ie(b.qer_id.second));
+      add_ie(sie);
+    }
     if (b.pdi.first) {
       std::shared_ptr<pfcp_pdi_ie> sie(new pfcp_pdi_ie(b.pdi.second));
       add_ie(sie);
@@ -9699,6 +9703,62 @@ class pfcp_update_qer_ie : public pfcp_grouped_ie {
   explicit pfcp_update_qer_ie(const pfcp::update_qer& b)
       : pfcp_grouped_ie(PFCP_IE_UPDATE_QER) {
     tlv.set_length(0);
+
+    if (b.qer_id.first) {
+      std::shared_ptr<pfcp_qer_id_ie> sie =
+          std::make_shared<pfcp_qer_id_ie>(b.qer_id.second);
+      add_ie(sie);
+    }
+
+    if (b.qer_correlation_id.first) {
+      std::shared_ptr<pfcp_qer_correlation_id_ie> sie =
+          std::make_shared<pfcp_qer_correlation_id_ie>(
+              b.qer_correlation_id.second);
+      add_ie(sie);
+    }
+
+    if (b.gate_status.first) {
+      std::shared_ptr<pfcp_gate_status_ie> sie =
+          std::make_shared<pfcp_gate_status_ie>(b.gate_status.second);
+      add_ie(sie);
+    }
+
+    if (b.maximum_bitrate.first) {
+      std::shared_ptr<pfcp_mbr_ie> sie =
+          std::make_shared<pfcp_mbr_ie>(b.maximum_bitrate.second);
+      add_ie(sie);
+    }
+
+    if (b.guaranteed_bitrate.first) {
+      std::shared_ptr<pfcp_gbr_ie> sie =
+          std::make_shared<pfcp_gbr_ie>(b.guaranteed_bitrate.second);
+      add_ie(sie);
+    }
+
+    if (b.packet_rate.first) {
+      std::shared_ptr<pfcp_packet_rate_ie> sie =
+          std::make_shared<pfcp_packet_rate_ie>(b.packet_rate.second);
+      add_ie(sie);
+    }
+
+    if (b.dl_flow_level_marking.first) {
+      std::shared_ptr<pfcp_dl_flow_level_marking_ie> sie =
+          std::make_shared<pfcp_dl_flow_level_marking_ie>(
+              b.dl_flow_level_marking.second);
+      add_ie(sie);
+    }
+
+    if (b.qos_flow_identifier.first) {
+      std::shared_ptr<pfcp_qfi_ie> sie =
+          std::make_shared<pfcp_qfi_ie>(b.qos_flow_identifier.second);
+      add_ie(sie);
+    }
+
+    if (b.reflective_qos.first) {
+      std::shared_ptr<pfcp_rqi_ie> sie =
+          std::make_shared<pfcp_rqi_ie>(b.reflective_qos.second);
+      add_ie(sie);
+    }
   }
   //--------
   pfcp_update_qer_ie() : pfcp_grouped_ie(PFCP_IE_UPDATE_QER) {}
@@ -9840,6 +9900,10 @@ class pfcp_remove_qer_ie : public pfcp_grouped_ie {
   explicit pfcp_remove_qer_ie(const pfcp::remove_qer& b)
       : pfcp_grouped_ie(PFCP_IE_REMOVE_QER) {
     tlv.set_length(0);
+    if (b.qer_id.first) {
+      std::shared_ptr<pfcp_qer_id_ie> sie(new pfcp_qer_id_ie(b.qer_id.second));
+      add_ie(sie);
+    }
   }
   //--------
   pfcp_remove_qer_ie() : pfcp_grouped_ie(PFCP_IE_REMOVE_QER) {}
