@@ -51,6 +51,7 @@ std::unique_ptr<smf_config> smf_cfg;
 SMFApiServer* smf_api_server_1                           = nullptr;
 smf_http2_server* smf_api_server_2                       = nullptr;
 std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
+std::unique_ptr<oai::config::lttng_configuration> lttng_config_yaml;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -138,6 +139,28 @@ int main(int argc, char** argv) {
   }
 
   // Logger
+  const std::string conf_file_name =
+      static_cast<std::string>(Options::getlibconfigConfig());
+
+  std::cout << "Trying to read .yaml configuration file: " << conf_file_name
+            << "\n";
+  lttng_config_yaml =
+      std::make_unique<oai::config::lttng_configuration>(conf_file_name);
+  lttng_config_yaml->read_from_file();
+
+#ifdef LOGGER_CAN_USE_LTTNG
+  std::cout << "LTTNG Log Activation: " << lttng_config_yaml->is_lttng_active()
+            << "\n";
+  std::cout << "Log Level of LTTng: "
+            << lttng_config_yaml->get_lttng_log_level() << "\n";
+#else
+  std::cout << "LTTNG Tracing disabled at build-time!\n";
+  if (lttng_config_yaml->is_lttng_active())
+    std::cout << "Cannot use lttng log scheme on this build variant!\n";
+#endif
+
+  Logger::set_lttng(static_cast<bool>(lttng_config_yaml->is_lttng_active()));
+
   Logger::init("smf", Options::getlogStdout(), Options::getlogRotFilelog());
   Logger::smf_app().startup("Options parsed");
 
