@@ -291,13 +291,13 @@ add_definitions("-DPACKAGE_NAME=\"SMF\"")
 
 include_directories(${SRC_TOP_DIR}/smf_app)
 include_directories(${SRC_TOP_DIR}/oai_smf)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti)
+include_directories(${SRC_TOP_DIR}/itti)
 include_directories(${SRC_TOP_DIR}/common)
 include_directories(${SRC_TOP_DIR}/common/msg)
 include_directories(${SRC_TOP_DIR}/common/nas)
 include_directories(${SRC_TOP_DIR}/common/utils)
 include_directories(${SRC_TOP_DIR}/common/utils/bstr)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/pfcp)
+include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/api-server)
 include_directories(${SRC_TOP_DIR}/api-server/api)
@@ -313,12 +313,13 @@ include_directories(${SRC_TOP_DIR}/ngap)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/ngap/ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/pfcp)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
   ${SRC_TOP_DIR}/oai_smf/options.cpp
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti/itti.cpp
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/itti/itti_msg.cpp
+  ${SRC_TOP_DIR}/itti/itti.cpp
+  ${SRC_TOP_DIR}/itti/itti_msg.cpp
   )
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
