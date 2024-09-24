@@ -68,6 +68,7 @@ pipeline {
     // Minimal checks
     gitlabBuilds(builds: [
       "Build Ubuntu SMF Image",
+      "Build Ubuntu SMF Image with LTTNG",
       "Build RHEL SMF Image",
       "Static Code Analysis",
       "Code Formatting Checker"
@@ -157,6 +158,7 @@ pipeline {
                   }
                   if ("MERGE".equals(env.gitlabActionType)) {
                     dockerBuildOptions = ''
+                    sh "date --rfc-email > src/oai-cn5g-common-src/date.txt"
                   }
                   sh "docker buildx build ${dockerBuildOptions} --target oai-smf --tag oai-smf:${smf_tag} --file docker/Dockerfile.smf.ubuntu . > archives/smf_ubuntu_image_build.log 2>&1"
                   // Putting a place holder to try out on the flattening of image.
@@ -181,6 +183,33 @@ pipeline {
             }
             unsuccessful {
               sh "echo 'OAI-SMF UBUNTU IMAGE BUILD: KO' >> archives/smf_ubuntu_image_build.log"
+            }
+          }
+        }
+        stage ('Build Ubuntu SMF Image with LTTNG') {
+          steps {
+            // I want the previous stage to run always before to profit from the cache
+            // This stage only exists to make sure we don't have a regression in LTTNG build
+            // Generated image is not used
+            sleep 30
+            lock(ubuntuBuildResource) {
+              script {
+                gitlabCommitStatus(name: "Build Ubuntu SMF Image with LTTNG") {
+                  sh "docker image rm oai-smf:lttng-build || true"
+                  sh "docker image prune --force"
+                  sh "docker buildx build --target oai-smf --tag oai-smf:lttng-build --file docker/Dockerfile.smf.ubuntu --build-arg ENABLE_LTTNG=true . > archives/smf_ubuntu_lttng_image_build.log 2>&1"
+                  sh "docker image prune --force"
+                  sh "docker image rm oai-smf:lttng-build || true"
+                }
+              }
+            }
+          }
+          post {
+            success {
+              sh "echo 'OAI-SMF UBUNTU IMAGE BUILD: OK' >> archives/smf_ubuntu_lttng_image_build.log"
+            }
+            unsuccessful {
+              sh "echo 'OAI-SMF UBUNTU IMAGE BUILD: KO' >> archives/smf_ubuntu_lttng_image_build.log"
             }
           }
         }
@@ -238,6 +267,7 @@ pipeline {
                 gitlabCommitStatus(name: "Static Code Analysis") {
                   // It's a different agent from main one.
                   prepareWorkspaceMergeCase()
+                  sh "date --rfc-email > src/oai-cn5g-common-src/date.txt"
                   // Moving to focal and cppcheck 1.90 and a dockerfile approach
                   sh 'sed -i -e "s@nfName@smf@" ci-scripts/common/docker/Dockerfile.ci.cppcheck'
                   sh 'docker build --target smf-cppcheck --tag smf-cppcheck:test --file ci-scripts/common/docker/Dockerfile.ci.cppcheck . > archives/cppcheck_install.log 2>&1'
@@ -276,6 +306,7 @@ pipeline {
                 gitlabCommitStatus(name: "Code Formatting Checker") {
                   // It's a different agent from main one.
                   prepareWorkspaceMergeCase()
+                  sh "date --rfc-email > src/oai-cn5g-common-src/date.txt"
                   sh 'sed -i -e "s@nfName@smf@" ci-scripts/common/docker/Dockerfile.ci.clang-format'
                   if ("MERGE".equals(env.gitlabActionType)) {
                     sh 'docker build --target smf-clang-format-check --tag smf-clang-format-check:test --file ci-scripts/common/docker/Dockerfile.ci.clang-format --build-arg MERGE_REQUEST_CHECK=True --build-arg SOURCE_BRANCH=' + env.gitlabSourceBranch + ' --build-arg TARGET_BRANCH=' + env.gitlabTargetBranch + ' . > archives/clang_format_install.log 2>&1'
@@ -299,6 +330,31 @@ pipeline {
                 stash allowEmpty: true, includes: 'src/oai_rules_result*.txt, archives/clang_format_install.log', name: 'formatCheckLogs'
                 sh 'docker rm -f smf-ci-clang-format || true'
                 sh 'docker rmi smf-clang-format-check:test || true'
+              }
+            }
+          }
+        }
+        stage ('Build and Run Unit-Tests') {
+          steps {
+            sleep 40
+            lock(ubuntuBuildResource) {
+              script {
+                if (fileExists('src/oai-cn5g-common-src/build/common/Dockerfile.unit-tests.ubuntu')) {
+                  gitlabCommitStatus(name: "Unit Tests") {
+                    sh "date --rfc-email > src/oai-cn5g-common-src/date.txt"
+                    sh "docker image rm common-src-unit-tests:latest || true"
+                    sh "docker buildx build --target common-src-unit-tests --tag common-src-unit-tests:latest --file src/oai-cn5g-common-src/build/common/Dockerfile.unit-tests.ubuntu ./src/oai-cn5g-common-src/ > archives/build-unit-tests.log 2>&1"
+                  }
+                } else {
+                  echo "Not running yet the Unit Tests"
+                }
+              }
+            }
+          }
+          post {
+            cleanup {
+              script {
+                sh "docker image rm common-src-unit-tests:latest || true"
               }
             }
           }
