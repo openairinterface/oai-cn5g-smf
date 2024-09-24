@@ -77,7 +77,9 @@ class Logger : public oai::logger::logger_common {
   static bool should_log(spdlog::level::level_enum level) {
     return oai::logger::logger_registry::should_log(level);
   }
-
+  static void set_lttng(bool isLttngActive) {
+    oai::logger::logger_registry::set_lttng_is_active(isLttngActive);
+  }
   static const oai::logger::printf_logger& smf_app() {
     return oai::logger::logger_registry::get_logger(SMF_APP);
   }
