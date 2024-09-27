@@ -312,7 +312,7 @@ include_directories(${SRC_TOP_DIR}/ngap)
 include_directories(${SRC_TOP_DIR}/ngap/asn1c)
 include_directories(${SRC_TOP_DIR}/ngap/ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/pfcp)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
@@ -325,7 +325,9 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
 
@@ -338,3 +340,10 @@ ENDIF(STATIC_LINKING)
 
 target_link_libraries (smf ${ASAN} 
     -Wl,--start-group CN_UTILS SMF UDP PFCP SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp cpr::cpr)
+
+add_boolean_option(USE_LTTNG  False "Activate the LTTNG tracer, a debugging/monitoring framework" ON)
+if (USE_LTTNG)
+    message("Using the lttng build variant")
+    add_definitions("-DLOGGER_CAN_USE_LTTNG")
+    target_link_libraries(smf -ldl lttng-ust)
+endif ()

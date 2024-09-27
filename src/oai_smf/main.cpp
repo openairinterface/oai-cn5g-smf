@@ -39,7 +39,7 @@
 #include <chrono>
 
 using namespace smf;
-using namespace util;
+using namespace oai::utils;
 using namespace std;
 using namespace oai::smf_server::api;
 using namespace oai::config::smf;
@@ -51,6 +51,7 @@ std::unique_ptr<smf_config> smf_cfg;
 SMFApiServer* smf_api_server_1                           = nullptr;
 smf_http2_server* smf_api_server_2                       = nullptr;
 std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
+std::unique_ptr<oai::config::lttng_configuration> lttng_config_yaml;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
 
@@ -68,15 +69,12 @@ void send_heartbeat_to_tasks(const uint32_t sequence) {
 //------------------------------------------------------------------------------
 void my_app_signal_handler(int s) {
   auto shutdown_start = std::chrono::system_clock::now();
-  // Setting log level arbitrarly to debug to show the whole
+  // Setting log level arbitrary to debug to show the whole
   // shutdown procedure in the logs even in case of off-logging
   Logger::set_level(spdlog::level::debug);
   Logger::system().info("Caught signal %d", s);
-  // we have to trigger ITTI message before terminate
-  smf_app_inst->trigger_nf_deregistration();
-  itti_inst->send_terminate_msg(TASK_SMF_APP);
-  itti_inst->wait_tasks_end();
 
+  // Stop on-going tasks
   if (smf_api_server_1) {
     Logger::system().debug("Stopping HTTP/1 server.");
     smf_api_server_1->shutdown();
@@ -85,8 +83,16 @@ void my_app_signal_handler(int s) {
     Logger::system().debug("Stopping HTTP/2 server.");
     smf_api_server_2->stop();
   }
+  if (smf_app_inst) {
+    smf_app_inst->stop();
+  }
+  if (itti_inst) {
+    // we have to trigger ITTI message before terminate
+    itti_inst->send_terminate_msg(TASK_SMF_APP);
+    itti_inst->wait_tasks_end();
+  }
 
-  Logger::system().debug("Freeing Allocated memory...");
+  Logger::system().debug("Freeing allocated memory...");
   if (async_shell_cmd_inst) {
     delete async_shell_cmd_inst;
     async_shell_cmd_inst = nullptr;
@@ -95,12 +101,14 @@ void my_app_signal_handler(int s) {
   if (smf_api_server_1) {
     delete smf_api_server_1;
     smf_api_server_1 = nullptr;
+    Logger::system().debug("SMF API Server (HTTP/1) memory done.");
   }
   if (smf_api_server_2) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
+    Logger::system().debug("SMF API Server (HTTP/2) memory done.");
   }
-  Logger::system().debug("SMF API Server memory done.");
+
   if (smf_app_inst) {
     delete smf_app_inst;
     smf_app_inst = nullptr;
@@ -131,6 +139,28 @@ int main(int argc, char** argv) {
   }
 
   // Logger
+  const std::string conf_file_name =
+      static_cast<std::string>(Options::getlibconfigConfig());
+
+  std::cout << "Trying to read .yaml configuration file: " << conf_file_name
+            << "\n";
+  lttng_config_yaml =
+      std::make_unique<oai::config::lttng_configuration>(conf_file_name);
+  lttng_config_yaml->read_from_file();
+
+#ifdef LOGGER_CAN_USE_LTTNG
+  std::cout << "LTTNG Log Activation: " << lttng_config_yaml->is_lttng_active()
+            << "\n";
+  std::cout << "Log Level of LTTng: "
+            << lttng_config_yaml->get_lttng_log_level() << "\n";
+#else
+  std::cout << "LTTNG Tracing disabled at build-time!\n";
+  if (lttng_config_yaml->is_lttng_active())
+    std::cout << "Cannot use lttng log scheme on this build variant!\n";
+#endif
+
+  Logger::set_lttng(static_cast<bool>(lttng_config_yaml->is_lttng_active()));
+
   Logger::init("smf", Options::getlogStdout(), Options::getlogRotFilelog());
   Logger::smf_app().startup("Options parsed");
 
@@ -165,6 +195,7 @@ int main(int argc, char** argv) {
 
   // SMF application layer
   smf_app_inst = new smf_app(Options::getlibconfigConfig());
+  smf_app_inst->start();
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
@@ -182,28 +213,24 @@ int main(int argc, char** argv) {
         Pistache::Port(smf_cfg->sbi.port));
     smf_api_server_1 = new SMFApiServer(addr, smf_app_inst);
     smf_api_server_1->init(2);
-    // smf_api_server_1->start();
     std::thread smf_http1_manager(&SMFApiServer::start, smf_api_server_1);
-    // Register to NRF and discover appropriate UPFs
-
-    // Quick fix: without sleep, http server is not ready for nr registration
+    // Quick fix: without sleep, http server is not ready for NF Subscribe
+    // Notify
     std::this_thread::sleep_for(1000ms);
-
-    smf_app_inst->start_nf_registration_discovery();
+    // Subscribe to be notified when UPFs become available
+    smf_app_inst->start_nf_discovery();
     smf_http1_manager.join();
   } else if (smf_cfg->get_http_version() == 2) {
     // SMF NGHTTP API server (HTTP2)
     smf_api_server_2 = new smf_http2_server(
         oai::utils::conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
         smf_app_inst);
-    // smf_api_server_2->start();
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
-    // Register to NRF and discover appropriate UPFs
-
-    // Quick fix: without sleep, http server is not ready for nr registration
+    // Quick fix: without sleep, http server is not ready for NF Subscribe
+    // Notify
     std::this_thread::sleep_for(1000ms);
-
-    smf_app_inst->start_nf_registration_discovery();
+    // Subscribe to be notified when UPFs become available
+    smf_app_inst->start_nf_discovery();
     smf_http2_manager.join();
   }
 

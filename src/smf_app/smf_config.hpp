@@ -55,6 +55,8 @@ const std::string USE_LOCAL_SUBSCRIPTION_INFOS_CONFIG_VALUE =
 const std::string USE_EXTERNAL_AUSF_CONFIG_VALUE = "use_external_ausf";
 const std::string USE_EXTERNAL_UDM_CONFIG_VALUE  = "use_external_udm";
 const std::string USE_EXTERNAL_NSSF_CONFIG_VALUE = "use_external_nssf";
+const std::string NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS =
+    "send_default_qos_characteristics";
 
 const oai::model::common::Snssai DEFAULT_SNSSAI{1};
 const session_ambr_t DEFAULT_S_AMBR{"1000Mbps", "1000Mbps"};
@@ -63,8 +65,8 @@ const uint8_t DEFAULT_SSC_MODE = 1;
 const subscribed_default_qos_t DEFAULT_QOS{
     9,
     {1, "NOT_PREEMPT", "NOT_PREEMPTABLE"},
-    1};
-const upf DEFAULT_UPF{"oai-upf", 8805, false, false, ""};
+    0};  // will be set based on 5QI if users dont override it
+const upf DEFAULT_UPF{"oai-upf", 8805, false, false, false, ""};
 
 typedef struct interface_cfg_s {
   std::string if_name;
@@ -72,7 +74,7 @@ typedef struct interface_cfg_s {
   struct in6_addr addr6;
   unsigned int mtu;
   unsigned int port;
-  util::thread_sched_params thread_rd_sched_params;
+  oai::utils::thread_sched_params thread_rd_sched_params;
   nlohmann::json to_json() const {
     nlohmann::json json_data = {};
     json_data["if_name"]     = this->if_name;
@@ -112,10 +114,10 @@ typedef struct interface_cfg_s {
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {
-  util::thread_sched_params itti_timer_sched_params;
-  util::thread_sched_params n4_sched_params;
-  util::thread_sched_params smf_app_sched_params;
-  util::thread_sched_params async_cmd_sched_params;
+  oai::utils::thread_sched_params itti_timer_sched_params;
+  oai::utils::thread_sched_params n4_sched_params;
+  oai::utils::thread_sched_params smf_app_sched_params;
+  oai::utils::thread_sched_params async_cmd_sched_params;
 } itti_cfg_t;
 
 typedef struct dnn_s {

@@ -31,12 +31,8 @@
 
 #include <stdexcept>
 
-#include <curl/curl.h>
-#include <pistache/http.h>
-#include <pistache/mime.h>
 #include <nlohmann/json.hpp>
 #include <boost/algorithm/string/split.hpp>
-//#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #include "common_defs.h"
@@ -53,8 +49,8 @@ extern "C" {
 #include "dynamic_memory_check.h"
 }
 
-using namespace Pistache::Http;
-using namespace Pistache::Http::Mime;
+// using namespace Pistache::Http;
+// using namespace Pistache::Http::Mime;
 
 using namespace smf;
 using namespace oai::common::sbi;
@@ -211,7 +207,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", resp.body,
+      "Response from AMF, Http Code: %d, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -277,7 +273,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
   }
-  Logger::smf_sbi().debug("Response from AMF, Http Code: %d", resp.status_code);
+  Logger::smf_sbi().debug("Response from AMF, Http Code: %i", resp.status_code);
 }
 
 //------------------------------------------------------------------------------
@@ -321,7 +317,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %d, cause %s", resp.status_code,
+      "Response from AMF, Http Code: %i, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -526,27 +522,27 @@ void smf_sbi::update_nf_instance(
       "NF Instance Registration, response from NRF, HTTP Code: %u",
       resp.status_code);
 
-  if ((resp.status_code == http_status_code::OK) or
-      (resp.status_code == http_status_code::NO_CONTENT)) {
-    Logger::smf_sbi().debug("NF Update, got successful response from NRF");
+  // if ((resp.status_code == http_status_code::OK) or
+  //    (resp.status_code == http_status_code::NO_CONTENT)) {
+  // Logger::smf_sbi().debug("NF Update, got successful response from NRF");
 
-    // TODO: In case of response containing NF profile
-    // Send response to APP to process
-    std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
-        std::make_shared<itti_n11_update_nf_instance_response>(
-            TASK_SMF_SBI, TASK_SMF_APP);
-    itti_msg->http_response_code = static_cast<int16_t>(resp.status_code);
-    itti_msg->http_version       = msg->http_version;
-    itti_msg->smf_instance_id    = msg->smf_instance_id;
+  Logger::smf_sbi().debug(
+      "NF Update, response from NRF: \n %s", resp.body.c_str());
 
-    int ret = itti_inst->send_msg(itti_msg);
-    if (RETURNok != ret) {
-      Logger::smf_sbi().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
-          itti_msg->get_msg_name());
-    }
-  } else {
-    Logger::smf_sbi().warn("NF Update, could not get response from NRF");
+  // TODO: In case of response containing NF profile
+  // Send response to APP to process
+  std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
+      std::make_shared<itti_n11_update_nf_instance_response>(
+          TASK_SMF_SBI, TASK_SMF_APP);
+  itti_msg->http_response_code = resp.status_code;
+  itti_msg->http_version       = msg->http_version;
+  itti_msg->smf_instance_id    = msg->smf_instance_id;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_sbi().error(
+        "Could not send ITTI message %s to task TASK_SMF_APP",
+        itti_msg->get_msg_name());
   }
 }
 
@@ -556,18 +552,16 @@ void smf_sbi::deregister_nf_instance(
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (HTTP version %d)", msg->http_version);
 
-  std::string url = get_nrf_base_url() + msg->smf_instance_id;
-
-  Logger::smf_sbi().debug(
-      "Send NF De-register to NRF (NRF URL %s)", url.c_str());
-
   request req;
-  req.uri       = url;
+  req.uri = get_nrf_base_url() + msg->smf_instance_id;
+  Logger::smf_sbi().debug(
+      "Send NF De-register to NRF (NRF URL %s)", req.uri.c_str());
+
   response resp = http_client_inst->send_http_request(method_e::DELETE, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d",
+      "NF Instance De-registration, response from NRF, HTTP Code: %d",
       resp.status_code);
 
   if ((resp.status_code == http_status_code::OK) or
@@ -738,11 +732,11 @@ bool smf_sbi::get_sm_data(
                 it.value()["5gQosProfile"]["arp"]["preemptCap"];
             dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
                 it.value()["5gQosProfile"]["arp"]["preemptVuln"];
-            // Optinal
-            if (it.value()["5gQosProfile"].find("") !=
+            // Optional
+            if (it.value()["5gQosProfile"].find("priorityLevel") !=
                 it.value()["5gQosProfile"].end()) {
               dnn_configuration->_5g_qos_profile.priority_level =
-                  it.value()["5gQosProfile"]["5QiPriorityLevel"];
+                  it.value()["5gQosProfile"]["priorityLevel"];
             }
           }
 

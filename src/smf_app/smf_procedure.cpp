@@ -52,17 +52,20 @@ using namespace smf;
 using namespace std;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
+using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+//------------------------------------------------------------------------------
 std::string smf_session_procedure::to_string_fteid(const pfcp::fteid_t& fteid) {
   return fmt::format(
       "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
       oai::utils::conv::toString(fteid.ipv4_address));
 }
 
+//------------------------------------------------------------------------------
 pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
     const std::shared_ptr<qos_upf_edge>& edge) {
   // only used in PDR,so when it is a downlink edge, we are in UL procedure
@@ -125,6 +128,96 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     local_fteid = fteid;
   }
   return local_fteid;
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_gbr(
+    const std::shared_ptr<qos_upf_edge>& edge, pfcp::gbr_t& gbr_pfcp) {
+  gbr_pfcp = {};
+  std::string bitrate;
+  if (edge->uplink) {
+    if (!edge->qos_profile.gbrUlIsSet()) return false;
+    bitrate = edge->qos_profile.getGbrUl();
+  } else {
+    if (!edge->qos_profile.gbrDlIsSet()) return false;
+    bitrate = edge->qos_profile.getGbrDl();
+  }
+
+  uint32_t gbr;
+  if (!parse_bitrate_string_to_unit(bitrate, bitrate_unit_e::KBPS, gbr)) {
+    Logger::smf_app().error(
+        "Cannot parse GBR bitrate for PFCP, use default 10000 Kbit/s");
+    gbr = 10000;
+  }
+  if (edge->uplink) {
+    gbr_pfcp.ul_gbr = gbr;
+  } else {
+    gbr_pfcp.dl_gbr = gbr;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_mbr(
+    const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& mbr_pfcp) {
+  mbr_pfcp = {};
+  std::string bitrate;
+  if (edge->uplink) {
+    if (!edge->qos_profile.maxbrUlIsSet()) return false;
+    bitrate = edge->qos_profile.getMaxbrUl();
+  } else {
+    if (!edge->qos_profile.maxbrDlIsSet()) return false;
+    bitrate = edge->qos_profile.getMaxbrDl();
+  }
+
+  uint32_t mbr;
+  if (!parse_bitrate_string_to_unit(bitrate, bitrate_unit_e::KBPS, mbr)) {
+    Logger::smf_app().error(
+        "Cannot parse MBR bitrate for PFCP, use default 20000 Kbit/s");
+    mbr = 20000;
+  }
+  if (edge->uplink) {
+    mbr_pfcp.ul_mbr = mbr;
+  } else {
+    mbr_pfcp.dl_mbr = mbr;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+pfcp::create_qer smf_session_procedure::pfcp_create_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  oai::config::smf::upf cfg   = edge->source_upf->get_upf_config();
+  pfcp::create_qer create_qer = {};
+  pfcp::gate_status_t gate_status;
+  pfcp::mbr_t maximum_bitrate;
+  pfcp::gbr_t guaranteed_bitrate;
+
+  // Check if the qer_id in edge is 0, if so, generate a new qer_id using the
+  // session handler and assign it to edge->qer_id. Set the new QER ID in the
+  // create_qer object.
+  if (edge->qer_id.qer_id == 0) {
+    edge->qer_id = sps->get_session_handler()->generate_qer_id();
+  }
+  create_qer.set(edge->qer_id);
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+  } else {
+    gate_status.dl_gate = OPEN;
+  }
+
+  create_qer.set(gate_status);
+
+  if (pfcp_mbr(edge, maximum_bitrate)) {
+    create_qer.set(maximum_bitrate);
+  }
+  if (pfcp_gbr(edge, guaranteed_bitrate)) {
+    create_qer.set(guaranteed_bitrate);
+  }
+  create_qer.set(edge->qfi);
+
+  return create_qer;
 }
 
 //------------------------------------------------------------------------------
@@ -304,9 +397,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
 
-  if (!edge->uplink && !edge->flow_information.getFlowDescription().empty()) {
-    sdf_filter.fd               = 1;
-    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
     pdi.set(sdf_filter);
   }
 
@@ -323,6 +414,13 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // we take the FAR ID of the associated edge, so either from the same QFI or
   // from the same path for UL CL
   create_pdr.set(edge->associated_edge->far_id);
+
+  // Assign the QER ID from the associated edge to the PDR object. Establish a
+  // relationship between the PDR and a specific QER that dictates how QoS
+  // policies should be enforced for traffic handled by this PDR.
+  if (cfg.enable_qers()) {
+    create_pdr.set(edge->associated_edge->qer_id);
+  }
 
   if (cfg.enable_usage_reporting()) {
     create_pdr.set(edge->urr_id);
@@ -380,6 +478,15 @@ pfcp::remove_pdr smf_session_procedure::pfcp_remove_pdr(
 }
 
 //------------------------------------------------------------------------------
+pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
+    const shared_ptr<qos_upf_edge>& edge) {
+  pfcp::remove_qer remove_qer;
+  remove_qer.set(edge->qer_id);
+
+  return remove_qer;
+}
+
+//------------------------------------------------------------------------------
 pfcp::remove_far smf_session_procedure::pfcp_remove_far(
     const shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_far remove_far;
@@ -388,6 +495,7 @@ pfcp::remove_far smf_session_procedure::pfcp_remove_far(
   return remove_far;
 }
 
+//------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
     const shared_ptr<qos_upf_edge>& edge) {
   // TODO some duplicated code from create_pdr
@@ -397,6 +505,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   pfcp::update_pdr update_pdr                       = {};
   pfcp::precedence_t precedence                     = {};
   pfcp::pdi pdi                                     = {};
+  pfcp::sdf_filter_t sdf_filter                     = {};
   pfcp::source_interface_t source_interface         = {};
   pfcp::outer_header_removal_t outer_header_removal = {};
 
@@ -414,6 +523,10 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   }
 
   pdi.set(source_interface);
+
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
+    pdi.set(sdf_filter);
+  }
 
   if (cfg.enable_usage_reporting()) {
     pfcp::urr_id_t urr_id = edge->urr_id;
@@ -437,6 +550,43 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   return update_pdr;
 }
 
+//------------------------------------------------------------------------------
+pfcp::update_qer smf_session_procedure::pfcp_update_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  // Retrieve the existing QER associated with the edge for updating
+  pfcp::update_qer update_qer = {};
+
+  // Retrieve the existing QER ID from the edge
+  pfcp::qer_id_t qer_id = edge->qer_id;
+
+  // Update QER attributes based on edge properties
+  pfcp::gate_status_t gate_status;
+  pfcp::mbr_t maximum_bitrate;
+  pfcp::gbr_t guaranteed_bitrate;
+  // TODO: Update Packet Rate
+  // TODO: Update Reflective QoS
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+  } else {
+    gate_status.dl_gate = OPEN;
+  }
+
+  update_qer.set(qer_id);
+  update_qer.set(gate_status);
+  if (pfcp_mbr(edge, maximum_bitrate)) {
+    update_qer.set(maximum_bitrate);
+  }
+  if (pfcp_gbr(edge, guaranteed_bitrate)) {
+    update_qer.set(guaranteed_bitrate);
+  }
+
+  update_qer.set(edge->qfi);
+
+  return update_qer;
+}
+
+//------------------------------------------------------------------------------
 pfcp::update_far smf_session_procedure::pfcp_update_far(
     const shared_ptr<qos_upf_edge>& edge) {
   // TODO there is some duplicated code from create_far
@@ -466,6 +616,7 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
   return update_far;
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
     const shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
@@ -544,18 +695,21 @@ bool smf_session_procedure::is_qfi_served_in_edges(
         "because of an earlier reject");
     return false;
   }
+  bool found_qfi = false;
   for (const auto& qfi : qfis) {
-    bool found_qfi = false;
     for (const auto& edge : edges) {
-      if (qfi == edge->qfi) found_qfi = true;
-      served_edges.push_back(edge);
+      if (qfi == edge->qfi) {
+        found_qfi = true;
+        served_edges.push_back(edge);
+      }
     }
-    if (!found_qfi) {
-      Logger::smf_app().error(
-          "Requested QFI %d does not exist in PDU session. Cannot modify PFCP "
-          "session");
-      return false;
-    }
+  }
+
+  if (!found_qfi) {
+    Logger::smf_app().error(
+        "Requested QFIs does not exist in PDU session. Cannot modify PFCP "
+        "session");
+    return false;
   }
   return true;
 }
@@ -574,8 +728,9 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
       for (const auto& edge : edges) {
         if (edge->pdr_id == pdr_id && it.get(edge->fteid)) {
           Logger::smf_app().debug(
-              "Successfully associate PDR %u with %s", edge->pdr_id.rule_id,
-              to_string_fteid(edge->fteid));
+              "Successfully associate PDR %u with %s (QFI: %d)",
+              edge->pdr_id.rule_id, to_string_fteid(edge->fteid),
+              edge->qfi.qfi);
           used_qfis.insert(edge->qfi.qfi);
           sps->get_session_handler()
               ->get_session_graph()
@@ -609,6 +764,31 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
 
   // set the values to be updated in session handler
   sps->get_session_handler()->set_qfis_to_be_updated(handled_qfis);
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_sdf_filter(
+    const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter) {
+  // UL and DL edge is reversed, as it is from UPF point of view
+  bool add_sdf_filter = false;
+  if (session_handler::is_uplink_flow_direction(edge->flow_information) &&
+      !edge->uplink) {
+    add_sdf_filter = true;
+  }
+  if (session_handler::is_downlink_flow_direction(edge->flow_information) &&
+      edge->uplink) {
+    add_sdf_filter = true;
+  }
+
+  if (add_sdf_filter) {
+    sdf_filter.fd               = 1;
+    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+    sdf_filter.length_of_flow_description =
+        sdf_filter.flow_description.length();
+    return true;
+  }
+
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -692,6 +872,9 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   }
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+    }
   }
   for (const auto& dl_edge : dl_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
@@ -700,9 +883,15 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      }
     }
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+      }
     }
 
     Logger::smf_app().info(
@@ -747,9 +936,23 @@ smf_procedure_code session_create_sm_context_procedure::run(
       sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn(),
       default_qos);
 
-  criteria.qos_profile._5qi           = default_qos._5qi;
-  criteria.qos_profile.arp            = default_qos.arp;
-  criteria.qos_profile.priority_level = default_qos.priority_level;
+  criteria.qos_profile.setR5qi(default_qos._5qi);
+
+  // TODO this conversion should be somewhere else but is only used once so far
+  oai::model::common::Arp arp;
+  oai::model::common::PreemptionVulnerability preempt_vuln;
+  from_json(default_qos.arp.preempt_vuln, preempt_vuln);
+  oai::model::common::PreemptionCapability preempt_cap;
+  from_json(default_qos.arp.preempt_cap, preempt_cap);
+
+  arp.setPreemptCap(preempt_cap);
+  arp.setPreemptVuln(preempt_vuln);
+  arp.setPriorityLevel(default_qos.arp.priority_level);
+
+  criteria.qos_profile.setArp(arp);
+  if (default_qos.priority_level != 0) {
+    criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};
@@ -916,10 +1119,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     sps->get_session_handler()->set_qfis_to_be_updated(all_qfis);
   }
 
-  // TODO we have more than one QoS flow here, to adapt with new QoS framework
   for (const auto& flow :
        sps->get_session_handler()->get_qos_flows_context_updated()) {
-    n11_triggered_pending->res.set_qos_flow_context(flow);
+    n11_triggered_pending->res.add_qos_flow_context(flow);
   }
 
   return smf_procedure_code::OK;
@@ -962,6 +1164,9 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
   for (const auto& dl_edge : dl_edges_to_use) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+    }
   }
 
   for (const auto& ul_edge : ul_edges_to_use) {
@@ -1122,11 +1327,17 @@ smf_procedure_code session_update_sm_context_procedure::run(
           // then tell it to UPF with Update FAR
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
+          }
           send_n4 = true;
         } else {
           // handover, but FAR ID is not existing yet, we create new one
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+          }
           send_n4 = true;
         }
       }
@@ -1170,6 +1381,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
       for (const auto& ul_edge : ul_edges_to_update) {
         ul_edge->precedence += 1;
         n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+        if (upf_cfg.enable_qers()) {
+          n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+        }
       }
       for (const auto& dl_edge : dl_edges_to_update) {
         dl_edge->precedence += 1;
@@ -1185,8 +1399,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_RELEASE_AN_INITIATED: {
       Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
-      remove_pdrs_and_fars(ul_edges_to_update);
-      remove_pdrs_and_fars(dl_edges_to_update);
+      remove_pdrs_fars_qers(ul_edges_to_update);
+      remove_pdrs_fars_qers(dl_edges_to_update);
       send_n4 = true;
     } break;
 
@@ -1389,7 +1603,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
-void session_update_sm_context_procedure::remove_pdrs_and_fars(
+void session_update_sm_context_procedure::remove_pdrs_fars_qers(
     const vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {
     if (edge->pdr_id.rule_id != 0) {
@@ -1397,6 +1611,9 @@ void session_update_sm_context_procedure::remove_pdrs_and_fars(
     }
     if (edge->far_id.far_id != 0) {
       n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    }
+    if (edge->qer_id.qer_id != 0) {
+      n4_triggered->pfcp_ies.set(pfcp_remove_qer(edge));
     }
     edge->clear_session();
   }

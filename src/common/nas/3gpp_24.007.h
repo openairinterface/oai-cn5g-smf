@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-#ifndef FILE_3GPP_24_007_SEEN
-#define FILE_3GPP_24_007_SEEN
+#ifndef FILE_3GPP_24_007_H_SEEN
+#define FILE_3GPP_24_007_H_SEEN
 
 #include <stdint.h>
 

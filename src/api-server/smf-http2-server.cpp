@@ -803,8 +803,8 @@ void smf_http2_server::get_configuration_handler(const response& response) {
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find("httpResponseCode") != result.end()) {
-      http_response_code = result["httpResponseCode"].get<int>();
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -872,8 +872,8 @@ void smf_http2_server::update_configuration_handler(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find("httpResponseCode") != result.end()) {
-      http_response_code = result["httpResponseCode"].get<int>();
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {

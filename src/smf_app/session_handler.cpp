@@ -29,10 +29,17 @@
 
 #include "session_handler.hpp"
 #include "FlowDirection.h"
+#include "conversions.hpp"
+#include "conversions.h"
+#include "smf_config.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
 using namespace oai::utils;
+using namespace oai::utils::sdf_conversions;
+extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
+
+const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION = 0b10;
 
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {
@@ -60,12 +67,24 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     qos_flow_context_updated flow;
     flow.qfi         = edge->qfi;
     flow.qos_profile = edge->qos_profile;
+    set_default_qos_parameters(flow.qos_profile);
     flow.cause_value = static_cast<uint8_t>(m_cause_value);
     flow.set_dl_fteid(edge->next_hop_fteid);
     flow.set_ul_fteid(edge->fteid);
 
     // add QoS rule to flow
-    flow.add_qos_rule(qos_rule_from_edge(edge));
+    auto rule = qos_rule_from_edge(edge);
+    if (rule.numberofpacketfilters != 0) {
+      flow.add_qos_rule(rule);
+    } else {
+      Logger::smf_n1().warn(
+          "QoS rule %u does not have a packet filter. This rule is not sent to "
+          "UE (NAS). Please set packetFilterUsage to true in the PCC rules.",
+          edge->qos_rule_id);
+    }
+
+    // add flow_description_content
+    flow.set_qos_flow_descriptions(qos_flow_description_from_edge(edge));
 
     return flow;
   }
@@ -104,45 +123,123 @@ void session_handler::set_nas_filter_from_edge(
   auto flow                      = edge->flow_information;
   qos_rule.numberofpacketfilters = 0;
 
-  if (!flow.flowDescriptionIsSet() || !flow.isPacketFilterUsage()) {
+  if (!flow.flowDescriptionIsSet() || flow.getFlowDescription().empty()) {
+    Logger::smf_app().warn(
+        "Flow description is empty for rule: %ud. Not signaled towards UE",
+        qos_rule.qosruleidentifer);
     return;
   }
-  bool ue_rule;
 
-  switch (flow.getFlowDirection().getEnumValue()) {
-    case FlowDirection_anyOf::eFlowDirection_anyOf::
-        INVALID_VALUE_OPENAPI_GENERATED:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::UNSPECIFIED:
-      ue_rule = false;
-      break;
-    case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
-      ue_rule = true;
-      break;
+  if (!is_uplink_flow_direction(flow)) {
+    Logger::smf_app().debug(
+        "Flow %s is not signaled to UE as it is not uplink",
+        flow.getFlowDescription());
+    return;
   }
-  if (!ue_rule) return;
 
-  // TODO for real QoS, we should parse SDF filter here
-  // Note: work already in progress, but let's merge this first
+  if (!flow.isPacketFilterUsage()) {
+    Logger::smf_app().debug(
+        "Flow %s is not signaled to UE as packetFilterUsage is disabled",
+        flow.getFlowDescription());
+    return;
+  }
+
+  auto parsed_filter = sdf_filter::from_string(flow.getFlowDescription());
 
   // TODO really not nice to do calloc in this deep service layer, that should
   // all be part of protocol
   // TODO also, free on this is never called as far as I can see that!!!
-  // Design decision: We always only supply one packet filter for now
-  qos_rule.numberofpacketfilters = 1;
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
-      (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-          1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfilterdirection = 0b10;  // always uplink
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfilteridentifier = 1;
-  qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-      .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
-  // qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0].packetfiltercontents.component_value
-  // = bfromcstralloc(2, "\0");
+  if (edge->default_qos) {
+    qos_rule.numberofpacketfilters = 1;
+
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
+        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
+            1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfilteridentifier = 1;
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
+  } else if (!parsed_filter.default_filter) {
+    // TODO we should take into account the max number of supported packet
+    // filters from UE
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
+        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
+            parsed_filter.filter_components,
+            sizeof(Create_ModifyAndAdd_ModifyAndReplace));
+    qos_rule.numberofpacketfilters = parsed_filter.filter_components;
+    int filter_id                  = 1;
+    if (parsed_filter.use_protocol_identifier) {
+      set_protocol_filter(
+          filter_id,
+          qos_rule.packetfilterlist
+              .create_modifyandadd_modifyandreplace[filter_id - 1],
+          parsed_filter.protocol_identifier);
+      filter_id++;
+    }
+    if (parsed_filter.src_ip_range.use_ip_range) {
+      set_ip_filter(
+          filter_id,
+          qos_rule.packetfilterlist
+              .create_modifyandadd_modifyandreplace[filter_id - 1],
+          parsed_filter.src_ip_range);
+      filter_id++;
+    }
+    if (!parsed_filter.src_port_ranges.empty()) {
+      for (const auto& port : parsed_filter.src_port_ranges) {
+        set_port_filter(
+            filter_id,
+            qos_rule.packetfilterlist
+                .create_modifyandadd_modifyandreplace[filter_id - 1],
+            port);
+        filter_id++;
+      }
+    }
+  }
+}
+
+void session_handler::set_port_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    const port_range& port_range) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+  uint16_t port_low                 = htons(port_range.start);
+  uint16_t port_high                = htons(port_range.end);
+
+  if (port_range.is_range) {
+    uint32_t int_range = 0;
+    int_range          = ((uint32_t) port_high << 16) | port_low;
+    nas_filter.packetfiltercontents.component_type =
+        QOS_RULE_REMOTE_PORT_RANGE_TYPE;
+    nas_filter.packetfiltercontents.component_value = blk2bstr(&int_range, 4);
+  } else {
+    nas_filter.packetfiltercontents.component_type =
+        QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
+    nas_filter.packetfiltercontents.component_value = blk2bstr(&port_low, 2);
+  }
+}
+
+void session_handler::set_ip_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    const ip_range& ip_range) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+  uint64_t ip_snm =
+      ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
+  nas_filter.packetfiltercontents.component_type =
+      QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
+  nas_filter.packetfiltercontents.component_value = blk2bstr(&ip_snm, 8);
+}
+
+void session_handler::set_protocol_filter(
+    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    uint8_t protocol_id) {
+  nas_filter.packetfilteridentifier = filter_id;
+  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+  nas_filter.packetfiltercontents.component_type =
+      QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
+  nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
 }
 
 // Comments about architecture
@@ -187,6 +284,109 @@ QOSRulesIE session_handler::qos_rule_from_edge(
   return qos_rule;
 }
 
+//------------------------------------------------------------------------------
+QOSFlowDescriptionsContents session_handler::qos_flow_description_from_edge(
+    const shared_ptr<qos_upf_edge>& edge) {
+  QOSFlowDescriptionsContents flow_description_content;
+
+  flow_description_content.qfi           = edge->qfi.qfi;
+  flow_description_content.operationcode = CREATE_NEW_QOS_FLOW_DESCRIPTION;
+  flow_description_content.e             = PARAMETERS_LIST_IS_INCLUDED;
+
+  if (edge->qos_profile.gbrUlIsSet() && edge->qos_profile.gbrDlIsSet() &&
+      edge->qos_profile.maxbrUlIsSet() && edge->qos_profile.maxbrDlIsSet()) {
+    flow_description_content.numberofparameters = 5;
+    flow_description_content.parameterslist     = (ParametersList*) calloc(
+        7, sizeof(ParametersList));  // TODO: is 7 right?
+
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_GFBR_UPLINK, edge->qos_profile.getGbrUl(),
+        flow_description_content.parameterslist[1]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_GFBR_DOWNLINK, edge->qos_profile.getGbrDl(),
+        flow_description_content.parameterslist[2]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_MFBR_UPLINK, edge->qos_profile.getMaxbrUl(),
+        flow_description_content.parameterslist[3]);
+    set_nas_bitrate(
+        PARAMETER_IDENTIFIER_MFBR_DOWNLINK, edge->qos_profile.getMaxbrDl(),
+        flow_description_content.parameterslist[4]);
+
+  } else {
+    flow_description_content.numberofparameters = 1;
+    flow_description_content.parameterslist =
+        (ParametersList*) calloc(3, sizeof(ParametersList));  // TODO: Why 3?
+  }
+
+  flow_description_content.parameterslist[0].parameteridentifier =
+      PARAMETER_IDENTIFIER_5QI;
+  flow_description_content.parameterslist[0].parametercontents._5qi =
+      edge->qos_profile.getR5qi();
+
+  return flow_description_content;
+}
+
+uint8_t session_handler::nas_unit_from_bitrate_unit(
+    const bitrate_unit_e& bitrate_unit) {
+  switch (bitrate_unit) {
+    case bitrate_unit_e::KBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
+    case bitrate_unit_e::MBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+    case bitrate_unit_e::GBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
+    case bitrate_unit_e::TBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
+    case bitrate_unit_e::PBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
+    case bitrate_unit_e::_256PBPS:
+      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS;
+  }
+  Logger::smf_app().error("Unknown bitrate value, use default MBPS");
+
+  return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
+}
+
+void session_handler::set_nas_bitrate(
+    uint8_t type, const std::string& bitrate_string,
+    ParametersList& nas_value) {
+  uint16_t value;
+  bitrate_unit_e unit;
+  if (!parse_bitrate_string(bitrate_string, value, unit)) {
+    Logger::smf_app().warn(
+        "Cannot parse bitrate string, use default 1000 MBPS");
+    value = 1000;
+    unit  = bitrate_unit_e::MBPS;
+  }
+  nas_value.parameteridentifier = type;
+  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.uint =
+      nas_unit_from_bitrate_unit(unit);
+  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.value = value;
+}
+
+uint64_t session_handler::set_ngap_bitrate(
+    Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string) {
+  uint16_t value;
+  uint8_t unit;
+  bitrate_unit_e unit_e;
+  if (!parse_bitrate_string(bitrate_string, value, unit_e)) {
+    Logger::smf_app().warn(
+        "Cannot parse bitrate string, use default 1000 MBPS");
+    value  = 1000;
+    unit_e = bitrate_unit_e::MBPS;
+  }
+  unit             = nas_unit_from_bitrate_unit(unit_e);
+  uint64_t bitrate = parse_nas_value_unit_to_bps(value, unit);
+
+  ngap_bitrate.size = 8;
+  ngap_bitrate.buf  = (uint8_t*) calloc(ngap_bitrate.size, sizeof(uint8_t));
+
+  INT64_TO_BUFFER(bitrate, ngap_bitrate.buf);
+
+  return bitrate;
+}
+
+//------------------------------------------------------------------------------
 pfcp::urr_id_t session_handler::generate_urr_id() {
   pfcp::urr_id_t urr_id;
   urr_id.urr_id = m_urr_id_generator.get_uid();
@@ -196,6 +396,18 @@ pfcp::urr_id_t session_handler::generate_urr_id() {
 //------------------------------------------------------------------------------
 void session_handler::release_urr_id(const pfcp::urr_id_t& urr_id) {
   m_urr_id_generator.free_uid(urr_id.urr_id);
+}
+
+//------------------------------------------------------------------------------
+pfcp::qer_id_t session_handler::generate_qer_id() {
+  pfcp::qer_id_t qer_id;
+  qer_id.qer_id = m_qer_id_generator.get_uid();
+  return qer_id;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::release_qer_id(const pfcp::qer_id_t& qer_id) {
+  m_qer_id_generator.free_uid(qer_id.qer_id);
 }
 
 //------------------------------------------------------------------------------
@@ -279,44 +491,53 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   for (int j = 0; j < qos_flow_description_content.numberofparameters; j++) {
     if (qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_5QI) {
-      qos_flow.qos_profile._5qi =
-          qos_flow_description_content.parameterslist[j].parametercontents._5qi;
+      qos_flow.qos_profile.setR5qi(
+          qos_flow_description_content.parameterslist[j]
+              .parametercontents._5qi);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.unit =
+      std::string gbrUlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.uplink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setGbrUl(gbrUlValue);
+      std::string gbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setGbrUl(gbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.unit =
+      std::string gbrDlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.gfbr.donwlink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setGbrDl(gbrDlValue);
+      std::string gbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setGbrDl(gbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.unit =
+      std::string mbrUlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.uplink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setMaxbrUl(mbrUlValue);
+      std::string mbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setMaxbrUl(mbrValue);
     } else if (
         qos_flow_description_content.parameterslist[j].parameteridentifier ==
         PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.unit =
+      std::string mbrDlValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint;
-      qos_flow.qos_profile.parameter.qos_profile_gbr.mfbr.donwlink.value =
+              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+      qos_flow.qos_profile.setMaxbrDl(mbrDlValue);
+      std::string mbrValue = std::to_string(
           qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value;
+              .parametercontents.gfbrormfbr_uplinkordownlink.value);
+      qos_flow.qos_profile.setMaxbrDl(mbrValue);
     }
   }
 
@@ -370,8 +591,21 @@ std::vector<nlohmann::json> session_handler::create_qos_flows_json() {
 std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
   auto n3_edges = m_session_graph->get_access_edges();
 
+  std::vector<std::shared_ptr<qos_upf_edge>> qfi_edges;
   for (const auto& edge : n3_edges) {
     if (qfi == edge->qfi.qfi) {
+      qfi_edges.push_back(edge);
+    }
+  }
+
+  if (qfi_edges.size() == 1) {
+    return qfi_edges[0];
+  }
+
+  // if we have more than one edge for the same QFI, we use the default QoS
+  // (e.g. in a UL CL scenario)
+  for (const auto& edge : qfi_edges) {
+    if (edge->default_qos) {
       return edge;
     }
   }
@@ -382,6 +616,7 @@ std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
 void session_handler::deallocate_resources() {
   for (const auto& edge : m_session_graph->get_access_edges()) {
     release_pdr_id(edge->pdr_id);
+    release_qer_id(edge->qer_id);
     release_far_id(edge->far_id);
     release_urr_id(edge->urr_id);
     release_qos_rule_id(edge->qos_rule_id);
@@ -470,4 +705,168 @@ std::vector<QOSRulesIE> session_handler::get_qos_rules() {
     }
   }
   return qos_rules;
+}
+
+std::map<uint8_t, uint64_t> session_handler::bpsMap = {
+    {0, 1},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS, 1000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4KBPS, 4000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16KBPS, 16000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64KBPS, 64000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256KBPS, 256000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS, 1000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4MBPS, 4000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS, 16000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64MBPS, 64000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256MBPS, 256000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS, 1000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4GBPS, 4000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16GBPS, 16000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64GBPS, 64000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS, 256000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS, 1000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4TBPS, 4000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16TBPS, 16000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64TBPS, 64000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256TBPS, 256000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS, 1000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4PBPS, 4000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16PBPS, 16000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64PBPS, 64000000000000000},
+    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS,
+     256000000000000000}
+    // larger than 25 should use value of 25
+};
+
+uint64_t session_handler::parse_nas_value_unit_to_bps(
+    const uint16_t& value, const uint8_t& unit) {
+  uint64_t bit_rate_value;
+
+  if (unit > 0) {
+    // 3GPP TS 24.501 Table 9.11.4.12.1: QoS flow descriptions information
+    if (unit <= 25) {
+      bit_rate_value = bpsMap[unit] * value;
+    } else {
+      bit_rate_value = bpsMap[25] * value;
+    }
+  } else {
+    bit_rate_value = value;
+  }
+
+  return bit_rate_value;
+}
+
+bool session_handler::is_uplink_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(true, flow_info);
+}
+
+bool session_handler::is_downlink_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(false, flow_info);
+}
+
+bool session_handler::is_flow_direction(
+    bool uplink, const FlowInformation& flow_info) {
+  if (!flow_info.flowDescriptionIsSet() ||
+      flow_info.getFlowDescription().empty()) {
+    return false;
+  }
+  FlowDirection_anyOf::eFlowDirection_anyOf flow_direction;
+  if (!flow_info.flowDirectionIsSet()) {
+    Logger::smf_app().info(
+        "Flow Direction of flow %s is not set, assume it is BIDIRECTIONAL",
+        flow_info.getFlowDescription());
+    flow_direction = FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL;
+  } else {
+    flow_direction = flow_info.getFlowDirection().getEnumValue();
+  }
+
+  switch (flow_direction) {
+    case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
+      return !uplink;
+    case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
+      return uplink;
+      // all from here are automatically true, either bidirectional or handled
+      // like bidirectional
+      // * Design Decision: to have null values as true so that
+      // the filter is set, otherwise this could lead to issues
+    case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
+      return true;
+    case FlowDirection_anyOf::eFlowDirection_anyOf::UNSPECIFIED:
+      /*
+       * 3GPP TS 29.512
+       * The corresponding filter applies for traffic to the UE (downlink), but
+       * has no specific direction declared. The service data flow detection
+       * shall apply the filter for uplink traffic as if the filter was
+       * bidirectional.
+       */
+    case FlowDirection_anyOf::eFlowDirection_anyOf::
+        INVALID_VALUE_OPENAPI_GENERATED:
+    case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
+      Logger::smf_app().info(
+          "Flow Direction of flow %s is UNSPECIFIED or NULL, assume it is "
+          "BIDIRECTIONAL",
+          flow_info.getFlowDescription());
+      return true;
+  }
+
+  return false;
+}
+
+void session_handler::set_default_qos_parameters(QosData& qos_data) {
+  try {
+    uint8_t _5qi             = qos_data.getR5qi();
+    auto priority_level      = qos_priority_map.at(_5qi);
+    auto packet_delay_budget = qos_packet_delay_budget.at(_5qi);
+    auto packet_error_rate   = qos_packet_error_rate.at(_5qi);
+    auto max_burst_volume    = qos_max_burst_volume.at(_5qi);
+    auto averaging_window    = qos_averaging_window.at(_5qi);
+
+    // Here, we check for all the values if
+    // Characteristic not set, and we should send default values -> SET
+    // Characteristic set and the value is the same sa the default -> UNSET
+
+    bool send_values =
+        smf_cfg->smf()->get_ngap().send_default_qos_characteristics();
+
+    if (!qos_data.priorityLevelIsSet() && priority_level != 0 && send_values) {
+      qos_data.setPriorityLevel(priority_level);
+    } else if (qos_data.getPriorityLevel() == priority_level && !send_values) {
+      qos_data.unsetPriorityLevel();
+    }
+    if (!qos_data.packetDelayBudgetIsSet() && packet_delay_budget != 0 &&
+        send_values) {
+      qos_data.setPacketDelayBudget(packet_delay_budget);
+    } else if (
+        qos_data.getPacketDelayBudget() == packet_delay_budget &&
+        !send_values) {
+      qos_data.unsetPacketDelayBudget();
+    }
+    if (!qos_data.packetErrorRateIsSet() && !packet_error_rate.empty() &&
+        send_values) {
+      qos_data.setPacketErrorRate(packet_error_rate);
+    } else if (
+        qos_data.getPacketErrorRate() == packet_error_rate && !send_values) {
+      qos_data.unsetPacketErrorRate();
+    }
+    if (!qos_data.maxDataBurstVolIsSet() && max_burst_volume != 0 &&
+        send_values) {
+      qos_data.setMaxDataBurstVol(max_burst_volume);
+    } else if (
+        qos_data.getMaxDataBurstVol() == max_burst_volume && !send_values) {
+      qos_data.unsetMaxDataBurstVol();
+    }
+    if (!qos_data.averWindowIsSet() && averaging_window != 0 && send_values) {
+      qos_data.setAverWindow(averaging_window);
+    } else if (qos_data.getAverWindow() == averaging_window && !send_values) {
+      qos_data.unsetAverWindow();
+    }
+
+  } catch (std::out_of_range&) {
+    Logger::smf_app().error(
+        "5QI %d is not in the QoS characteristics map, we don't set the "
+        "default QoS characteristics",
+        qos_data.getR5qi());
+  }
 }

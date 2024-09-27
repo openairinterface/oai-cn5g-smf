@@ -223,6 +223,16 @@ class smf_app {
 
   void operator=(smf_app const&) = delete;
 
+  /**
+   * Start SMF App
+   */
+  void start();
+
+  /**
+   * Stop all the ongoing processes and send NF deregistration towards NRF
+   */
+  void stop();
+
   /*
    * Set the association between Seid and SM Context
    * @param [const seid_t &] seid: SessionID
@@ -762,11 +772,11 @@ class smf_app {
   void start_upf_association(oai::config::smf::upf& upf_cfg);
 
   /*
-   * To start NF registration with NRF and subscribe to UPF event notification
+   * To subscribe to UPF event notification
    * @param void
    * @return void
    */
-  void start_nf_registration_discovery();
+  void start_nf_discovery();
 
   /*
    * To store a promise of a PDU Session Create SM Contex Response to be
@@ -933,13 +943,6 @@ class smf_app {
       std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
 
   /*
-   * Trigger NF instance registration to NRF
-   * @param [void]
-   * @return void
-   */
-  void register_to_nrf();
-
-  /*
    * Generate a random UUID for SMF instance
    * @param [void]
    * @return void
@@ -954,18 +957,18 @@ class smf_app {
   void generate_smf_profile();
 
   /*
-   * Send request to N11 task to trigger NF instance registration to NRF
+   * Trigger NF instance registration to NRF
    * @param [void]
    * @return void
    */
-  void trigger_nf_registration_request();
+  void register_to_nrf();
 
   /*
    * Send request to N11 task to trigger NF instance deregistration to NRF
    * @param [void]
    * @return void
    */
-  void trigger_nf_deregistration();
+  void deregister_to_nrf();
 
   /*
    * Send request to N11 task to trigger NFSubscribeStatus to NRF

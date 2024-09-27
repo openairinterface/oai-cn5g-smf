@@ -29,7 +29,6 @@
 
 #include "smf_config_types.hpp"
 #include "smf_config.hpp"
-#include "conv.hpp"
 
 using namespace oai::config::smf;
 using namespace oai::config;
@@ -174,12 +173,13 @@ bool smf_support_features::use_local_pcc_rules() const {
 
 upf::upf(
     const std::string& host, int port, bool enable_usage_reporting,
-    bool enable_dl_pdr_in_session_establishment,
+    bool enable_qers, bool enable_dl_pdr_in_session_establishment,
     const std::string& local_n3_ip) {
   m_host = string_config_value("host", host);
   m_port = int_config_value("port", port);
   m_usage_reporting =
       option_config_value("enable_usage_reporting", enable_usage_reporting);
+  m_qers = option_config_value("enable_qers", enable_qers);
   m_dl_pdr_in_session_establishment = option_config_value(
       "enable_dl_pdr_in_session_establishment",
       enable_dl_pdr_in_session_establishment);
@@ -220,6 +220,9 @@ void upf::from_yaml(const YAML::Node& node) {
     if (node["config"]["enable_usage_reporting"]) {
       m_usage_reporting.from_yaml(node["config"]["enable_usage_reporting"]);
     }
+    if (node["config"]["enable_qers"]) {
+      m_qers.from_yaml(node["config"]["enable_qers"]);
+    }
     if (node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]) {
       m_dl_pdr_in_session_establishment.from_yaml(
           node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]);
@@ -229,8 +232,7 @@ void upf::from_yaml(const YAML::Node& node) {
     }
   }
   if (node["upf_info"]) {
-    nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["upf_info"], false);
+    nlohmann::json j = oai::utils::conv::yaml_to_json(node["upf_info"], false);
     nlohmann::from_json(j, m_upf_info);
   }
   generate_node_id();
@@ -242,6 +244,7 @@ nlohmann::json upf::to_json() {
   json_data[m_port.get_config_name()] = m_port.get_value();
   json_data["config"][m_usage_reporting.get_config_name()] =
       m_usage_reporting.get_value();
+  json_data["config"][m_qers.get_config_name()] = m_qers.get_value();
   json_data["config"][m_dl_pdr_in_session_establishment.get_config_name()] =
       m_dl_pdr_in_session_establishment.get_value();
   json_data["config"][m_local_n3_ipv4.get_config_name()] =
@@ -265,6 +268,10 @@ bool upf::from_json(const nlohmann::json& json_data) {
           json_data.end()) {
         m_usage_reporting.from_json(
             json_data["config"][m_usage_reporting.get_config_name()]);
+      }
+      if (json_data["config"].find(m_qers.get_config_name()) !=
+          json_data.end()) {
+        m_qers.from_json(json_data["config"][m_qers.get_config_name()]);
       }
       if (json_data["config"].find(
               m_dl_pdr_in_session_establishment.get_config_name()) !=
@@ -304,6 +311,8 @@ std::string upf::to_string(const std::string& indent) const {
   out.append(fmt::format(
       fmt_value, m_usage_reporting.get_config_name(),
       m_usage_reporting.to_string("")));
+  out.append(
+      fmt::format(fmt_value, m_qers.get_config_name(), m_qers.to_string("")));
   out.append(fmt::format(
       fmt_value, m_dl_pdr_in_session_establishment.get_config_name(),
       m_dl_pdr_in_session_establishment.to_string("")));
@@ -342,6 +351,10 @@ bool upf::enable_usage_reporting() const {
 
 bool upf::enable_dl_pdr_in_session_establishment() const {
   return m_dl_pdr_in_session_establishment.get_value();
+}
+
+bool upf::enable_qers() const {
+  return m_qers.get_value();
 }
 
 const std::string& upf::get_local_n3_ip() const {
@@ -502,8 +515,7 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     // any default UPF is deleted if people configure UPFs
     m_upfs.clear();
     for (const auto& yaml_upf : node["upfs"]) {
-      // TODO should we have a default host here?
-      upf u = upf("", 8805, false, false, "");
+      upf u = upf("", 8805, false, false, false, "");
       u.from_yaml(yaml_upf);
       m_upfs.push_back(u);
     }
@@ -511,8 +523,7 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
   if (node["smf_info"]) {
     // any default SNSSAI info list is deleted if people configure a profile
     m_smf_info.getSNssaiSmfInfoList().clear();
-    nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["smf_info"], false);
+    nlohmann::json j = oai::utils::conv::yaml_to_json(node["smf_info"], false);
     nlohmann::from_json(j, m_smf_info);
 
     std::vector<SnssaiSmfInfoItem> snssai_list;
@@ -534,6 +545,9 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
       subcfg.from_yaml(yaml_sub);
       m_subscription_infos.push_back(subcfg);
     }
+  }
+  if (node["ngap"]) {
+    m_ngap_config.from_yaml(node["ngap"]);
   }
 }
 
@@ -593,6 +607,7 @@ std::string smf_config_type::to_string(const std::string& indent) const {
       BASE_FORMATTER, OUTER_LIST_ELEM, m_ue_mtu.get_config_name(), inner_width,
       m_ue_mtu.to_string("")));
   out.append(m_ims_config.to_string(indent));
+  out.append(m_ngap_config.to_string(indent));
   std::string inner_indent = indent + indent;
   if (!m_upfs.empty()) {
     out.append(indent).append("UPF List:\n");
@@ -659,6 +674,10 @@ const SmfInfo& smf_config_type::get_smf_info() {
   return m_smf_info;
 }
 
+ngap_config_value smf_config_type::get_ngap() const {
+  return m_ngap_config;
+}
+
 subscription_info_config::subscription_info_config(
     const std::string& dnn, uint8_t ssc_mode,
     const subscribed_default_qos_t& qos, const session_ambr_t& session_ambr,
@@ -681,7 +700,7 @@ void subscription_info_config::from_yaml(const YAML::Node& node) {
   }
   if (node["single_nssai"]) {
     nlohmann::json j =
-        oai::utils::conversions::yaml_to_json(node["single_nssai"], false);
+        oai::utils::conv::yaml_to_json(node["single_nssai"], false);
     nlohmann::from_json(j, m_snssai);
     m_snssai.parse_sd_int_with_hex();
   }
@@ -791,7 +810,9 @@ qos_profile_config_value::qos_profile_config_value(
   m_session_ambr_ul = string_config_value("session_ambr_ul", m_ambr.uplink);
 
   m_5qi.set_validation_interval(1, 254);
-  m_priority.set_validation_interval(1, 127);
+  m_priority.set_validation_interval(
+      0, 127);  // we allow 0 value here for default value that is being
+                // overwritten
   m_arp_priority.set_validation_interval(1, 15);
 
   m_config_name = "qos_profile";
@@ -901,10 +922,15 @@ std::string qos_profile_config_value::to_string(
           BASE_FORMATTER, OUTER_LIST_ELEM, m_5qi.get_config_name(), inner_width,
           m_5qi.to_string("")));
 
+  std::string priority_level = m_priority.to_string("");
+  if (m_priority.get_value() == 0) {
+    priority_level.append(" (set based on 5QI)");
+  }
+
   out.append(inner_indent)
       .append(fmt::format(
           BASE_FORMATTER, OUTER_LIST_ELEM, m_priority.get_config_name(),
-          inner_width, m_priority.to_string("")));
+          inner_width, priority_level));
 
   out.append(inner_indent)
       .append(fmt::format(
@@ -953,4 +979,52 @@ const subscribed_default_qos_t& qos_profile_config_value::get_default_qos()
 
 const session_ambr_t& qos_profile_config_value::get_session_ambr() const {
   return m_ambr;
+}
+
+ngap_config_value::ngap_config_value() {
+  m_config_name = "ngap_config";
+  m_send_default_qos_characteristics =
+      option_config_value(NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS, false);
+}
+
+void ngap_config_value::from_yaml(const YAML::Node& node) {
+  if (node[NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS]) {
+    m_send_default_qos_characteristics.from_yaml(
+        node[NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS]);
+  }
+}
+
+nlohmann::json ngap_config_value::to_json() {
+  nlohmann::json json_data = {};
+  json_data[m_send_default_qos_characteristics.get_config_name()] =
+      m_send_default_qos_characteristics.to_json();
+  return json_data;
+}
+
+bool ngap_config_value::from_json(const nlohmann::json& json_data) {
+  if (json_data[m_send_default_qos_characteristics.get_config_name()]) {
+    m_send_default_qos_characteristics.from_json(
+        json_data[m_send_default_qos_characteristics.get_config_name()]);
+  }
+  return false;
+}
+
+std::string ngap_config_value::to_string(const std::string& indent) const {
+  auto value_fmt = get_value_formatter(1);
+  auto title_fmt = get_title_formatter(0);
+
+  std::string out;
+  out.append(indent).append(fmt::format(title_fmt, m_config_name));
+  out.append(indent).append(fmt::format(
+      value_fmt, m_send_default_qos_characteristics.get_config_name(),
+      m_send_default_qos_characteristics.to_string("")));
+  return out;
+}
+
+void ngap_config_value::validate() {
+  m_send_default_qos_characteristics.validate();
+}
+
+bool ngap_config_value::send_default_qos_characteristics() const {
+  return m_send_default_qos_characteristics.get_value();
 }

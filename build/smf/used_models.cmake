@@ -24,8 +24,10 @@
 ## DO NOT JUST COPY THIS FILE FROM OTHER NFs. The reasoning behind this is to only compile used files to optimize
 ## build speed
 
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+
 # Add common model dependencies from SMF API model
-# TODO here we also have stuff from NRF and PCF still mixed-in
 list(APPEND USED_COMMON_MODEL_SRC_FILES
         ${COMMON_MODEL_DIR}/ProblemDetails.cpp
         ${COMMON_MODEL_DIR}/AccessTokenErr.cpp
@@ -119,13 +121,9 @@ list(APPEND USED_COMMON_MODEL_SRC_FILES
         ${COMMON_MODEL_DIR}/AdditionalQosFlowInfo.cpp        
         )
 
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
-
-list(APPEND USED_SMF_MODEL_SRC_FILES
+file(GLOB USED_SMF_MODEL_SRC_FILES
         ${SMF_MODEL_DIR}/*.cpp
-        )
-
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
+)
 
 list(APPEND USED_PCF_MODEL_SRC_FILES
         # SM Policy Decision
@@ -235,12 +233,10 @@ list(APPEND USED_PCF_MODEL_SRC_FILES
         ${PCF_MODEL_DIR}/SmPolicyDeleteData.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause_anyOf.cpp
-        )
+)
 
-# we also use SMF models
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 
-# we also use PCF models
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
 
 # we also use NRF models

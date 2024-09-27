@@ -42,6 +42,7 @@
 #include "SmPolicyDeleteData.h"
 #include "smf.h"
 #include "3gpp_29.500.h"
+#include "3gpp_24.501.hpp"
 
 namespace smf::n7 {
 

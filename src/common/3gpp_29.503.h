@@ -24,6 +24,7 @@
 
 #include "smf.h"
 #include "3gpp_29.571.h"
+#include "3gpp_24.501.hpp"
 #include <nlohmann/json.hpp>
 
 enum ssc_mode_e {
