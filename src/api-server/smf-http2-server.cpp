@@ -37,7 +37,7 @@
 
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "http_client.hpp"
 #include "itti_msg_n11.hpp"
 #include "logger.hpp"

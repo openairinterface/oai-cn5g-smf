@@ -29,7 +29,7 @@
 
 #include "smf_profile.hpp"
 
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "logger.hpp"

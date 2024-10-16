@@ -31,10 +31,11 @@
 #include <algorithm>  // std::search
 #include <utility>
 
-#include "3gpp_29.244.h"
+#include "3gpp_29.274.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
 #include "itti.hpp"
@@ -307,11 +308,12 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   pfcp::pdi pdi                 = {};  // packet detection information
   pfcp::outer_header_removal_t outer_header_removal = {};
   // pdi IEs
-  pfcp::source_interface_t source_interface          = {};
-  pfcp::fteid_t local_fteid                          = {};
-  pfcp::sdf_filter_t sdf_filter                      = {};
-  pfcp::application_id_t application_id              = {};
-  pfcp::_3gpp_interface_type_t source_interface_type = {};
+  pfcp::source_interface_t source_interface           = {};
+  pfcp::fteid_t local_fteid                           = {};
+  pfcp::sdf_filter_t sdf_filter                       = {};
+  pfcp::application_id_t application_id               = {};
+  pfcp::_3gpp_interface_type_t source_interface_type  = {};
+  pfcp::ethernet_packet_filter ethernet_packet_filter = {};
 
   // Packet detection information (see Table 7.5.2.2-2: PDI IE within PFCP
   // Session Establishment Request, 3GPP TS 29.244 V16.0.0)  source interface
@@ -360,7 +362,11 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // UE IP address
-  pdi.set(pfcp_ue_ip_address(edge));
+  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
+     sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
+     sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
+    pdi.set(pfcp_ue_ip_address(edge));
+  }
 
   if (edge->type == n3_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N3;
@@ -378,11 +384,20 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
-  // TODO: Ethernet PDU Session Information
-  // TODO: Ethernet Packet Filter
   // TODO: Framed Route Information
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
+
+
+  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+    //Ethernet PDU Session Information
+    //TODO
+
+    // Ethernet Packet Filter
+    if (pfcp_ethernet_packet_filter(edge, ethernet_packet_filter)) {
+      pdi.set(ethernet_packet_filter);
+    }
+  }
 
   if (pfcp_sdf_filter(edge, sdf_filter)) {
     pdi.set(sdf_filter);
@@ -779,6 +794,14 @@ bool smf_session_procedure::pfcp_sdf_filter(
 }
 
 //------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_ethernet_packet_filter(
+        const shared_ptr<qos_upf_edge>& edge, ethernet_packet_filter& ethernet_packet_filter) {
+  edge->flow_information.getEthFlowDescription();
+  // TODO
+  return false;
+}
+
+//------------------------------------------------------------------------------
 int n4_session_restore_procedure::run() {
   if (pending_sessions.size()) {
     itti_n4_restore* itti_msg = nullptr;
@@ -851,12 +874,25 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   //-------------------
+  // IE PDN Type
+  //-------------------
+  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+    pfcp::pdn_type_t pdn_type = {};
+    oai::utils::xgpp_conv::pdu_session_type_to_pdn_type(sps->pdu_session_type.pdu_session_type, pdn_type);
+    n4_triggered->pfcp_ies.set(pdn_type);
+  }
+
+  //-------------------
   // IE CREATE_URR ( Usage Reporting Rules)
   //-------------------
   if (current_upf->get_upf_config().enable_usage_reporting()) {
     pfcp::create_urr create_urr = pfcp_create_urr(dl_edges[0]);
     n4_triggered->pfcp_ies.set(create_urr);
   }
+
+  //-------------------
+  // IE CREATE_FAR, CREATE_QER and CREATE_PDR
+  //-------------------
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
     if (upf_cfg.enable_qers()) {

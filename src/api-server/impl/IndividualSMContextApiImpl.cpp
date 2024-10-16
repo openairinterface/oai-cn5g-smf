@@ -35,7 +35,7 @@
 #include "IndividualSMContextApiImpl.h"
 #include <nghttp2/asio_http2_server.h>
 #include "mime_parser.hpp"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "http_client.hpp"
 
 namespace oai {

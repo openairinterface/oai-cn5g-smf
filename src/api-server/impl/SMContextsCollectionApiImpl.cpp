@@ -39,7 +39,7 @@
 #include "3gpp_29.502.h"
 #include <nghttp2/asio_http2_server.h>
 #include "smf_config.hpp"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "mime_parser.hpp"
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>

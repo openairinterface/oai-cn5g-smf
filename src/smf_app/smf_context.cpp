@@ -36,7 +36,7 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "EventNotification.h"
 #include "PduSessionType.h"
 #include "PlmnId.h"
@@ -1193,6 +1193,18 @@ void smf_context::handle_pdu_session_create_sm_context_request(
           pdu_session_application_error_e::
               PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
           http_status_code::FORBIDDEN);
+      return;
+    } break;
+
+    case PDU_SESSION_TYPE_E_ETHERNET: {
+      // TODO:
+      Logger::smf_app().warn("Ethernet is not implemented yet!");
+      // PDU Session Establishment Reject
+      send_pdu_session_establishment_response_reject(
+              smreq, cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE,
+              pdu_session_application_error_e::
+              PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
+              http_status_code::FORBIDDEN);
       return;
     } break;
 

@@ -46,7 +46,7 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 
 set(CN_UTILS_SRC STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/3gpp_conversions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/3gpp_conversions_smf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/epc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mime_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fqdn.cpp

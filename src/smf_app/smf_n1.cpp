@@ -35,7 +35,7 @@
 
 #include "smf.h"
 #include "smf_app.hpp"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "epc.h"
 
 extern "C" {

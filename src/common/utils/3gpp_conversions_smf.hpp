@@ -49,28 +49,6 @@ extern "C" {
 namespace xgpp_conv {
 
 /*
- * Convert PAA to PFCP UE IP Addr
- * @param [const paa_t&] paa: paa
- * @param [pfcp::ue_ip_address_t&] ue_ip_address: UE IP Addr
- * @return void
- */
-void paa_to_pfcp_ue_ip_address(
-    const paa_t& paa, pfcp::ue_ip_address_t& ue_ip_address);
-
-/*
- * Convert PDN IP to PFCP UE IP Addr
- * @param [const pdu_session_type_t&] pdu_session_type: PDU Session Type
- * @param [const struct in_addr&] ipv4_address: IPv4 Addr
- * @param [const struct in6_addr] ipv6_address: IPv6 Addr
- * @param [pfcp::ue_ip_address_t&] ue_ip_address: UE IP Addr
- * @return void
- */
-void pdn_ip_to_pfcp_ue_ip_address(
-    const pdu_session_type_t& pdu_session_type,
-    const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
-    pfcp::ue_ip_address_t& ue_ip_address);
-
-/*
  * Convert PCO in NAS into core type
  * @param [const protocol_configuration_options_nas_t&] pco_nas: PCO in NAS msg
  * @param [protocol_configuration_options_t&] pco: PCO in core type

@@ -39,7 +39,7 @@
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "3gpp_conversions.hpp"
+#include "3gpp_conversions_smf.hpp"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
