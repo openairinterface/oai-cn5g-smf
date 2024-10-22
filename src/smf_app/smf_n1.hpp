@@ -48,6 +48,7 @@ class smf_n1 {
   smf_n1(){};
   smf_n1(smf_n1 const&) = delete;
   void operator=(smf_n1 const&) = delete;
+  virtual ~smf_n1(){};
 
  public:
   static smf_n1& get_instance() {
