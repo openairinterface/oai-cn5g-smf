@@ -42,20 +42,9 @@ smf_support_features::smf_support_features(
       "use_local_subscription_info", local_subscription_info);
   m_local_pcc_rules =
       option_config_value("use_local_pcc_rules", local_pcc_rules);
-  m_external_ausf = option_config_value("use_external_ausf", false);
-  m_external_udm  = option_config_value("use_external_udm", false);
-  m_external_nssf = option_config_value("use_external_nssf", false);
 }
 
 // TODO we should move this to common and use it together with AMF and other NFs
-smf_support_features::smf_support_features(
-    bool external_ausf, bool external_udm, bool external_nssf) {
-  set_config_name("supported_features");
-  m_external_ausf = option_config_value("use_external_ausf", external_ausf);
-  m_external_udm  = option_config_value("use_external_udm", external_udm);
-  m_external_nssf = option_config_value("use_external_nssf", external_nssf);
-}
-
 void smf_support_features::from_yaml(const YAML::Node& node) {
   if (node[USE_LOCAL_PCC_RULES_CONFIG_VALUE]) {
     m_local_pcc_rules.from_yaml(node[USE_LOCAL_PCC_RULES_CONFIG_VALUE]);
@@ -63,15 +52,6 @@ void smf_support_features::from_yaml(const YAML::Node& node) {
   if (node[USE_LOCAL_SUBSCRIPTION_INFOS_CONFIG_VALUE]) {
     m_local_subscription_infos.from_yaml(
         node[USE_LOCAL_SUBSCRIPTION_INFOS_CONFIG_VALUE]);
-  }
-  if (node[USE_EXTERNAL_AUSF_CONFIG_VALUE]) {
-    m_external_ausf.from_yaml(node[USE_EXTERNAL_AUSF_CONFIG_VALUE]);
-  }
-  if (node[USE_EXTERNAL_UDM_CONFIG_VALUE]) {
-    m_external_udm.from_yaml(node[USE_EXTERNAL_UDM_CONFIG_VALUE]);
-  }
-  if (node[USE_EXTERNAL_NSSF_CONFIG_VALUE]) {
-    m_external_nssf.from_yaml(node[USE_EXTERNAL_AUSF_CONFIG_VALUE]);
   }
 }
 
@@ -81,9 +61,6 @@ nlohmann::json smf_support_features::to_json() {
       m_local_pcc_rules.get_value();
   json_data[m_local_subscription_infos.get_config_name()] =
       m_local_subscription_infos.get_value();
-  json_data[m_external_ausf.get_config_name()] = m_external_ausf.get_value();
-  json_data[m_external_udm.get_config_name()]  = m_external_udm.get_value();
-  json_data[m_external_nssf.get_config_name()] = m_external_nssf.get_value();
   return json_data;
 }
 
@@ -99,16 +76,6 @@ bool smf_support_features::from_json(const nlohmann::json& json_data) {
       m_local_subscription_infos.from_json(
           json_data[m_local_subscription_infos.get_config_name()]);
     }
-    if (json_data.find(m_external_ausf.get_config_name()) != json_data.end()) {
-      m_external_ausf.from_json(json_data[m_external_ausf.get_config_name()]);
-    }
-    if (json_data.find(m_external_udm.get_config_name()) != json_data.end()) {
-      m_external_udm.from_json(json_data[m_external_udm.get_config_name()]);
-    }
-    if (json_data.find(m_external_nssf.get_config_name()) != json_data.end()) {
-      m_external_nssf.from_json(json_data[m_external_nssf.get_config_name()]);
-    }
-
   } catch (nlohmann::detail::exception& e) {
     // TODO:
   } catch (std::exception& e) {
@@ -137,27 +104,6 @@ std::string smf_support_features::to_string(const std::string& indent) const {
             BASE_FORMATTER, INNER_LIST_ELEM,
             m_local_pcc_rules.get_config_name(), inner_width,
             m_local_pcc_rules.to_string("")));
-  }
-
-  if (!m_external_ausf.get_config_name().empty()) {
-    out.append(inner_indent)
-        .append(fmt::format(
-            BASE_FORMATTER, INNER_LIST_ELEM, m_external_ausf.get_config_name(),
-            inner_width, m_external_ausf.to_string("")));
-  }
-
-  if (!m_external_udm.get_config_name().empty()) {
-    out.append(inner_indent)
-        .append(fmt::format(
-            BASE_FORMATTER, INNER_LIST_ELEM, m_external_udm.get_config_name(),
-            inner_width, m_external_udm.to_string("")));
-  }
-
-  if (!m_external_nssf.get_config_name().empty()) {
-    out.append(inner_indent)
-        .append(fmt::format(
-            BASE_FORMATTER, INNER_LIST_ELEM, m_external_nssf.get_config_name(),
-            inner_width, m_external_nssf.to_string("")));
   }
 
   return out;

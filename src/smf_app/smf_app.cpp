@@ -884,7 +884,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   Logger::smf_app().info(
       "Handle a PDU Session Create SM Context Request message from AMF, "
       "SUPI " SUPI_64_FMT ", %s",
-      supi64, snssai.to_model_snssai().to_string(0));
+      supi64, snssai.toString());
 
   // Step 2. Verify Procedure transaction id, pdu session id, message type,
   // request type, etc.
