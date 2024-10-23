@@ -513,21 +513,16 @@ void smf_sbi::update_nf_instance(
   std::string url = get_nrf_base_url() + msg->smf_instance_id;
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
-
   request req   = http_client_inst->prepare_json_request(url, body);
   response resp = http_client_inst->send_http_request(method_e::PATCH, req);
 
-  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u",
-      resp.status_code);
+      "NF Update, response from NRF, HTTP Code: %u", resp.status_code);
 
-  // if ((resp.status_code == http_status_code::OK) or
-  //    (resp.status_code == http_status_code::NO_CONTENT)) {
-  // Logger::smf_sbi().debug("NF Update, got successful response from NRF");
-
-  Logger::smf_sbi().debug(
-      "NF Update, response from NRF: \n %s", resp.body.c_str());
+  if (resp.status_code == http_status_code::OK) {
+    Logger::smf_sbi().debug(
+        "NF Update, response from NRF: \n %s", resp.body.c_str());
+  }
 
   // TODO: In case of response containing NF profile
   // Send response to APP to process

@@ -53,6 +53,11 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
     std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Establishment Accept");
+
+  nlohmann::json sm_context_res_json = {};
+  sm_context_res.to_json(sm_context_res_json);
+  Logger::smf_n1().debug("PDU Session Establishment Accept, Json:");
+  Logger::smf_n1().debug(sm_context_res_json.dump());
   int bytes                   = {0};
   unsigned char data[BUF_LEN] = {'\0'};
   nas_message_t nas_msg       = {};
