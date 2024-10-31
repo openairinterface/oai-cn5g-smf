@@ -1112,8 +1112,6 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     }
   }
 
-  sp->pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_ETHERNET;
-
   switch (sp->pdu_session_type.pdu_session_type) {
     case PDU_SESSION_TYPE_E_IPV4V6: {
       Logger::smf_app().debug(
