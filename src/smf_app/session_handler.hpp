@@ -200,6 +200,10 @@ class session_handler {
       const oai::model::pcf::FlowInformation& flow_direction);
   static bool is_downlink_flow_direction(
       const oai::model::pcf::FlowInformation& flow_direction);
+  static bool is_uplink_eth_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
+  static bool is_downlink_eth_flow_direction(
+      const oai::model::pcf::FlowInformation& flow_direction);
 
  private:
   std::shared_ptr<upf_graph> m_session_graph;
@@ -267,6 +271,11 @@ class session_handler {
 
   static bool is_flow_direction(
       bool uplink, const oai::model::pcf::FlowInformation& flow_direction);
+
+  static bool is_flow_direction(
+      bool uplink,
+      const oai::model::pcf::FlowDirection_anyOf::eFlowDirection_anyOf&
+          flow_direction);
 
   void set_default_qos_parameters(oai::model::pcf::QosData& qos_data);
 

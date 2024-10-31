@@ -1112,6 +1112,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     }
   }
 
+  sp->pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_ETHERNET;
+
   switch (sp->pdu_session_type.pdu_session_type) {
     case PDU_SESSION_TYPE_E_IPV4V6: {
       Logger::smf_app().debug(
@@ -1197,15 +1199,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     } break;
 
     case PDU_SESSION_TYPE_E_ETHERNET: {
-      // TODO:
-      Logger::smf_app().warn("Ethernet is not implemented yet!");
-      // PDU Session Establishment Reject
-      send_pdu_session_establishment_response_reject(
-              smreq, cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE,
-              pdu_session_application_error_e::
-              PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
-              http_status_code::FORBIDDEN);
-      return;
+      Logger::smf_app().info("PDU Session Type Ethernet");
     } break;
 
     default: {

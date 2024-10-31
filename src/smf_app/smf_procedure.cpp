@@ -362,9 +362,9 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // UE IP address
-  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
-     sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
-     sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
+      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
+      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
     pdi.set(pfcp_ue_ip_address(edge));
   }
 
@@ -388,10 +388,14 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
 
-
-  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
-    //Ethernet PDU Session Information
-    //TODO
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+    // Ethernet PDU Session Information
+    if (edge->uplink) {  // For DL PDR
+      pfcp::ethernet_pdu_session_information_t
+          ethernet_pdu_session_information  = {};
+      ethernet_pdu_session_information.ethi = 1;
+      pdi.set(ethernet_pdu_session_information);
+    }
 
     // Ethernet Packet Filter
     if (pfcp_ethernet_packet_filter(edge, ethernet_packet_filter)) {
@@ -770,21 +774,38 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
 
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_sdf_filter(
-    const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter) {
+    const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter,
+    bool ethernet_sdf_filter) {
+  bool is_uplink_fdir, is_downlink_fdir;
+  if (ethernet_sdf_filter) {
+    is_uplink_fdir =
+        session_handler::is_uplink_eth_flow_direction(edge->flow_information);
+    is_downlink_fdir =
+        session_handler::is_downlink_eth_flow_direction(edge->flow_information);
+  } else {
+    is_uplink_fdir =
+        session_handler::is_uplink_flow_direction(edge->flow_information);
+    is_downlink_fdir =
+        session_handler::is_downlink_flow_direction(edge->flow_information);
+  }
+
   // UL and DL edge is reversed, as it is from UPF point of view
   bool add_sdf_filter = false;
-  if (session_handler::is_uplink_flow_direction(edge->flow_information) &&
-      !edge->uplink) {
+  if (is_uplink_fdir && !edge->uplink) {
     add_sdf_filter = true;
   }
-  if (session_handler::is_downlink_flow_direction(edge->flow_information) &&
-      edge->uplink) {
+  if (is_downlink_fdir && edge->uplink) {
     add_sdf_filter = true;
   }
 
   if (add_sdf_filter) {
-    sdf_filter.fd               = 1;
-    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+    sdf_filter.fd = 1;
+    if (ethernet_sdf_filter) {
+      sdf_filter.flow_description =
+          edge->flow_information.getEthFlowDescription().getFDesc();
+    } else {
+      sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+    }
     sdf_filter.length_of_flow_description =
         sdf_filter.flow_description.length();
     return true;
@@ -795,9 +816,100 @@ bool smf_session_procedure::pfcp_sdf_filter(
 
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_ethernet_packet_filter(
-        const shared_ptr<qos_upf_edge>& edge, ethernet_packet_filter& ethernet_packet_filter) {
-  edge->flow_information.getEthFlowDescription();
-  // TODO
+    const shared_ptr<qos_upf_edge>& edge,
+    ethernet_packet_filter& ethernet_packet_filter) {
+  if (!edge->flow_information.ethFlowDescriptionIsSet()) {
+    Logger::smf_app().warn("No Ethernet Flow Description found!");
+    return false;
+  }
+  auto ethFlowDescription = edge->flow_information.getEthFlowDescription();
+
+  // UL and DL edge is reversed, as it is from UPF point of view
+  bool add_eth_filter = false;
+  if (session_handler::is_uplink_eth_flow_direction(edge->flow_information) &&
+      !edge->uplink) {
+    add_eth_filter = true;
+  }
+  if (session_handler::is_downlink_eth_flow_direction(edge->flow_information) &&
+      edge->uplink) {
+    add_eth_filter = true;
+  }
+  if (add_eth_filter) {
+    // TODO: IF BIDIRECTIONAL set Properties && ID (Only ID without Properties &
+    // Filter definition for second direction)
+
+    // Mac Address
+    mac_address_t mac_address = {};
+    bool set_mac_address      = false;
+    // Add source address as single address or range
+    if (ethFlowDescription.sourceMacAddrIsSet()) {
+      mac_address.sour = 1;
+      oai::utils::conv::string_to_uint_mac_address(
+          ethFlowDescription.getSourceMacAddr(), mac_address.source_mac_address,
+          '-');
+      if (ethFlowDescription.srcMacAddrEndIsSet()) {
+        mac_address.usou = 1;
+        oai::utils::conv::string_to_uint_mac_address(
+            ethFlowDescription.getSrcMacAddrEnd(),
+            mac_address.upper_source_mac_address, '-');
+      }
+      set_mac_address = true;
+    } else if (ethFlowDescription.srcMacAddrEndIsSet()) {
+      Logger::smf_app().error(
+          "Source MAC end address (srcMacAddrEnd) is set without a starting "
+          "MAC address "
+          "(sourceMacAddr). MacAddress IE is excluded from Ethernet Packet "
+          "Filter due to invalid config.");
+    }
+
+    // Add dest address as single address or range
+    if (ethFlowDescription.destMacAddrIsSet()) {
+      mac_address.dest = 1;
+      oai::utils::conv::string_to_uint_mac_address(
+          ethFlowDescription.getDestMacAddr(),
+          mac_address.destination_mac_address, '-');
+      if (ethFlowDescription.destMacAddrEndIsSet()) {
+        mac_address.udes = 1;
+        oai::utils::conv::string_to_uint_mac_address(
+            ethFlowDescription.getDestMacAddrEnd(),
+            mac_address.upper_destination_mac_address, '-');
+      }
+      set_mac_address = true;
+    } else if (ethFlowDescription.destMacAddrEndIsSet()) {
+      Logger::smf_app().error(
+          "Destination MAC end address (destMacAddrEnd) is set without a "
+          "starting MAC "
+          "address (destMacAddr). MacAddress IE is excluded from Ethernet "
+          "Packet Filter due to invalid config.");
+    }
+
+    if (set_mac_address) {
+      ethernet_packet_filter.set(mac_address);
+    }
+
+    // EtherType
+    ethertype_t ethertype = {};
+    oai::utils::xgpp_conv::ethType_to_pcfp_ethertype(
+        ethFlowDescription.getEthType(), ethertype);
+    ethernet_packet_filter.set(ethertype);
+
+    // C-TAG and V-TAG
+    if (ethFlowDescription.vlanTagsIsSet()) {
+      Logger::smf_app().warn(
+          "VLAN-TAG is configured for the Ethernet Packet Filter but is not "
+          "yet supported");
+      // TODO: parse VLAN Tags to C-TAGs and V-TAGs
+    }
+
+    // SDF Filter
+    pfcp::sdf_filter_t sdf_filter = {};
+    if (pfcp_sdf_filter(edge, sdf_filter, true)) {
+      ethernet_packet_filter.set(sdf_filter);
+    }
+
+    return true;
+  }
+
   return false;
 }
 
@@ -876,9 +988,10 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   //-------------------
   // IE PDN Type
   //-------------------
-  if(sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
     pfcp::pdn_type_t pdn_type = {};
-    oai::utils::xgpp_conv::pdu_session_type_to_pdn_type(sps->pdu_session_type.pdu_session_type, pdn_type);
+    oai::utils::xgpp_conv::pdu_session_type_to_pdn_type(
+        sps->pdu_session_type.pdu_session_type, pdn_type);
     n4_triggered->pfcp_ies.set(pdn_type);
   }
 
@@ -900,6 +1013,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     }
   }
   for (const auto& dl_edge : dl_edges) {
+    nlohmann::json j = dl_edge->flow_information;
+    Logger::smf_app().info("Create PDR for FlowInfo:\n %s", j.dump());
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
   }
 
