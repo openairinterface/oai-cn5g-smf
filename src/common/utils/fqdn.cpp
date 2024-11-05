@@ -150,12 +150,13 @@ bool fqdn::resolve(pfcp::node_id_t& node_id) {
 }
 
 bool fqdn::reverse_resolve(const std::string& ip_addr, std::string& host_name) {
-  Logger::smf_app().debug("Resolving an IP address (name %s)", ip_addr.c_str());
+  Logger::smf_app().debug(
+      "Resolving an IP address (IP address: %s)", ip_addr.c_str());
   int tries = 0;
   while (tries < MAX_NB_RESOLVE_TRIES) {
     try {
       boost::asio::io_context io_context = {};
-      Logger::smf_app().debug("Reverse Resolving Try #%u", tries);
+      Logger::smf_app().debug("Reverse Resolving Try #%u", tries + 1);
 
       boost::asio::ip::address addr =
           boost::asio::ip::address::from_string(ip_addr);

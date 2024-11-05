@@ -49,9 +49,6 @@ extern "C" {
 #include "dynamic_memory_check.h"
 }
 
-// using namespace Pistache::Http;
-// using namespace Pistache::Http::Mime;
-
 using namespace smf;
 using namespace oai::common::sbi;
 using namespace oai::http;
@@ -62,14 +59,6 @@ extern smf_sbi* smf_sbi_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
-
-// To read content of the response from AMF
-static std::size_t callback(
-    const char* in, std::size_t size, std::size_t num, std::string* out) {
-  const std::size_t totalBytes(size * num);
-  out->append(in, totalBytes);
-  return totalBytes;
-}
 
 //------------------------------------------------------------------------------
 void smf_sbi_task(void* args_p) {
@@ -266,6 +255,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   response resp = http_client_inst->send_http_request(method_e::POST, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("Response code %i", resp.status_code);
 
   json response_data_json = {};
   try {
@@ -273,7 +263,6 @@ void smf_sbi::send_n1n2_message_transfer_request(
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
   }
-  Logger::smf_sbi().debug("Response from AMF, Http Code: %i", resp.status_code);
 }
 
 //------------------------------------------------------------------------------
@@ -344,7 +333,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
 void smf_sbi::send_sm_context_status_notification(
     std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status) {
   Logger::smf_sbi().debug(
-      "Send SM Context Status Notification to AMF(HTTP version %d)",
+      "Send SM Context Status Notification to AMF (HTTP version %d)",
       sm_context_status->http_version);
   Logger::smf_sbi().debug(
       "AMF URI: %s", sm_context_status->amf_status_uri.c_str());
@@ -562,7 +551,6 @@ void smf_sbi::deregister_nf_instance(
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug("NF De-register, got successful response from NRF");
-
   } else {
     Logger::smf_sbi().warn("NF De-register, could not get response from NRF");
   }

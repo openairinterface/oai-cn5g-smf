@@ -768,7 +768,7 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
-  Logger::smf_app().debug("NF Update response");
+  Logger::smf_app().debug("Handle NF Update response");
 
   if ((u.http_response_code == oai::common::sbi::http_status_code::OK) or
       (u.http_response_code ==
