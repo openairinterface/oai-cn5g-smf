@@ -852,7 +852,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Support IPv4/IPv4v6 and Ethernet for now
   if (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
     cause_n1 = cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
-  } else if (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
+  } else if (
+      pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
     cause_n1 = cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE;
   }
 

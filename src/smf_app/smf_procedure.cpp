@@ -778,6 +778,9 @@ bool smf_session_procedure::pfcp_sdf_filter(
     bool ethernet_sdf_filter) {
   bool is_uplink_fdir, is_downlink_fdir;
   if (ethernet_sdf_filter) {
+    if (!edge->flow_information.getEthFlowDescription().fDescIsSet()) {
+      return false;
+    }
     is_uplink_fdir =
         session_handler::is_uplink_eth_flow_direction(edge->flow_information);
     is_downlink_fdir =

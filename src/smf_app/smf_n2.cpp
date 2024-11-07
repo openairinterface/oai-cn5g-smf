@@ -32,6 +32,7 @@
 #include <arpa/inet.h>
 #include <stdexcept>
 #include <Ngap_GBR-QosInformation.h>
+#include <3gpp_conversions.hpp>
 #include "string.hpp"
 
 #include "smf.h"
@@ -201,10 +202,9 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   pduSessionType->value.present =
       Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
   pduSessionType->value.choice.PDUSessionType =
-      sm_context_res.get_pdu_session_type() -
-      1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
+      oai::utils::xgpp_conv::pdu_session_type_to_ngap_pdu_session_type(
+          sm_context_res.get_pdu_session_type());
+
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
   Logger::smf_n2().debug(
       "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
@@ -444,10 +444,9 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   pduSessionType->value.present =
       Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
   pduSessionType->value.choice.PDUSessionType =
-      sm_context_res.get_pdu_session_type() -
-      1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
+      oai::utils::xgpp_conv::pdu_session_type_to_ngap_pdu_session_type(
+          sm_context_res.get_pdu_session_type());
+
   ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
   Logger::smf_n2().debug(
       "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());

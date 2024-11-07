@@ -224,11 +224,19 @@ void smf_config::to_smf_config() {
     dnn.ue_pool_range_low.s_addr += be32toh(1);
     dnn.ue_pool_range_high = cfg_dnn.get_ipv4_pool_end();
 
-    logger::logger_registry::get_logger(LOGGER_NAME)
-        .debug(
-            "DNN %s: -- First UE IPv4: %s -- Last UE IPv4: %s", dnn.dnn,
-            conv::toString(dnn.ue_pool_range_low),
-            conv::toString(dnn.ue_pool_range_high));
+    if (dnn.pdu_session_type == pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 ||
+        dnn.pdu_session_type == pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6) {
+      logger::logger_registry::get_logger(LOGGER_NAME)
+          .debug(
+              "DNN %s: -- First UE IPv4: %s -- Last UE IPv4: %s", dnn.dnn,
+              conv::toString(dnn.ue_pool_range_low),
+              conv::toString(dnn.ue_pool_range_high));
+    } else {
+      logger::logger_registry::get_logger(LOGGER_NAME)
+          .debug(
+              "DNN %s: -- PDU Session Type: %s", dnn.dnn,
+              dnn.pdu_session_type.to_string());
+    }
 
     dnn.paa_pool6_prefix     = cfg_dnn.get_ipv6_prefix();
     dnn.paa_pool6_prefix_len = cfg_dnn.get_ipv6_prefix_length();
