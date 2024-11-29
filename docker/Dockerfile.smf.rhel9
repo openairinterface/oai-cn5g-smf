@@ -55,7 +55,6 @@ RUN rm -f /etc/rhsm-host && \
         openssl-devel \
         openssl \
         wget \
-        tcpdump \
         libasan && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
@@ -109,11 +108,11 @@ RUN rm -f /etc/rhsm-host && \
       psmisc \
       net-tools \
       iputils \
-      #tcpdump \
+      tcpdump \
 # Mandatory packages for the NF to run
 #      libasan \
       libicu \
-      #boost \
+      boost \
       libevent \
       findutils && \
     microdnf clean all -y && \
@@ -139,24 +138,10 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libyaml-cpp.so.0.* \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /usr/local/lib64/libcpr.so.1 \
-# HACK: could not install these packages out of 9.5 UBI minimal
-    /lib64/libboost_system.so.1.75.0 \
-    /lib64/libboost_thread.so.1.75.0 \
-    /lib64/libboost_chrono.so.1.75.0 \
-    /lib64/libpcap.so.1 \
-    /lib64/libibverbs.so.1 \
-    /lib64/libnl-route-3.so.200 \
-    /lib64/libnl-3.so.200 \
     /usr/lib64/
 
-# HACK: could not install this executable out of 9.5 UBI minimal
-COPY --from=oai-smf-builder \
-    /usr/sbin/tcpdump \
-    /usr/sbin
-
 RUN ldconfig -v && \
-    ldd /openair-smf/bin/oai_smf && \
-    ldd /usr/sbin/tcpdump
+    ldd /openair-smf/bin/oai_smf
 
 # Copying template configuration files
 # The configuration folder will be flat
