@@ -53,7 +53,7 @@ class smf_http2_server {
         server(),
         m_smf_app(smf_app_inst),
         running_server(false) {}
-  virtual ~smf_http2_server(){};
+  virtual ~smf_http2_server() = default;
   void start();
   void init(size_t thr) {}
   void create_sm_contexts_handler(

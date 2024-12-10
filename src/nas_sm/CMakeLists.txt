@@ -19,6 +19,7 @@
 #      contact@openairinterface.org
 ################################################################################
 file(GLOB SMF_NAS_src_files
+  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common/*.cpp
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs/*.cpp
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies/*.cpp
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.c
