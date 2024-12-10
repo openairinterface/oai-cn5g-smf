@@ -382,7 +382,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     if (up_features.frrt) {
       for (const auto& framed_route : sps->ipv4_frame_route) {
         pdi.set(framed_route);
-        Logger::smf_app().debug("Framed Route %s is set", framed_route.framed_route);
+        Logger::smf_app().debug(
+            "Framed Route %s is set", framed_route.framed_route);
       }
     } else {
       Logger::smf_app().warn(
