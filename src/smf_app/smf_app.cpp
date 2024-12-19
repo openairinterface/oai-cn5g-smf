@@ -42,6 +42,10 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
+#include "Nas5gsmMessage.hpp"
+#include "PduSessionEstablishmentAccept.hpp"
+#include "PduSessionEstablishmentReject.hpp"
+#include "PduSessionEstablishmentRequest.hpp"
 #include "ProblemDetails.h"
 #include "RefToBinaryData.h"
 #include "SmContextCreateError.h"
@@ -65,10 +69,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
-#include "Nas5gsmMessage.hpp"
-#include "PduSessionEstablishmentReject.hpp"
-#include "PduSessionEstablishmentRequest.hpp"
-#include "PduSessionEstablishmentAccept.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -829,22 +829,11 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Failed to decode, send reply to AMF with PDU Session Establishment Reject
   if (decoded_size == KEncodeDecodeError) {
     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
-
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      // Trigger the reply to AMF
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
   // Get necessary info from NAS
@@ -863,20 +852,9 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   if ((pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4) and
       (pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4V6)) {
     // PDU Session Establishment Reject
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message, cause_n1)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
-    return;
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message, cause_n1, http_status_code::FORBIDDEN,
+        PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, smreq->pid);
   }
 
   // Get SUPI, SNSSAI
@@ -902,20 +880,11 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         "Invalid PTI value (PTI = %d)", pti.procedure_transaction_id);
     // PDU Session Establishment Reject including cause "#81 Invalid PTI value"
     // (section 7.3.1 @3GPP TS 24.501)
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_81_INVALID_PTI_VALUE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_81_INVALID_PTI_VALUE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
 
@@ -943,21 +912,12 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     //(24.501 (section 7.4)) implementation dependent->do similar to UE:
     // response with a 5GSM STATUS message including cause "#98 message type not
     // compatible with protocol state."
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::
-                CAUSE_98_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::
+            CAUSE_98_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
 
@@ -994,19 +954,11 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         "DNN %s, ignore message!",
         dnn.c_str());
     // PDU Session Establishment Reject
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_27_MISSING_OR_UNKNOWN_DNN)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_DNN_DENIED,
-          n1_sm_message_hex, smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_27_MISSING_OR_UNKNOWN_DNN,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_DNN_DENIED,
+        smreq->pid);
     return;
   }
 
@@ -1068,22 +1020,12 @@ void smf_app::handle_pdu_session_create_sm_context_request(
             "retrieve the Session Management Subscription from UDM, ignore the "
             "message!");
         // PDU Session Establishment Reject
-        if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-                smreq->req, n1_sm_message,
-                cause_value_5gsm_e::
-                    CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED)) {
-          conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-          // Trigger reply to AMF
-          trigger_create_context_error_response(
-              http_status_code::FORBIDDEN,
-              PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED,
-              n1_sm_message_hex, smreq->pid);
-
-        } else {
-          trigger_http_response(
-              http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-              N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-        }
+        reply_with_pdu_session_establishment_reject(
+            smreq->req, n1_sm_message,
+            cause_value_5gsm_e::
+                CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+            http_status_code::FORBIDDEN,
+            PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
         return;
       }
     } else {

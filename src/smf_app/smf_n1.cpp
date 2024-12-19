@@ -30,29 +30,32 @@
 #include "smf_n1.hpp"
 
 #include <arpa/inet.h>
-#include <stdexcept>
-#include "string.hpp"
 
-#include "smf.h"
-#include "smf_app.hpp"
+#include <stdexcept>
+
 #include "3gpp_conversions.hpp"
-#include "epc.h"
-#include "PduSessionEstablishmentRequest.hpp"
-#include "PduSessionEstablishmentReject.hpp"
-#include "PduSessionEstablishmentAccept.hpp"
+#include "AllowedSscMode.hpp"
 #include "PduSessionAuthenticationCommand.hpp"
 #include "PduSessionAuthenticationComplete.hpp"
 #include "PduSessionAuthenticationResult.hpp"
-#include "PduSessionModificationRequest.hpp"
-#include "PduSessionModificationReject.hpp"
+#include "PduSessionEstablishmentAccept.hpp"
+#include "PduSessionEstablishmentReject.hpp"
+#include "PduSessionEstablishmentRequest.hpp"
 #include "PduSessionModificationCommand.hpp"
-#include "PduSessionModificationComplete.hpp"
 #include "PduSessionModificationCommandReject.hpp"
-#include "PduSessionReleaseRequest.hpp"
-#include "PduSessionReleaseReject.hpp"
+#include "PduSessionModificationComplete.hpp"
+#include "PduSessionModificationReject.hpp"
+#include "PduSessionModificationRequest.hpp"
 #include "PduSessionReleaseCommand.hpp"
 #include "PduSessionReleaseComplete.hpp"
+#include "PduSessionReleaseReject.hpp"
+#include "PduSessionReleaseRequest.hpp"
 #include "_5gsmStatus.hpp"
+#include "epc.h"
+#include "output_wrapper.hpp"
+#include "smf.h"
+#include "smf_app.hpp"
+#include "string.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -321,86 +324,57 @@ bool smf_n1::create_n1_pdu_session_establishment_reject(
     cause_value_5gsm_e sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Establishment Reject");
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
-  bool result                 = false;
+  bool result = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = msg.get_pdu_session_id();
-
-  Logger::smf_n1().info("PDU_SESSION_ESTABLISHMENT_REJECT, encode starting...");
-
-  // Fill the content of PDU Session Establishment Reject message
-  sm_msg->header.pdu_session_identity = msg.get_pdu_session_id();
-  sm_msg->header.procedure_transaction_identity =
-      msg.get_pti().procedure_transaction_id;
-  sm_msg->header.message_type = PDU_SESSION_ESTABLISHMENT_REJECT;
+  Logger::smf_n1().info("PDU Session Establishment Reject, encode starting...");
+  auto pdu_session_estb_reject =
+      std::make_unique<PduSessionEstablishmentReject>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_estb_reject->SetHeader(
+      msg.get_pdu_session_id(), msg.get_pti().procedure_transaction_id);
   Logger::smf_n1().debug(
-      "NAS header, Extended Protocol Discriminator 0x%x, Security Header "
-      "Type: 0x%x",
-      nas_msg.header.extended_protocol_discriminator,
-      nas_msg.header.security_header_type);
-  Logger::smf_n1().debug(
-      "SM header, PDU Session Identity 0x%x, Procedure Transaction Identity "
-      "0x%x, Message Type 0x%x",
-      sm_msg->header.pdu_session_identity,
-      sm_msg->header.procedure_transaction_identity,
-      sm_msg->header.message_type);
+      "PDU Session Establishment Reject, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      msg.get_pdu_session_id(), msg.get_pti().procedure_transaction_id);
 
-  sm_msg->pdu_session_establishment_reject._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-  // Presence, should be updated according to the following IEs
-  sm_msg->pdu_session_establishment_reject.presence =
-      PDU_SESSION_ESTABLISHMENT_REJECT_ALLOWED_SSC_MODE_PRESENCE;
-  /*
-   //TODO: GPRSTimer3
-   sm_msg->pdu_session_establishment_reject.gprstimer3.unit =
-   GPRSTIMER3_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1_HOUR;
-   sm_msg->pdu_session_establishment_reject.gprstimer3.timeValue = 0;
-   */
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_estb_reject->Set5gsmCause(cause);
+  Logger::smf_n1().debug(
+      "PDU Session Establishment Reject,, 5GSM Cause: 0x%x",
+      static_cast<uint8_t>(sm_cause));
+  // TODO: Back-off timer value
   // AllowedSSCMode
-  sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc1_allowed =
-      SSC_MODE1_ALLOWED;
-  sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc2_allowed =
-      SSC_MODE2_NOT_ALLOWED;
-  sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc3_allowed =
-      SSC_MODE3_NOT_ALLOWED;
+  AllowedSscMode allow_ssc_mode = {};
+  allow_ssc_mode.SetValue(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
+  pdu_session_estb_reject->SetAllowedSscMode(allow_ssc_mode);
 
+  // TODO:EAP message
+  // TODO: 5GSM congestion re-attempt indicator
+  // TODO: Extended protocol configuration options
+  // TODO: Re-attempt indicator
+
+  uint32_t msg_len = pdu_session_estb_reject->GetLength();
   Logger::smf_n1().debug(
-      "SM MSG, 5GSM Cause: 0x%x",
-      sm_msg->pdu_session_establishment_reject._5gsmcause);
-  Logger::smf_n1().debug(
-      "SM MSG, Allowed SSC Mode, SSC1 allowed 0x%x, SSC2 allowed 0x%x, SSC3 "
-      "allowed 0x%x",
-      sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc1_allowed,
-      sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc2_allowed,
-      sm_msg->pdu_session_establishment_reject.allowedsscmode.is_ssc3_allowed);
+      "Size of PDU Session Establishment Reject message: %ld (octets)",
+      msg_len);
 
-  // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
-
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size        = pdu_session_estb_reject->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error(
+        "Encode PDU Session Establishment Reject message error");
+    return false;
   }
 
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    result      = true;
-  } else {
-    result = false;
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
   }
 
   return result;
