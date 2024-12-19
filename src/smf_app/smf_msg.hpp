@@ -211,13 +211,13 @@ class pdu_session_sm_context_request : public pdu_session_msg {
     m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
   }
 
-  extended_protocol_discriminator_t get_epd() const;
-  void set_epd(const extended_protocol_discriminator_t& epd);
+  uint8_t get_epd() const;
+  void set_epd(const uint8_t& epd);
   uint8_t get_message_type() const;
   void set_message_type(const uint8_t& message_type);
 
  private:
-  extended_protocol_discriminator_t m_epd;
+  uint8_t m_epd;
   uint8_t m_message_type;
 };
 

@@ -35,10 +35,13 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
+#include "Nas5gsmMessage.hpp"
 
 extern "C" {
 #include "nas_message.h"
 }
+
+using namespace oai::nas;
 
 namespace smf {
 
@@ -181,6 +184,9 @@ class smf_n1 {
    */
   int decode_n1_sm_container(
       nas_message_t& nas_msg, const std::string& n1_sm_msg);
+
+  int decode_n1_sm_container(
+      std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg);
 };
 
 }  // namespace smf

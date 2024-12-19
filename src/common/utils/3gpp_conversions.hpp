@@ -41,10 +41,12 @@
 #include "itti_msg_n11.hpp"
 #include "nas_lib.h"
 #include "smf_msg.hpp"
+#include "Nas5gsmMessage.hpp"
 
 extern "C" {
 #include "nas_message.h"
 }
+using namespace oai::nas;
 
 namespace xgpp_conv {
 
@@ -142,13 +144,14 @@ void smf_event_exposure_notification_from_openapi(
 
 /*
  * Convert NAS to SM Context Request msg
- * @param [const nas_message_t&] nm: NAS msg
+ * @param [const std::shared_ptr<Nas5gsmMessage>&] nas_msg: 5GSM NAS message
  * @param [smf::pdu_session_create_sm_context_request&] pcr: PDU
  * SessionCreateSMContextRequest msg
  * @return void
  */
 void sm_context_request_from_nas(
-    const nas_message_t& nm, smf::pdu_session_create_sm_context_request& pcr);
+    const std::shared_ptr<Nas5gsmMessage>& nas_msg,
+    smf::pdu_session_create_sm_context_request& pcr);
 
 void create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,

@@ -65,6 +65,10 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "Nas5gsmMessage.hpp"
+#include "PduSessionEstablishmentReject.hpp"
+#include "PduSessionEstablishmentRequest.hpp"
+#include "PduSessionEstablishmentAccept.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -812,18 +816,18 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       "version %d)",
       smreq->http_version);
   // Handle PDU Session Create SM Context Request (Section 4.3.2@3GPP TS 23.502)
-  std::string n1_sm_message, n1_sm_message_hex;
-  nas_message_t decoded_nas_msg       = {};
+  std::string n1_sm_message           = {};
+  std::string n1_sm_message_hex       = {};
   cause_value_5gsm_e cause_n1         = {cause_value_5gsm_e::CAUSE_0_UNKNOWN};
   pdu_session_type_t pdu_session_type = {};
   pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
+  auto nas_message                    = std::make_shared<Nas5gsmMessage>();
 
   // Step 1. Decode NAS and get the necessary information
-  int decoder_rc = smf_n1::get_instance().decode_n1_sm_container(
-      decoded_nas_msg, smreq->req.get_n1_sm_message());
-
+  int decoded_size = smf_n1::get_instance().decode_n1_sm_container(
+      nas_message, smreq->req.get_n1_sm_message());
   // Failed to decode, send reply to AMF with PDU Session Establishment Reject
-  if (decoder_rc != RETURNok) {
+  if (decoded_size == KEncodeDecodeError) {
     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
 
     if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
@@ -843,9 +847,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     }
     return;
   }
-
   // Get necessary info from NAS
-  xgpp_conv::sm_context_request_from_nas(decoded_nas_msg, smreq->req);
+  xgpp_conv::sm_context_request_from_nas(nas_message, smreq->req);
 
   pdu_session_type.pdu_session_type = smreq->req.get_pdu_session_type();
   // Support IPv4/IPv4v6 for now
@@ -891,7 +894,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Check PTI
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          decoded_nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
   if ((pti.procedure_transaction_id ==
        PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED) ||
       (pti.procedure_transaction_id > PROCEDURE_TRANSACTION_IDENTITY_LAST)) {
@@ -918,7 +921,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Check PDU Session ID
   pdu_session_id_t pdu_session_id =
-      decoded_nas_msg.plain.sm.header.pdu_session_identity;
+      nas_message->GetHeader().GetPduSessionIdentity();
+
   if ((pdu_session_id == PDU_SESSION_IDENTITY_UNASSIGNED) ||
       (pdu_session_id > PDU_SESSION_IDENTITY_LAST)) {
     Logger::smf_app().warn("Invalid PDU Session ID value (%d)", pdu_session_id);
@@ -931,7 +935,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   }
 
   // Check Message Type
-  uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
+  uint8_t message_type = nas_message->GetHeader().GetMessageType();
   if (message_type != PDU_SESSION_ESTABLISHMENT_REQUEST) {
     Logger::smf_app().warn(
         "Invalid Message Type (Message Type = %d)", message_type);
@@ -968,7 +972,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     return;
   }
 
-  // If no DNN information from UE, set to default value
+  // If no DNN information from UE, set to the default value
   std::string dnn = smreq->req.get_dnn();
   if (dnn.length() == 0) {
     dnn = smf_cfg->get_default_dnn();
@@ -2423,4 +2427,25 @@ void smf_app::trigger_upf_status_notification_subscribe() {
 //------------------------------------------------------------------------------
 std::string smf_app::get_smf_instance_id() const {
   return smf_instance_id;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::reply_with_pdu_session_establishment_reject(
+    pdu_session_msg& msg, std::string& n1_sm_message,
+    cause_value_5gsm_e sm_cause, const uint32_t& http_code,
+    const uint8_t& cause, uint32_t& promise_id) {
+  if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
+          msg, n1_sm_message, sm_cause)) {
+    std::string n1_sm_message_hex = {};
+    conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
+    // Trigger the reply to AMF
+    trigger_create_context_error_response(
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        n1_sm_message_hex, promise_id);
+  } else {
+    // Trigger the reply to AMF
+    trigger_http_response(
+        http_status_code::INTERNAL_SERVER_ERROR, promise_id,
+        N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+  }
 }

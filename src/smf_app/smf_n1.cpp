@@ -37,6 +37,22 @@
 #include "smf_app.hpp"
 #include "3gpp_conversions.hpp"
 #include "epc.h"
+#include "PduSessionEstablishmentRequest.hpp"
+#include "PduSessionEstablishmentReject.hpp"
+#include "PduSessionEstablishmentAccept.hpp"
+#include "PduSessionAuthenticationCommand.hpp"
+#include "PduSessionAuthenticationComplete.hpp"
+#include "PduSessionAuthenticationResult.hpp"
+#include "PduSessionModificationRequest.hpp"
+#include "PduSessionModificationReject.hpp"
+#include "PduSessionModificationCommand.hpp"
+#include "PduSessionModificationComplete.hpp"
+#include "PduSessionModificationCommandReject.hpp"
+#include "PduSessionReleaseRequest.hpp"
+#include "PduSessionReleaseReject.hpp"
+#include "PduSessionReleaseCommand.hpp"
+#include "PduSessionReleaseComplete.hpp"
+#include "_5gsmStatus.hpp"
 
 extern "C" {
 #include "dynamic_memory_check.h"
@@ -45,6 +61,7 @@ extern "C" {
 
 using namespace smf;
 using namespace oai::utils;
+using namespace oai::nas;
 extern smf_app* smf_app_inst;
 
 //-----------------------------------------------------------------------------------------------------
@@ -909,4 +926,94 @@ int smf_n1::decode_n1_sm_container(
   free_wrapper((void**) &data);
 
   return decoder_rc;
+}
+
+//------------------------------------------------------------------------------
+int smf_n1::decode_n1_sm_container(
+    std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg) {
+  Logger::smf_n1().info("Decode NAS message from N1 SM Container.");
+
+  // step 1. Decode NAS  message
+  unsigned int data_len = n1_sm_msg.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  if (!data) {
+    Logger::smf_n1().debug("Error when allocating memory.");
+    return KEncodeDecodeError;
+  }
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n1_sm_msg.c_str(), data_len);
+
+  if (Logger::should_log(spdlog::level::debug)) {
+    printf("Content: ");
+    for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
+    printf("\n");
+  }
+
+  if (nas_msg->Decode(data, data_len) == KEncodeDecodeError) {
+    Logger::smf_n1().debug("Error when decode NAS header.");
+    return KEncodeDecodeError;
+  }
+
+  switch (nas_msg->GetHeader().GetMessageType()) {
+    case kPduSessionEstablishmentRequest: {
+      nas_msg = std::make_shared<PduSessionEstablishmentRequest>();
+    } break;
+
+    case kPduSessionEstablishmentAccept: {
+      nas_msg = std::make_shared<PduSessionEstablishmentAccept>();
+    } break;
+    case kPduSessionEstablishmentReject: {
+      nas_msg = std::make_shared<PduSessionEstablishmentReject>();
+    } break;
+    case kPduSessionAuthenticationCommand: {
+      nas_msg = std::make_shared<PduSessionAuthenticationCommand>();
+    } break;
+    case kPduSessionAuthenticationComplete: {
+      nas_msg = std::make_shared<PduSessionAuthenticationComplete>();
+    } break;
+    case kPduSessionAuthenticationResult: {
+      nas_msg = std::make_shared<PduSessionAuthenticationResult>();
+    } break;
+    case kPduSessionModificationRequest: {
+      nas_msg = std::make_shared<PduSessionModificationRequest>();
+    } break;
+    case kPduSessionModificationReject: {
+      nas_msg = std::make_shared<PduSessionModificationReject>();
+    } break;
+    case kPduSessionModificationCommand: {
+      nas_msg = std::make_shared<PduSessionModificationCommand>();
+    } break;
+    case kPduSessionModificationComplete: {
+      nas_msg = std::make_shared<PduSessionModificationComplete>();
+    } break;
+    case kPduSessionModificationCommandReject: {
+      nas_msg = std::make_shared<PduSessionModificationCommandReject>();
+    } break;
+    case kPduSessionReleaseRequest: {
+      nas_msg = std::make_shared<PduSessionReleaseRequest>();
+    } break;
+    case kPduSessionReleaseReject: {
+      nas_msg = std::make_shared<PduSessionReleaseReject>();
+    } break;
+    case kPduSessionReleaseCommand: {
+      nas_msg = std::make_shared<PduSessionReleaseCommand>();
+    } break;
+    case kPduSessionReleaseComplete: {
+      nas_msg = std::make_shared<PduSessionReleaseComplete>();
+    } break;
+    case k5gsmStatus: {
+      nas_msg = std::make_shared<_5gsmStatus>();
+    } break;
+    default: {
+      return KEncodeDecodeError;
+    }
+  }
+
+  int decoded_size = nas_msg->Decode(data, data_len);
+  if (decoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().debug("Error when decode NAS message.");
+    return KEncodeDecodeError;
+  }
+
+  return decoded_size;
 }

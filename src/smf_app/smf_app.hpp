@@ -896,6 +896,10 @@ class smf_app {
       pdu_session_update_sm_context_response& sm_context_response,
       uint32_t& pid);
 
+  void reply_with_pdu_session_establishment_reject(
+      pdu_session_msg& msg, std::string& n1_sm_message,
+      cause_value_5gsm_e sm_cause, const uint32_t& http_code,
+      const uint8_t& cause, uint32_t& promise_id);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID

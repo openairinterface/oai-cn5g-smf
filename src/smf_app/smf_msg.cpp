@@ -301,14 +301,12 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
  * class: PDU Session SM Context Request
  */
 //-----------------------------------------------------------------------------
-extended_protocol_discriminator_t pdu_session_sm_context_request::get_epd()
-    const {
+uint8_t pdu_session_sm_context_request::get_epd() const {
   return m_epd;
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_sm_context_request::set_epd(
-    const extended_protocol_discriminator_t& epd) {
+void pdu_session_sm_context_request::set_epd(const uint8_t& epd) {
   m_epd = epd;
 }
 
