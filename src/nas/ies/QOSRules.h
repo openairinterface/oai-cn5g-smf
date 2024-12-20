@@ -87,7 +87,7 @@ typedef struct {
   uint8_t packetfilterdirection : 2;
   uint8_t packetfilteridentifier : 4;
   uint8_t lenghtofpacketfiltercontents;
-  PacketFilterContents packetfiltercontents;
+  PacketFilterContents* packetfiltercontents;
 
 } Create_ModifyAndAdd_ModifyAndReplace;
 

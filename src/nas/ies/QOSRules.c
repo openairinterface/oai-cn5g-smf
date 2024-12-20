@@ -64,8 +64,8 @@ int encode_qos_rules(
     encoded++;
     len_pos_qos_rule = encoded;
 
-    bitstream = (uint8_t) (qosrules.qosrulesie[i].ruleoperationcode << 5);
-    bitstream |= (uint8_t) (qosrules.qosrulesie[i].dqrbit << 4);
+    bitstream = (uint8_t)(qosrules.qosrulesie[i].ruleoperationcode << 5);
+    bitstream |= (uint8_t)(qosrules.qosrulesie[i].dqrbit << 4);
     bitstream |= (uint8_t) qosrules.qosrulesie[i].numberofpacketfilters;
     ENCODE_U8(buffer + encoded, bitstream, encoded);
 
@@ -109,29 +109,45 @@ int encode_qos_rules(
         uint8_t* len_packetfiltercontents = buffer + encoded;
         encoded++;
 
-        ENCODE_U8(
-            buffer + encoded,
+        *len_packetfiltercontents =
             qosrules.qosrulesie[i]
                 .packetfilterlist.create_modifyandadd_modifyandreplace[j]
-                .packetfiltercontents.component_type,
-            encoded);
+                .lenghtofpacketfiltercontents;
 
-        if (qosrules.qosrulesie[i]
-                .packetfilterlist.create_modifyandadd_modifyandreplace[j]
-                .packetfiltercontents.component_type !=
-            QOS_RULE_MATCHALL_TYPE) {
-          if ((encode_result = encode_bstring(
-                   qosrules.qosrulesie[i]
-                       .packetfilterlist.create_modifyandadd_modifyandreplace[j]
-                       .packetfiltercontents.component_value,
-                   buffer + encoded, len - encoded)) < 0)
-            return encode_result;
-          else
-            encoded += encode_result;
+        int packetfilterconten_encoded = 0;
+        int packetfiltercontent_index  = 0;
+
+        while (packetfilterconten_encoded < *len_packetfiltercontents) {
+          ENCODE_U8(
+              buffer + encoded,
+              qosrules.qosrulesie[i]
+                  .packetfilterlist.create_modifyandadd_modifyandreplace[j]
+                  .packetfiltercontents[packetfiltercontent_index]
+                  .component_type,
+              encoded);
+          packetfilterconten_encoded++;
+
+          if (qosrules.qosrulesie[i]
+                  .packetfilterlist.create_modifyandadd_modifyandreplace[j]
+                  .packetfiltercontents[packetfiltercontent_index]
+                  .component_type != QOS_RULE_MATCHALL_TYPE) {
+            if ((encode_result = encode_bstring(
+                     qosrules.qosrulesie[i]
+                         .packetfilterlist
+                         .create_modifyandadd_modifyandreplace[j]
+                         .packetfiltercontents[packetfiltercontent_index]
+                         .component_value,
+                     buffer + encoded, len - encoded)) < 0) {
+              return encode_result;
+            } else {
+              packetfilterconten_encoded += encode_result;
+              encoded += encode_result;
+            }
+          }
+          packetfiltercontent_index++;
         }
-
-        *len_packetfiltercontents = encode_result + 1;
       }
+
       ENCODE_U8(
           buffer + encoded, qosrules.qosrulesie[i].qosruleprecedence, encoded);
       ENCODE_U8(
@@ -217,22 +233,48 @@ int decode_qos_rules(
         uint8_t lenghtofpacketfiltercontents = *(buffer + decoded) - 1;
         decoded++;
 
-        DECODE_U8(buffer + decoded, bitstream, decoded);
-        qosrulesie->packetfilterlist.create_modifyandadd_modifyandreplace[j]
-            .packetfiltercontents.component_type = bitstream;
-
-        if (qosrulesie->packetfilterlist.create_modifyandadd_modifyandreplace[j]
-                .packetfiltercontents.component_type !=
-            QOS_RULE_MATCHALL_TYPE) {
-          if ((decode_result = decode_bstring(
-                   &qosrulesie->packetfilterlist
+        int packetfilterconten_decoded = 0;
+        int packetfiltercontent_index  = 0;
+        while (packetfilterconten_decoded < lenghtofpacketfiltercontents) {
+          DECODE_U8(buffer + decoded, bitstream, decoded);
+          qosrulesie->packetfilterlist.create_modifyandadd_modifyandreplace[j]
+              .packetfiltercontents[packetfiltercontent_index]
+              .component_type = bitstream;
+          packetfilterconten_decoded++;
+          if (qosrulesie->packetfilterlist
+                  .create_modifyandadd_modifyandreplace[j]
+                  .packetfiltercontents[packetfiltercontent_index]
+                  .component_type != QOS_RULE_MATCHALL_TYPE) {
+            int component_len = 0;
+            switch (qosrulesie->packetfilterlist
                         .create_modifyandadd_modifyandreplace[j]
-                        .packetfiltercontents.component_value,
-                   lenghtofpacketfiltercontents, buffer + decoded,
-                   len - decoded)) < 0)
-            return decode_result;
-          else
-            decoded += decode_result;
+                        .packetfiltercontents[packetfiltercontent_index]
+                        .component_type) {
+              case QOS_RULE_REMOTE_PORT_RANGE_TYPE:
+                component_len = 4;
+                break;
+              case QOS_RULE_SINGLE_REMOTE_PORT_TYPE:
+                component_len = 2;
+                break;
+              case QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE:
+                component_len = 8;
+                break;
+              case QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE:
+                component_len = 1;
+            }
+            if ((decode_result = decode_bstring(
+                     &qosrulesie->packetfilterlist
+                          .create_modifyandadd_modifyandreplace[j]
+                          .packetfiltercontents[packetfiltercontent_index]
+                          .component_value,
+                     component_len, buffer + decoded, len - decoded)) < 0) {
+              return decode_result;
+            } else {
+              packetfilterconten_decoded += decode_result;
+              decoded += decode_result;
+            }
+          }
+          packetfiltercontent_index++;
         }
       }
       DECODE_U8(buffer + decoded, bitstream, decoded);
@@ -308,25 +350,48 @@ int decode_qos_rules(
         uint8_t lenghtofpacketfiltercontents = *(buffer + decoded) - 1;
         decoded++;
 
-        DECODE_U8(buffer + decoded, bitstream, decoded);
-        qosrules->qosrulesie[i]
-            .packetfilterlist.create_modifyandadd_modifyandreplace[j]
-            .packetfiltercontents.component_type = bitstream;
-
-        if (qosrules->qosrulesie[i]
-                .packetfilterlist.create_modifyandadd_modifyandreplace[j]
-                .packetfiltercontents.component_type !=
-            QOS_RULE_MATCHALL_TYPE) {
-          if ((decode_result = decode_bstring(
-                   &qosrules->qosrulesie[i]
-                        .packetfilterlist
+        int packetfilterconten_decoded = 0;
+        int packetfiltercontent_index  = 0;
+        while (packetfilterconten_decoded < lenghtofpacketfiltercontents) {
+          DECODE_U8(buffer + decoded, bitstream, decoded);
+          qosrulesie->packetfilterlist.create_modifyandadd_modifyandreplace[j]
+              .packetfiltercontents[packetfiltercontent_index]
+              .component_type = bitstream;
+          packetfilterconten_decoded++;
+          if (qosrulesie->packetfilterlist
+                  .create_modifyandadd_modifyandreplace[j]
+                  .packetfiltercontents[packetfiltercontent_index]
+                  .component_type != QOS_RULE_MATCHALL_TYPE) {
+            int component_len = 0;
+            switch (qosrulesie->packetfilterlist
                         .create_modifyandadd_modifyandreplace[j]
-                        .packetfiltercontents.component_value,
-                   lenghtofpacketfiltercontents, buffer + decoded,
-                   len - decoded)) < 0)
-            return decode_result;
-          else
-            decoded += decode_result;
+                        .packetfiltercontents[packetfiltercontent_index]
+                        .component_type) {
+              case QOS_RULE_REMOTE_PORT_RANGE_TYPE:
+                component_len = 4;
+                break;
+              case QOS_RULE_SINGLE_REMOTE_PORT_TYPE:
+                component_len = 2;
+                break;
+              case QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE:
+                component_len = 8;
+                break;
+              case QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE:
+                component_len = 1;
+            }
+            if ((decode_result = decode_bstring(
+                     &qosrulesie->packetfilterlist
+                          .create_modifyandadd_modifyandreplace[j]
+                          .packetfiltercontents[packetfiltercontent_index]
+                          .component_value,
+                     component_len, buffer + decoded, len - decoded)) < 0) {
+              return decode_result;
+            } else {
+              packetfilterconten_decoded += decode_result;
+              decoded += decode_result;
+            }
+          }
+          packetfiltercontent_index++;
         }
       }
       DECODE_U8(buffer + decoded, bitstream, decoded);

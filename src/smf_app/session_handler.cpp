@@ -160,86 +160,108 @@ void session_handler::set_nas_filter_from_edge(
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
         .packetfilteridentifier = 1;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
+        .packetfiltercontents =
+        (PacketFilterContents*) calloc(1, sizeof(PacketFilterContents));
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfiltercontents[0]
+        .component_type = QOS_RULE_MATCHALL_TYPE;
   } else if (!parsed_filter.default_filter) {
     // TODO we should take into account the max number of supported packet
     // filters from UE
+    qos_rule.numberofpacketfilters =
+        1;  // Hardcoded at the moment. Has to be dynamic for multiple
+            // FlowDescriptions
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
         (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-            parsed_filter.filter_components,
-            sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-    qos_rule.numberofpacketfilters = parsed_filter.filter_components;
-    int filter_id                  = 1;
+            1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .packetfiltercontents = (PacketFilterContents*) calloc(
+        parsed_filter.filter_components, sizeof(PacketFilterContents));
+
+    int filter_id    = 1;
+    int component_id = 0;
+    qos_rule.packetfilterlist
+        .create_modifyandadd_modifyandreplace[filter_id - 1]
+        .packetfilteridentifier = filter_id;
+    qos_rule.packetfilterlist
+        .create_modifyandadd_modifyandreplace[filter_id - 1]
+        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+    qos_rule.packetfilterlist
+        .create_modifyandadd_modifyandreplace[filter_id - 1]
+        .lenghtofpacketfiltercontents = 0;
     if (parsed_filter.use_protocol_identifier) {
       set_protocol_filter(
-          filter_id,
+          component_id,
           qos_rule.packetfilterlist
               .create_modifyandadd_modifyandreplace[filter_id - 1],
           parsed_filter.protocol_identifier);
-      filter_id++;
+      component_id++;
     }
     if (parsed_filter.src_ip_range.use_ip_range) {
       set_ip_filter(
-          filter_id,
+          component_id,
           qos_rule.packetfilterlist
               .create_modifyandadd_modifyandreplace[filter_id - 1],
           parsed_filter.src_ip_range);
-      filter_id++;
+      component_id++;
     }
     if (!parsed_filter.src_port_ranges.empty()) {
       for (const auto& port : parsed_filter.src_port_ranges) {
         set_port_filter(
-            filter_id,
+            component_id,
             qos_rule.packetfilterlist
                 .create_modifyandadd_modifyandreplace[filter_id - 1],
             port);
-        filter_id++;
+        component_id++;
       }
     }
   }
 }
 
 void session_handler::set_port_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const port_range& port_range) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  uint16_t port_low                 = htons(port_range.start);
-  uint16_t port_high                = htons(port_range.end);
+  uint16_t port_low  = htons(port_range.start);
+  uint16_t port_high = htons(port_range.end);
 
   if (port_range.is_range) {
     uint32_t int_range = 0;
     int_range          = ((uint32_t) port_high << 16) | port_low;
-    nas_filter.packetfiltercontents.component_type =
+    nas_filter.packetfiltercontents[component_id].component_type =
         QOS_RULE_REMOTE_PORT_RANGE_TYPE;
-    nas_filter.packetfiltercontents.component_value = blk2bstr(&int_range, 4);
+    nas_filter.packetfiltercontents[component_id].component_value =
+        blk2bstr(&int_range, 4);
+    nas_filter.lenghtofpacketfiltercontents += 5;
+
   } else {
-    nas_filter.packetfiltercontents.component_type =
+    nas_filter.packetfiltercontents[component_id].component_type =
         QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
-    nas_filter.packetfiltercontents.component_value = blk2bstr(&port_low, 2);
+    nas_filter.packetfiltercontents[component_id].component_value =
+        blk2bstr(&port_low, 2);
+    nas_filter.lenghtofpacketfiltercontents += 3;
   }
 }
 
 void session_handler::set_ip_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const ip_range& ip_range) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint64_t ip_snm =
       ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
-  nas_filter.packetfiltercontents.component_type =
+  nas_filter.packetfiltercontents[component_id].component_type =
       QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
-  nas_filter.packetfiltercontents.component_value = blk2bstr(&ip_snm, 8);
+  nas_filter.packetfiltercontents[component_id].component_value =
+      blk2bstr(&ip_snm, 8);
+  nas_filter.lenghtofpacketfiltercontents += 9;
 }
 
 void session_handler::set_protocol_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+    int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  nas_filter.packetfiltercontents.component_type =
+  nas_filter.packetfiltercontents[component_id].component_type =
       QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
-  nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
+  nas_filter.packetfiltercontents[component_id].component_value =
+      blk2bstr(&protocol_id, 1);
+  nas_filter.lenghtofpacketfiltercontents += 2;
 }
 
 // Comments about architecture
