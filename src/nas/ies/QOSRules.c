@@ -64,8 +64,8 @@ int encode_qos_rules(
     encoded++;
     len_pos_qos_rule = encoded;
 
-    bitstream = (uint8_t)(qosrules.qosrulesie[i].ruleoperationcode << 5);
-    bitstream |= (uint8_t)(qosrules.qosrulesie[i].dqrbit << 4);
+    bitstream = (uint8_t) (qosrules.qosrulesie[i].ruleoperationcode << 5);
+    bitstream |= (uint8_t) (qosrules.qosrulesie[i].dqrbit << 4);
     bitstream |= (uint8_t) qosrules.qosrulesie[i].numberofpacketfilters;
     ENCODE_U8(buffer + encoded, bitstream, encoded);
 
