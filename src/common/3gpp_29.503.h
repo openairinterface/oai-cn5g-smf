@@ -263,11 +263,11 @@ typedef struct dnn_configuration_s {
     }
 
     if (ipv4_frame_routes.size() > 0) {
-      json_data["ipv4FrameRouteList"] = nlohmann::json::array();
+      json_data["ipv4_frame_route_list"] = nlohmann::json::array();
     }
     for (const auto& a : ipv4_frame_routes) {
       nlohmann::json json_item = a;
-      json_data["ipv4FrameRouteList"].push_back(json_item);
+      json_data["ipv4_frame_route_list"].push_back(json_item);
     }
 
     return json_data;
