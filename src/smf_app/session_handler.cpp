@@ -163,6 +163,8 @@ void session_handler::set_nas_filter_from_edge(
         .packetfiltercontents =
         (PacketFilterContents*) calloc(1, sizeof(PacketFilterContents));
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
+        .lenghtofpacketfiltercontents = 1;
+    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
         .packetfiltercontents[0]
         .component_type = QOS_RULE_MATCHALL_TYPE;
   } else if (!parsed_filter.default_filter) {
