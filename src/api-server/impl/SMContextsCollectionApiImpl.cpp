@@ -148,13 +148,13 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
 
     if (n1_sm_msg_is_set) {  // add N1 container if available
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(http::CURL_MIME_BOUNDARY)));
+              std::string(http::MIME_BOUNDARY)));
     } else if (!json_data.empty()) {  // if not, include json data if available
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));

@@ -241,10 +241,10 @@ class session_handler {
 
   void set_port_filter(
       int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::port_range& port_range);
+      const oai::utils::sdf_conversions::port_range& port_range, bool remote);
   void set_ip_filter(
       int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::ip_range& port_range);
+      const oai::utils::sdf_conversions::ip_range& port_range, bool remote);
   void set_protocol_filter(
       int component_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
       uint8_t protocol_id);

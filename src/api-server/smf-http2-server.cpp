@@ -485,32 +485,32 @@ void smf_http2_server::create_sm_contexts_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
@@ -627,32 +627,32 @@ void smf_http2_server::update_sm_context_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
