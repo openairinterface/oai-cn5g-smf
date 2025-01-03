@@ -132,13 +132,6 @@ void session_handler::set_nas_filter_from_edge(
     return;
   }
 
-  //  if (!is_uplink_flow_direction(flow)) {
-  //    Logger::smf_app().debug(
-  //        "Flow %s is not signaled to UE as it is not uplink",
-  //        flow.getFlowDescription());
-  //    return;
-  //  }
-
   if (!flow.isPacketFilterUsage()) {
     Logger::smf_app().debug(
         "Flow %s is not signaled to UE as packetFilterUsage is disabled",
