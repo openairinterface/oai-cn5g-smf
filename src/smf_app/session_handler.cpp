@@ -151,7 +151,7 @@ void session_handler::set_nas_filter_from_edge(
         (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
             1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilterdirection = NAS_PACKET_FILTER_BIDIRECTIONAL;
+        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
         .packetfilteridentifier = 1;
     qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
