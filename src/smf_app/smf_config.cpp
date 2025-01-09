@@ -169,6 +169,7 @@ bool smf_config::is_dotted_dnn_handled(
 
 //------------------------------------------------------------------------------
 std::string smf_config::get_default_dnn() {
+  // TODO: Get default DNN from UDM, otherwise from the configuration file
   for (const auto& it : dnns) {
     Logger::smf_app().debug("Default DNN: %s", it.second.dnn.c_str());
     return it.second.dnn;
@@ -176,6 +177,7 @@ std::string smf_config::get_default_dnn() {
   return "default";  // default DNN
 }
 
+//------------------------------------------------------------------------------
 void smf_config::to_smf_config() {
   log_level    = spdlog::level::from_str(config::log_level());
   auto smf_cfg = smf();

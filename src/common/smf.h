@@ -169,8 +169,6 @@ typedef struct qos_profile_s {
 #define NAMF_COMMUNICATION_BASE "/namf-comm/"
 #define NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL                           \
   "/ue-contexts/{}/n1-n2-messages"  // context id
-#define NUDM_SDM_BASE "/nudm-sdm/"
-#define NUDM_SDM_GET_SM_DATA_URL "/{}/sm-data"  // ue Id
 #define N1_SM_CONTENT_ID "n1SmMsg"
 #define N1N2_MESSAGE_CLASS "SM"
 #define N2_SM_CONTENT_ID "n2msg"
