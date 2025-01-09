@@ -19,14 +19,9 @@
  *      contact@openairinterface.org
  */
 
-/*! \file fqdn.hpp
- \brief
- \author
- \company Eurecom
- \email:
- */
 #ifndef FILE_FQDN_HPP_SEEN
 #define FILE_FQDN_HPP_SEEN
+
 #include <string>
 #include "3gpp_29.244.h"
 class fqdn {

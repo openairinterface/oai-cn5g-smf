@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_http2-server.h
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_HTTP2_SERVER_SEEN
 #define FILE_SMF_HTTP2_SERVER_SEEN
 

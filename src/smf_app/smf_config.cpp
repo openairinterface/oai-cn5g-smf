@@ -19,15 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN, Stefan Spettel
- \company Eurecom, phine.tech
- \date 2023
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr,
- stefan.spettel@phine.tech
- */
-
 #include "smf_config.hpp"
 
 #include <iostream>

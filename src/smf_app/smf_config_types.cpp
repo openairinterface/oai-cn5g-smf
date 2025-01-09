@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config_types.cpp
- * \brief
- \author Stefan Spettel
- \company phine.tech
- \date 2023
- \email: stefan.spettel@phine.tech
- */
-
 #include "smf_config_types.hpp"
 #include "smf_config.hpp"
 

@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_subscription.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_subscription.hpp"
 #include "itti.hpp"
 #include "smf_app.hpp"

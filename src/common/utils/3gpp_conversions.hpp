@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file 3gpp_conversions.hpp
- \brief
- \author Lionel Gauthier
- \company Eurecom
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef FILE_3GPP_CONVERSIONS_HPP_SEEN
 #define FILE_3GPP_CONVERSIONS_HPP_SEEN
 

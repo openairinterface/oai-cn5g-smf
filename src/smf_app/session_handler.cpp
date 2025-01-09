@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file session_handler.cpp
- \brief
- \author  Lukas ROTHENEDER, Stefan SPETTEL
- \company phine.tech
- \date 2024
- \email:  lukas.rotheneder@phine.tech, stefan.spettel@phine.tech
- */
-
 #include "session_handler.hpp"
 #include "FlowDirection.h"
 #include "conversions.hpp"

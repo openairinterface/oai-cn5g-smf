@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n2.cpp
- \brief
- \author  Tien-Thinh NGUYEN, Keliang DU
- \company Eurecom
- \date 2019
- \email:  tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_n2.hpp"
 
 #include <arpa/inet.h>

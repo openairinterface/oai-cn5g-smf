@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n7.cpp
- \author  Stefan Spettel
- \company Openairinterface Software Alliance
- \date 2022
- \email: stefan.spettel@eurecom.fr
- */
-
 #include "smf_n7.hpp"
 #include "smf_config.hpp"
 #include "fqdn.hpp"

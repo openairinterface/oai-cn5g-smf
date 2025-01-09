@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_context.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_context.hpp"
 
 #include <algorithm>
@@ -1313,6 +1305,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     supi_str             = smf_get_supi_with_prefix(
         sm_context_resp_pending->res.get_supi_prefix(),
         smf_supi_to_string(supi));
+    // TODO: use sbi_helper
     std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                   ->get_sbi()
                                   .get_api_version();

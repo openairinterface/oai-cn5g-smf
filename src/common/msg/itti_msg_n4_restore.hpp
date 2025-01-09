@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  itti_msg_n4_restore.hpp
- *
- *  Created on: March 27, 2019
- *  Author: lionel.gauthier@eurecom.fr
- */
-
 #ifndef ITTI_MSG_N4_RESTORE_HPP_INCLUDED_
 #define ITTI_MSG_N4_RESTORE_HPP_INCLUDED_
 

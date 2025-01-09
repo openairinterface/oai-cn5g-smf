@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_pco.cpp
- \brief
- \author Lionel Gauthier
- \company Eurecom
- \email: lionel.gauthier@eurecom.fr
- */
-
 #include "smf_pco.hpp"
 
 #include "3gpp_24.008.h"
