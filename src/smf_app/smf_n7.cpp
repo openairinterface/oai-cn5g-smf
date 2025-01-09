@@ -215,8 +215,16 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
       return sm_policy_status_code::INTERNAL_ERROR;
     } else {
       association.pcf_location = resp.headers["location"];
-      nlohmann::json j         = nlohmann::json::parse(resp.body);
-      from_json(j, association.decision);
+      nlohmann::json j         = {};
+      try {
+        j = nlohmann::json::parse(resp.body);
+        from_json(j, association.decision);
+      } catch (nlohmann::json::exception& e) {
+        Logger::smf_n7().warn(
+            "Could not parse the SM Policy Association response");
+        return sm_policy_status_code::INTERNAL_ERROR;
+      }
+
       Logger::smf_n7().info(
           "Successfully created SM Policy Association for SUPI %s",
           association.context.getSupi().c_str());
@@ -225,11 +233,17 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   }
 
   // failure case
-  ProblemDetails problem_details;
-  from_json(resp.body, problem_details);
+  ProblemDetails problem_details = {};
+  try {
+    nlohmann::json tmp = nlohmann::json::parse(resp.body);
+    from_json(tmp, problem_details);
+  } catch (nlohmann::json::exception& e) {
+    Logger::smf_n7().warn("Could not parse the SM Policy Association response");
+    return sm_policy_status_code::INTERNAL_ERROR;
+  }
 
-  std::string info;
-  sm_policy_status_code response;
+  std::string info               = {};
+  sm_policy_status_code response = {};
   switch (resp.status_code) {
     case http_status_code::FORBIDDEN:
       info     = "SM Policy Association Creation Forbidden";
@@ -304,8 +318,13 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
 
   switch (resp.status_code) {
     case http_status_code::OK:
-      json_resp = nlohmann::json::parse(resp.body);
-      from_json(json_resp, association.decision);
+      try {
+        json_resp = nlohmann::json::parse(resp.body);
+        from_json(json_resp, association.decision);
+      } catch (nlohmann::json::exception& e) {
+        Logger::smf_n7().warn("Could not parse the SM Policy Association");
+        return sm_policy_status_code::INTERNAL_ERROR;
+      }
       Logger::smf_n7().info("Successfully updated PCF association");
       return sm_policy_status_code::OK;
     case http_status_code::NOT_FOUND:
@@ -324,9 +343,16 @@ sm_policy_status_code smf_pcf_client::get_policy_association(
   std::string uri = association.pcf_location;
   std::string empty;
   request req;
-  req.uri          = uri;
-  response resp    = http_client_inst->send_http_request(method_e::GET, req);
-  nlohmann::json j = nlohmann::json::parse(resp.body);
+  req.uri       = uri;
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  nlohmann::json j = {};
+  try {
+    j = nlohmann::json::parse(resp.body);
+  } catch (nlohmann::json::exception& e) {
+    Logger::smf_n7().warn("Could not parse the response body");
+    return sm_policy_status_code::INTERNAL_ERROR;
+  }
 
   SmPolicyControl control;
   switch (resp.status_code) {

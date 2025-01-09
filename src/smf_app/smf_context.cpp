@@ -549,6 +549,7 @@ void smf_context::handle_itti_msg(
             get_supi_prefix(supi_prefix);
             std::string supi_str =
                 smf_get_supi_with_prefix(supi_prefix, smf_supi_to_string(supi));
+            // TODO: use sbi_helper
             std::string api_version =
                 smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                     ->get_sbi()
@@ -569,8 +570,8 @@ void smf_context::handle_itti_msg(
 
             // Create N2 SM Information: PDU Session Resource Setup Request
             // Transfer IE
-            // N2 SM Information
-            std::string n2_sm_info, n2_sm_info_hex;
+            std::string n2_sm_info     = {};
+            std::string n2_sm_info_hex = {};
             smf_n2::get_instance()
                 .create_n2_pdu_session_resource_setup_request_transfer(
                     session_report_msg, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
@@ -600,8 +601,7 @@ void smf_context::handle_itti_msg(
             std::shared_ptr<itti_n11_session_report_request> itti_n11_report =
                 std::make_shared<itti_n11_session_report_request>(
                     TASK_SMF_APP, TASK_SMF_SBI);
-            itti_n11_report->http_version = 1;  // use HTTPv1 for the moment
-            itti_n11_report->res          = session_report_msg;
+            itti_n11_report->res = session_report_msg;
             // send ITTI message to N11 interface to trigger N1N2MessageTransfer
             // towards AMFs
             Logger::smf_app().info(
@@ -974,7 +974,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   // Store HttpResponse and session-related information to be used when
   // receiving the response from UPF
-  std::shared_ptr<itti_n11_create_sm_context_response> sm_context_resp_pending =
+  auto sm_context_resp_pending =
       std::make_shared<itti_n11_create_sm_context_response>(
           TASK_SMF_APP, TASK_SMF_SBI, smreq->pid);
 
@@ -1005,16 +1005,14 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   // Step 5. Create SM Policy Association with PCF or local PCC rules
 
-  std::string smContextRef = std::to_string(smreq->scid);
-  sp->policy_ptr           = std::make_shared<n7::policy_association>();
-  bool use_pcf_policy      = false;
+  std::string sm_context_ref = std::to_string(smreq->scid);
+  sp->policy_ptr             = std::make_shared<n7::policy_association>();
+  bool use_pcf_policy        = false;
   sp->policy_ptr->set_context(
       smf_supi_to_string_without_nulls(smreq->req.get_supi()),
       smreq->req.get_supi_prefix(), smreq->req.get_dnn(), snssai, plmn,
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
 
-  // TODO what is the exact meaning of SCID? Is this unique per registration
-  // or unique per PDU session?
   sp->policy_ptr->id = smreq->scid;
 
   n7::sm_policy_status_code status =
@@ -1216,31 +1214,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   set_amf_status_uri(amf_status_uri);
 
   // Get and Store AMF Addr if available
-  std::vector<std::string> split_result;
-  std::string amf_addr_str =
-      smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)->get_sbi().get_url();
-
-  boost::split(split_result, amf_status_uri, boost::is_any_of("/"));
-  if (split_result.size() >= 3) {
-    std::string full_addr = split_result[2];
-    // Check if the AMF addr is valid
-    std::size_t found_port = full_addr.find(":");
-
-    std::string addr = {};  // Addr without port
-    if (found_port != std::string::npos) {
-      addr = full_addr.substr(0, found_port);
-    } else {
-      addr = full_addr;
-    }
-    struct in_addr amf_ipv4_addr;
-    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
-      Logger::smf_api_server().warn("Bad IPv4 for AMF");
-    } else {
-      amf_addr_str = "http://" + full_addr;
-      Logger::smf_api_server().debug("AMF IP Addr %s", amf_addr_str.c_str());
-    }
-  }
-
+  std::string amf_addr_str = get_amf_addr_from_amf_status_uri(amf_status_uri);
   set_amf_addr(amf_addr_str);
 
   // TODO: Step 8. SMF-initiated SM Policy Modification (with PCF)
@@ -1261,7 +1235,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // headers: Location: contains the URI of the newly created resource,
   // according to the structure:
   // {apiRoot}/nsmf-pdusession/{apiVersion}/sm-contexts/{smContextRef}
-  std::string smf_context_uri = smreq->req.get_api_root() + "/" + smContextRef;
+  std::string smf_context_uri =
+      smreq->req.get_api_root() + "/" + sm_context_ref;
   sm_context_response.set_smf_context_uri(smf_context_uri);
   sm_context_response.set_cause(static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));  // TODO
@@ -1269,7 +1244,6 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   nlohmann::json json_data          = {};
   json_data["smfServiceInstanceId"] = smf_app_inst->get_smf_instance_id();
   sm_context_response.set_json_data(json_data);
-
   sm_context_response.set_http_code(http_status_code::CREATED);
 
   smf_app_inst->trigger_session_create_sm_context_response(
@@ -1310,9 +1284,6 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       switch (sp->pdu_session_type.pdu_session_type) {
         case PDU_SESSION_TYPE_E_IPV4:
         case PDU_SESSION_TYPE_E_IPV4V6:
-          // paa_dynamic::get_instance().release_paa(
-          //    dnn, free_paa.ipv4_address);
-          // break;
         case PDU_SESSION_TYPE_E_IPV6:
           paa_dynamic::get_instance().release_paa(dnn, free_paa);
           break;
@@ -2658,8 +2629,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       std::shared_ptr<itti_n11_release_sm_context_request> smreq_release =
           std::make_shared<itti_n11_release_sm_context_request>(
               TASK_SMF_APP, TASK_SMF_APP, smreq->pid, smreq->scid);
-      smreq_release->req          = sm_context_rel_req_msg;
-      smreq_release->http_version = 1;
+      smreq_release->req = sm_context_rel_req_msg;
 
       std::shared_ptr<itti_n11_release_sm_context_response>
           sm_context_rel_resp_pending =
@@ -4217,6 +4187,36 @@ void smf_context::update_qos_info(
                                                 // rule identifier
     i++;
   }
+}
+
+//------------------------------------------------------------------------------
+std::string smf_context::get_amf_addr_from_amf_status_uri(
+    const std::string& status_uri) {
+  std::vector<std::string> split_result;
+  std::string amf_addr_str =
+      smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)->get_sbi().get_url();
+
+  boost::split(split_result, status_uri, boost::is_any_of("/"));
+  if (split_result.size() >= 3) {
+    std::string full_addr = split_result[2];
+    // Check if the AMF addr is valid
+    std::size_t found_port = full_addr.find(":");
+
+    std::string addr = {};  // Addr without port
+    if (found_port != std::string::npos) {
+      addr = full_addr.substr(0, found_port);
+    } else {
+      addr = full_addr;
+    }
+    struct in_addr amf_ipv4_addr;
+    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
+      Logger::smf_api_server().warn("Bad IPv4 for AMF");
+    } else {
+      amf_addr_str = "http://" + full_addr;
+      Logger::smf_api_server().debug("AMF IP Addr %s", amf_addr_str.c_str());
+    }
+  }
+  return amf_addr_str;
 }
 
 //------------------------------------------------------------------------------

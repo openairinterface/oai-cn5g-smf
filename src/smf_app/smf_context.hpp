@@ -1056,6 +1056,13 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   std::string get_amf_addr() const;
 
   /*
+   * Get AMF Addr from the AMF Status URI (in string representation)
+   * @param [const std::string&] status_uri: AMF's URI
+   * @return string: AMF IP Addr
+   */
+  std::string get_amf_addr_from_amf_status_uri(const std::string& status_uri);
+
+  /*
    * Set the URI of AMF for receiving context status update
    * @param [const std::string&] status_uri: AMF's URI
    * @return void
