@@ -38,9 +38,7 @@
 #include "smf.h"
 #include "smf_profile.hpp"
 #include "3gpp_24.501.hpp"
-extern "C" {
-#include "QOSRules.h"
-}
+#include "QosRule.hpp"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -74,7 +72,7 @@ class qos_flow_context_updated {
   void set_qfi(const pfcp::qfi_t& q);
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
-  void add_qos_rule(const QOSRulesIE& rule);
+  void add_qos_rule(const oai::nas::QosRule& rule);
   void set_qos_profile(const oai::model::pcf::QosData& profile);
   void set_qos_flow_descriptions(
       const QOSFlowDescriptionsContents& flow_description_content);
@@ -83,7 +81,7 @@ class qos_flow_context_updated {
   pfcp::qfi_t qfi;
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
-  std::map<uint8_t, QOSRulesIE> qos_rules;
+  std::map<uint8_t, oai::nas::QosRule> qos_rules;
   QOSFlowDescriptionsContents qos_flow_description_content;
   oai::model::pcf::QosData qos_profile;
   bool to_be_removed;

@@ -70,50 +70,49 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   nas_message_t nas_msg       = {};
   bool result                 = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-  // nas_msg.header.sequence_number = 0xfe;
-  // nas_msg.header.message_authentication_code = 0xffee;
+  auto pdu_session_estb_accept =
+      std::make_unique<PduSessionEstablishmentAccept>();
 
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  // PDU Session Identity
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
+  pdu_session_estb_accept->SetHeader(
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
+  Logger::smf_n1().debug(
+      "PDU Session Establishment Accept, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
 
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_created(qos_flows);
 
   Logger::smf_n1().info("PDU_SESSION_ESTABLISHMENT_ACCEPT, encode starting...");
+  /*
+    // Fill the rest of SM header
+    sm_msg->header.procedure_transaction_identity =
+        sm_context_res.get_pti().procedure_transaction_id;
+    sm_msg->header.message_type = PDU_SESSION_ESTABLISHMENT_ACCEPT;
 
-  // Fill the rest of SM header
-  sm_msg->header.procedure_transaction_identity =
-      sm_context_res.get_pti().procedure_transaction_id;
-  sm_msg->header.message_type = PDU_SESSION_ESTABLISHMENT_ACCEPT;
-
-  Logger::smf_n1().debug(
-      "SM header, Extended Protocol Discriminator 0x%x, PDU Session Identity "
-      "%d, Procedure Transaction Identity: %d, Message Type: %d",
-      sm_msg->header.extended_protocol_discriminator,
-      sm_msg->header.pdu_session_identity,
-      sm_msg->header.procedure_transaction_identity,
-      sm_msg->header.message_type);
+    Logger::smf_n1().debug(
+        "SM header, Extended Protocol Discriminator 0x%x, PDU Session Identity "
+        "%d, Procedure Transaction Identity: %d, Message Type: %d",
+        sm_msg->header.extended_protocol_discriminator,
+        sm_msg->header.pdu_session_identity,
+        sm_msg->header.procedure_transaction_identity,
+        sm_msg->header.message_type);
+  */
 
   // Fill the content of PDU Session Establishment Accept message
-  sm_msg->pdu_session_establishment_accept._pdusessiontype
-      .pdu_session_type_value = sm_context_res.get_pdu_session_type();
-  Logger::smf_n1().debug(
-      "PDU Session Type: %d", sm_msg->pdu_session_establishment_accept
-                                  ._pdusessiontype.pdu_session_type_value);
+  // PDU Session Type
+  PduSessionType pdu_session_type = {};
+  pdu_session_type.SetValue(sm_context_res.get_pdu_session_type());
+  pdu_session_estb_accept->SetSelectedPduSessionType(pdu_session_type);
 
-  // sm_msg->pdu_session_establishment_accept.sscmode.ssc_mode_value =
-  //    SSC_MODE_1;  // TODO: get from sm_context_res
-  // Logger::smf_n1().debug(
-  //    "SSC Mode: %d",
-  //    sm_msg->pdu_session_establishment_accept.sscmode.ssc_mode_value);
+  // sm_msg->pdu_session_establishment_accept._pdusessiontype
+  //    .pdu_session_type_value = sm_context_res.get_pdu_session_type();
+  Logger::smf_n1().debug("PDU Session Type: %d", pdu_session_type.GetValue());
+
+  // TODO: Selected SSC mode
 
   // authorized QoS rules of the PDU session: QOSRules (Section 6.2.5@3GPP
   // TS 24.501) (Section 6.4.1.3@3GPP TS 24.501 V16.1.0) Make sure that the
@@ -121,29 +120,20 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // Session does not exceed the maximum number of packet filters supported by
   // the UE for the PDU session
 
-  map<unsigned char, QOSRulesIE> qos_rules = {};
+  std::vector<oai::nas::QosRule> qos_rule_list = {};
   for (const auto& qos_flow_pair : qos_flows) {
     for (auto qos_rule : qos_flow_pair.second.qos_rules) {
-      qos_rules.insert(qos_rule);
+      qos_rule_list.push_back(qos_rule.second);
     }
   }
+  oai::nas::QosRules qos_rules = {};
+  qos_rules.Set(qos_rule_list);
+  pdu_session_estb_accept->SetAuthorizedQosRules(qos_rules);
 
-  if (!qos_rules.empty()) {
-    sm_msg->pdu_session_establishment_accept.qosrules.lengthofqosrulesie =
-        qos_rules.size();
-    sm_msg->pdu_session_establishment_accept.qosrules.qosrulesie =
-        (QOSRulesIE*) calloc(qos_rules.size(), sizeof(QOSRulesIE));
-
-    int i = 0;
-    for (auto rule : qos_rules) {
-      sm_msg->pdu_session_establishment_accept.qosrules.qosrulesie[i]
-          .qosruleidentifer = rule.second.qosruleidentifer;
-      memcpy(
-          &sm_msg->pdu_session_establishment_accept.qosrules.qosrulesie[i],
-          &rule.second, sizeof(QOSRulesIE));
-      i++;
-    }
-  }
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_estb_accept->Set5gsmCause(cause);
 
   // SessionAMBR
   Logger::smf_n1().debug("Get default values for Session-AMBR");
@@ -153,29 +143,16 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   if (smf_app_inst->is_supi_2_smf_context(supi64)) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
+    oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
-        sm_msg->pdu_session_establishment_accept.sessionambr,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+        session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
   } else {
     Logger::smf_n1().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    // free memory
-    if (!qos_rules.empty()) {
-      free_wrapper((void**) &sm_msg->pdu_session_establishment_accept.qosrules
-                       .qosrulesie);
-    }
     return false;
   }
 
-  sm_msg->pdu_session_establishment_accept.presence =
-      0x039a;  // Update Presence when adding a new IE
-  if (static_cast<uint8_t>(sm_cause) > 0) {
-    sm_msg->pdu_session_establishment_accept.presence = 0x039b;
-    sm_msg->pdu_session_establishment_accept._5gsmcause =
-        static_cast<uint8_t>(sm_cause);
-    Logger::smf_n1().debug(
-        "5GSM Cause: %d", sm_msg->pdu_session_establishment_accept._5gsmcause);
-  }
+  /*
 
   // PDUAddress
   paa_t paa = sm_context_res.get_paa();
@@ -283,7 +260,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   Logger::smf_n1().info("Encode PDU Session Establishment Accept");
   // Encode NAS message
   bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+      data, &nas_msg, sizeof(data), nullptr);
 
   Logger::smf_n1().debug("Buffer Data: ");
   if (Logger::should_log(spdlog::level::debug)) {
@@ -306,7 +283,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   }
   free_wrapper((void**) &sm_msg->pdu_session_establishment_accept
                    .qosflowdescriptions.qosflowdescriptionscontents);
-
+*/
   return result;
 }
 
@@ -380,21 +357,20 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       "Create N1 SM Container, PDU Session Modification Command "
       "(pdu_session_update_sm_context_response)");
 
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
-  bool result                 = false;
+  bool result = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
+  auto pdu_session_modification_command =
+      std::make_unique<PduSessionModificationCommand>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_modification_command->SetHeader(
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
+  Logger::smf_n1().debug(
+      "PDU Session Modification Command, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
 
   Logger::smf_n1().debug("PDU Session Modification Command");
   Logger::smf_n1().info("PDU_SESSION_MODIFICATION_COMMAND, encode starting...");
@@ -432,46 +408,32 @@ bool smf_n1::create_n1_pdu_session_modification_command(
     return false;
   }
 
-  sm_msg->header.procedure_transaction_identity =
-      sm_context_res.get_pti().procedure_transaction_id;
-  sm_msg->header.message_type = PDU_SESSION_MODIFICATION_COMMAND;
-  sm_msg->pdu_session_modification_command.presence =
-      0xff;  // TODO: to be updated
-  sm_msg->pdu_session_modification_command._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-  // SessionAMBR (default)
-  sc->get_session_ambr(
-      sm_msg->pdu_session_modification_command.sessionambr,
-      sm_context_res.get_snssai(), sm_context_res.get_dnn());
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_modification_command->Set5gsmCause(cause);
 
-  // TODO: GPRSTimer
+  // SessionAMBR
+  oai::nas::SessionAmbr session_ambr = {};
+  sc->get_session_ambr(
+      session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
+  pdu_session_modification_command->SetSessionAmbr(session_ambr);
+
+  // TODO: RQ timer value
   // TODO: AlwaysonPDUSessionIndication
 
-  // QOSRules
+  // Authorized QoS rules
   // Get the authorized QoS Rules
-  std::vector<QOSRulesIE> qos_rules =
+  std::vector<oai::nas::QosRule> qos_rule_list =
       sp->get_session_handler()->get_qos_rules();
-
-  if (qos_rules.size() == 0) {
-    return false;
-  }
-
-  sm_msg->pdu_session_modification_command.qosrules.lengthofqosrulesie =
-      qos_rules.size();
-
-  sm_msg->pdu_session_modification_command.qosrules.qosrulesie =
-      (QOSRulesIE*) calloc(qos_rules.size(), sizeof(QOSRulesIE));
-  for (int i = 0; i < qos_rules.size(); i++) {
-    Logger::smf_n1().debug(
-        "QoS Rule to be updated (Id %d)", qos_rules[i].qosruleidentifer);
-    memcpy(
-        &sm_msg->pdu_session_modification_command.qosrules.qosrulesie[i],
-        &qos_rules[i], sizeof(QOSRulesIE));
-  }
+  oai::nas::QosRules qos_rules = {};
+  qos_rules.Set(qos_rule_list);
+  pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
   // TODO: MappedEPSBearerContexts
 
-  // QOSFlowDescriptions
+  // TODO: Authorized QoS Flow Descriptions
+  /*
   auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
   // TODO: get authorized QoS flow descriptions IE
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
@@ -487,30 +449,35 @@ bool smf_n1::create_n1_pdu_session_modification_command(
           qos_flows[i].qos_flow_description_content;
     }
   }
+*/
+  // TODO: Extended protocol configuration options
+  // TODO: ATSSS container
+  // TODO: IP header compression Configuration
+  // TODO: Port management information Container
+  // TODO: Serving PLMN rate control
+  // TODO: Ethernet header compression Configuration
 
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+  uint32_t msg_len = pdu_session_modification_command->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Modification Command message: %ld (octets)",
+      msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size = pdu_session_modification_command->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error(
+        "Encode PDU Session Modification Command message error");
+    return false;
   }
 
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    result      = true;
-  } else {
-    result = false;
-  }
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
 
-  // free memory
-  free_wrapper(
-      (void**) &sm_msg->pdu_session_modification_command.qosrules.qosrulesie);
-  free_wrapper((void**) &sm_msg->pdu_session_modification_command
-                   .qosflowdescriptions.qosflowdescriptionscontents);
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
+  }
 
   return result;
 }
@@ -523,21 +490,18 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       "Create N1 SM Container, PDU Session Modification Command "
       "(pdu_session_modification_network_requested)");
 
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
-  bool result                 = false;
+  bool result = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = msg.get_pdu_session_id();
+  auto pdu_session_modification_command =
+      std::make_unique<PduSessionModificationCommand>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_modification_command->SetHeader(
+      msg.get_pdu_session_id(), msg.get_pti().procedure_transaction_id);
+  Logger::smf_n1().debug(
+      "PDU Session Modification Command, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      msg.get_pdu_session_id(), msg.get_pti().procedure_transaction_id);
 
   Logger::smf_n1().debug("PDU Session Modification Command");
   Logger::smf_n1().info("PDU_SESSION_MODIFICATION_COMMAND, encode starting...");
@@ -576,51 +540,35 @@ bool smf_n1::create_n1_pdu_session_modification_command(
     }
     */
 
-  sm_msg->header.procedure_transaction_identity =
-      msg.get_pti().procedure_transaction_id;
-  sm_msg->header.message_type = PDU_SESSION_MODIFICATION_COMMAND;
-  sm_msg->pdu_session_modification_command.presence =
-      0xff;  // TODO: to be updated
-  sm_msg->pdu_session_modification_command._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-  // SessionAMBR (default)
-  sc->get_session_ambr(
-      sm_msg->pdu_session_modification_command.sessionambr, msg.get_snssai(),
-      msg.get_dnn());
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_modification_command->Set5gsmCause(cause);
 
-  // TODO: GPRSTimer
+  // SessionAMBR (default)
+  oai::nas::SessionAmbr session_ambr = {};
+  sc->get_session_ambr(session_ambr, msg.get_snssai(), msg.get_dnn());
+  pdu_session_modification_command->SetSessionAmbr(session_ambr);
+
+  // TODO: RQ timer value
   // TODO: AlwaysonPDUSessionIndication
 
-  // QOSRules
+  // Authorized QoS rules
   // Get the authorized QoS Rules
-  std::vector<QOSRulesIE> qos_rules =
+  std::vector<oai::nas::QosRule> qos_rule_list =
       sp->get_session_handler()->get_qos_rules();
 
-  if (qos_rules.size() == 0) {
-    return false;
-  }
-
-  sm_msg->pdu_session_modification_command.qosrules.lengthofqosrulesie =
-      qos_rules.size();
-
-  sm_msg->pdu_session_modification_command.qosrules.qosrulesie =
-      (QOSRulesIE*) calloc(qos_rules.size(), sizeof(QOSRulesIE));
-  for (int i = 0; i < qos_rules.size(); i++) {
-    Logger::smf_n1().debug(
-        "QoS Rule to be updated (Id %d)", qos_rules[i].qosruleidentifer);
-    memcpy(
-        &sm_msg->pdu_session_modification_command.qosrules.qosrulesie[i],
-        &qos_rules[i], sizeof(QOSRulesIE));
-  }
+  oai::nas::QosRules qos_rules = {};
+  qos_rules.Set(qos_rule_list);
+  pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
   // TODO: MappedEPSBearerContexts
 
-  // QOSFlowDescriptions
+  // TODO: Authorized QoS Flow Descriptions
+  /*
   auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
-
+  // TODO: get authorized QoS flow descriptions IE
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
     sm_msg->pdu_session_modification_command.qosflowdescriptions
         .qosflowdescriptionsnumber = qos_flows.size();
     sm_msg->pdu_session_modification_command.qosflowdescriptions
@@ -633,31 +581,35 @@ bool smf_n1::create_n1_pdu_session_modification_command(
           qos_flows[i].qos_flow_description_content;
     }
   }
+*/
+  // TODO: Extended protocol configuration options
+  // TODO: ATSSS container
+  // TODO: IP header compression Configuration
+  // TODO: Port management information Container
+  // TODO: Serving PLMN rate control
+  // TODO: Ethernet header compression Configuration
 
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+  uint32_t msg_len = pdu_session_modification_command->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Modification Command message: %ld (octets)",
+      msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size = pdu_session_modification_command->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error(
+        "Encode PDU Session Modification Command message error");
+    return false;
   }
 
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    result      = true;
-  } else {
-    result = false;
-  }
-  // free memory
-  free_wrapper(
-      (void**) &sm_msg->pdu_session_modification_command.qosrules.qosrulesie);
-  free_wrapper((void**) &sm_msg->pdu_session_modification_command
-                   .qosflowdescriptions.qosflowdescriptionscontents);
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
 
-  return result;
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
+  }
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -665,49 +617,47 @@ bool smf_n1::create_n1_pdu_session_release_reject(
     pdu_session_update_sm_context_request& sm_context_res,
     std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
   Logger::smf_n1().info("Create N1 SM Container, PDU Session Release Reject");
+  bool result                     = false;
+  auto pdu_session_release_reject = std::make_unique<PduSessionReleaseReject>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_release_reject->SetHeader(
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
+  Logger::smf_n1().debug(
+      "PDU Session Modification Command, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
 
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_release_reject->Set5gsmCause(cause);
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
-
-  // Fill the content of PDU Session Release Reject
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
-  sm_msg->header.procedure_transaction_identity =
-      sm_context_res.get_pti().procedure_transaction_id;
-  sm_msg->header.message_type = PDU_SESSION_RELEASE_REJECT;
-  sm_msg->pdu_session_release_reject._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-
-  sm_msg->pdu_session_release_command.presence = 0x00;
+  // TODO: Extended protocol configuration options
 
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+  uint32_t msg_len = pdu_session_release_reject->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Release Reject message: %ld (octets)", msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
-  }
-
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    return true;
-  } else {
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size        = pdu_session_release_reject->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error("Encode PDU Session Release Reject message error");
     return false;
   }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
+  }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -716,67 +666,58 @@ bool smf_n1::create_n1_pdu_session_release_command(
     cause_value_5gsm_e sm_cause) {
   Logger::smf_n1().info("Create N1 SM Container, PDU Session Release Command");
 
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
+  bool result = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = msg->get_pdu_session_id();
-
-  Logger::smf_n1().info("PDU_SESSION_RELEASE_COMMAND, encode starting...");
-  // Fill the content of PDU Session Release Command
-  sm_msg->header.pdu_session_identity = msg->get_pdu_session_id();
-  sm_msg->header.procedure_transaction_identity =
-      msg->get_pti()
-          .procedure_transaction_id;  // TODO: if PDU session release procedure
-                                      // is not triggered by a UE-requested PDU
-                                      // session release set the PTI IE of the
-                                      // PDU SESSION RELEASE COMMAND message
-                                      // to "No procedure transaction identity
-                                      // assigned"
-  sm_msg->header.message_type = PDU_SESSION_RELEASE_COMMAND;
-  sm_msg->pdu_session_release_command._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-  // TODO: to be updated when adding the following IEs
-  sm_msg->pdu_session_release_command.presence = 0x00;
-  // GPRSTimer3
-  // EAPMessage
-  //_5GSMCongestionReattemptIndicator
-  // ExtendedProtocolConfigurationOptions
-
+  auto pdu_session_release_command =
+      std::make_unique<PduSessionReleaseCommand>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_release_command->SetHeader(
+      msg->get_pdu_session_id(), msg->get_pti().procedure_transaction_id);
   Logger::smf_n1().debug(
-      "SM message, PDU Session ID %d, PTI %d, Message Type %0x%x, 5GSM Cause: "
+      "PDU Session Release Command, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
       "0x%x",
-      sm_msg->header.pdu_session_identity,
-      sm_msg->header.procedure_transaction_identity,
-      sm_msg->header.message_type,
-      sm_msg->pdu_session_release_command._5gsmcause);
+      msg->get_pdu_session_id(), msg->get_pti().procedure_transaction_id);
+
+  // TODO: if PDU session release procedure
+  // is not triggered by a UE-requested PDU
+  // session release set the PTI IE of the
+  // PDU SESSION RELEASE COMMAND message
+  // to "No procedure transaction identity
+  // assigned"
+
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_release_command->Set5gsmCause(cause);
+
+  // TODO: Back-off timer value
+  // TODO: EAP Message
+  // TODO: 5GSM Congestion Reattempt Indicator
+  // TODO: Extended Protocol Configuration Options
+  // TODO: Access Type
 
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+  uint32_t msg_len = pdu_session_release_command->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Release Command message: %ld (octets)", msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
-  }
-
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    return true;
-  } else {
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size = pdu_session_release_command->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error("Encode PDU Session Release Command message error");
     return false;
   }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
+  }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -787,63 +728,60 @@ bool smf_n1::create_n1_pdu_session_release_command(
       "Create N1 SM Container, PDU Session Release Command "
       "(pdu_session_update_sm_context_response)");
 
-  int bytes                   = {0};
-  unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
+  bool result = false;
 
-  nas_msg.header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  nas_msg.header.security_header_type = SECURITY_HEADER_TYPE_NOT_PROTECTED;
-
-  SM_msg* sm_msg = &nas_msg.plain.sm;
-
-  // Fill the content of SM header
-  sm_msg->header.extended_protocol_discriminator =
-      EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
-
-  Logger::smf_n1().info("PDU_SESSION_RELEASE_COMMAND, encode starting...");
-  // Fill the content of PDU Session Release Command
-  sm_msg->header.pdu_session_identity = sm_context_res.get_pdu_session_id();
-  sm_msg->header.procedure_transaction_identity =
-      sm_context_res.get_pti()
-          .procedure_transaction_id;  // TODO: if PDU session release procedure
-                                      // is not triggered by a UE-requested PDU
-                                      // session release set the PTI IE of the
-                                      // PDU SESSION RELEASE COMMAND message
-                                      // to "No procedure transaction identity
-                                      // assigned"
-  sm_msg->header.message_type = PDU_SESSION_RELEASE_COMMAND;
-  sm_msg->pdu_session_release_command._5gsmcause =
-      static_cast<uint8_t>(sm_cause);
-  // TODO: to be updated when adding the following IEs
-  sm_msg->pdu_session_release_command.presence = 0x00;
-  // GPRSTimer3
-  // EAPMessage
-  //_5GSMCongestionReattemptIndicator
-  // ExtendedProtocolConfigurationOptions
-
+  auto pdu_session_release_command =
+      std::make_unique<PduSessionReleaseCommand>();
+  // PDU Session ID and Procedure Transaction ID
+  pdu_session_release_command->SetHeader(
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
   Logger::smf_n1().debug(
-      "SM message, 5GSM Cause: 0x%x",
-      sm_msg->pdu_session_release_command._5gsmcause);
+      "PDU Session Release Command, PDU Session Identity 0x%x, Procedure "
+      "Transaction Identity "
+      "0x%x",
+      sm_context_res.get_pdu_session_id(),
+      sm_context_res.get_pti().procedure_transaction_id);
+
+  // TODO: if PDU session release procedure
+  // is not triggered by a UE-requested PDU
+  // session release set the PTI IE of the
+  // PDU SESSION RELEASE COMMAND message
+  // to "No procedure transaction identity
+  // assigned"
+
+  // 5GSM Cause
+  _5gsmCause cause = {};
+  cause.SetValue(static_cast<uint8_t>(sm_cause));
+  pdu_session_release_command->Set5gsmCause(cause);
+
+  // TODO: Back-off timer value
+  // TODO: EAP Message
+  // TODO: 5GSM Congestion Reattempt Indicator
+  // TODO: Extended Protocol Configuration Options
+  // TODO: Access Type
 
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data) /*don't know the size*/, nullptr);
+  uint32_t msg_len = pdu_session_release_command->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Release Command message: %ld (octets)", msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
-  }
-
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    return true;
-  } else {
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size = pdu_session_release_command->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error("Encode PDU Session Release Command message error");
     return false;
   }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
+  }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------------------------------

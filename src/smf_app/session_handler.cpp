@@ -24,6 +24,7 @@
 #include "conversions.hpp"
 #include "conversions.h"
 #include "smf_config.hpp"
+#include "Struct.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
@@ -66,7 +67,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 
     // add QoS rule to flow
     auto rule = qos_rule_from_edge(edge);
-    if (rule.numberofpacketfilters != 0) {
+    if (rule.GetNumberOfPacketFilters() != 0) {
       flow.add_qos_rule(rule);
     } else {
       Logger::smf_n1().warn(
@@ -111,14 +112,15 @@ void session_handler::set_cause(const cause_value_5gsm_e& cause) {
 // this code is really ugly, as soon as we refactor NAS, we have to refactor
 // this as well
 void session_handler::set_nas_filter_from_edge(
-    const shared_ptr<qos_upf_edge>& edge, QOSRulesIE& qos_rule) {
-  auto flow                      = edge->flow_information;
-  qos_rule.numberofpacketfilters = 0;
+    const shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule) {
+  auto flow = edge->flow_information;
+  // qos_rule.numberofpacketfilters = 0;
+  qos_rule.SetNumberOfPacketFilters(0);
 
   if (!flow.flowDescriptionIsSet() || flow.getFlowDescription().empty()) {
     Logger::smf_app().warn(
         "Flow description is empty for rule: %ud. Not signaled towards UE",
-        qos_rule.qosruleidentifer);
+        qos_rule.GetQosRuleId());
     return;
   }
 
@@ -142,55 +144,53 @@ void session_handler::set_nas_filter_from_edge(
   // all be part of protocol
   // TODO also, free on this is never called as far as I can see that!!!
   if (edge->default_qos) {
-    qos_rule.numberofpacketfilters = 1;
+    qos_rule.SetNumberOfPacketFilters(1);
+    std::vector<oai::nas::PacketFilterCreateAndModifyAndReplace>
+        packet_filter_list;
+    oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
+    packet_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+    packet_filter.packet_filter_id        = 1;
 
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
-        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-            1, sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilterdirection = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfilteridentifier = 1;
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace[0]
-        .packetfiltercontents.component_type = QOS_RULE_MATCHALL_TYPE;
+    oai::nas::PacketFilterComponent packet_filter_component = {};
+    packet_filter_component.type = QOS_RULE_MATCHALL_TYPE;
+    packet_filter.content.packet_filter_components.push_back(
+        packet_filter_component);
+    packet_filter.content.length = 1;  // for QoS Rule Matchall_type
+    packet_filter_list.push_back(packet_filter);
+    qos_rule.SetPacketFilterCreateAndModifyAndReplaceList(packet_filter_list);
   } else if (!parsed_filter.default_filter) {
     // TODO we should take into account the max number of supported packet
     // filters from UE
-    qos_rule.packetfilterlist.create_modifyandadd_modifyandreplace =
-        (Create_ModifyAndAdd_ModifyAndReplace*) calloc(
-            parsed_filter.filter_components,
-            sizeof(Create_ModifyAndAdd_ModifyAndReplace));
-    qos_rule.numberofpacketfilters = parsed_filter.filter_components;
-    int filter_id                  = 1;
+
+    qos_rule.SetNumberOfPacketFilters(parsed_filter.filter_components);
+    oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
+    packet_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+    packet_filter.packet_filter_id        = 1;
+
+    int filter_id = 1;
     if (parsed_filter.use_protocol_identifier) {
       set_protocol_filter(
-          filter_id,
-          qos_rule.packetfilterlist
-              .create_modifyandadd_modifyandreplace[filter_id - 1],
-          parsed_filter.protocol_identifier);
+          filter_id, packet_filter, parsed_filter.protocol_identifier);
+      qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
       filter_id++;
     }
+
     if (parsed_filter.src_ip_range.use_ip_range) {
-      set_ip_filter(
-          filter_id,
-          qos_rule.packetfilterlist
-              .create_modifyandadd_modifyandreplace[filter_id - 1],
-          parsed_filter.src_ip_range);
+      set_ip_filter(filter_id, packet_filter, parsed_filter.src_ip_range);
+      qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
       filter_id++;
     }
     if (!parsed_filter.src_port_ranges.empty()) {
       for (const auto& port : parsed_filter.src_port_ranges) {
-        set_port_filter(
-            filter_id,
-            qos_rule.packetfilterlist
-                .create_modifyandadd_modifyandreplace[filter_id - 1],
-            port);
+        set_port_filter(filter_id, packet_filter, port);
+        qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
         filter_id++;
       }
     }
   }
 }
 
+//------------------------------------------------------------------------------
 void session_handler::set_port_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const port_range& port_range) {
@@ -212,6 +212,42 @@ void session_handler::set_port_filter(
   }
 }
 
+//------------------------------------------------------------------------------
+void session_handler::set_port_filter(
+    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    const port_range& port_range) {
+  nas_filter.packet_filter_id        = filter_id;
+  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+  uint16_t port_low                  = htons(port_range.start);
+  uint16_t port_high                 = htons(port_range.end);
+
+  nas_filter.packet_filter_id        = filter_id;
+  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+
+  oai::nas::PacketFilterComponent packet_filter_component = {};
+
+  if (port_range.is_range) {
+    uint32_t int_range           = 0;
+    int_range                    = ((uint32_t) port_high << 16) | port_low;
+    packet_filter_component.type = QOS_RULE_REMOTE_PORT_RANGE_TYPE;
+    // sequence of a two octet port range low limit field and a two octet port
+    // range high limit field
+    packet_filter_component.value = blk2bstr(&int_range, 4);
+    nas_filter.content.packet_filter_components.push_back(
+        packet_filter_component);
+    nas_filter.content.length = blength(packet_filter_component.value) +
+                                1;  // 1 for packet filter component type
+  } else {
+    packet_filter_component.type = QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
+    // two octets which specify a port number
+    packet_filter_component.value = blk2bstr(&port_low, 2);
+    nas_filter.content.packet_filter_components.push_back(
+        packet_filter_component);
+    nas_filter.content.length = blength(packet_filter_component.value) +
+                                1;  // 1 for packet filter component type
+  }
+}
+//------------------------------------------------------------------------------
 void session_handler::set_ip_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     const ip_range& ip_range) {
@@ -224,6 +260,29 @@ void session_handler::set_ip_filter(
   nas_filter.packetfiltercontents.component_value = blk2bstr(&ip_snm, 8);
 }
 
+//------------------------------------------------------------------------------
+void session_handler::set_ip_filter(
+    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    const ip_range& ip_range) {
+  nas_filter.packet_filter_id        = filter_id;
+  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+
+  oai::nas::PacketFilterComponent packet_filter_component = {};
+  packet_filter_component.type = QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
+  // Sequence of a four octet IPv4 address field and a four octet IPv4 address
+  // mask field
+  // TODO: verify the order
+  uint64_t ip_snm =
+      ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
+  packet_filter_component.value = blk2bstr(&ip_snm, 8);
+
+  nas_filter.content.packet_filter_components.push_back(
+      packet_filter_component);
+  nas_filter.content.length = blength(packet_filter_component.value) +
+                              1;  // 1 for packet filter component type
+}
+
+//------------------------------------------------------------------------------
 void session_handler::set_protocol_filter(
     int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
@@ -234,6 +293,23 @@ void session_handler::set_protocol_filter(
   nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
 }
 
+//------------------------------------------------------------------------------
+void session_handler::set_protocol_filter(
+    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    uint8_t protocol_id) {
+  nas_filter.packet_filter_id        = filter_id;
+  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+
+  oai::nas::PacketFilterComponent packet_filter_component = {};
+  packet_filter_component.type = QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
+  packet_filter_component.value = blk2bstr(&protocol_id, 1);
+
+  nas_filter.content.packet_filter_components.push_back(
+      packet_filter_component);
+  nas_filter.content.length = blength(packet_filter_component.value) +
+                              1;  // 1 for packet filter component type
+}
+
 // Comments about architecture
 // IMO this part should not be here at all, we should have some "common" DTO
 // that is used between all layers and the low-level malloc/free stuff here
@@ -241,9 +317,9 @@ void session_handler::set_protocol_filter(
 // far, so we keep this QOSRuleIE here also, the mapping between SDF filter and
 // the packet filter here should not be here
 //------------------------------------------------------------------------------
-QOSRulesIE session_handler::qos_rule_from_edge(
+oai::nas::QosRule session_handler::qos_rule_from_edge(
     const shared_ptr<qos_upf_edge>& edge) {
-  QOSRulesIE qos_rule;
+  oai::nas::QosRule qos_rule;
 
   if (edge->qos_rule_id == 0) {
     edge->qos_rule_id = generate_qos_rule_id();
@@ -251,27 +327,40 @@ QOSRulesIE session_handler::qos_rule_from_edge(
 
   // TODO check that number of QoS rules does not exceed what UE can do
   // see section 5.7.1.4 @ 3GPP TS 23.501
-  qos_rule.qosruleidentifer  = edge->qos_rule_id;
-  qos_rule.ruleoperationcode = CREATE_NEW_QOS_RULE;
+  /*  qos_rule.qosruleidentifer  = edge->qos_rule_id;
+    qos_rule.ruleoperationcode = CREATE_NEW_QOS_RULE;
+    if (edge->default_qos) {
+      qos_rule.dqrbit = THE_QOS_RULE_IS_DEFAULT_QOS_RULE;
+    } else {
+      qos_rule.dqrbit = THE_QOS_RULE_IS_NOT_THE_DEFAULT_QOS_RULE;
+    }
+  */
+
+  qos_rule.SetQosRuleId(edge->qos_rule_id);
+  qos_rule.SetRuleOperationCode(CREATE_NEW_QOS_RULE);
   if (edge->default_qos) {
-    qos_rule.dqrbit = THE_QOS_RULE_IS_DEFAULT_QOS_RULE;
+    qos_rule.SetDqrBit(THE_QOS_RULE_IS_DEFAULT_QOS_RULE);
   } else {
-    qos_rule.dqrbit = THE_QOS_RULE_IS_NOT_THE_DEFAULT_QOS_RULE;
+    qos_rule.SetDqrBit(THE_QOS_RULE_IS_NOT_THE_DEFAULT_QOS_RULE);
   }
 
   if (m_pdu_session_type != PDU_SESSION_TYPE_E_UNSTRUCTURED) {
     set_nas_filter_from_edge(edge, qos_rule);
   } else {
-    qos_rule.numberofpacketfilters = 0;
+    // qos_rule.numberofpacketfilters = 0;
+    qos_rule.SetNumberOfPacketFilters(0);
   }
 
   Logger::smf_n1().debug(
       "Created new QoS rule with ID %u and %u packet filters",
-      edge->qos_rule_id, qos_rule.numberofpacketfilters);
+      edge->qos_rule_id, qos_rule.GetNumberOfPacketFilters());
 
-  qos_rule.qosruleprecedence = edge->precedence;
-  qos_rule.segregation       = SEGREGATION_NOT_REQUESTED;
-  qos_rule.qosflowidentifer  = edge->qfi.qfi;
+  qos_rule.SetPrecedence(edge->precedence);
+  qos_rule.SetSegregation(SEGREGATION_NOT_REQUESTED);
+  qos_rule.SetQfi(edge->qfi.qfi);
+  // qos_rule.qosruleprecedence = edge->precedence;
+  // qos_rule.segregation       = SEGREGATION_NOT_REQUESTED;
+  // qos_rule.qosflowidentifer  = edge->qfi.qfi;
 
   return qos_rule;
 }
@@ -414,33 +503,38 @@ void session_handler::release_far_id(const pfcp::far_id_t& far_id) {
   m_far_id_generator.free_uid(far_id.far_id);
 }
 
+//------------------------------------------------------------------------------
 pfcp::pdr_id_t session_handler::generate_pdr_id() {
   pfcp::pdr_id_t pdr_id;
   pdr_id.rule_id = m_pdr_id_generator.get_uid();
   return pdr_id;
 }
 
+//------------------------------------------------------------------------------
 void session_handler::release_pdr_id(const pfcp::pdr_id_t& pdr_id) {
   m_pdr_id_generator.free_uid(pdr_id.rule_id);
 }
 
+//------------------------------------------------------------------------------
 uint8_t session_handler::generate_qos_rule_id() {
   return m_qos_rule_id_generator.get_uid();
 }
 
+//------------------------------------------------------------------------------
 void session_handler::release_qos_rule_id(const uint8_t& rule_id) {
   m_qos_rule_id_generator.free_uid(rule_id);
 }
 
+//------------------------------------------------------------------------------
 // TODO unify with QoS handling here, we should also update the edges and QoS
 // flows
-void session_handler::add_qos_rule(const QOSRulesIE& qos_rule) {
+void session_handler::add_qos_rule(const oai::nas::QosRule& qos_rule) {
   std::unique_lock lock(
       m_session_handler_mutex,
       std::defer_lock);  // Do not lock it first
   Logger::smf_app().info(
-      "Add QoS Rule with Rule Id %d", (uint8_t) qos_rule.qosruleidentifer);
-  uint8_t rule_id = qos_rule.qosruleidentifer;
+      "Add QoS Rule with Rule Id %d", (uint8_t) qos_rule.GetQosRuleId());
+  uint8_t rule_id = qos_rule.GetQosRuleId();
 
   if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
       (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
@@ -449,7 +543,8 @@ void session_handler::add_qos_rule(const QOSRulesIE& qos_rule) {
           "Failed to add rule (Id %d), rule existed", rule_id);
     } else {
       lock.lock();  // Lock it here
-      m_qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rule));
+      m_qos_rules.insert(
+          std::pair<uint8_t, oai::nas::QosRule>(rule_id, qos_rule));
       Logger::smf_app().trace(
           "Rule (Id %d) has been added successfully", rule_id);
     }
@@ -460,17 +555,18 @@ void session_handler::add_qos_rule(const QOSRulesIE& qos_rule) {
   }
 }
 
+//------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::create_new_qos_rule(
-    QOSRulesIE& qos_rules_ie,
+    oai::nas::QosRule& qos_rules_ie,
     const QOSFlowDescriptionsContents& qos_flow_description_content) {
   qos_flow_context_updated qos_flow;
 
   // Add a new QoS Flow
-  if (qos_rules_ie.qosruleidentifer == NO_QOS_RULE_IDENTIFIER_ASSIGNED) {
+  if (qos_rules_ie.GetQosRuleId() == NO_QOS_RULE_IDENTIFIER_ASSIGNED) {
     // Generate a new QoS rule
     uint8_t rule_id = generate_qos_rule_id();
     Logger::smf_app().info("Create a new QoS rule (rule Id %d)", rule_id);
-    qos_rules_ie.qosruleidentifer = rule_id;
+    qos_rules_ie.SetQosRuleId(rule_id);
   }
   add_qos_rule(qos_rules_ie);
   // TODO unify with generated_qfi, hardcode for now (like it used to be)
@@ -534,7 +630,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   }
 
   Logger::smf_app().debug(
-      "Add new QoS Flow with new QRI %d", qos_rules_ie.qosruleidentifer);
+      "Add new QoS Flow with new QRI %d", qos_rules_ie.GetQosRuleId());
 
   // mark this rule to be synchronised with the UE
   update_qos_rule(qos_rules_ie);
@@ -548,6 +644,101 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   return qos_flow;
 }
 
+//------------------------------------------------------------------------------
+qos_flow_context_updated session_handler::create_new_qos_rule(
+    oai::nas::QosRule& qos_rules_ie,
+    const oai::nas::QosFlowDescription& qos_flow_description) {
+  qos_flow_context_updated qos_flow;
+
+  // Add a new QoS Flow
+  if (qos_rules_ie.GetQosRuleId() == NO_QOS_RULE_IDENTIFIER_ASSIGNED) {
+    // Generate a new QoS rule
+    uint8_t rule_id = generate_qos_rule_id();
+    Logger::smf_app().info("Create a new QoS rule (rule Id %d)", rule_id);
+    qos_rules_ie.SetQosRuleId(rule_id);
+  }
+  add_qos_rule(qos_rules_ie);
+  // TODO unify with generated_qfi, hardcode for now (like it used to be)
+
+  qos_flow.qfi = (uint8_t) 60;
+
+  // set qos_profile from qos_flow_description_content
+  qos_flow.qos_profile = {};
+
+  std::optional<std::vector<oai::nas::QosFlowDescriptionsParameter>>
+      parameter_list = qos_flow_description.GetParametersList();
+
+  if (parameter_list.has_value()) {
+    for (int j = 0; j < parameter_list.value().size(); j++) {
+      if ((parameter_list.value())[i].parameter_id ==
+          PARAMETER_IDENTIFIER_5QI) {
+        qos_flow.qos_profile.setR5qi(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents._5qi);
+      } else if (
+          qos_flow_description_content.parameterslist[j].parameteridentifier ==
+          PARAMETER_IDENTIFIER_GFBR_UPLINK) {
+        std::string gbrUlValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+        qos_flow.qos_profile.setGbrUl(gbrUlValue);
+        std::string gbrValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value);
+        qos_flow.qos_profile.setGbrUl(gbrValue);
+      } else if (
+          qos_flow_description_content.parameterslist[j].parameteridentifier ==
+          PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
+        std::string gbrDlValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+        qos_flow.qos_profile.setGbrDl(gbrDlValue);
+        std::string gbrValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value);
+        qos_flow.qos_profile.setGbrDl(gbrValue);
+      } else if (
+          qos_flow_description_content.parameterslist[j].parameteridentifier ==
+          PARAMETER_IDENTIFIER_MFBR_UPLINK) {
+        std::string mbrUlValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+        qos_flow.qos_profile.setMaxbrUl(mbrUlValue);
+        std::string mbrValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value);
+        qos_flow.qos_profile.setMaxbrUl(mbrValue);
+      } else if (
+          qos_flow_description_content.parameterslist[j].parameteridentifier ==
+          PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
+        std::string mbrDlValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+        qos_flow.qos_profile.setMaxbrDl(mbrDlValue);
+        std::string mbrValue = std::to_string(
+            qos_flow_description_content.parameterslist[j]
+                .parametercontents.gfbrormfbr_uplinkordownlink.value);
+        qos_flow.qos_profile.setMaxbrDl(mbrValue);
+      }
+    }
+  }
+
+  Logger::smf_app().debug(
+      "Add new QoS Flow with new QRI %d", qos_rules_ie.GetQosRuleId());
+
+  // mark this rule to be synchronised with the UE
+  update_qos_rule(qos_rules_ie);
+  // Add new QoS flow
+  // TODO here interact with graph
+  // or add a new QFI to be updated or whatever, that should be done out from
+  // the context and start a graph- related procedure
+  // sp->get_sessions_graph()->add_qos_flow(qos_flow);
+  qos_flow.set_qfi(pfcp::qfi_t(qos_flow.qfi));
+
+  return qos_flow;
+}
+
+//------------------------------------------------------------------------------
 std::vector<nlohmann::json> session_handler::create_qos_flows_json() {
   std::vector<nlohmann::json> qos_flows;
   for (const auto& qfi : get_all_qfis()) {
@@ -580,6 +771,7 @@ std::vector<nlohmann::json> session_handler::create_qos_flows_json() {
   return qos_flows;
 }
 
+//------------------------------------------------------------------------------
 std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
   auto n3_edges = m_session_graph->get_access_edges();
 
@@ -605,6 +797,7 @@ std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
   return nullptr;
 }
 
+//------------------------------------------------------------------------------
 void session_handler::deallocate_resources() {
   for (const auto& edge : m_session_graph->get_access_edges()) {
     release_pdr_id(edge->pdr_id);
@@ -615,6 +808,8 @@ void session_handler::deallocate_resources() {
     edge->clear_session();
   }
 }
+
+//------------------------------------------------------------------------------
 std::vector<pfcp::qfi_t> session_handler::get_all_qfis() {
   std::set<uint8_t> qfis;
   std::vector<pfcp::qfi_t> pfcp_qfis;
@@ -637,37 +832,40 @@ std::vector<pfcp::qfi_t> session_handler::get_all_qfis() {
   return pfcp_qfis;
 }
 
+//------------------------------------------------------------------------------
 bool session_handler::qfi_exists(const pfcp::qfi_t& qfi) {
   auto all_qfis = get_all_qfis();
   auto it       = std::find(all_qfis.begin(), all_qfis.end(), qfi);
   return it != all_qfis.end();
 }
 
+//------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::update_qos_rule(
-    QOSRulesIE qos_rules_ie) {
+    oai::nas::QosRule qos_rules_ie) {
   qos_flow_context_updated flow{};
 
   std::unique_lock lock(
       m_session_handler_mutex,
       std::defer_lock);  // Do not lock it first
 
-  auto edge = get_edge_for_qfi(qos_rules_ie.qosruleidentifer);
+  auto edge = get_edge_for_qfi(
+      qos_rules_ie.GetQosRuleId());  // TODO: verify Rule Id or QFI Id?
 
   // TODO there is absolutely no link between this and the QoS rules
   flow = get_qos_flow_context_updated(edge->qfi);
 
   if (edge) {
     Logger::smf_app().debug(
-        "Update existing QRI %d", qos_rules_ie.qosruleidentifer);
+        "Update existing QRI %d", qos_rules_ie.GetQosRuleId());
 
-    uint8_t rule_id = qos_rules_ie.qosruleidentifer;
+    uint8_t rule_id = qos_rules_ie.GetQosRuleId();
     if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
         (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
       if (m_qos_rules.count(rule_id) > 0) {
         lock.lock();  // Lock it here
         m_qos_rules.erase(rule_id);
         m_qos_rules.insert(
-            std::pair<uint8_t, QOSRulesIE>(rule_id, qos_rules_ie));
+            std::pair<uint8_t, oai::nas::QosRule>(rule_id, qos_rules_ie));
         // marked to be synchronised with UE
         m_qos_rules_to_be_synchronised.push_back(rule_id);
         Logger::smf_app().trace("Update QoS rule (%d) success", rule_id);
@@ -683,14 +881,15 @@ qos_flow_context_updated session_handler::update_qos_rule(
   } else {
     Logger::smf_app().error(
         "Want to update QoS rule ID %ud for QFI %ud, but QFI does not exist",
-        qos_rules_ie.qosruleidentifer, qos_rules_ie.qosflowidentifer);
+        qos_rules_ie.GetQosRuleId(), qos_rules_ie.GetQfi().value_or(0));
   }
 
   return flow;
 }
 
-std::vector<QOSRulesIE> session_handler::get_qos_rules() {
-  std::vector<QOSRulesIE> qos_rules;
+//------------------------------------------------------------------------------
+std::vector<oai::nas::QosRule> session_handler::get_qos_rules() {
+  std::vector<oai::nas::QosRule> qos_rules;
   for (const auto& flow : get_qos_flows_context_updated()) {
     for (const auto& [rule_id, rule] : flow.qos_rules) {
       qos_rules.push_back(rule);
@@ -699,6 +898,7 @@ std::vector<QOSRulesIE> session_handler::get_qos_rules() {
   return qos_rules;
 }
 
+//------------------------------------------------------------------------------
 std::map<uint8_t, uint64_t> session_handler::bpsMap = {
     {0, 1},
     {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS, 1000},
@@ -730,6 +930,7 @@ std::map<uint8_t, uint64_t> session_handler::bpsMap = {
     // larger than 25 should use value of 25
 };
 
+//------------------------------------------------------------------------------
 uint64_t session_handler::parse_nas_value_unit_to_bps(
     const uint16_t& value, const uint8_t& unit) {
   uint64_t bit_rate_value;
@@ -748,16 +949,19 @@ uint64_t session_handler::parse_nas_value_unit_to_bps(
   return bit_rate_value;
 }
 
+//------------------------------------------------------------------------------
 bool session_handler::is_uplink_flow_direction(
     const FlowInformation& flow_info) {
   return is_flow_direction(true, flow_info);
 }
 
+//------------------------------------------------------------------------------
 bool session_handler::is_downlink_flow_direction(
     const FlowInformation& flow_info) {
   return is_flow_direction(false, flow_info);
 }
 
+//------------------------------------------------------------------------------
 bool session_handler::is_flow_direction(
     bool uplink, const FlowInformation& flow_info) {
   if (!flow_info.flowDescriptionIsSet() ||
@@ -806,6 +1010,7 @@ bool session_handler::is_flow_direction(
   return false;
 }
 
+//------------------------------------------------------------------------------
 void session_handler::set_default_qos_parameters(QosData& qos_data) {
   try {
     uint8_t _5qi             = qos_data.getR5qi();

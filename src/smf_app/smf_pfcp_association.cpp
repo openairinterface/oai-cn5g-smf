@@ -240,7 +240,7 @@ bool pfcp_associations::add_association(
     associations_graph.insert_into_graph(sa);
     trigger_heartbeat_request_procedure(sa);
     Logger::smf_app().debug(
-        "Added PFCP assocation with UPF config: \n %s",
+        "Added PFCP association with UPF config: \n %s",
         sa->get_upf_config().to_string(""));
     return true;
   } else {

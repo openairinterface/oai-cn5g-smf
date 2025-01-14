@@ -54,6 +54,9 @@
 #include "smf_procedure.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "_5gsmCause.hpp"
+#include "PduSessionModificationCommandReject.hpp"
+#include "PduSessionModificationRequest.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -859,6 +862,63 @@ void smf_context::get_session_ambr(
   }
 }
 
+//------------------------------------------------------------------------------
+void smf_context::get_session_ambr(
+    oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
+    const std::string& dnn) {
+  Logger::smf_app().debug(
+      "Get AMBR info from the subscription information (DNN %s)", dnn.c_str());
+
+  std::shared_ptr<session_management_subscription> ss = {};
+  std::shared_ptr<dnn_configuration_t> sdc            = {};
+  find_dnn_subscription(snssai, ss);
+
+  // set default value in case of error
+  session_ambr.SetSessionAmbrForDownlink(1);
+  session_ambr.SetUnitForDownlink(
+      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS);
+  session_ambr.SetSessionAmbrForUplink(1);
+  session_ambr.SetUnitForUplink(
+      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS);
+
+  if (nullptr != ss) {
+    ss->find_dnn_configuration(dnn, sdc);
+    if (nullptr != sdc) {
+      Logger::smf_app().debug(
+          "Default AMBR info from the subscription information, downlink %s, "
+          "uplink %s",
+          (sdc->session_ambr).downlink.c_str(),
+          (sdc->session_ambr).uplink.c_str());
+
+      bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
+      uint16_t ambr_dl_value, ambr_ul_value;
+      if (parse_bitrate_string(
+              sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
+        session_ambr.SetUnitForDownlink(
+            nas_ambr_from_bitrate_unit(ambr_dl_unit));
+        session_ambr.SetSessionAmbrForDownlink(ambr_dl_value);
+      } else {
+        Logger::smf_app().warn(
+            "Could not set AMBR downlink value, use default 1 MBPS");
+      }
+
+      if (parse_bitrate_string(
+              sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
+        session_ambr.SetUnitForUplink(nas_ambr_from_bitrate_unit(ambr_ul_unit));
+        session_ambr.SetSessionAmbrForUplink(ambr_ul_value);
+      } else {
+        Logger::smf_app().warn(
+            "Could not set AMBR uplink value, use default 1 MBPS");
+      }
+    }
+  } else {
+    Logger::smf_app().warn(
+        "Could not get default info from the subscription information for AMBR "
+        "Dl/UL value, use default 1 MBPS");
+  }
+}
+
+//------------------------------------------------------------------------------
 uint8_t smf_context::nas_ambr_from_bitrate_unit(
     const bitrate_unit_e& bitrate_unit) {
   switch (bitrate_unit) {
@@ -1339,7 +1399,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_request(
-    nas_message_t& nas_msg,
+    std::shared_ptr<Nas5gsmMessage>& nas_message,
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
@@ -1357,7 +1417,7 @@ bool smf_context::handle_pdu_session_modification_request(
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
         "(session ID %d), ignore the message!",
-        nas_msg.plain.sm.header.pdu_session_identity);
+        nas_message->GetHeader().GetPduSessionIdentity());
     return false;
   }
 
@@ -1369,23 +1429,23 @@ bool smf_context::handle_pdu_session_modification_request(
     Logger::smf_app().info(
         "This PDU session is in MODIFICATION_PENDING State (session ID "
         "%d), ignore the message!",
-        nas_msg.plain.sm.header.pdu_session_identity);
+        nas_message->GetHeader().GetPduSessionIdentity());
     return false;
   }
 
   // See section 6.4.2 - UE-requested PDU Session modification procedure@
   // 3GPP TS 24.501  Verify PDU Session Identity
   if (sm_context_request.get()->req.get_pdu_session_id() !=
-      nas_msg.plain.sm.header.pdu_session_identity) {
+      nas_message->GetHeader().GetPduSessionIdentity()) {
     // TODO: PDU Session ID mismatch
   }
 
   // PTI
   Logger::smf_app().info(
-      "PTI %d", nas_msg.plain.sm.header.procedure_transaction_identity);
+      "PTI %d", nas_message->GetHeader().GetProcedureTransactionIdentity());
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
   sm_context_resp.get()->res.set_pti(pti);
 
   // Message Type
@@ -1396,7 +1456,7 @@ bool smf_context::handle_pdu_session_modification_request(
   // TODO: IntergrityProtectionMaximumDataRate
 
   // Process QoS rules and Qos Flow descriptions
-  update_qos_info(sp, sm_context_resp.get()->res, nas_msg);
+  update_qos_info(sp, sm_context_resp.get()->res, nas_message);
 
   // TODO: MappedEPSBearerContexts
   // TODO: ExtendedProtocolConfigurationOptions
@@ -1424,8 +1484,6 @@ bool smf_context::handle_pdu_session_modification_request(
         http_status_code::INTERNAL_SERVER_ERROR, sm_context_request.get()->pid,
         N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE);
 
-    free_wrapper((void**) &nas_msg.plain.sm.pdu_session_modification_request
-                     .qosflowdescriptions.qosflowdescriptionscontents);
     return false;
   }
 
@@ -1468,14 +1526,12 @@ bool smf_context::handle_pdu_session_modification_request(
   sp.get()->timer_T3591 = itti_inst->timer_setup(
       T3591_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3591, scid);
 
-  free_wrapper((void**) &nas_msg.plain.sm.pdu_session_modification_request
-                   .qosflowdescriptions.qosflowdescriptionscontents);
   return true;
 }
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_complete(
-    nas_message_t& nas_msg,
+    std::shared_ptr<Nas5gsmMessage>& nas_message,
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
@@ -1502,7 +1558,7 @@ bool smf_context::handle_pdu_session_modification_complete(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_command_reject(
-    nas_message_t& nas_msg,
+    std::shared_ptr<Nas5gsmMessage>& nas_message,
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
@@ -1512,23 +1568,29 @@ bool smf_context::handle_pdu_session_modification_command_reject(
 
   // Verify PDU Session Identity
   if (sm_context_request.get()->req.get_pdu_session_id() !=
-      nas_msg.plain.sm.header.pdu_session_identity) {
+      nas_message->GetHeader().GetPduSessionIdentity()) {
     // TODO: PDU Session ID mismatch
   }
 
   Logger::smf_app().info(
-      "PTI %d", nas_msg.plain.sm.header.procedure_transaction_identity);
+      "PTI %d", nas_message->GetHeader().GetProcedureTransactionIdentity());
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
   sm_context_resp.get()->res.set_pti(pti);
 
   // Message Type
-  //_5GSMCause
-  // presence
-  // ExtendedProtocolConfigurationOptions
+  uint8_t message_type = nas_message->GetHeader().GetMessageType();
+  if (message_type != PDU_SESSION_MODIFICATION_COMMAND_REJECT) {
+    return false;
+  }
 
-  if (nas_msg.plain.sm.pdu_session_modification_command_reject._5gsmcause ==
+  //_5GSMCause
+  oai::nas::_5gsmCause _5gsm_cause = {};
+  (std::dynamic_pointer_cast<oai::nas::PduSessionModificationCommandReject>(
+       nas_message))
+      ->Get5gsmCause(_5gsm_cause);
+  if (_5gsm_cause.GetValue() ==
       static_cast<uint8_t>(
           cause_value_5gsm_e::CAUSE_43_INVALID_PDU_SESSION_IDENTITY)) {
     // Update PDU Session status -> INACTIVE
@@ -1543,6 +1605,9 @@ bool smf_context::handle_pdu_session_modification_command_reject(
     sp.get()->set_pdu_session_status(pdu_session_status_e::PDU_SESSION_ACTIVE);
   }
 
+  // presence
+  // ExtendedProtocolConfigurationOptions
+
   // stop T3591
   itti_inst->timer_remove(sp.get()->timer_T3591);
 
@@ -1551,7 +1616,7 @@ bool smf_context::handle_pdu_session_modification_command_reject(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_release_request(
-    nas_message_t& nas_msg,
+    std::shared_ptr<Nas5gsmMessage>& nas_message,
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
@@ -1564,7 +1629,7 @@ bool smf_context::handle_pdu_session_release_request(
 
   // verify PDU Session ID
   if (sm_context_request.get()->req.get_pdu_session_id() !=
-      nas_msg.plain.sm.header.pdu_session_identity) {
+      nas_message->GetHeader().GetPduSessionIdentity()) {
     // TODO: PDU Session ID mismatch
   }
 
@@ -1598,13 +1663,13 @@ bool smf_context::handle_pdu_session_release_request(
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
         "(session ID %d), ignore the message!",
-        nas_msg.plain.sm.header.pdu_session_identity);
+        nas_message->GetHeader().GetPduSessionIdentity());
     return false;
   }
 
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
 
   Logger::smf_app().info("PTI %d", pti.procedure_transaction_id);
   sm_context_resp.get()->res.set_pti(pti);
@@ -1633,7 +1698,7 @@ bool smf_context::handle_pdu_session_release_request(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_release_complete(
-    nas_message_t& nas_msg,
+    std::shared_ptr<Nas5gsmMessage>& nas_message,
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
     std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
@@ -1643,18 +1708,23 @@ bool smf_context::handle_pdu_session_release_complete(
 
   // verify PDU Session ID
   if (sm_context_request.get()->req.get_pdu_session_id() !=
-      nas_msg.plain.sm.header.pdu_session_identity) {
+      nas_message->GetHeader().GetPduSessionIdentity()) {
     // TODO: PDU Session ID mismatch
   }
 
   Logger::smf_app().info(
-      "PTI %d", nas_msg.plain.sm.header.procedure_transaction_identity);
+      "PTI %d", nas_message->GetHeader().GetProcedureTransactionIdentity());
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          nas_msg.plain.sm.header.procedure_transaction_identity};
-  if (nas_msg.plain.sm.header.message_type != PDU_SESSION_RELEASE_COMPLETE) {
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
+
+  // Message Type
+  uint8_t message_type = nas_message->GetHeader().GetMessageType();
+  if (message_type != PDU_SESSION_RELEASE_COMPLETE) {
     // TODO: Message Type mismatch
+    // return false;
   }
+
   // 5GSM Cause
   // Extended Protocol Configuration Options
 
@@ -2091,16 +2161,15 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
   // Step 2.1. Decode N1 (if content is available)
   if (sm_context_req_msg.n1_sm_msg_is_set()) {
-    nas_message_t decoded_nas_msg = {};
+    //    nas_message_t decoded_nas_msg = {};
 
-    // Decode NAS and get the necessary information
-    n1_sm_msg = sm_context_req_msg.get_n1_sm_message();
-    memset(&decoded_nas_msg, 0, sizeof(nas_message_t));
+    auto nas_message = std::make_shared<Nas5gsmMessage>();
 
-    int decoder_rc = smf_n1::get_instance().decode_n1_sm_container(
-        decoded_nas_msg, n1_sm_msg);
-    if (decoder_rc != RETURNok) {
-      // error, send reply to AMF with error code!!
+    // Step 1. Decode NAS and get the necessary information
+    int decoded_size = smf_n1::get_instance().decode_n1_sm_container(
+        nas_message, smreq->req.get_n1_sm_message());
+    // Failed to decode, send reply to AMF with PDU Session Establishment Reject
+    if (decoded_size == KEncodeDecodeError) {
       Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
       smf_app_inst->trigger_update_context_error_response(
           http_status_code::FORBIDDEN,
@@ -2108,7 +2177,27 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       return false;
     }
 
-    uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
+    uint8_t message_type = nas_message->GetHeader().GetMessageType();
+    /*
+
+   // Decode NAS and get the necessary information
+   n1_sm_msg = sm_context_req_msg.get_n1_sm_message();
+   memset(&decoded_nas_msg, 0, sizeof(nas_message_t));
+
+   int decoder_rc = smf_n1::get_instance().decode_n1_sm_container(
+       decoded_nas_msg, n1_sm_msg);
+   if (decoder_rc != RETURNok) {
+     // error, send reply to AMF with error code!!
+     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
+     smf_app_inst->trigger_update_context_error_response(
+         http_status_code::FORBIDDEN,
+         PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, smreq->pid);
+     return false;
+   }
+
+   uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
+   */
+
     switch (message_type) {
       case PDU_SESSION_MODIFICATION_REQUEST: {
         // PDU Session Modification procedure (UE-initiated, step 1.a,
@@ -2118,7 +2207,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         procedure_type = session_management_procedures_type_e::
             PDU_SESSION_MODIFICATION_UE_INITIATED_STEP1;
         if (!handle_pdu_session_modification_request(
-                decoded_nas_msg, smreq, sm_context_resp_pending, sp)) {
+                nas_message, smreq, sm_context_resp_pending, sp)) {
           // TODO
           return false;
         }
@@ -2134,7 +2223,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         procedure_type = session_management_procedures_type_e::
             PDU_SESSION_MODIFICATION_UE_INITIATED_STEP3;
         if (!handle_pdu_session_modification_complete(
-                decoded_nas_msg, smreq, sm_context_resp_pending, sp)) {
+                nas_message, smreq, sm_context_resp_pending, sp)) {
           // TODO:
           return false;
         }
@@ -2149,7 +2238,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             PDU_SESSION_MODIFICATION_UE_INITIATED_STEP3;
 
         if (!handle_pdu_session_modification_command_reject(
-                decoded_nas_msg, smreq, sm_context_resp_pending, sp)) {
+                nas_message, smreq, sm_context_resp_pending, sp)) {
           // TODO:
           return false;
         }
@@ -2167,7 +2256,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             PDU_SESSION_RELEASE_UE_REQUESTED_STEP1;
 
         if (!handle_pdu_session_release_request(
-                decoded_nas_msg, smreq, sm_context_resp_pending, sp)) {
+                nas_message, smreq, sm_context_resp_pending, sp)) {
           // TODO
           return false;
         }
@@ -2188,7 +2277,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             PDU_SESSION_RELEASE_UE_REQUESTED_STEP3;
 
         if (!handle_pdu_session_release_complete(
-                decoded_nas_msg, smreq, sm_context_resp_pending, sp)) {
+                nas_message, smreq, sm_context_resp_pending, sp)) {
           // TODO:
           return false;
         }
@@ -4120,53 +4209,85 @@ void smf_context::handle_plmn_change(
 void smf_context::update_qos_info(
     std::shared_ptr<smf_pdu_session>& sp,
     ::smf::pdu_session_update_sm_context_response& res,
-    const nas_message_t& nas_msg) {
+    const std::shared_ptr<Nas5gsmMessage>& nas_message) {
   // Process QoS rules and Qos Flow descriptions
-  uint16_t length_of_rule_ie = nas_msg.plain.sm.pdu_session_modification_request
-                                   .qosrules.lengthofqosrulesie;
+  // verify message type
+
+  // Message Type
+  uint8_t message_type = nas_message->GetHeader().GetMessageType();
+  if (message_type != PDU_SESSION_MODIFICATION_REQUEST) {
+    return;
+  }
+
+  std::optional<oai::nas::QosRules> qos_rule_opt = std::nullopt;
+  (std::dynamic_pointer_cast<oai::nas::PduSessionModificationRequest>(
+       nas_message))
+      ->GetRequestedQosRules(qos_rule_opt);
+
+  uint16_t length_of_rule_ie = {};
+  if (qos_rule_opt.has_value()) {
+    length_of_rule_ie = qos_rule_opt.value().GetLengthIndicator();
+  }
+
+  std::vector<QosRule> qos_rules;
+  if (qos_rule_opt.has_value()) {
+    qos_rule_opt.value().Get(qos_rules);
+  }
 
   int i              = 0;
   int length_of_rule = 0;
   while (length_of_rule_ie > 0) {
-    QOSRulesIE qos_rules_ie = {};
-    qos_rules_ie = nas_msg.plain.sm.pdu_session_modification_request.qosrules
-                       .qosrulesie[i];
-    length_of_rule = qos_rules_ie.LengthofQoSrule;
+    oai::nas::QosRule qos_rules_ie = {};
+    if (qos_rules.size() < i) break;
+    qos_rules_ie = qos_rules[i];
+
+    //    qos_rules_ie =
+    //    nas_msg.plain.sm.pdu_session_modification_request.qosrules
+    //                       .qosrulesie[i];
+    length_of_rule = qos_rules_ie.GetLength();
 
     // If UE requested a new GBR flow
-    if ((qos_rules_ie.ruleoperationcode == CREATE_NEW_QOS_RULE) and
-        (qos_rules_ie.segregation == SEGREGATION_REQUESTED)) {
+    if ((qos_rules_ie.GetRuleOperationCode() == CREATE_NEW_QOS_RULE) and
+        (qos_rules_ie.GetSegregation() == SEGREGATION_REQUESTED)) {
       // Add a new QoS Flow
-      uint8_t number_of_flow_descriptions =
-          nas_msg.plain.sm.pdu_session_modification_request.qosflowdescriptions
-              .qosflowdescriptionsnumber;
+
+      std::optional<oai::nas::QosFlowDescriptions> qos_flow_descriptions_opt =
+          std::nullopt;
+      (std::dynamic_pointer_cast<PduSessionModificationRequest>(nas_message))
+          ->GetRequestedQosFlowDescriptions(qos_flow_descriptions_opt);
+
+      uint8_t number_of_flow_descriptions = {0};
+
+      std::vector<QosFlowDescription> qos_flow_descriptions;
+      if (qos_flow_descriptions_opt.has_value()) {
+        qos_flow_descriptions_opt.value().Get(qos_flow_descriptions);
+      }
+
+      if (qos_flow_descriptions_opt.has_value()) {
+        number_of_flow_descriptions = qos_flow_descriptions.size();
+      }
 
       // Only one flow description for new requested QoS Flow
-      for (int j = 0; j < number_of_flow_descriptions; j++) {
-        if (nas_msg.plain.sm.pdu_session_modification_request
-                .qosflowdescriptions.qosflowdescriptionscontents[j]
-                .qfi == NO_QOS_FLOW_IDENTIFIER_ASSIGNED) {
-          QOSFlowDescriptionsContents qos_flow_description_content =
-              nas_msg.plain.sm.pdu_session_modification_request
-                  .qosflowdescriptions.qosflowdescriptionscontents[j];
-
+      for (int j = 0; j < qos_flow_descriptions.size(); j++) {
+        if (qos_flow_descriptions[j].GetQfi() ==
+            NO_QOS_FLOW_IDENTIFIER_ASSIGNED) {
           qos_flow_context_updated qcu =
               sp->get_session_handler()->create_new_qos_rule(
-                  qos_rules_ie, qos_flow_description_content);
+                  qos_rules_ie, qos_flow_descriptions[j]);
           res.add_qos_flow_context_updated(qcu);
           break;
         }
       }
     } else if (
-        qos_rules_ie.ruleoperationcode ==
+        qos_rules_ie.GetRuleOperationCode() ==
         DELETE_EXISTING_QOS_FLOW_DESCRIPTION) {
       // TODO
       Logger::smf_app().warn(
           "Delete existing QRI %d requested but is not implemented yet",
-          qos_rules_ie.qosruleidentifer);
+          qos_rules_ie.GetQosRuleId());
     } else {  // update existing QRI
       Logger::smf_app().debug(
-          "Update existing QRI %d", qos_rules_ie.qosruleidentifer);
+          "Update existing QRI %d", qos_rules_ie.GetQosRuleId());
 
       if (sp->get_session_handler()->qfi_exists(
               qos_rules_ie.qosflowidentifer)) {

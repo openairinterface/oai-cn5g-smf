@@ -41,6 +41,9 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
+#include "QosRule.hpp"
+#include "Nas5gsmMessage.hpp"
+#include "SessionAmbr.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
@@ -493,7 +496,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   /*
    * Handle PDU Session Modification Request
-   * @param [nas_message_t&] nas_msg: NAS message received from AMF
+   * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message received from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
    * sm_context_request: Request message
    * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
@@ -502,14 +506,15 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_request(
-      nas_message_t& nas_msg,
+      std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Modification Complete
-   * @param [nas_message_t&] nas_msg: NAS message received from AMF
+   * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message received from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
    * sm_context_request: Request message
    * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
@@ -518,14 +523,15 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_complete(
-      nas_message_t& nas_msg,
+      std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Modification Command Reject
-   * @param [nas_message_t&] nas_msg: NAS message received from AMF
+   * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message received from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
    * sm_context_request: Request message
    * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
@@ -534,14 +540,15 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_command_reject(
-      nas_message_t& nas_msg,
+      std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Release Request
-   * @param [nas_message_t&] nas_msg: NAS message received from AMF
+   * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message received from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
    * sm_context_request: Request message
    * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
@@ -550,14 +557,15 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_release_request(
-      nas_message_t& nas_msg,
+      std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Release Complete
-   * @param [nas_message_t&] nas_msg: NAS message received from AMF
+   * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message received from AMF
    * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
    * sm_context_request: Request message
    * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
@@ -566,7 +574,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_release_complete(
-      nas_message_t& nas_msg,
+      std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
@@ -845,12 +853,13 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   /*
    * Get the default QoS Rule for all QFIs
-   * @param [QOSRulesIE] qos_rule
+   * @param [oai::nas::QosRule] qos_rule
    * @param [const uint8_t] pdu_session_type: PDU session type (e.g., Ipv4,
    * Ipv6)
    * @return void
    */
-  void get_default_qos_rule(QOSRulesIE& qos_rule, uint8_t pdu_session_type);
+  void get_default_qos_rule(
+      oai::nas::QosRule& qos_rule, uint8_t pdu_session_type);
 
   /*
    * Get the default QoS Flow Description, according to PDU session type and QFI
@@ -872,6 +881,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    */
   void get_session_ambr(
       SessionAMBR& session_ambr, const snssai_t& snssai,
+      const std::string& dnn);
+
+  void get_session_ambr(
+      oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
       const std::string& dnn);
 
   /*
@@ -1016,7 +1029,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @param [std::shared_ptr<pdu_session_update_sm_context_response>&] res:
    * Response message
-   * @param [const nas_message_t] nas_msg: NAS message
+   * @param [const std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
+   * message
    * @return void
    */
   // TODO delete?
@@ -1024,7 +1038,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void update_qos_info(
       std::shared_ptr<smf_pdu_session>& sp,
       ::smf::pdu_session_update_sm_context_response& res,
-      const nas_message_t& nas_msg);
+      const std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message);
 
   /*
    * Set AMF Addr of the serving AMF
