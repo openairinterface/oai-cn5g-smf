@@ -4257,7 +4257,6 @@ void smf_context::update_qos_info(
           ->GetRequestedQosFlowDescriptions(qos_flow_descriptions_opt);
 
       uint8_t number_of_flow_descriptions = {0};
-
       std::vector<QosFlowDescription> qos_flow_descriptions;
       if (qos_flow_descriptions_opt.has_value()) {
         qos_flow_descriptions_opt.value().Get(qos_flow_descriptions);
@@ -4289,11 +4288,13 @@ void smf_context::update_qos_info(
       Logger::smf_app().debug(
           "Update existing QRI %d", qos_rules_ie.GetQosRuleId());
 
-      if (sp->get_session_handler()->qfi_exists(
-              qos_rules_ie.qosflowidentifer)) {
-        qos_flow_context_updated qcu =
-            sp->get_session_handler()->update_qos_rule(qos_rules_ie);
-        res.add_qos_flow_context_updated(qcu);
+      std::optional<uint8_t> qfi_qos_rule = qos_rules_ie.GetQfi();
+      if (qfi_qos_rule.has_value()) {
+        if (sp->get_session_handler()->qfi_exists(qfi_qos_rule.value())) {
+          qos_flow_context_updated qcu =
+              sp->get_session_handler()->update_qos_rule(qos_rules_ie);
+          res.add_qos_flow_context_updated(qcu);
+        }
       }
     }
     length_of_rule_ie -= (length_of_rule + 3);  // 2 for Length of QoS

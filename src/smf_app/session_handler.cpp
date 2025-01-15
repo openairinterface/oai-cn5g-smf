@@ -25,6 +25,7 @@
 #include "conversions.h"
 #include "smf_config.hpp"
 #include "Struct.hpp"
+#include "QosFlowDescriptionParameter.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
@@ -665,64 +666,67 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   // set qos_profile from qos_flow_description_content
   qos_flow.qos_profile = {};
 
-  std::optional<std::vector<oai::nas::QosFlowDescriptionsParameter>>
+  std::optional<std::vector<oai::nas::QosFlowDescriptionParameter>>
       parameter_list = qos_flow_description.GetParametersList();
 
   if (parameter_list.has_value()) {
-    for (int j = 0; j < parameter_list.value().size(); j++) {
-      if ((parameter_list.value())[i].parameter_id ==
-          PARAMETER_IDENTIFIER_5QI) {
-        qos_flow.qos_profile.setR5qi(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents._5qi);
-      } else if (
-          qos_flow_description_content.parameterslist[j].parameteridentifier ==
-          PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-        std::string gbrUlValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-        qos_flow.qos_profile.setGbrUl(gbrUlValue);
-        std::string gbrValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value);
-        qos_flow.qos_profile.setGbrUl(gbrValue);
-      } else if (
-          qos_flow_description_content.parameterslist[j].parameteridentifier ==
-          PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-        std::string gbrDlValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-        qos_flow.qos_profile.setGbrDl(gbrDlValue);
-        std::string gbrValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value);
-        qos_flow.qos_profile.setGbrDl(gbrValue);
-      } else if (
-          qos_flow_description_content.parameterslist[j].parameteridentifier ==
-          PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-        std::string mbrUlValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-        qos_flow.qos_profile.setMaxbrUl(mbrUlValue);
-        std::string mbrValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value);
-        qos_flow.qos_profile.setMaxbrUl(mbrValue);
-      } else if (
-          qos_flow_description_content.parameterslist[j].parameteridentifier ==
-          PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-        std::string mbrDlValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-        qos_flow.qos_profile.setMaxbrDl(mbrDlValue);
-        std::string mbrValue = std::to_string(
-            qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value);
-        qos_flow.qos_profile.setMaxbrDl(mbrValue);
+    for (int i = 0; i < parameter_list.value().size(); i++) {
+      uint8_t parameter_id = (parameter_list.value())[i].GetIdentifier();
+      switch (parameter_id) {
+        case oai::nas::kQosFlowDescriptionParameterIdentifier5qi: {
+          std::optional<uint8_t> _5qi = (parameter_list.value())[i].Get5qi();
+          if (_5qi.has_value()) qos_flow.qos_profile.setR5qi(_5qi.value());
+        } break;
+
+        case oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink: {
+          std::optional<oai::nas::BitRate> gfbr_uplink =
+              (parameter_list.value())[i].GetGfbrUplink();
+          if (gfbr_uplink.has_value()) {
+            std::string gfbr_uplink_str =
+                std::to_string(gfbr_uplink.value().value)
+                    .append(std::to_string(gfbr_uplink.value().unit));
+            qos_flow.qos_profile.setGbrUl(gfbr_uplink_str);
+          }
+        } break;
+
+        case oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink: {
+          std::optional<oai::nas::BitRate> gfbr_downlink =
+              (parameter_list.value())[i].GetGfbrDownlink();
+          if (gfbr_downlink.has_value()) {
+            std::string gfbr_downlink_str =
+                std::to_string(gfbr_downlink.value().value)
+                    .append(std::to_string(gfbr_downlink.value().unit));
+            qos_flow.qos_profile.setGbrDl(gfbr_downlink_str);
+          }
+        } break;
+
+        case oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink: {
+          std::optional<oai::nas::BitRate> mfbr_uplink =
+              (parameter_list.value())[i].GetMfbrUplink();
+          if (mfbr_uplink.has_value()) {
+            std::string mfbr_uplink_str =
+                std::to_string(mfbr_uplink.value().value)
+                    .append(std::to_string(mfbr_uplink.value().unit));
+            qos_flow.qos_profile.setMaxbrUl(mfbr_uplink_str);
+          }
+        } break;
+
+        case oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink: {
+          std::optional<oai::nas::BitRate> mfbr_downlink =
+              (parameter_list.value())[i].GetMfbrDownlink();
+          if (mfbr_downlink.has_value()) {
+            std::string mfbr_downlink_str =
+                std::to_string(mfbr_downlink.value().value)
+                    .append(std::to_string(mfbr_downlink.value().unit));
+            qos_flow.qos_profile.setMaxbrDl(mfbr_downlink_str);
+          }
+        } break;
+
+        default: {
+        }
       }
     }
   }
-
   Logger::smf_app().debug(
       "Add new QoS Flow with new QRI %d", qos_rules_ie.GetQosRuleId());
 

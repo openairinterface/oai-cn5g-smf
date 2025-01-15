@@ -610,6 +610,8 @@ bool smf_n1::create_n1_pdu_session_modification_command(
     nas_msg_str.assign((char*) buffer, encoded_size);
     result = true;
   }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------------------------------

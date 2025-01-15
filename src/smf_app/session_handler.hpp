@@ -27,6 +27,7 @@
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 #include "sdf_conversions.hpp"
 #include "QosRule.hpp"
+#include "QosFlowDescription.hpp"
 
 extern "C" {
 #include "QOSRules.h"
@@ -112,6 +113,10 @@ class session_handler {
   ::smf::qos_flow_context_updated create_new_qos_rule(
       oai::nas::QosRule& qos_rule,
       const QOSFlowDescriptionsContents& qos_flow_description_content);
+
+  qos_flow_context_updated create_new_qos_rule(
+      oai::nas::QosRule& qos_rules_ie,
+      const oai::nas::QosFlowDescription& qos_flow_description);
 
   /**
    * Update QoS Rules (TODO description because what is exactly the point of
