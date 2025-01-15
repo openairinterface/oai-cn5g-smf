@@ -182,10 +182,10 @@ void session_handler::set_nas_filter_from_edge(
       auto flow_direction = flow.getFlowDirection().getEnumValue();
       switch (flow_direction) {
         case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
-          parsed_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
+          parsed_direction = NAS_PACKET_FILTER_DOWNLINK_DIRECTION;
           break;
         case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
-          parsed_direction = NAS_PACKET_FILTER_DOWNLINK_DIRECTION;
+          parsed_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
           break;
         case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
         default:
