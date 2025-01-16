@@ -1016,7 +1016,20 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // TODO what is the exact meaning of SCID? Is this unique per registration
   // or unique per PDU session?
   sp->policy_ptr->id = smreq->scid;
+  // TODO [Policy Control] The SMF shall set the notification URI for the PCF to use
+  // to notify the SMF of policy decisions. The SMF shall set the notification
+  // The URI value will have the base uri of the SMF
+  std::string notification_uri = smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() + 
+    NSMF_N7_BASE + smf_cfg->sbi_api_version +
+          NSMF_N7_CALLBACK +
+          fmt::format(
+            NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK, std::to_string(sp->policy_ptr->id).c_str());
+  // Add association id to url
+  Logger::smf_app().debug(fmt::format(
+      "Set the notification URI {} for the PCF to use to notify the SMF of ", notification_uri.c_str()));
+  sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
 
+  // NOTE: The decision in association (sp->policy_ptr) is updated from the response from PCF
   n7::sm_policy_status_code status =
       n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
   if (status != n7::sm_policy_status_code::CREATED) {
@@ -1283,6 +1296,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::shared_ptr<smf_procedure> sproc = proc;
 
   insert_procedure(sproc);
+  // NOTE: This is where the pdu session is created
   if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==
       smf_procedure_code::ERROR) {
     // error !
@@ -3265,6 +3279,16 @@ bool smf_context::handle_ho_cancellation(
   // Delete targetServingNfId
 
   return true;
+}
+
+//------------------------------------------------------------------------------
+void smf_context::handle_n7_update_policy_notification(
+    std::shared_ptr<itti_n7_update_policy_notification_request> pnreq) {
+  Logger::smf_app().info("SMF Context: Handle a N7 Update Policy Notification");
+
+  // TODO: Update the policy association
+
+  // TODO: Send PDU session modification request to UPF
 }
 
 //------------------------------------------------------------------------------

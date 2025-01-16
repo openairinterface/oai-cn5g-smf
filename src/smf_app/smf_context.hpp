@@ -49,6 +49,7 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
+#include "itti_msg_n7.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
@@ -743,6 +744,16 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
+
+  // Handle the n7 update policy notification
+  /*
+   * Handle N7 Update Policy Notification
+   * @param [std::shared_ptr<itti_n7_update_policy_notification_request>&]
+   * msg: Request message
+   * @return void
+   */
+  void handle_n7_update_policy_notification(
+        std::shared_ptr<itti_n7_update_policy_notification_request> pnreq);
 
   /*
    * Check the validity of the request according to user subscription and local

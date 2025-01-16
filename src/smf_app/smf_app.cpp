@@ -1108,6 +1108,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   Logger::smf_app().debug("Generated a SMF Context ID " SCID_FMT " ", scid);
 
   // Step 9. Let the context handle the message
+  // NOTE: The actual processing of the message is done here
   sc.get()->handle_pdu_session_create_sm_context_request(smreq);
 }
 
@@ -1533,6 +1534,25 @@ void smf_app::handle_sbi_update_configuration(
     trigger_http_response(response_data, itti_msg->promise_id);
     return;
   }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_n7_update_policy_notification(
+    std::shared_ptr<itti_n7_update_policy_notification_request>& itti_msg) {
+  Logger::smf_app().info(
+      "Handle an N7 Update Policy Notification from a NF (HTTP version "
+      "%d)",
+      itti_msg->http_version);
+
+  // Process the request and trigger the response from SMF API Server
+  nlohmann::json response_data = {};
+  
+  // TODO: Handle the N7 Update Policy Notification
+
+  // Handle update in context
+  std::shared_ptr<smf_context> sc = {};
+
+  sc.get()->handle_n7_update_policy_notification(itti_msg);
 }
 
 //---------------------------------------------------------------------------------------------

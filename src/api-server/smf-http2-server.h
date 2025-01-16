@@ -37,6 +37,7 @@
 #include "SmContextMessage.h"
 #include "SmContextReleaseMessage.h"
 #include "SmContextUpdateMessage.h"
+#include "SmPolicyNotification.h"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "uint_generator.hpp"
@@ -73,6 +74,9 @@ class smf_http2_server {
   void get_configuration_handler(const response& response);
   void update_configuration_handler(
       nlohmann::json& configuration_info, const response& response);
+
+  void update_policy_notification_handler(
+    const oai::model::pcf::SmPolicyNotification& smPolicyNotification, const response& response);
 
   void stop();
 

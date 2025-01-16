@@ -40,6 +40,7 @@
 #include "3gpp_conversions.hpp"
 #include "http_client.hpp"
 #include "itti_msg_n11.hpp"
+#include "itti_msg_n7.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
 #include "smf.h"
@@ -381,6 +382,46 @@ void smf_http2_server::start() {
             response.end();
             return;
           }
+        });
+      });
+
+  // N7 Callback
+  server.handle(
+    NSMF_N7_BASE + smf_cfg->sbi_api_version + 
+      NSMF_N7_CALLBACK,
+      [&](const request& request, const response& response) {
+        Logger::smf_api_server().error("NSMF_N7 callbak -> Enter");
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          try {
+            if (request.method().compare("GET") == 0) {
+              // TODO: Get association
+              Logger::smf_api_server().error("NSMF_N7 callbak -> GET");
+            }
+            if (request.method().compare("PUT") == 0 && len > 0) {
+              // TODO: Update association
+              Logger::smf_api_server().error("NSMF_N7 callbak -> PUT");
+            }
+            if (request.method().compare("POST") == 0 && len > 0) {
+              // TODO: Create association
+              std::string msg((char*) data, len);
+              oai::model::pcf::SmPolicyNotification policyNotification = {};
+              auto policy_notification_data =
+                  nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
+              this->update_policy_notification_handler(
+                  policy_notification_data, response);
+              Logger::smf_api_server().error("NSMF_N7 callbak -> POST");
+            }
+          } catch (nlohmann::detail::exception& e) {
+            Logger::smf_sbi().warn(
+                "Can not parse the JSON data (error: %s)!", e.what());
+            response.write_head(http_status_code::BAD_REQUEST);
+            response.end();
+            return;
+          }
+
+          Logger::smf_api_server().error("NSMF_N7 callbak -> Default");
+          response.write_head(http_status_code::OK);
+          response.end();
         });
       });
 
@@ -934,6 +975,41 @@ void smf_http2_server::create_event_subscription_handler(
   h.emplace("content-type", header_value{"application/json"});
   response.write_head(http_status_code::CREATED, h);
   response.end(json_data.dump().c_str());
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::update_policy_notification_handler(
+    const oai::model::pcf::SmPolicyNotification& smPolicyNotification, const response& response) {
+  
+  Logger::smf_api_server().info("Received SmPolicyNotification Request");
+
+  // TODO: implement validation logic for handler
+
+  // Handle the message in smf_app
+
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
+  m_smf_app->add_promise(promise_id, p);
+
+  std::shared_ptr<itti_n7_update_policy_notification_request> itti_msg =
+      std::make_shared<itti_n7_update_policy_notification_request>(
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id);
+  // TODO: add request data
+  itti_msg->http_version = 2;
+  m_smf_app->handle_n7_update_policy_notification(itti_msg);
+
+
+  // TODO: verify if the message is correctly handled
+
+  response.write_head(http_status_code::OK);
+  response.end();
+
 }
 
 //------------------------------------------------------------------------------

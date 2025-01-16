@@ -194,6 +194,11 @@ typedef struct qos_profile_s {
 #define NNRF_NF_STATUS_SUBSCRIBE_URL "/subscriptions"
 #define NNRF_NF_STATUS_NOTIFY_BASE "/nsmf-nfstatus-notify/"
 
+// Callbacks for N7 interface
+#define NSMF_N7_BASE "/nsmf-n7/"
+#define NSMF_N7_CALLBACK "/callback/"
+#define NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK "sm-policies/{}" // Association Id
+
 // for CURL
 #define NF_CURL_TIMEOUT_MS 3000L
 #define MAX_WAIT_MSECS 10000  // 1 second

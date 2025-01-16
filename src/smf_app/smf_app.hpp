@@ -45,6 +45,7 @@
 #include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
+#include "itti_msg_n7.hpp"
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
@@ -618,6 +619,14 @@ class smf_app {
    */
   void handle_sbi_update_configuration(
       std::shared_ptr<itti_sbi_update_smf_configuration>& c);
+
+  /*
+   * Handle N7 API for update policy notification
+   * @param [std::shared_ptr<itti_n7_update_policy_notification_request>&] c
+   * @return void
+   */
+  void handle_n7_update_policy_notification(
+        std::shared_ptr<itti_n7_update_policy_notification_request>& itti_msg);
 
   /*
    * Get the current SMF's configuration
