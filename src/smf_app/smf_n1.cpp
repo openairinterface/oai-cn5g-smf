@@ -175,9 +175,9 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   pdu_session_estb_accept->SetPduAddress(pdu_address);
 
   // TODO: GPRSTimer
-  // sm_msg->pdu_session_establishment_accept.gprstimer.unit =
-  // GPRSTIMER_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_2_SECONDS;
-  // sm_msg->pdu_session_establishment_accept.gprstimer.timeValue = 0;
+  // oai::nas::GprsTimer gprs_timer(kIeiRqTimerValue);
+  // gprs_timer.SetUnit(oai::nas::kGprsTimerUnitValueIsIncrementedInMultiplesOf2Seconds);
+  // gprs_timer.SetValue(0);
 
   // SNSSAI
   oai::nas::SNssai snssai(kIeiSNssai);
@@ -299,7 +299,9 @@ bool smf_n1::create_n1_pdu_session_establishment_reject(
   Logger::smf_n1().debug(
       "PDU Session Establishment Reject,, 5GSM Cause: 0x%x",
       static_cast<uint8_t>(sm_cause));
+
   // TODO: Back-off timer value
+
   // AllowedSSCMode
   AllowedSscMode allow_ssc_mode = {};
   allow_ssc_mode.SetValue(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
@@ -310,6 +312,7 @@ bool smf_n1::create_n1_pdu_session_establishment_reject(
   // TODO: Extended protocol configuration options
   // TODO: Re-attempt indicator
 
+  // Encode NAS message
   uint32_t msg_len = pdu_session_estb_reject->GetLength();
   Logger::smf_n1().debug(
       "Size of PDU Session Establishment Reject message: %ld (octets)",
@@ -418,23 +421,20 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // TODO: MappedEPSBearerContexts
 
   // TODO: Authorized QoS Flow Descriptions
-  /*
-  auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
-  // TODO: get authorized QoS flow descriptions IE
-  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionsnumber = qos_flows.size();
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
+  std::vector<::smf::qos_flow_context_updated> qos_flows =
+      sp->get_session_handler()->get_qos_flows_context_updated();
 
-    for (int i = 0; i < qos_flows.size(); i++) {
-      sm_msg->pdu_session_modification_command.qosflowdescriptions
-          .qosflowdescriptionscontents[i] =
-          qos_flows[i].qos_flow_description_content;
+  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
+    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
+    for (const auto& qf : qos_flows) {
+      oai::nas::QosFlowDescription qos_flow_description =
+          qf.get_qos_flow_descriptions();
+      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
     }
+    pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(
+        qos_flow_descriptions);
   }
-*/
+
   // TODO: Extended protocol configuration options
   // TODO: ATSSS container
   // TODO: IP header compression Configuration
@@ -550,23 +550,20 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // TODO: MappedEPSBearerContexts
 
   // TODO: Authorized QoS Flow Descriptions
-  /*
-  auto qos_flows = sp->get_session_handler()->get_qos_flows_context_updated();
-  // TODO: get authorized QoS flow descriptions IE
-  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionsnumber = qos_flows.size();
-    sm_msg->pdu_session_modification_command.qosflowdescriptions
-        .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
+  std::vector<::smf::qos_flow_context_updated> qos_flows =
+      sp->get_session_handler()->get_qos_flows_context_updated();
 
-    for (int i = 0; i < qos_flows.size(); i++) {
-      sm_msg->pdu_session_modification_command.qosflowdescriptions
-          .qosflowdescriptionscontents[i] =
-          qos_flows[i].qos_flow_description_content;
+  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
+    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
+    for (const auto& qf : qos_flows) {
+      oai::nas::QosFlowDescription qos_flow_description =
+          qf.get_qos_flow_descriptions();
+      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
     }
+    pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(
+        qos_flow_descriptions);
   }
-*/
+
   // TODO: Extended protocol configuration options
   // TODO: ATSSS container
   // TODO: IP header compression Configuration
@@ -611,7 +608,7 @@ bool smf_n1::create_n1_pdu_session_release_reject(
       sm_context_res.get_pdu_session_id(),
       sm_context_res.get_pti().procedure_transaction_id);
   Logger::smf_n1().debug(
-      "PDU Session Modification Command, PDU Session Identity 0x%x, Procedure "
+      "PDU Session Release Reject, PDU Session Identity 0x%x, Procedure "
       "Transaction Identity "
       "0x%x",
       sm_context_res.get_pdu_session_id(),
@@ -782,44 +779,6 @@ bool create_n1_pdu_session_release_command(
   return true;
 }
 
-/*
-//------------------------------------------------------------------------------
-int smf_n1::decode_n1_sm_container(
-    nas_message_t& nas_msg, const std::string& n1_sm_msg) {
-  Logger::smf_n1().info("Decode NAS message from N1 SM Container.");
-
-  // step 1. Decode NAS  message (for instance, ... only served as an example)
-  nas_message_decode_status_t decode_status = {0};
-  int decoder_rc                            = RETURNok;
-
-  unsigned int data_len = n1_sm_msg.length();
-  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
-  memset(data, 0, data_len + 1);
-  memcpy((void*) data, (void*) n1_sm_msg.c_str(), data_len);
-
-  if (Logger::should_log(spdlog::level::debug)) {
-    printf("Content: ");
-    for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
-    printf("\n");
-  }
-
-  // decode the NAS message
-  decoder_rc =
-      nas_message_decode(data, &nas_msg, data_len, nullptr, &decode_status);
-  Logger::smf_n1().debug(
-      "NAS message, Extended Protocol Discriminator 0x%x, PDU Session Identity "
-      "0x%x, Procedure Transaction Identity 0x%x, Message Type 0x%x",
-      nas_msg.plain.sm.header.extended_protocol_discriminator,
-      nas_msg.plain.sm.header.pdu_session_identity,
-      nas_msg.plain.sm.header.procedure_transaction_identity,
-      nas_msg.plain.sm.header.message_type);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  return decoder_rc;
-}
-*/
 //------------------------------------------------------------------------------
 int smf_n1::decode_n1_sm_container(
     std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg) {
