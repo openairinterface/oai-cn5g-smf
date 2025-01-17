@@ -66,10 +66,23 @@ void qos_flow_context_updated::set_qos_profile(
 
 //-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_qos_flow_descriptions(
-    const QOSFlowDescriptionsContents& flow_description_content) {
-  qos_flow_description_content = flow_description_content;
+    const oai::nas::QosFlowDescription& flow_description) {
+  qos_flow_description = flow_description;
 }
 
+//-----------------------------------------------------------------------------
+void qos_flow_context_updated::get_qos_flow_descriptions(
+    oai::nas::QosFlowDescription& flow_description) const {
+  flow_description = qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
+oai::nas::QosFlowDescription
+qos_flow_context_updated::get_qos_flow_descriptions() const {
+  return qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
 /*
  * class: PDU Session MSG
  */

@@ -60,7 +60,7 @@ typedef struct ulnas_transport_msg_tag {
   PayloadContainerType payloadcontainertype;
   PayloadContainer payloadcontainer;
   PDUSessionIdentity2 pdusessionidentity2;
-  RequestType requesttype;
+  RequestType_t requesttype;
   SNSSAI snssai;
   DNN dnn;
   AdditionalInformation additionalinformation;

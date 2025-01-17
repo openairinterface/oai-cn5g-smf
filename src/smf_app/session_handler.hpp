@@ -30,7 +30,7 @@
 #include "QosFlowDescription.hpp"
 
 extern "C" {
-#include "QOSRules.h"
+//#include "QOSRules.h"
 }
 
 #pragma once
@@ -241,16 +241,17 @@ class session_handler {
 
   void set_nas_filter_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule);
-
-  void set_port_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::port_range& port_range);
-  void set_ip_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::ip_range& port_range);
-  void set_protocol_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      uint8_t protocol_id);
+  /*
+    void set_port_filter(
+        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+        const oai::utils::sdf_conversions::port_range& port_range);
+    void set_ip_filter(
+        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+        const oai::utils::sdf_conversions::ip_range& port_range);
+    void set_protocol_filter(
+        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+        uint8_t protocol_id);
+    */
   void set_port_filter(
       int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
@@ -270,11 +271,7 @@ class session_handler {
   static uint8_t nas_unit_from_bitrate_unit(
       const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
 
-  static void set_nas_bitrate(
-      uint8_t type, const std::string& bitrate_string,
-      ParametersList& nas_value);
-
-  QOSFlowDescriptionsContents qos_flow_description_from_edge(
+  oai::nas::QosFlowDescription qos_flow_description_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);

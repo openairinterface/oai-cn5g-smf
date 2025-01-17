@@ -130,6 +130,7 @@ void xgpp_conv::pco_nas_to_core(
   }
 }
 
+/*
 //------------------------------------------------------------------------------
 void xgpp_conv::pco_core_to_nas(
     const protocol_configuration_options_t& pco,
@@ -155,7 +156,7 @@ void xgpp_conv::pco_core_to_nas(
         pco.protocol_or_container_ids[i].protocol_id_contents.length());
   }
 }
-
+*/
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
     const oai::model::smf::SmContextMessage& scd,

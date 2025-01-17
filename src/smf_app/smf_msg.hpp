@@ -22,7 +22,6 @@
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
-#include <QOSFlowDescriptions.h>
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
@@ -39,6 +38,7 @@
 #include "smf_profile.hpp"
 #include "3gpp_24.501.hpp"
 #include "QosRule.hpp"
+#include "QosFlowDescription.hpp"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -75,14 +75,17 @@ class qos_flow_context_updated {
   void add_qos_rule(const oai::nas::QosRule& rule);
   void set_qos_profile(const oai::model::pcf::QosData& profile);
   void set_qos_flow_descriptions(
-      const QOSFlowDescriptionsContents& flow_description_content);
+      const oai::nas::QosFlowDescription& flow_description);
+  void get_qos_flow_descriptions(
+      oai::nas::QosFlowDescription& flow_description) const;
+  oai::nas::QosFlowDescription get_qos_flow_descriptions() const;
 
   uint8_t cause_value;
   pfcp::qfi_t qfi;
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
   std::map<uint8_t, oai::nas::QosRule> qos_rules;
-  QOSFlowDescriptionsContents qos_flow_description_content;
+  oai::nas::QosFlowDescription qos_flow_description;
   oai::model::pcf::QosData qos_profile;
   bool to_be_removed;
 };

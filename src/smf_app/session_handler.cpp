@@ -35,6 +35,7 @@ extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION = 0b10;
 
+//------------------------------------------------------------------------------
 void session_handler::set_session_graph(
     const std::shared_ptr<upf_graph>& upf_graph) {
   m_session_graph = upf_graph;
@@ -44,10 +45,12 @@ std::shared_ptr<upf_graph> session_handler::get_session_graph() const {
   return m_session_graph;
 }
 
+//------------------------------------------------------------------------------
 bool session_handler::has_session_graph() {
   return m_session_graph != nullptr;
 }
 
+//------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     const pfcp::qfi_t& qfi) {
   if (!has_session_graph()) {
@@ -90,6 +93,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
   return qos_flow_context_updated{};
 }
 
+//------------------------------------------------------------------------------
 std::vector<::smf::qos_flow_context_updated>
 session_handler::get_qos_flows_context_updated() {
   std::vector<::smf::qos_flow_context_updated> flows;
@@ -101,15 +105,18 @@ session_handler::get_qos_flows_context_updated() {
   return flows;
 }
 
+//------------------------------------------------------------------------------
 void session_handler::set_qfis_to_be_updated(
     const std::vector<pfcp::qfi_t>& qfis) {
   m_qfis_to_be_updated = qfis;
 }
 
+//------------------------------------------------------------------------------
 void session_handler::set_cause(const cause_value_5gsm_e& cause) {
   m_cause_value = cause;
 }
 
+//------------------------------------------------------------------------------
 // this code is really ugly, as soon as we refactor NAS, we have to refactor
 // this as well
 void session_handler::set_nas_filter_from_edge(
@@ -153,7 +160,7 @@ void session_handler::set_nas_filter_from_edge(
     packet_filter.packet_filter_id        = 1;
 
     oai::nas::PacketFilterComponent packet_filter_component = {};
-    packet_filter_component.type = QOS_RULE_MATCHALL_TYPE;
+    packet_filter_component.type = oai::nas::kQosRulePfctiMatchAllType;
     packet_filter.content.packet_filter_components.push_back(
         packet_filter_component);
     packet_filter.content.length = 1;  // for QoS Rule Matchall_type
@@ -193,28 +200,6 @@ void session_handler::set_nas_filter_from_edge(
 
 //------------------------------------------------------------------------------
 void session_handler::set_port_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-    const port_range& port_range) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  uint16_t port_low                 = htons(port_range.start);
-  uint16_t port_high                = htons(port_range.end);
-
-  if (port_range.is_range) {
-    uint32_t int_range = 0;
-    int_range          = ((uint32_t) port_high << 16) | port_low;
-    nas_filter.packetfiltercontents.component_type =
-        QOS_RULE_REMOTE_PORT_RANGE_TYPE;
-    nas_filter.packetfiltercontents.component_value = blk2bstr(&int_range, 4);
-  } else {
-    nas_filter.packetfiltercontents.component_type =
-        QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
-    nas_filter.packetfiltercontents.component_value = blk2bstr(&port_low, 2);
-  }
-}
-
-//------------------------------------------------------------------------------
-void session_handler::set_port_filter(
     int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
     const port_range& port_range) {
   nas_filter.packet_filter_id        = filter_id;
@@ -230,7 +215,7 @@ void session_handler::set_port_filter(
   if (port_range.is_range) {
     uint32_t int_range           = 0;
     int_range                    = ((uint32_t) port_high << 16) | port_low;
-    packet_filter_component.type = QOS_RULE_REMOTE_PORT_RANGE_TYPE;
+    packet_filter_component.type = oai::nas::kQosRulePfctiRemotePortRangeType;
     // sequence of a two octet port range low limit field and a two octet port
     // range high limit field
     packet_filter_component.value = blk2bstr(&int_range, 4);
@@ -239,7 +224,7 @@ void session_handler::set_port_filter(
     nas_filter.content.length = blength(packet_filter_component.value) +
                                 1;  // 1 for packet filter component type
   } else {
-    packet_filter_component.type = QOS_RULE_SINGLE_REMOTE_PORT_TYPE;
+    packet_filter_component.type = oai::nas::kQosRulePfctiSingleRemotePortType;
     // two octets which specify a port number
     packet_filter_component.value = blk2bstr(&port_low, 2);
     nas_filter.content.packet_filter_components.push_back(
@@ -247,18 +232,6 @@ void session_handler::set_port_filter(
     nas_filter.content.length = blength(packet_filter_component.value) +
                                 1;  // 1 for packet filter component type
   }
-}
-//------------------------------------------------------------------------------
-void session_handler::set_ip_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-    const ip_range& ip_range) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  uint64_t ip_snm =
-      ((uint64_t) ip_range.snm.s_addr << 32) | ip_range.ip_addr.s_addr;
-  nas_filter.packetfiltercontents.component_type =
-      QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
-  nas_filter.packetfiltercontents.component_value = blk2bstr(&ip_snm, 8);
 }
 
 //------------------------------------------------------------------------------
@@ -269,7 +242,7 @@ void session_handler::set_ip_filter(
   nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
 
   oai::nas::PacketFilterComponent packet_filter_component = {};
-  packet_filter_component.type = QOS_RULE_IPV4_REMOTE_ADDRESS_TYPE;
+  packet_filter_component.type = oai::nas::kQosRulePfctiIpv4RemoteAddressType;
   // Sequence of a four octet IPv4 address field and a four octet IPv4 address
   // mask field
   // TODO: verify the order
@@ -285,24 +258,14 @@ void session_handler::set_ip_filter(
 
 //------------------------------------------------------------------------------
 void session_handler::set_protocol_filter(
-    int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-    uint8_t protocol_id) {
-  nas_filter.packetfilteridentifier = filter_id;
-  nas_filter.packetfilterdirection  = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  nas_filter.packetfiltercontents.component_type =
-      QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
-  nas_filter.packetfiltercontents.component_value = blk2bstr(&protocol_id, 1);
-}
-
-//------------------------------------------------------------------------------
-void session_handler::set_protocol_filter(
     int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
   nas_filter.packet_filter_id        = filter_id;
   nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
 
   oai::nas::PacketFilterComponent packet_filter_component = {};
-  packet_filter_component.type = QOS_RULE_PROTOCOL_IDENTIFIERORNEXT_HEADER_TYPE;
+  packet_filter_component.type =
+      oai::nas::kQosRulePfctiProtocolIdentifierOrNextHeaderType;
   packet_filter_component.value = blk2bstr(&protocol_id, 1);
 
   nas_filter.content.packet_filter_components.push_back(
@@ -338,11 +301,12 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
   */
 
   qos_rule.SetQosRuleId(edge->qos_rule_id);
-  qos_rule.SetRuleOperationCode(CREATE_NEW_QOS_RULE);
+  qos_rule.SetRuleOperationCode(
+      oai::nas::kQosRuleRuleOperationCodeCreateNewQosRule);
   if (edge->default_qos) {
-    qos_rule.SetDqrBit(THE_QOS_RULE_IS_DEFAULT_QOS_RULE);
+    qos_rule.SetDqrBit(oai::nas::kQosRuleTheQosRuleIsTheDefaultQosRule);
   } else {
-    qos_rule.SetDqrBit(THE_QOS_RULE_IS_NOT_THE_DEFAULT_QOS_RULE);
+    qos_rule.SetDqrBit(oai::nas::kQosRuleTheQosRuleIsNotTheDefaultQosRule);
   }
 
   if (m_pdu_session_type != PDU_SESSION_TYPE_E_UNSTRUCTURED) {
@@ -357,7 +321,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
       edge->qos_rule_id, qos_rule.GetNumberOfPacketFilters());
 
   qos_rule.SetPrecedence(edge->precedence);
-  qos_rule.SetSegregation(SEGREGATION_NOT_REQUESTED);
+  qos_rule.SetSegregation(oai::nas::kQosRuleSegregationNotRequested);
   qos_rule.SetQfi(edge->qfi.qfi);
   // qos_rule.qosruleprecedence = edge->precedence;
   // qos_rule.segregation       = SEGREGATION_NOT_REQUESTED;
@@ -367,105 +331,99 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 }
 
 //------------------------------------------------------------------------------
-QOSFlowDescriptionsContents session_handler::qos_flow_description_from_edge(
+oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
     const shared_ptr<qos_upf_edge>& edge) {
-  QOSFlowDescriptionsContents flow_description_content;
+  oai::nas::QosFlowDescription qos_flow_description = {};
+  qos_flow_description.SetQfi(edge->qfi.qfi);
+  qos_flow_description.SetOperationCode(
+      oai::nas::
+          kQosFlowDescriptionRuleOperationCodeCreateNewQosFlowDescription);
+  qos_flow_description.SetEBit(
+      oai::nas::kQosFlowDescriptionEBitParametersListIsIncluded);
 
-  flow_description_content.qfi           = edge->qfi.qfi;
-  flow_description_content.operationcode = CREATE_NEW_QOS_FLOW_DESCRIPTION;
-  flow_description_content.e             = PARAMETERS_LIST_IS_INCLUDED;
+  std::vector<oai::nas::QosFlowDescriptionParameter>
+      qos_flow_description_parameter_list;
 
-  if (edge->qos_profile.gbrUlIsSet() && edge->qos_profile.gbrDlIsSet() &&
-      edge->qos_profile.maxbrUlIsSet() && edge->qos_profile.maxbrDlIsSet()) {
-    flow_description_content.numberofparameters = 5;
-    flow_description_content.parameterslist     = (ParametersList*) calloc(
-        7, sizeof(ParametersList));  // TODO: is 7 right?
-
-    set_nas_bitrate(
-        PARAMETER_IDENTIFIER_GFBR_UPLINK, edge->qos_profile.getGbrUl(),
-        flow_description_content.parameterslist[1]);
-    set_nas_bitrate(
-        PARAMETER_IDENTIFIER_GFBR_DOWNLINK, edge->qos_profile.getGbrDl(),
-        flow_description_content.parameterslist[2]);
-    set_nas_bitrate(
-        PARAMETER_IDENTIFIER_MFBR_UPLINK, edge->qos_profile.getMaxbrUl(),
-        flow_description_content.parameterslist[3]);
-    set_nas_bitrate(
-        PARAMETER_IDENTIFIER_MFBR_DOWNLINK, edge->qos_profile.getMaxbrDl(),
-        flow_description_content.parameterslist[4]);
-
-  } else {
-    flow_description_content.numberofparameters = 1;
-    flow_description_content.parameterslist =
-        (ParametersList*) calloc(3, sizeof(ParametersList));  // TODO: Why 3?
+  if (edge->qos_profile.gbrUlIsSet()) {
+    oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
+    oai::nas::BitRate bit_rate                                           = {};
+    bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+    bit_rate.value = 1000;
+    if (!parse_bitrate_string(edge->qos_profile.getGbrUl(), bit_rate)) {
+      Logger::smf_app().warn("Cannot parse bitrate string, use default value");
+    }
+    qos_flow_description_parameter.SetGfbrUplink(bit_rate);
+    qos_flow_description_parameter_list.push_back(
+        qos_flow_description_parameter);
   }
 
-  flow_description_content.parameterslist[0].parameteridentifier =
-      PARAMETER_IDENTIFIER_5QI;
-  flow_description_content.parameterslist[0].parametercontents._5qi =
-      edge->qos_profile.getR5qi();
-
-  return flow_description_content;
-}
-
-uint8_t session_handler::nas_unit_from_bitrate_unit(
-    const bitrate_unit_e& bitrate_unit) {
-  switch (bitrate_unit) {
-    case bitrate_unit_e::KBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-    case bitrate_unit_e::MBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    case bitrate_unit_e::GBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case bitrate_unit_e::TBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-    case bitrate_unit_e::PBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS;
-    case bitrate_unit_e::_256PBPS:
-      return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS;
+  if (edge->qos_profile.gbrDlIsSet()) {
+    oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
+    oai::nas::BitRate bit_rate                                           = {};
+    bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+    bit_rate.value = 1000;
+    if (!parse_bitrate_string(edge->qos_profile.getGbrDl(), bit_rate)) {
+      Logger::smf_app().warn("Cannot parse bitrate string, use default value");
+    }
+    qos_flow_description_parameter.SetGfbrDownlink(bit_rate);
+    qos_flow_description_parameter_list.push_back(
+        qos_flow_description_parameter);
   }
-  Logger::smf_app().error("Unknown bitrate value, use default MBPS");
 
-  return GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-}
-
-void session_handler::set_nas_bitrate(
-    uint8_t type, const std::string& bitrate_string,
-    ParametersList& nas_value) {
-  uint16_t value;
-  bitrate_unit_e unit;
-  if (!parse_bitrate_string(bitrate_string, value, unit)) {
-    Logger::smf_app().warn(
-        "Cannot parse bitrate string, use default 1000 MBPS");
-    value = 1000;
-    unit  = bitrate_unit_e::MBPS;
+  if (edge->qos_profile.maxbrUlIsSet()) {
+    oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
+    oai::nas::BitRate bit_rate                                           = {};
+    bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+    bit_rate.value = 1000;
+    if (!parse_bitrate_string(edge->qos_profile.getMaxbrUl(), bit_rate)) {
+      Logger::smf_app().warn("Cannot parse bitrate string, use default value");
+    }
+    qos_flow_description_parameter.SetMfbrUplink(bit_rate);
+    qos_flow_description_parameter_list.push_back(
+        qos_flow_description_parameter);
   }
-  nas_value.parameteridentifier = type;
-  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.uint =
-      nas_unit_from_bitrate_unit(unit);
-  nas_value.parametercontents.gfbrormfbr_uplinkordownlink.value = value;
+
+  if (edge->qos_profile.maxbrDlIsSet()) {
+    oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
+    oai::nas::BitRate bit_rate                                           = {};
+    bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+    bit_rate.value = 1000;
+    if (!parse_bitrate_string(edge->qos_profile.getMaxbrDl(), bit_rate)) {
+      Logger::smf_app().warn("Cannot parse bitrate string, use default value");
+    }
+    qos_flow_description_parameter.SetMfbrDownlink(bit_rate);
+    qos_flow_description_parameter_list.push_back(
+        qos_flow_description_parameter);
+  }
+
+  oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
+  qos_flow_description_parameter.Set5qi(edge->qos_profile.getR5qi());
+
+  qos_flow_description_parameter_list.push_back(qos_flow_description_parameter);
+  qos_flow_description.SetParametersList(qos_flow_description_parameter_list);
+  return qos_flow_description;
 }
 
+//------------------------------------------------------------------------------
 uint64_t session_handler::set_ngap_bitrate(
     Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string) {
   uint16_t value;
   uint8_t unit;
   bitrate_unit_e unit_e;
-  if (!parse_bitrate_string(bitrate_string, value, unit_e)) {
-    Logger::smf_app().warn(
-        "Cannot parse bitrate string, use default 1000 MBPS");
-    value  = 1000;
-    unit_e = bitrate_unit_e::MBPS;
+  oai::nas::BitRate bit_rate = {};
+  bit_rate.value             = 1000;
+  bit_rate.unit              = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+  if (!parse_bitrate_string(bitrate_string, bit_rate)) {
+    Logger::smf_app().warn("Cannot parse bitrate string, use default value");
   }
-  unit             = nas_unit_from_bitrate_unit(unit_e);
-  uint64_t bitrate = parse_nas_value_unit_to_bps(value, unit);
+  uint64_t bit_rate_value = parse_nas_value_unit_to_bps(value, bit_rate.unit);
 
   ngap_bitrate.size = 8;
   ngap_bitrate.buf  = (uint8_t*) calloc(ngap_bitrate.size, sizeof(uint8_t));
 
-  INT64_TO_BUFFER(bitrate, ngap_bitrate.buf);
+  INT64_TO_BUFFER(bit_rate_value, ngap_bitrate.buf);
 
-  return bitrate;
+  return bit_rate_value;
 }
 
 //------------------------------------------------------------------------------
@@ -572,7 +530,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   add_qos_rule(qos_rules_ie);
   // TODO unify with generated_qfi, hardcode for now (like it used to be)
 
-  qos_flow.qfi = (uint8_t) 60;
+  qos_flow.qfi = DEFAULT_QFI;
 
   // set qos_profile from qos_flow_description_content
   qos_flow.qos_profile = {};
@@ -661,7 +619,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
   add_qos_rule(qos_rules_ie);
   // TODO unify with generated_qfi, hardcode for now (like it used to be)
 
-  qos_flow.qfi = (uint8_t) 60;
+  qos_flow.qfi = (uint8_t) DEFAULT_QFI;
 
   // set qos_profile from qos_flow_description_content
   qos_flow.qos_profile = {};

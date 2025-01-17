@@ -44,14 +44,14 @@
 #include "QosRule.hpp"
 #include "Nas5gsmMessage.hpp"
 #include "SessionAmbr.hpp"
+#include "smf_pfcp_association.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
-#include "PDUSessionEstablishmentAccept.h"
-#include "QOSFlowDescriptions.h"
-#include "QOSRules.h"
-#include "nas_message.h"
-#include "smf_pfcp_association.hpp"
+//#include "PDUSessionEstablishmentAccept.h"
+//#include "QOSFlowDescriptions.h"
+//#include "QOSRules.h"
+//#include "nas_message.h"
 }
 
 using namespace boost::placeholders;
@@ -874,15 +874,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   /*
    * Get the default value of Session-AMBR
-   * @param [SessionAMBR &] session_ambr
+   * @param [SessionAmbr &] session_ambr
    * @param [const snssai_t &] snssai
    * @param [const std::string &] dnn
    * @return void
    */
-  void get_session_ambr(
-      SessionAMBR& session_ambr, const snssai_t& snssai,
-      const std::string& dnn);
-
   void get_session_ambr(
       oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
       const std::string& dnn);

@@ -1637,45 +1637,44 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
         (Ngap_GBR_QosInformation_t*) (calloc(
             1, sizeof(Ngap_GBR_QosInformation_t)));
 
-    for (int j = 0;
-         j < qos_flow.qos_flow_description_content.numberofparameters; j++) {
-      if (qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation
-                ->guaranteedFlowBitRateUL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation
-                ->guaranteedFlowBitRateDL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+    std::vector<oai::nas::QosFlowDescriptionParameter>
+        qos_flow_description_parameter_list =
+            qos_flow.get_qos_flow_descriptions().GetParametersList();
+
+    for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
+      std::optional<oai::nas::BitRate> bit_rate =
+          qos_flow_description_parameter_list[j].GetBitRate();
+      if (bit_rate.has_value()) {
+        uint8_t parameter_identifier =
+            qos_flow_description_parameter_list[j].GetIdentifier();
+        if (parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink) {
+          set_ngap_bit_rate(
+              qosFlowLevelQosParameters.gBR_QosInformation
+                  ->maximumFlowBitRateUL,
+              bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink) {
+          set_ngap_bit_rate(
+              qosFlowLevelQosParameters.gBR_QosInformation
+                  ->maximumFlowBitRateDL,
+              bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink) {
+          set_ngap_bit_rate(
+              qosFlowLevelQosParameters.gBR_QosInformation
+                  ->guaranteedFlowBitRateUL,
+              bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink) {
+          set_ngap_bit_rate(
+              qosFlowLevelQosParameters.gBR_QosInformation
+                  ->guaranteedFlowBitRateDL,
+              bit_rate.value().value, bit_rate.value().unit);
+        }
       }
     }
   }

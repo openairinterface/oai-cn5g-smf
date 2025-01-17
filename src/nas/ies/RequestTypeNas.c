@@ -28,7 +28,7 @@
 #include "RequestTypeNas.h"
 
 int encode_request_type(
-    RequestType requesttype, uint8_t iei, uint8_t* buffer, uint32_t len) {
+    RequestType_t requesttype, uint8_t iei, uint8_t* buffer, uint32_t len) {
   uint32_t encoded = 0;
   int encode_result;
   CHECK_PDU_POINTER_AND_LENGTH_ENCODER(
@@ -44,7 +44,7 @@ int encode_request_type(
 }
 
 int decode_request_type(
-    RequestType* requesttype, uint8_t iei, uint8_t* buffer, uint32_t len) {
+    RequestType_t* requesttype, uint8_t iei, uint8_t* buffer, uint32_t len) {
   int decoded   = 0;
   uint8_t ielen = 0;
   int decode_result;

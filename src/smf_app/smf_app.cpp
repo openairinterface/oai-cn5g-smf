@@ -64,7 +64,7 @@
 
 extern "C" {
 #include "dynamic_memory_check.h"
-#include "nas_message.h"
+//#include "nas_message.h"
 }
 
 using namespace smf;

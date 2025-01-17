@@ -25,9 +25,9 @@
 #define REQUEST_TYPE_MINIMUM_LENGTH 1
 #define REQUEST_TYPE_MAXIMUM_LENGTH 1
 
-typedef bstring RequestType;
+typedef bstring RequestType_t;
 
 int encode_request_type(
-    RequestType requesttype, uint8_t iei, uint8_t* buffer, uint32_t len);
+		RequestType_t requesttype, uint8_t iei, uint8_t* buffer, uint32_t len);
 int decode_request_type(
-    RequestType* requesttype, uint8_t iei, uint8_t* buffer, uint32_t len);
+		RequestType_t* requesttype, uint8_t iei, uint8_t* buffer, uint32_t len);

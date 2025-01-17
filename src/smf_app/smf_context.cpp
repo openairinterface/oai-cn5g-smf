@@ -808,62 +808,6 @@ void smf_context::get_default_qos_flow_description(
 
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
-    SessionAMBR& session_ambr, const snssai_t& snssai, const std::string& dnn) {
-  Logger::smf_app().debug(
-      "Get AMBR info from the subscription information (DNN %s)", dnn.c_str());
-
-  std::shared_ptr<session_management_subscription> ss = {};
-  std::shared_ptr<dnn_configuration_t> sdc            = {};
-  find_dnn_subscription(snssai, ss);
-
-  // set default value in case of error
-  session_ambr.session_ambr_for_downlink = 1;
-  session_ambr.uint_for_session_ambr_for_downlink =
-      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-  session_ambr.session_ambr_for_uplink = 1;
-  session_ambr.uint_for_session_ambr_for_uplink =
-      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-
-  if (nullptr != ss) {
-    ss->find_dnn_configuration(dnn, sdc);
-    if (nullptr != sdc) {
-      Logger::smf_app().debug(
-          "Default AMBR info from the subscription information, downlink %s, "
-          "uplink %s",
-          (sdc->session_ambr).downlink.c_str(),
-          (sdc->session_ambr).uplink.c_str());
-
-      bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
-      uint16_t ambr_dl_value, ambr_ul_value;
-      if (parse_bitrate_string(
-              sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
-        session_ambr.uint_for_session_ambr_for_downlink =
-            nas_ambr_from_bitrate_unit(ambr_dl_unit);
-        session_ambr.session_ambr_for_downlink = ambr_dl_value;
-      } else {
-        Logger::smf_app().warn(
-            "Could not set AMBR downlink value, use default 1 MBPS");
-      }
-
-      if (parse_bitrate_string(
-              sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
-        session_ambr.uint_for_session_ambr_for_uplink =
-            nas_ambr_from_bitrate_unit(ambr_ul_unit);
-        session_ambr.session_ambr_for_uplink = ambr_ul_value;
-      } else {
-        Logger::smf_app().warn(
-            "Could not set AMBR uplink value, use default 1 MBPS");
-      }
-    }
-  } else {
-    Logger::smf_app().warn(
-        "Could not get default info from the subscription information for AMBR "
-        "Dl/UL value, use default 1 MBPS");
-  }
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_session_ambr(
     oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
     const std::string& dnn) {
   Logger::smf_app().debug(

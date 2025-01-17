@@ -81,9 +81,9 @@ void pco_nas_to_core(
  * @param [protocol_configuration_options_nas_t&] pco_nas: PCO in NAS type
  * @return void
  */
-void pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas);
+// void pco_core_to_nas(
+//    const protocol_configuration_options_t& pco,
+//    protocol_configuration_options_nas_t& pco_nas);
 
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU
