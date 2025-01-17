@@ -23,7 +23,7 @@
 
 #include <smf_msg.hpp>
 #include <smf_pfcp_association.hpp>
-#include <QOSFlowDescriptions.h>
+//#include <QOSFlowDescriptions.h>
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 #include "sdf_conversions.hpp"
 #include "QosRule.hpp"
@@ -110,9 +110,9 @@ class session_handler {
    * @return qos_flow_context_updated
    */
 
-  ::smf::qos_flow_context_updated create_new_qos_rule(
-      oai::nas::QosRule& qos_rule,
-      const QOSFlowDescriptionsContents& qos_flow_description_content);
+  // ::smf::qos_flow_context_updated create_new_qos_rule(
+  //     oai::nas::QosRule& qos_rule,
+  //     const QOSFlowDescriptionsContents& qos_flow_description_content);
 
   qos_flow_context_updated create_new_qos_rule(
       oai::nas::QosRule& qos_rules_ie,

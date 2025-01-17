@@ -868,9 +868,9 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param [const pfcp::qfi_t &] qfi
    * @return void
    */
-  void get_default_qos_flow_description(
-      QOSFlowDescriptionsContents& qos_flow_description,
-      uint8_t pdu_session_type, const pfcp::qfi_t& qfi);
+  //  void get_default_qos_flow_description(
+  //     QOSFlowDescriptionsContents& qos_flow_description,
+  //    uint8_t pdu_session_type, const pfcp::qfi_t& qfi);
 
   /*
    * Get the default value of Session-AMBR

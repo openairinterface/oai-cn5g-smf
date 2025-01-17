@@ -37,7 +37,7 @@
 #include "Nas5gsmMessage.hpp"
 
 extern "C" {
-#include "nas_message.h"
+//#include "nas_message.h"
 }
 using namespace oai::nas;
 

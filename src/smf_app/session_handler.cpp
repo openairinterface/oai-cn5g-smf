@@ -513,7 +513,7 @@ void session_handler::add_qos_rule(const oai::nas::QosRule& qos_rule) {
         "Failed to add rule (Id %d) failed: invalid rule Id", rule_id);
   }
 }
-
+/*
 //------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::create_new_qos_rule(
     oai::nas::QosRule& qos_rules_ie,
@@ -602,6 +602,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
 
   return qos_flow;
 }
+*/
 
 //------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::create_new_qos_rule(

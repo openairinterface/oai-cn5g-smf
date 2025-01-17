@@ -753,6 +753,7 @@ void smf_context::get_default_qos(
   }
 }
 
+/*
 //------------------------------------------------------------------------------
 void smf_context::get_default_qos_flow_description(
     QOSFlowDescriptionsContents& qos_flow_description, uint8_t pdu_session_type,
@@ -770,22 +771,7 @@ void smf_context::get_default_qos_flow_description(
   qos_flow_description.parameterslist[0].parameteridentifier =
       PARAMETER_IDENTIFIER_5QI;
   qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
-  /*
-   qos_flow_description.parameterslist[1].parameteridentifier =
-   PARAMETER_IDENTIFIER_GFBR_UPLINK;
-   qos_flow_description.parameterslist[1].parametercontents
-   .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-   qos_flow_description.parameterslist[1].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
-   qos_flow_description.parameterslist[2].parameteridentifier =
-   PARAMETER_IDENTIFIER_GFBR_DOWNLINK;
-   qos_flow_description.parameterslist[2].parametercontents
-   .gfbrormfbr_uplinkordownlink.uint =
-   GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-   qos_flow_description.parameterslist[2].parametercontents
-   .gfbrormfbr_uplinkordownlink.value = 0x10;
-   */
+
 
   Logger::smf_app().debug(
       "Default Qos Flow Description: %x %x %x %x %x %x",
@@ -793,19 +779,9 @@ void smf_context::get_default_qos_flow_description(
       qos_flow_description.e, qos_flow_description.numberofparameters,
       qos_flow_description.parameterslist[0].parameteridentifier,
       qos_flow_description.parameterslist[0].parametercontents._5qi
-      /*      qos_flow_description.parameterslist[1].parameteridentifier,
-       qos_flow_description.parameterslist[1].parametercontents
-       .gfbrormfbr_uplinkordownlink.uint,
-       qos_flow_description.parameterslist[1].parametercontents
-       .gfbrormfbr_uplinkordownlink.value,
-       qos_flow_description.parameterslist[2].parameteridentifier,
-       qos_flow_description.parameterslist[2].parametercontents
-       .gfbrormfbr_uplinkordownlink.uint,
-       qos_flow_description.parameterslist[2].parametercontents
-       .gfbrormfbr_uplinkordownlink.value
-       */);
+      );
 }
-
+*/
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
     oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
