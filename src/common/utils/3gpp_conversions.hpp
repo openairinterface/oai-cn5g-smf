@@ -32,13 +32,9 @@
 #include "SmContextUpdateMessage.h"
 #include "endpoint.hpp"
 #include "itti_msg_n11.hpp"
-#include "nas_lib.h"
 #include "smf_msg.hpp"
 #include "Nas5gsmMessage.hpp"
 
-extern "C" {
-//#include "nas_message.h"
-}
 using namespace oai::nas;
 
 namespace xgpp_conv {
@@ -65,15 +61,6 @@ void pdn_ip_to_pfcp_ue_ip_address(
     const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
     pfcp::ue_ip_address_t& ue_ip_address);
 
-/*
- * Convert PCO in NAS into core type
- * @param [const protocol_configuration_options_nas_t&] pco_nas: PCO in NAS msg
- * @param [protocol_configuration_options_t&] pco: PCO in core type
- * @return void
- */
-void pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco);
 
 /*
  * Convert PCO in core type to NAS type

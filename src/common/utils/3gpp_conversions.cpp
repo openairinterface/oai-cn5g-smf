@@ -94,41 +94,6 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
   }
 }
 
-//------------------------------------------------------------------------------
-void xgpp_conv::pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco) {
-  pco.ext                          = pco_nas.ext;
-  pco.spare                        = pco_nas.spare;
-  pco.configuration_protocol       = pco_nas.configuration_protocol;
-  pco.num_protocol_or_container_id = pco_nas.num_protocol_or_container_id;
-
-  for (int i = 0; i < pco.num_protocol_or_container_id; i++) {
-    pco_protocol_or_container_id_t pco_item = {};
-
-    pco_item.length_of_protocol_id_contents =
-        pco_nas.protocol_or_container_ids[i].length;
-    pco_item.protocol_id = pco_nas.protocol_or_container_ids[i].id;
-
-    // pco.protocol_or_container_ids[i].length_of_protocol_id_contents =
-    // pco_nas.protocol_or_container_ids[i].length;
-    // pco.protocol_or_container_ids[i].protocol_id =
-    // pco_nas.protocol_or_container_ids[i].id;
-    if (pco_nas.protocol_or_container_ids[i].contents != nullptr) {
-      unsigned char data[512] = {'\0'};
-      memcpy(
-          (void*) &data,
-          (void*) pco_nas.protocol_or_container_ids[i].contents->data,
-          pco_nas.protocol_or_container_ids[i].contents->slen);
-      std::string msg_bstr(
-          (char*) data, pco_nas.protocol_or_container_ids[i].contents->slen);
-      // pco.protocol_or_container_ids[i].protocol_id_contents  = msg_bstr;
-      pco_item.protocol_id_contents = msg_bstr;
-    }
-
-    pco.protocol_or_container_ids.push_back(pco_item);
-  }
-}
 
 /*
 //------------------------------------------------------------------------------
