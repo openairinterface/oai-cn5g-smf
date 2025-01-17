@@ -48,11 +48,7 @@
 #include "smf.h"
 #include "smf_app.hpp"
 #include "string.hpp"
-
-extern "C" {
-//#include "dynamic_memory_check.h"
-//#include "nas_message.h"
-}
+#include "AlwaysOnPduSessionIndication.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -137,13 +133,13 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // SessionAMBR
   Logger::smf_n1().debug("Get default values for Session-AMBR");
-  supi_t supi                     = sm_context_res.get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
-  std::shared_ptr<smf_context> sc = {};
+  supi_t supi                        = sm_context_res.get_supi();
+  supi64_t supi64                    = smf_supi_to_u64(supi);
+  std::shared_ptr<smf_context> sc    = {};
+  oai::nas::SessionAmbr session_ambr = {};
   if (smf_app_inst->is_supi_2_smf_context(supi64)) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
-    oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
         session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
   } else {
@@ -151,31 +147,21 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
     return false;
   }
-
-  /*
+  pdu_session_estb_accept->SetSessionAmbr(session_ambr);
 
   // PDUAddress
   paa_t paa = sm_context_res.get_paa();
   Logger::smf_n1().debug(
       "PDU Session Type %s", paa.pdu_session_type.to_string().c_str());
-  sm_msg->pdu_session_establishment_accept.pduaddress.pdu_session_type_value =
-      static_cast<uint8_t>(paa.pdu_session_type.pdu_session_type);
+  oai::nas::PduAddress pdu_address = {};
+  pdu_address.SetPduSessionType(paa.pdu_session_type.pdu_session_type);
   if (paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4) {
-    sm_msg->pdu_session_establishment_accept.pduaddress
-        .pdu_address_information = bfromcstralloc(4, "\0");
-    ipv4_to_bstring(
-        paa.ipv4_address, sm_msg->pdu_session_establishment_accept.pduaddress
-                              .pdu_address_information);
+    pdu_address.SetIpv4Address(paa.ipv4_address);
     Logger::smf_n1().debug(
         "UE IPv4 Address %s", conv::toString(paa.ipv4_address).c_str());
   } else if (
       paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
-    sm_msg->pdu_session_establishment_accept.pduaddress
-        .pdu_address_information = bfromcstralloc(12, "\0");
-    ipv4v6_to_pdu_address_information(
-        paa.ipv4_address, paa.ipv6_address,
-        sm_msg->pdu_session_establishment_accept.pduaddress
-            .pdu_address_information);
+    pdu_address.SetIpv4v6Address(paa.ipv4_address, paa.ipv6_address);
     Logger::smf_n1().debug(
         "UE IPv4 Address %s", conv::toString(paa.ipv4_address).c_str());
     char str_addr6[INET6_ADDRSTRLEN];
@@ -186,6 +172,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
     // TODO:
     Logger::smf_n1().debug("IPv6 is not fully supported yet!");
   }
+  pdu_session_estb_accept->SetPduAddress(pdu_address);
 
   // TODO: GPRSTimer
   // sm_msg->pdu_session_establishment_accept.gprstimer.unit =
@@ -193,55 +180,49 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // sm_msg->pdu_session_establishment_accept.gprstimer.timeValue = 0;
 
   // SNSSAI
-  if (sm_context_res.get_snssai().get_sd_int() == SD_NO_VALUE) {
-    sm_msg->pdu_session_establishment_accept.snssai.len = SST_LENGTH_NAS;
-  } else {
-    sm_msg->pdu_session_establishment_accept.snssai.len = SST_AND_SD_LENGTH;
-  }
-  sm_msg->pdu_session_establishment_accept.snssai.sst =
-      sm_context_res.get_snssai().sst;
-  sm_msg->pdu_session_establishment_accept.snssai.sd =
-      sm_context_res.get_snssai().get_sd_int();
-
+  oai::nas::SNssai snssai(kIeiSNssai);
+  snssai.SetSNSSAI(
+      std::nullopt, sm_context_res.get_snssai().sst,
+      sm_context_res.get_snssai().get_sd_int());
   Logger::smf_n1().debug(
-      "SNSSAI SST %d, SD %ld (0x%x)",
-      sm_msg->pdu_session_establishment_accept.snssai.sst,
-      sm_msg->pdu_session_establishment_accept.snssai.sd,
-      sm_msg->pdu_session_establishment_accept.snssai.sd);
+      "SNSSAI SST %d, SD %ld (0x%x)", sm_context_res.get_snssai().sst,
+      sm_context_res.get_snssai().get_sd_int(),
+      sm_context_res.get_snssai().get_sd_int());
+  pdu_session_estb_accept->SetSNssai(snssai);
 
   // AlwaysonPDUSessionIndication
-  sm_msg->pdu_session_establishment_accept.alwaysonpdusessionindication
-      .apsi_indication = ALWAYSON_PDU_SESSION_REQUIRED;
+  oai::nas::AlwaysOnPduSessionIndication always_on_pdu_session_indication = {};
+  always_on_pdu_session_indication.SetApsi(
+      oai::nas::kAlwaysOnPduSessionRequired);
+  pdu_session_estb_accept->SetAlwaysOnPduSessionIndication(
+      always_on_pdu_session_indication);
 
   // TODO: MappedEPSBearerContexts
   // TODO: EAPMessage
-  // authorized QoS flow descriptions IE: QoSFlowDescriptions
+
+  // Authorized QoS flow descriptions
   // TODO: we may not need this IE (see section 6.4.1.3 @3GPP TS 24.501)
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
-        .qosflowdescriptionsnumber = qos_flows.size();
-    sm_msg->pdu_session_establishment_accept.qosflowdescriptions
-        .qosflowdescriptionscontents = (QOSFlowDescriptionsContents*) calloc(
-        qos_flows.size(), sizeof(QOSFlowDescriptionsContents));
-
-    int i = 0;
+    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
+    int i                                               = 0;
     for (const auto& qos_flow_pair : qos_flows) {
-      sm_msg->pdu_session_establishment_accept.qosflowdescriptions
-          .qosflowdescriptionscontents[i] =
-          qos_flow_pair.second.qos_flow_description_content;
+      oai::nas::QosFlowDescription qos_flow_description =
+          qos_flow_pair.second.get_qos_flow_descriptions();
+      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
       i++;
     }
+    pdu_session_estb_accept->SetAuthorizedQosFlowDescriptions(
+        qos_flow_descriptions);
   }
 
-  // TODO: ExtendedProtocolConfigurationOptions
+  // ExtendedProtocolConfigurationOptions
   protocol_configuration_options_t pco_res = {};
   sm_context_res.get_epco(pco_res);
-  // sm_msg->pdu_session_establishment_accept.
-  xgpp_conv::pco_core_to_nas(
-      pco_res, sm_msg->pdu_session_establishment_accept
-                   .extendedprotocolconfigurationoptions);
+  oai::nas::ExtendedProtocolConfigurationOptions epco = {};
+  epco.Set(pco_res);
+  pdu_session_estb_accept->SetExtendedProtocolConfigurationOptions(epco);
 
   // DNN
   plmn_t plmn = {};
@@ -253,37 +234,41 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   string_to_dotted(full_dnn, dotted);
   Logger::smf_n1().debug(
       "Full DNN %s, dotted DNN %s", full_dnn.c_str(), dotted.c_str());
-  sm_msg->pdu_session_establishment_accept.dnn =
-      bfromcstralloc(dotted.length() + 1, "\0");
-  string_to_dnn(dotted, sm_msg->pdu_session_establishment_accept.dnn);
+  oai::nas::Dnn dnn = {};
+  bstring dnn_bstr  = bfromcstralloc(dotted.length() + 1, "\0");
+  string_to_dnn(dotted, dnn_bstr);
+  dnn.SetValue(dnn_bstr);
+  pdu_session_estb_accept->SetDnn(dnn);
 
-  Logger::smf_n1().info("Encode PDU Session Establishment Accept");
+  // TODO: 5GSM network feature support
+  // TODO: Serving PLMN rate control
+  // TODO: ATSSS container
+  // TODO: Control plane only indication
+  // TODO: IP header compression Configuration
+  // TODO: Ethernet header compression configuration
+
   // Encode NAS message
-  bytes = nas_message_encode(
-      data, &nas_msg, sizeof(data), nullptr);
+  uint32_t msg_len = pdu_session_estb_accept->GetLength();
+  Logger::smf_n1().debug(
+      "Size of PDU Session Establishment Accept message: %ld (octets)",
+      msg_len);
 
-  Logger::smf_n1().debug("Buffer Data: ");
-  if (Logger::should_log(spdlog::level::debug)) {
-    for (int i = 0; i < bytes; i++) printf("%02x ", data[i]);
-    printf(" (bytes %d)\n", bytes);
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size        = pdu_session_estb_accept->Encode(buffer, msg_len);
+  if (encoded_size == KEncodeDecodeError) {
+    Logger::smf_n1().error(
+        "Encode PDU Session Establishment Accept message error");
+    return false;
   }
 
-  if (bytes > 0) {
-    std::string n1Message((char*) data, bytes);
-    nas_msg_str = n1Message;
-    result      = true;
-  } else {
-    result = false;
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+
+  if (encoded_size > 0) {
+    nas_msg_str.assign((char*) buffer, encoded_size);
+    result = true;
   }
 
-  // free memory
-  if (!qos_rules.empty()) {
-    free_wrapper(
-        (void**) &sm_msg->pdu_session_establishment_accept.qosrules.qosrulesie);
-  }
-  free_wrapper((void**) &sm_msg->pdu_session_establishment_accept
-                   .qosflowdescriptions.qosflowdescriptionscontents);
-*/
   return result;
 }
 
