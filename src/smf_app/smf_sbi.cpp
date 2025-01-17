@@ -39,7 +39,7 @@
 #include "sbi_helper.hpp"
 
 extern "C" {
-#include "dynamic_memory_check.h"
+//#include "dynamic_memory_check.h"
 }
 
 // using namespace Pistache::Http;

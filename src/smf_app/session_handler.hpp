@@ -276,8 +276,6 @@ class session_handler {
 
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
 
-  static map<uint8_t, uint64_t> bpsMap;
-
   static bool is_flow_direction(
       bool uplink, const oai::model::pcf::FlowInformation& flow_direction);
 

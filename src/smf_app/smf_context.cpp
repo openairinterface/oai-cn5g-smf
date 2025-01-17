@@ -57,6 +57,7 @@
 #include "_5gsmCause.hpp"
 #include "PduSessionModificationCommandReject.hpp"
 #include "PduSessionModificationRequest.hpp"
+#include "3gpp_commons.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -75,7 +76,7 @@ extern "C" {
 #include "Ngap_QosFlowAddOrModifyResponseList.h"
 #include "Ngap_QosFlowItemWithDataForwarding.h"
 #include "Ngap_SecondaryRATDataUsageReportTransfer.h"
-#include "dynamic_memory_check.h"
+//#include "dynamic_memory_check.h"
 }
 
 using namespace smf;
@@ -796,10 +797,10 @@ void smf_context::get_session_ambr(
   // set default value in case of error
   session_ambr.SetSessionAmbrForDownlink(1);
   session_ambr.SetUnitForDownlink(
-      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS);
+      kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps);
   session_ambr.SetSessionAmbrForUplink(1);
   session_ambr.SetUnitForUplink(
-      AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS);
+      kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps);
 
   if (nullptr != ss) {
     ss->find_dnn_configuration(dnn, sdc);
@@ -812,23 +813,25 @@ void smf_context::get_session_ambr(
 
       bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
       uint16_t ambr_dl_value, ambr_ul_value;
-      if (parse_bitrate_string(
-              sdc->session_ambr.downlink, ambr_dl_value, ambr_dl_unit)) {
-        session_ambr.SetUnitForDownlink(
-            nas_ambr_from_bitrate_unit(ambr_dl_unit));
-        session_ambr.SetSessionAmbrForDownlink(ambr_dl_value);
-      } else {
-        Logger::smf_app().warn(
-            "Could not set AMBR downlink value, use default 1 MBPS");
-      }
 
-      if (parse_bitrate_string(
-              sdc->session_ambr.uplink, ambr_ul_value, ambr_ul_unit)) {
-        session_ambr.SetUnitForUplink(nas_ambr_from_bitrate_unit(ambr_ul_unit));
-        session_ambr.SetSessionAmbrForUplink(ambr_ul_value);
+      oai::nas::BitRate bit_rate = {};
+      bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+      bit_rate.value = 1;
+      if (!parse_bitrate_string(sdc->session_ambr.downlink, bit_rate)) {
+        Logger::smf_app().warn(
+            "Could not set AMBR downlink value, use default value");
+      }
+      session_ambr.SetUnitForDownlink(bit_rate.unit);
+      session_ambr.SetSessionAmbrForDownlink(bit_rate.value);
+
+      bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+      bit_rate.value = 1;
+      if (parse_bitrate_string(sdc->session_ambr.uplink, bit_rate)) {
+        session_ambr.SetUnitForUplink(bit_rate.unit);
+        session_ambr.SetSessionAmbrForUplink(bit_rate.value);
       } else {
         Logger::smf_app().warn(
-            "Could not set AMBR uplink value, use default 1 MBPS");
+            "Could not set AMBR uplink value, use default value");
       }
     }
   } else {
@@ -838,6 +841,7 @@ void smf_context::get_session_ambr(
   }
 }
 
+/*
 //------------------------------------------------------------------------------
 uint8_t smf_context::nas_ambr_from_bitrate_unit(
     const bitrate_unit_e& bitrate_unit) {
@@ -858,6 +862,7 @@ uint8_t smf_context::nas_ambr_from_bitrate_unit(
   Logger::smf_app().error("Unknown bitrate value, use default MBPS");
   return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
 }
+*/
 
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
@@ -4167,8 +4172,10 @@ void smf_context::update_qos_info(
     length_of_rule = qos_rules_ie.GetLength();
 
     // If UE requested a new GBR flow
-    if ((qos_rules_ie.GetRuleOperationCode() == CREATE_NEW_QOS_RULE) and
-        (qos_rules_ie.GetSegregation() == SEGREGATION_REQUESTED)) {
+    if ((qos_rules_ie.GetRuleOperationCode() ==
+         oai::nas::kQosRuleRuleOperationCodeCreateNewQosRule) and
+        (qos_rules_ie.GetSegregation() ==
+         oai::nas::kQosRuleSegregationRequested)) {
       // Add a new QoS Flow
 
       std::optional<oai::nas::QosFlowDescriptions> qos_flow_descriptions_opt =
@@ -4199,7 +4206,8 @@ void smf_context::update_qos_info(
       }
     } else if (
         qos_rules_ie.GetRuleOperationCode() ==
-        DELETE_EXISTING_QOS_FLOW_DESCRIPTION) {
+        oai::nas::
+            kQosFlowDescriptionRuleOperationCodeDeleteExistingQosFlowDescription) {
       // TODO
       Logger::smf_app().warn(
           "Delete existing QRI %d requested but is not implemented yet",

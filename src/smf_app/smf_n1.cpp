@@ -50,8 +50,8 @@
 #include "string.hpp"
 
 extern "C" {
-#include "dynamic_memory_check.h"
-#include "nas_message.h"
+//#include "dynamic_memory_check.h"
+//#include "nas_message.h"
 }
 
 using namespace smf;
@@ -67,8 +67,8 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
       "Create N1 SM Container, PDU Session Establishment Accept");
   int bytes                   = {0};
   unsigned char data[BUF_LEN] = {'\0'};
-  nas_message_t nas_msg       = {};
-  bool result                 = false;
+  // nas_message_t nas_msg       = {};
+  bool result = false;
 
   auto pdu_session_estb_accept =
       std::make_unique<PduSessionEstablishmentAccept>();
@@ -797,6 +797,7 @@ bool create_n1_pdu_session_release_command(
   return true;
 }
 
+/*
 //------------------------------------------------------------------------------
 int smf_n1::decode_n1_sm_container(
     nas_message_t& nas_msg, const std::string& n1_sm_msg) {
@@ -833,7 +834,7 @@ int smf_n1::decode_n1_sm_container(
 
   return decoder_rc;
 }
-
+*/
 //------------------------------------------------------------------------------
 int smf_n1::decode_n1_sm_container(
     std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg) {

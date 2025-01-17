@@ -31,6 +31,7 @@
 #include "PreemptionVulnerability_anyOf.h"
 #include "Helpers.h"
 #include "conversions.h"
+#include "utils.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -54,7 +55,7 @@ extern "C" {
 #include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
 #include "Ngap_HandoverCommandTransfer.h"
 #include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
-#include "dynamic_memory_check.h"
+//#include "dynamic_memory_check.h"
 }
 
 using namespace smf;
@@ -96,7 +97,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
       // error
       Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      free_wrapper((void**) &ngap_IEs);
+      oai::utils::utils::free_wrapper((void**) &ngap_IEs);
       return false;
     }
   }
@@ -128,7 +129,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+    oai::utils::utils::free_wrapper(
+        (void**) &pduSessionAggregateMaximumBitRate);
     return false;
   }
 
@@ -280,20 +282,22 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     result       = true;
   }
   // free memory
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel
-                   ->transportLayerAddress.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel);
-  free_wrapper((void**) &upTransportLayerInformation);
-  free_wrapper((void**) &pduSessionType);
-  free_wrapper((void**) &qosFlowSetupRequestList);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
+  oai::utils::utils::free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation->value
+                                      .choice.UPTransportLayerInformation.choice
+                                      .gTPTunnel->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &upTransportLayerInformation->value.choice
+          .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &upTransportLayerInformation->value.choice
+          .UPTransportLayerInformation.choice.gTPTunnel);
+  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation);
+  oai::utils::utils::free_wrapper((void**) &pduSessionType);
+  oai::utils::utils::free_wrapper((void**) &qosFlowSetupRequestList);
+  oai::utils::utils::free_wrapper((void**) &ngap_IEs);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -320,7 +324,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &ngap_IEs);
+    oai::utils::utils::free_wrapper((void**) &ngap_IEs);
     return false;
   }
 
@@ -341,7 +345,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
       // error
       Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      free_wrapper((void**) &ngap_IEs);
+      oai::utils::utils::free_wrapper((void**) &ngap_IEs);
       return false;
     }
   }
@@ -373,7 +377,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+    oai::utils::utils::free_wrapper(
+        (void**) &pduSessionAggregateMaximumBitRate);
     return false;
   }
 
@@ -522,22 +527,25 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel
-                   ->transportLayerAddress.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel);
-  free_wrapper((void**) &upTransportLayerInformation);
-  free_wrapper((void**) &pduSessionType);
-  free_wrapper((void**) &qosFlowSetupRequestList);
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-                   .qosCharacteristics.choice.nonDynamic5QI);
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation->value
+                                      .choice.UPTransportLayerInformation.choice
+                                      .gTPTunnel->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &upTransportLayerInformation->value.choice
+          .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &upTransportLayerInformation->value.choice
+          .UPTransportLayerInformation.choice.gTPTunnel);
+  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation);
+  oai::utils::utils::free_wrapper((void**) &pduSessionType);
+  oai::utils::utils::free_wrapper((void**) &qosFlowSetupRequestList);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
+          .qosCharacteristics.choice.nonDynamic5QI);
+  oai::utils::utils::free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
+  oai::utils::utils::free_wrapper((void**) &ngap_IEs);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -771,26 +779,30 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem);
-  free_wrapper((void**) &ul_NGU_UP_TNLModifyList);
-  free_wrapper(
+  oai::utils::utils::free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice
+          .gTPTunnel->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice
+          .gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice
+          .gTPTunnel->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice
+          .gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem);
+  oai::utils::utils::free_wrapper((void**) &ul_NGU_UP_TNLModifyList);
+  oai::utils::utils::free_wrapper(
       (void**) &ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
           ->qosCharacteristics.choice.nonDynamic5QI);
-  free_wrapper(
+  oai::utils::utils::free_wrapper(
       (void**) &ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters);
-  free_wrapper((void**) &ngap_QosFlowAddOrModifyRequestItem);
-  free_wrapper((void**) &qosFlowAddOrModifyRequestList);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper((void**) &ngap_QosFlowAddOrModifyRequestItem);
+  oai::utils::utils::free_wrapper((void**) &qosFlowAddOrModifyRequestList);
+  oai::utils::utils::free_wrapper((void**) &ngap_IEs);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -839,8 +851,9 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &ngap_resource_release_command_transfer);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_resource_release_command_transfer);
+  oai::utils::utils::free_wrapper((void**) &buffer);
   return result;
 }
 
@@ -888,8 +901,9 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &ngap_resource_release_command_transfer);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_resource_release_command_transfer);
+  oai::utils::utils::free_wrapper((void**) &buffer);
   return result;
 }
 
@@ -1007,18 +1021,20 @@ bool smf_n2::create_n2_pdu_session_resource_modify_response_transfer(
   }
 
   // free memory
-  free_wrapper(
+  oai::utils::utils::free_wrapper(
       (void**) &ngap_resource_response_transfer->dL_NGU_UP_TNLInformation
           ->choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->dL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->dL_NGU_UP_TNLInformation->choice.gTPTunnel);
-  free_wrapper((void**) &qosFlowAddOrModifyResponseItem);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->qosFlowAddOrModifyResponseList);
-  free_wrapper((void**) &ngap_resource_response_transfer);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_resource_response_transfer->dL_NGU_UP_TNLInformation
+          ->choice.gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ngap_resource_response_transfer->dL_NGU_UP_TNLInformation
+          ->choice.gTPTunnel);
+  oai::utils::utils::free_wrapper((void**) &qosFlowAddOrModifyResponseItem);
+  oai::utils::utils::free_wrapper((void**) &ngap_resource_response_transfer
+                                      ->qosFlowAddOrModifyResponseList);
+  oai::utils::utils::free_wrapper((void**) &ngap_resource_response_transfer);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1049,7 +1065,7 @@ bool smf_n2::create_n2_path_switch_request_ack(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &path_switch_req_ack);
+    oai::utils::utils::free_wrapper((void**) &path_switch_req_ack);
     return false;
   }
 
@@ -1114,13 +1130,16 @@ bool smf_n2::create_n2_path_switch_request_ack(
   }
 
   // free memory
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper(
+      (void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+          ->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
+          ->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
+          .gTPTunnel);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1151,7 +1170,7 @@ bool smf_n2::create_n2_handover_command_transfer(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &ho_command_transfer);
+    oai::utils::utils::free_wrapper((void**) &ho_command_transfer);
     return false;
   }
 
@@ -1216,13 +1235,16 @@ bool smf_n2::create_n2_handover_command_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel);
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper(
+      (void**) &ho_command_transfer->dLForwardingUP_TNLInformation->choice
+          .gTPTunnel->transportLayerAddress.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ho_command_transfer->dLForwardingUP_TNLInformation->choice
+          .gTPTunnel->gTP_TEID.buf);
+  oai::utils::utils::free_wrapper(
+      (void**) &ho_command_transfer->dLForwardingUP_TNLInformation->choice
+          .gTPTunnel);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1274,7 +1296,7 @@ bool smf_n2::create_n2_handover_preparation_unsuccessful_transfer(
   }
 
   // free memory
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1304,7 +1326,7 @@ int smf_n2::decode_n2_sm_information(
       (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1333,7 +1355,7 @@ int smf_n2::decode_n2_sm_information(
       (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1363,7 +1385,7 @@ int smf_n2::decode_n2_sm_information(
       (void**) &ngap_IE, (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1394,7 +1416,7 @@ int smf_n2::decode_n2_sm_information(
       (void**) &ngap_IE, (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1424,7 +1446,7 @@ int smf_n2::decode_n2_sm_information(
       data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1454,7 +1476,7 @@ int smf_n2::decode_n2_sm_information(
       data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1484,7 +1506,7 @@ int smf_n2::decode_n2_sm_information(
       (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1516,7 +1538,7 @@ int smf_n2::decode_n2_sm_information(
       (void**) &ngap_IE, (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
@@ -1547,7 +1569,7 @@ int smf_n2::decode_n2_sm_information(
       (void*) data, data_len);
 
   // free memory
-  free_wrapper((void**) &data);
+  oai::utils::utils::free_wrapper((void**) &data);
 
   if (rc.code != RC_OK) {
     Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);

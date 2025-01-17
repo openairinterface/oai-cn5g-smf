@@ -19,6 +19,8 @@
  *      contact@openairinterface.org
  */
 
+#include <math.h>
+
 #include "session_handler.hpp"
 #include "FlowDirection.h"
 #include "conversions.hpp"
@@ -862,49 +864,16 @@ std::vector<oai::nas::QosRule> session_handler::get_qos_rules() {
 }
 
 //------------------------------------------------------------------------------
-std::map<uint8_t, uint64_t> session_handler::bpsMap = {
-    {0, 1},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS, 1000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4KBPS, 4000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16KBPS, 16000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64KBPS, 64000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256KBPS, 256000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS, 1000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4MBPS, 4000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16MBPS, 16000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64MBPS, 64000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256MBPS, 256000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS, 1000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4GBPS, 4000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16GBPS, 16000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64GBPS, 64000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS, 256000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS, 1000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4TBPS, 4000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16TBPS, 16000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64TBPS, 64000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256TBPS, 256000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1PBPS, 1000000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_4PBPS, 4000000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_16PBPS, 16000000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_64PBPS, 64000000000000000},
-    {GFBRORMFBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256PBPS,
-     256000000000000000}
-    // larger than 25 should use value of 25
-};
-
-//------------------------------------------------------------------------------
 uint64_t session_handler::parse_nas_value_unit_to_bps(
     const uint16_t& value, const uint8_t& unit) {
   uint64_t bit_rate_value;
 
+  uint8_t unit_value = unit;
+  if (unit > kBitRateUnitValueIsIncrementedInMultiplesOf256Pbps)
+    unit_value = kBitRateUnitValueIsIncrementedInMultiplesOf256Pbps;
+
   if (unit > 0) {
-    // 3GPP TS 24.501 Table 9.11.4.12.1: QoS flow descriptions information
-    if (unit <= 25) {
-      bit_rate_value = bpsMap[unit] * value;
-    } else {
-      bit_rate_value = bpsMap[25] * value;
-    }
+    bit_rate_value = value * pow(2, 10) * pow(2, (unit - 1) * 2);
   } else {
     bit_rate_value = value;
   }

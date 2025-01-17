@@ -895,8 +895,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
       const snssai_t& snssai, const std::string& dnn);
 
-  static uint8_t nas_ambr_from_bitrate_unit(
-      const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
+  // static uint8_t nas_ambr_from_bitrate_unit(
+  //    const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
 
   /*
    * Find the PDU Session with its ID
