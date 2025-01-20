@@ -54,6 +54,12 @@ DH_Account = "oaisoftwarealliance"
 // Private Local Registry URL
 PrivateRegistryURL = 'selfix.sboai.cs.eurecom.fr'
 
+// Openshift project name
+Namespace = 'oaicicd-core'
+
+// Openshift server URL
+server = 'https://api.oai.cs.eurecom.fr:6443'
+
 //-------------------------------------------------------------------------------
 // Pipeline start
 pipeline {
@@ -224,8 +230,9 @@ pipeline {
                   withCredentials([
                     [$class: 'UsernamePasswordMultiBinding', credentialsId: "${rhelOcCredentials}", usernameVariable: 'OC_Username', passwordVariable: 'OC_Password']
                   ]) {
-                    sh "oc login -u ${OC_Username} -p ${OC_Password}"
+                    sh "oc login -u ${OC_Username} -p ${OC_Password} --server=${server}"
                   }
+                  sh "oc project ${Namespace}"
                   sh "oc delete istag oai-smf:${smf_tag} || true"
                   // Copy the RHEL Host certificates for building
                   sh "./ci-scripts/common/python/recreate_entitlement.py"
@@ -237,7 +244,7 @@ pipeline {
                   // need python to wait for pod smf-build-cfg-1-build to be Completed or Error
                   // it fails if it detects error or timeout at 20 minutes
                   sh "./ci-scripts/common/python/check_build_pod_status.py --pod-name smf-build-cfg-1-build --log-file archives/smf_rhel_image_build.log"
-                  sh "oc describe istag oai-smf:${smf_tag} | grep 'Image Size:' >> archives/smf_rhel_image_build.log"
+                  sh "oc describe istag oai-smf:${smf_tag} -n ${Namespace} | grep 'Image Size:' >> archives/smf_rhel_image_build.log"
                 }
               }
             }
@@ -251,7 +258,7 @@ pipeline {
             }
             cleanup {
               script {
-                sh "oc delete build smf-build-cfg-1 || true"
+                sh "oc delete bc smf-build-cfg -n ${Namespace} || true"
                 sh "oc logout || true"
                 stash allowEmpty: true, includes: 'archives/smf_rhel_image_build.log', name: 'rhelBuildLog'
               }
