@@ -94,34 +94,6 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
   }
 }
 
-
-/*
-//------------------------------------------------------------------------------
-void xgpp_conv::pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas) {
-  pco_nas.ext                          = pco.ext;
-  pco_nas.spare                        = pco.spare;
-  pco_nas.configuration_protocol       = pco.configuration_protocol;
-  pco_nas.num_protocol_or_container_id = pco.num_protocol_or_container_id;
-
-  for (int i = 0; i < pco.num_protocol_or_container_id; i++) {
-    pco_nas.protocol_or_container_ids[i].length =
-        pco.protocol_or_container_ids[i].length_of_protocol_id_contents;
-    pco_nas.protocol_or_container_ids[i].id =
-        pco.protocol_or_container_ids[i].protocol_id;
-
-    pco_nas.protocol_or_container_ids[i].contents = bfromcstralloc(
-        pco.protocol_or_container_ids[i].protocol_id_contents.length(), "\0");
-    pco_nas.protocol_or_container_ids[i].contents->slen =
-        pco.protocol_or_container_ids[i].protocol_id_contents.length();
-    memcpy(
-        (void*) pco_nas.protocol_or_container_ids[i].contents->data,
-        (void*) pco.protocol_or_container_ids[i].protocol_id_contents.c_str(),
-        pco.protocol_or_container_ids[i].protocol_id_contents.length());
-  }
-}
-*/
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
     const oai::model::smf::SmContextMessage& scd,

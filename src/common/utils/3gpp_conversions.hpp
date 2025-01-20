@@ -61,17 +61,6 @@ void pdn_ip_to_pfcp_ue_ip_address(
     const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
     pfcp::ue_ip_address_t& ue_ip_address);
 
-
-/*
- * Convert PCO in core type to NAS type
- * @param [const protocol_configuration_options_t&] pco: PCO in cpre type
- * @param [protocol_configuration_options_nas_t&] pco_nas: PCO in NAS type
- * @return void
- */
-// void pco_core_to_nas(
-//    const protocol_configuration_options_t& pco,
-//    protocol_configuration_options_nas_t& pco_nas);
-
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU
  * SessionCreateSMContextRequest msg

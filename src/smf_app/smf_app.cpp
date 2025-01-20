@@ -2241,6 +2241,16 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
 
   // NF services
+  // IP Endpoint (common for each service)
+  ip_endpoint_t endpoint = {};
+  std::vector<struct in_addr> addrs;
+  nf_instance_profile.get_nf_ipv4_addresses(addrs);
+  endpoint.ipv4_address = addrs[0];  // TODO: use first IP ADDR for now
+  endpoint.transport    = "TCP";
+  endpoint.port         = smf_cfg->sbi.port;
+  if (smf_cfg->http_version == 2) endpoint.port = smf_cfg->sbi_http2_port;
+
+  // nsmf-pdusession
   nf_service_t nf_service        = {};
   nf_service.service_instance_id = "nsmf-pdusession";
   nf_service.service_name        = "nsmf-pdusession";
@@ -2250,17 +2260,22 @@ void smf_app::generate_smf_profile() {
   nf_service.versions.push_back(version);
   nf_service.scheme            = "http";
   nf_service.nf_service_status = "REGISTERED";
-  // IP Endpoint
-  ip_endpoint_t endpoint = {};
-  std::vector<struct in_addr> addrs;
-  nf_instance_profile.get_nf_ipv4_addresses(addrs);
-  endpoint.ipv4_address = addrs[0];  // TODO: use first IP ADDR for now
-  endpoint.transport    = "TCP";
-  endpoint.port         = smf_cfg->sbi.port;
-  if (smf_cfg->http_version == 2) endpoint.port = smf_cfg->sbi_http2_port;
   nf_service.ip_endpoints.push_back(endpoint);
 
+  // nsmf-event-exposure
+  nf_service_t nf_service_evts        = {};
+  nf_service_evts.service_instance_id = "nsmf_event-exposure";
+  nf_service_evts.service_name        = "nsmf_event-exposure";
+  nf_service_version_t version_evts   = {};
+  version_evts.api_version_in_uri     = "v1";
+  version_evts.api_full_version       = "1.0.0";  // TODO: to be updated
+  nf_service_evts.versions.push_back(version_evts);
+  nf_service_evts.scheme            = "http";
+  nf_service_evts.nf_service_status = "REGISTERED";
+  nf_service_evts.ip_endpoints.push_back(endpoint);
+
   nf_instance_profile.add_nf_service(nf_service);
+  nf_instance_profile.add_nf_service(nf_service_evts);
 
   // TODO: custom info
 

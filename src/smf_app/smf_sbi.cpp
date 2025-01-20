@@ -156,12 +156,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         sm_context_res->res.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -229,12 +229,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         sm_session_modification->msg.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -273,10 +273,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     std::string n1_message = report_msg->res.get_n1_sm_message();
     // prepare the body content for Curl
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n1_message, n2_message);
+        body, json_part, oai::http::MIME_BOUNDARY, n1_message, n2_message);
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n2_message,
+        body, json_part, oai::http::MIME_BOUNDARY, n2_message,
         multipart_related_content_part_e::NGAP);
   }
 
