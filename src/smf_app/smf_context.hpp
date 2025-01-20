@@ -48,10 +48,6 @@
 
 extern "C" {
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
-//#include "PDUSessionEstablishmentAccept.h"
-//#include "QOSFlowDescriptions.h"
-//#include "QOSRules.h"
-//#include "nas_message.h"
 }
 
 using namespace boost::placeholders;
@@ -335,9 +331,6 @@ class session_management_subscription {
   // Shared lock
   mutable std::shared_mutex m_mutex;
 };
-
-// TODO ???
-// class smf_context;
 
 class smf_context : public std::enable_shared_from_this<smf_context> {
  public:
@@ -862,17 +855,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       oai::nas::QosRule& qos_rule, uint8_t pdu_session_type);
 
   /*
-   * Get the default QoS Flow Description, according to PDU session type and QFI
-   * @param [QOSFlowDescriptionsContents &] qos_flow_description
-   * @param [uint8_t] pdu_session_type: PDU Session Type
-   * @param [const pfcp::qfi_t &] qfi
-   * @return void
-   */
-  //  void get_default_qos_flow_description(
-  //     QOSFlowDescriptionsContents& qos_flow_description,
-  //    uint8_t pdu_session_type, const pfcp::qfi_t& qfi);
-
-  /*
    * Get the default value of Session-AMBR
    * @param [SessionAmbr &] session_ambr
    * @param [const snssai_t &] snssai
@@ -894,9 +876,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void get_session_ambr(
       Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
       const snssai_t& snssai, const std::string& dnn);
-
-  // static uint8_t nas_ambr_from_bitrate_unit(
-  //    const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
 
   /*
    * Find the PDU Session with its ID

@@ -76,7 +76,6 @@ extern "C" {
 #include "Ngap_QosFlowAddOrModifyResponseList.h"
 #include "Ngap_QosFlowItemWithDataForwarding.h"
 #include "Ngap_SecondaryRATDataUsageReportTransfer.h"
-//#include "dynamic_memory_check.h"
 }
 
 using namespace smf;
@@ -754,35 +753,6 @@ void smf_context::get_default_qos(
   }
 }
 
-/*
-//------------------------------------------------------------------------------
-void smf_context::get_default_qos_flow_description(
-    QOSFlowDescriptionsContents& qos_flow_description, uint8_t pdu_session_type,
-    const pfcp::qfi_t& qfi) {
-  // TODO, update according to PDU Session type
-  Logger::smf_app().info(
-      "Get default QoS Flow Description (PDU session type %d)",
-      pdu_session_type);
-  qos_flow_description.qfi                = qfi.qfi;
-  qos_flow_description.operationcode      = CREATE_NEW_QOS_FLOW_DESCRIPTION;
-  qos_flow_description.e                  = PARAMETERS_LIST_IS_INCLUDED;
-  qos_flow_description.numberofparameters = 1;
-  qos_flow_description.parameterslist =
-      (ParametersList*) calloc(3, sizeof(ParametersList));
-  qos_flow_description.parameterslist[0].parameteridentifier =
-      PARAMETER_IDENTIFIER_5QI;
-  qos_flow_description.parameterslist[0].parametercontents._5qi = DEFAULT_5QI;
-
-
-  Logger::smf_app().debug(
-      "Default Qos Flow Description: %x %x %x %x %x %x",
-      qos_flow_description.qfi, qos_flow_description.operationcode,
-      qos_flow_description.e, qos_flow_description.numberofparameters,
-      qos_flow_description.parameterslist[0].parameteridentifier,
-      qos_flow_description.parameterslist[0].parametercontents._5qi
-      );
-}
-*/
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
     oai::nas::SessionAmbr& session_ambr, const snssai_t& snssai,
@@ -840,29 +810,6 @@ void smf_context::get_session_ambr(
         "Dl/UL value, use default 1 MBPS");
   }
 }
-
-/*
-//------------------------------------------------------------------------------
-uint8_t smf_context::nas_ambr_from_bitrate_unit(
-    const bitrate_unit_e& bitrate_unit) {
-  switch (bitrate_unit) {
-    case bitrate_unit_e::KBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1KBPS;
-    case bitrate_unit_e::MBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-    case bitrate_unit_e::GBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case bitrate_unit_e::TBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1TBPS;
-    case bitrate_unit_e::PBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1GBPS;
-    case bitrate_unit_e::_256PBPS:
-      return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_256GBPS;
-  }
-  Logger::smf_app().error("Unknown bitrate value, use default MBPS");
-  return AMBR_VALUE_IS_INCREMENTED_IN_MULTIPLES_OF_1MBPS;
-}
-*/
 
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
@@ -1786,6 +1733,7 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
   }
   return true;
 }
+
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
     std::string& n2_sm_information,
@@ -2103,25 +2051,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     }
 
     uint8_t message_type = nas_message->GetHeader().GetMessageType();
-    /*
-
-   // Decode NAS and get the necessary information
-   n1_sm_msg = sm_context_req_msg.get_n1_sm_message();
-   memset(&decoded_nas_msg, 0, sizeof(nas_message_t));
-
-   int decoder_rc = smf_n1::get_instance().decode_n1_sm_container(
-       decoded_nas_msg, n1_sm_msg);
-   if (decoder_rc != RETURNok) {
-     // error, send reply to AMF with error code!!
-     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
-     smf_app_inst->trigger_update_context_error_response(
-         http_status_code::FORBIDDEN,
-         PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, smreq->pid);
-     return false;
-   }
-
-   uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
-   */
 
     switch (message_type) {
       case PDU_SESSION_MODIFICATION_REQUEST: {
@@ -4292,12 +4221,17 @@ std::string smf_context::get_amf_status_uri() const {
   return amf_status_uri;
 }
 
+//------------------------------------------------------------------------------
 void smf_context::set_target_amf(const std::string& amf) {
   target_amf = amf;
 }
+
+//------------------------------------------------------------------------------
 void smf_context::get_target_amf(std::string& amf) const {
   amf = target_amf;
 }
+
+//------------------------------------------------------------------------------
 std::string smf_context::get_target_amf() const {
   return target_amf;
 }

@@ -83,32 +83,18 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   sm_context_res.get_all_qos_flow_context_created(qos_flows);
 
   Logger::smf_n1().info("PDU_SESSION_ESTABLISHMENT_ACCEPT, encode starting...");
-  /*
-    // Fill the rest of SM header
-    sm_msg->header.procedure_transaction_identity =
-        sm_context_res.get_pti().procedure_transaction_id;
-    sm_msg->header.message_type = PDU_SESSION_ESTABLISHMENT_ACCEPT;
-
-    Logger::smf_n1().debug(
-        "SM header, Extended Protocol Discriminator 0x%x, PDU Session Identity "
-        "%d, Procedure Transaction Identity: %d, Message Type: %d",
-        sm_msg->header.extended_protocol_discriminator,
-        sm_msg->header.pdu_session_identity,
-        sm_msg->header.procedure_transaction_identity,
-        sm_msg->header.message_type);
-  */
 
   // Fill the content of PDU Session Establishment Accept message
   // PDU Session Type
-  PduSessionType pdu_session_type = {};
+  PduSessionType pdu_session_type;
   pdu_session_type.SetValue(sm_context_res.get_pdu_session_type());
   pdu_session_estb_accept->SetSelectedPduSessionType(pdu_session_type);
-
-  // sm_msg->pdu_session_establishment_accept._pdusessiontype
-  //    .pdu_session_type_value = sm_context_res.get_pdu_session_type();
   Logger::smf_n1().debug("PDU Session Type: %d", pdu_session_type.GetValue());
 
   // TODO: Selected SSC mode
+  SscMode ssc_mode;
+  ssc_mode.SetValue(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
+  pdu_session_estb_accept->SetSelectedSscMode(ssc_mode);
 
   // authorized QoS rules of the PDU session: QOSRules (Section 6.2.5@3GPP
   // TS 24.501) (Section 6.4.1.3@3GPP TS 24.501 V16.1.0) Make sure that the
@@ -122,7 +108,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
       qos_rule_list.push_back(qos_rule.second);
     }
   }
-  oai::nas::QosRules qos_rules = {};
+  oai::nas::QosRules qos_rules;
   qos_rules.Set(qos_rule_list);
   pdu_session_estb_accept->SetAuthorizedQosRules(qos_rules);
 
@@ -153,7 +139,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   paa_t paa = sm_context_res.get_paa();
   Logger::smf_n1().debug(
       "PDU Session Type %s", paa.pdu_session_type.to_string().c_str());
-  oai::nas::PduAddress pdu_address = {};
+  oai::nas::PduAddress pdu_address(kIeiPduAddress);
   pdu_address.SetPduSessionType(paa.pdu_session_type.pdu_session_type);
   if (paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4) {
     pdu_address.SetIpv4Address(paa.ipv4_address);
@@ -182,7 +168,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // SNSSAI
   oai::nas::SNssai snssai(kIeiSNssai);
   snssai.SetSNSSAI(
-      std::nullopt, sm_context_res.get_snssai().sst,
+      sm_context_res.get_snssai().sst,
       sm_context_res.get_snssai().get_sd_int());
   Logger::smf_n1().debug(
       "SNSSAI SST %d, SD %ld (0x%x)", sm_context_res.get_snssai().sst,
@@ -205,8 +191,9 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
     Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
-    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
-    int i                                               = 0;
+    oai::nas::QosFlowDescriptions qos_flow_descriptions(
+        kIeiAuthorizedQosFlowDescriptions);
+    int i = 0;
     for (const auto& qos_flow_pair : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qos_flow_pair.second.get_qos_flow_descriptions();

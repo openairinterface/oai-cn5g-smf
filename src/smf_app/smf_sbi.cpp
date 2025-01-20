@@ -38,13 +38,6 @@
 #include "http_client.hpp"
 #include "sbi_helper.hpp"
 
-extern "C" {
-//#include "dynamic_memory_check.h"
-}
-
-// using namespace Pistache::Http;
-// using namespace Pistache::Http::Mime;
-
 using namespace smf;
 using namespace oai::common::sbi;
 using namespace oai::http;
@@ -55,14 +48,6 @@ extern smf_sbi* smf_sbi_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
-
-// To read content of the response from AMF
-static std::size_t callback(
-    const char* in, std::size_t size, std::size_t num, std::string* out) {
-  const std::size_t totalBytes(size * num);
-  out->append(in, totalBytes);
-  return totalBytes;
-}
 
 //------------------------------------------------------------------------------
 void smf_sbi_task(void* args_p) {
@@ -624,16 +609,18 @@ bool smf_sbi::get_sm_data(
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
               ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
               "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
+
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
+
   std::string udm_url =
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
       oai::common::sbi::sbi_helper::UdmSdmBase +
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(
-          oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData,
-          smf_supi64_to_string(supi)) +
-      query_str;
+      fmt::format(fmr_format_str, smf_supi64_to_string(supi)) + query_str;
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 

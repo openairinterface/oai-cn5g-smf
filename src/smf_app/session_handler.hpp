@@ -23,15 +23,10 @@
 
 #include <smf_msg.hpp>
 #include <smf_pfcp_association.hpp>
-//#include <QOSFlowDescriptions.h>
 #include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 #include "sdf_conversions.hpp"
 #include "QosRule.hpp"
 #include "QosFlowDescription.hpp"
-
-extern "C" {
-//#include "QOSRules.h"
-}
 
 #pragma once
 
@@ -106,14 +101,9 @@ class session_handler {
    * QOSFlowDescriptionsContents and QosRule. returns a
    * qos_flow_context_updated
    *
-   * @param qos_flow_description_content
+   * @param qos_flow_description
    * @return qos_flow_context_updated
    */
-
-  // ::smf::qos_flow_context_updated create_new_qos_rule(
-  //     oai::nas::QosRule& qos_rule,
-  //     const QOSFlowDescriptionsContents& qos_flow_description_content);
-
   qos_flow_context_updated create_new_qos_rule(
       oai::nas::QosRule& qos_rules_ie,
       const oai::nas::QosFlowDescription& qos_flow_description);
@@ -241,25 +231,17 @@ class session_handler {
 
   void set_nas_filter_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule);
-  /*
-    void set_port_filter(
-        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-        const oai::utils::sdf_conversions::port_range& port_range);
-    void set_ip_filter(
-        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-        const oai::utils::sdf_conversions::ip_range& port_range);
-    void set_protocol_filter(
-        int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-        uint8_t protocol_id);
-    */
+
   void set_port_filter(
       int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
       const oai::utils::sdf_conversions::port_range& port_range);
+
   void set_ip_filter(
       int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
       const oai::utils::sdf_conversions::ip_range& port_range);
+
   void set_protocol_filter(
       int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,

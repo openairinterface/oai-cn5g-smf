@@ -171,7 +171,6 @@ void session_handler::set_nas_filter_from_edge(
   } else if (!parsed_filter.default_filter) {
     // TODO we should take into account the max number of supported packet
     // filters from UE
-
     qos_rule.SetNumberOfPacketFilters(parsed_filter.filter_components);
     oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
     packet_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
@@ -515,96 +514,6 @@ void session_handler::add_qos_rule(const oai::nas::QosRule& qos_rule) {
         "Failed to add rule (Id %d) failed: invalid rule Id", rule_id);
   }
 }
-/*
-//------------------------------------------------------------------------------
-qos_flow_context_updated session_handler::create_new_qos_rule(
-    oai::nas::QosRule& qos_rules_ie,
-    const QOSFlowDescriptionsContents& qos_flow_description_content) {
-  qos_flow_context_updated qos_flow;
-
-  // Add a new QoS Flow
-  if (qos_rules_ie.GetQosRuleId() == NO_QOS_RULE_IDENTIFIER_ASSIGNED) {
-    // Generate a new QoS rule
-    uint8_t rule_id = generate_qos_rule_id();
-    Logger::smf_app().info("Create a new QoS rule (rule Id %d)", rule_id);
-    qos_rules_ie.SetQosRuleId(rule_id);
-  }
-  add_qos_rule(qos_rules_ie);
-  // TODO unify with generated_qfi, hardcode for now (like it used to be)
-
-  qos_flow.qfi = DEFAULT_QFI;
-
-  // set qos_profile from qos_flow_description_content
-  qos_flow.qos_profile = {};
-
-  for (int j = 0; j < qos_flow_description_content.numberofparameters; j++) {
-    if (qos_flow_description_content.parameterslist[j].parameteridentifier ==
-        PARAMETER_IDENTIFIER_5QI) {
-      qos_flow.qos_profile.setR5qi(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents._5qi);
-    } else if (
-        qos_flow_description_content.parameterslist[j].parameteridentifier ==
-        PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-      std::string gbrUlValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      qos_flow.qos_profile.setGbrUl(gbrUlValue);
-      std::string gbrValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value);
-      qos_flow.qos_profile.setGbrUl(gbrValue);
-    } else if (
-        qos_flow_description_content.parameterslist[j].parameteridentifier ==
-        PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-      std::string gbrDlValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      qos_flow.qos_profile.setGbrDl(gbrDlValue);
-      std::string gbrValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value);
-      qos_flow.qos_profile.setGbrDl(gbrValue);
-    } else if (
-        qos_flow_description_content.parameterslist[j].parameteridentifier ==
-        PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-      std::string mbrUlValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      qos_flow.qos_profile.setMaxbrUl(mbrUlValue);
-      std::string mbrValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value);
-      qos_flow.qos_profile.setMaxbrUl(mbrValue);
-    } else if (
-        qos_flow_description_content.parameterslist[j].parameteridentifier ==
-        PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-      std::string mbrDlValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      qos_flow.qos_profile.setMaxbrDl(mbrDlValue);
-      std::string mbrValue = std::to_string(
-          qos_flow_description_content.parameterslist[j]
-              .parametercontents.gfbrormfbr_uplinkordownlink.value);
-      qos_flow.qos_profile.setMaxbrDl(mbrValue);
-    }
-  }
-
-  Logger::smf_app().debug(
-      "Add new QoS Flow with new QRI %d", qos_rules_ie.GetQosRuleId());
-
-  // mark this rule to be synchronised with the UE
-  update_qos_rule(qos_rules_ie);
-  // Add new QoS flow
-  // TODO here interact with graph
-  // or add a new QFI to be updated or whatever, that should be done out from
-  // the context and start a graph- related procedure
-  // sp->get_sessions_graph()->add_qos_flow(qos_flow);
-  qos_flow.set_qfi(pfcp::qfi_t(qos_flow.qfi));
-
-  return qos_flow;
-}
-*/
 
 //------------------------------------------------------------------------------
 qos_flow_context_updated session_handler::create_new_qos_rule(
