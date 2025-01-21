@@ -18,7 +18,7 @@
 # For more information about the OpenAirInterface (OAI) Software Alliance:
 #      contact@openairinterface.org
 ################################################################################
-file(GLOB SMF_NAS_src_files
+file(GLOB NAS_src_files
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common/*.cpp
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs/*.cpp
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies/*.cpp
@@ -26,15 +26,15 @@ file(GLOB SMF_NAS_src_files
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.cpp
 )
 
-add_library (SMF_NAS STATIC ${SMF_NAS_src_files})
+add_library (NAS STATIC ${NAS_src_files})
 
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
-target_include_directories(SMF_NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
+target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
