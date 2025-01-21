@@ -18,23 +18,25 @@
 # For more information about the OpenAirInterface (OAI) Software Alliance:
 #      contact@openairinterface.org
 ################################################################################
+
+set(NAS_DIR "${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas")
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
+
 file(GLOB NAS_src_files
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common/*.cpp
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs/*.cpp
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies/*.cpp
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.c
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.cpp
+  ${NAS_DIR}/common/*.cpp
+  ${NAS_DIR}/5gsm-msgs/*.cpp
+  ${NAS_DIR}/ies/*.cpp
+  ${NAS_DIR}/utils/*.c
+  ${NAS_DIR}/utils/*.cpp
 )
 
-add_library (NAS STATIC ${NAS_src_files})
-
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
-target_include_directories(NAS PUBLIC ${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
+add_library (NAS ${NAS_src_files})
