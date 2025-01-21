@@ -140,6 +140,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib/libfmt.so \
     /usr/local/lib/libcpr.so.1 \
     /openair-smf/build/smf/build/nas/libNAS.so \
+    /openair-smf/build/smf/build/ngap/libNGAP.so \
     ./
 
 RUN ldconfig && \
