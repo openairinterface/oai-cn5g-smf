@@ -178,7 +178,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // AlwaysonPDUSessionIndication
   oai::nas::AlwaysOnPduSessionIndication always_on_pdu_session_indication(
-      oai::nas::kIeiAlwaysOnPduSessionIndication);
+      kIeiAlwaysOnPduSessionIndication);
   always_on_pdu_session_indication.SetApsi(
       oai::nas::kAlwaysOnPduSessionRequired);
   pdu_session_estb_accept->SetAlwaysOnPduSessionIndication(
