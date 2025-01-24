@@ -408,8 +408,6 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 //------------------------------------------------------------------------------
 uint64_t session_handler::set_ngap_bitrate(
     Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string) {
-  uint16_t value;
-  uint8_t unit;
   bitrate_unit_e unit_e;
   oai::nas::BitRate bit_rate = {};
   bit_rate.value             = 1000;
@@ -417,7 +415,8 @@ uint64_t session_handler::set_ngap_bitrate(
   if (!parse_bitrate_string(bitrate_string, bit_rate)) {
     Logger::smf_app().warn("Cannot parse bitrate string, use default value");
   }
-  uint64_t bit_rate_value = parse_nas_value_unit_to_bps(value, bit_rate.unit);
+  uint64_t bit_rate_value =
+      parse_nas_value_unit_to_bps(bit_rate.value, bit_rate.unit);
 
   ngap_bitrate.size = 8;
   ngap_bitrate.buf  = (uint8_t*) calloc(ngap_bitrate.size, sizeof(uint8_t));
