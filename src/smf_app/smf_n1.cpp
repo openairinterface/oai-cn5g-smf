@@ -113,9 +113,9 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   pdu_session_estb_accept->SetAuthorizedQosRules(qos_rules);
 
   // 5GSM Cause
-  _5gsmCause cause = {};
-  cause.SetValue(static_cast<uint8_t>(sm_cause));
-  pdu_session_estb_accept->Set5gsmCause(cause);
+  // _5gsmCause cause = {};
+  // cause.SetValue(static_cast<uint8_t>(sm_cause));
+  // pdu_session_estb_accept->Set5gsmCause(cause);
 
   // SessionAMBR
   Logger::smf_n1().debug("Get default values for Session-AMBR");
