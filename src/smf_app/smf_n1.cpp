@@ -93,7 +93,8 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // TODO: Selected SSC mode
   SscMode ssc_mode;
-  ssc_mode.SetValue(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
+  ssc_mode.Set(true);        // 4 high bits
+  ssc_mode.SetSscMode(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
   pdu_session_estb_accept->SetSelectedSscMode(ssc_mode);
 
   // authorized QoS rules of the PDU session: QOSRules (Section 6.2.5@3GPP
