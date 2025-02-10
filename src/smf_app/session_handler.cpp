@@ -172,12 +172,9 @@ void session_handler::set_nas_filter_from_edge(
     // TODO we should take into account the max number of supported packet
     // filters from UE
     qos_rule.SetNumberOfPacketFilters(parsed_filter.filter_components);
-    oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
-    packet_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-    packet_filter.packet_filter_id        = 1;
-
     int filter_id = 1;
     if (parsed_filter.use_protocol_identifier) {
+      oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
       set_protocol_filter(
           filter_id, packet_filter, parsed_filter.protocol_identifier);
       qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
@@ -185,11 +182,13 @@ void session_handler::set_nas_filter_from_edge(
     }
 
     if (parsed_filter.src_ip_range.use_ip_range) {
+      oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
       set_ip_filter(filter_id, packet_filter, parsed_filter.src_ip_range);
       qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
       filter_id++;
     }
     if (!parsed_filter.src_port_ranges.empty()) {
+      oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
       for (const auto& port : parsed_filter.src_port_ranges) {
         set_port_filter(filter_id, packet_filter, port);
         qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
@@ -207,9 +206,6 @@ void session_handler::set_port_filter(
   nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
   uint16_t port_low                  = htons(port_range.start);
   uint16_t port_high                 = htons(port_range.end);
-
-  nas_filter.packet_filter_id        = filter_id;
-  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
 
   oai::nas::PacketFilterComponent packet_filter_component = {};
 
