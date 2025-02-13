@@ -3283,8 +3283,7 @@ void smf_context::insert_dnn_subscription(
   std::unique_lock<std::recursive_mutex> lock(m_context);
   dnn_subscriptions[key] = ss;
   Logger::smf_app().info(
-      "Inserted DNN Subscription, key: %ld %s", key,
-      snssai.to_model_snssai().to_string(0));
+      "Inserted DNN Subscription, key: %ld %s", key, snssai.toString());
 }
 
 //------------------------------------------------------------------------------
@@ -3310,7 +3309,7 @@ void smf_context::insert_dnn_subscription(
   }
   Logger::smf_app().info(
       "Inserted DNN Subscription, key: %ld dnn %s \n %s", key, dnn.c_str(),
-      snssai.to_model_snssai().to_string(0));
+      snssai.toString());
 }
 
 //------------------------------------------------------------------------------
@@ -3342,7 +3341,7 @@ bool smf_context::find_dnn_subscription(
 
   Logger::smf_app().info(
       "Find a DNN Subscription with key: %ld, map size %ld and \n %s", key,
-      dnn_subscriptions.size(), snssai.to_model_snssai().to_string(0));
+      dnn_subscriptions.size(), snssai.toString());
 
   std::unique_lock<std::recursive_mutex> lock(m_context);
   if (dnn_subscriptions.count(key) > 0) {
@@ -3350,8 +3349,7 @@ bool smf_context::find_dnn_subscription(
     return true;
   }
 
-  Logger::smf_app().info(
-      "DNN subscription not found: %s", snssai.to_model_snssai().to_string(0));
+  Logger::smf_app().info("DNN subscription not found: %s", snssai.toString());
   return false;
 }
 

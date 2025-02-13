@@ -207,7 +207,7 @@ void nf_profile::display() const {
     Logger::smf_app().debug("\tSNSSAIs:");
   }
   for (auto s : snssais) {
-    Logger::smf_app().debug("\n%s", s.to_model_snssai().to_string(0));
+    Logger::smf_app().debug("\t\t%s", s.toString());
   }
   if (!fqdn.empty()) {
     Logger::smf_app().debug("\tFQDN: %s", fqdn.c_str());
@@ -385,24 +385,21 @@ void smf_profile::display() const {
   }
 
   // SMF info
-  if (smf_info.snssai_smf_info_list.size() > 0) {
+  if (!smf_info.snssai_smf_info_list.empty()) {
     Logger::smf_app().debug("\tSMF Info:");
   }
-  if (!smf_info.snssai_smf_info_list.empty()) {
-    Logger::smf_app().debug("\t\tParameters supported by the SMF:");
-  }
-  // we convert to re-use the existing to_string function
+  int index = 1;
   for (const auto& s : smf_info.snssai_smf_info_list) {
-    SnssaiSmfInfoItem item;
-    item.setSNssai(s.snssai.to_model_snssai());
-    std::vector<DnnSmfInfoItem> list_of_dnns;
+    Logger::smf_app().debug("\t\tItem %d", index);
+    Logger::smf_app().debug(
+        "\t\t\tsNSSAI (sst, sd): %d, %s", s.snssai.sst, s.snssai.sd.c_str());
+    std::string dnns = {};
     for (const auto& d : s.dnn_smf_info_list) {
-      DnnSmfInfoItem dnn_item;
-      dnn_item.setDnn(d.dnn);
-      list_of_dnns.push_back(dnn_item);
+      dnns.append(d.dnn).append(" ");
     }
-    item.setDnnSmfInfoList(list_of_dnns);
-    Logger::smf_app().debug(item.to_string(1));
+    if (s.dnn_smf_info_list.size() > 0)
+      Logger::smf_app().debug("\t\t\tdnns: %s", dnns);
+    index++;
   }
 }
 

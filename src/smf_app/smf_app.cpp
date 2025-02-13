@@ -746,7 +746,7 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
     nf_instance_profile = r.profile;
     // Set heartbeat timer
     Logger::smf_app().debug(
-        "Set value of NRF Heartbeat timer to %d",
+        "Set value of NRF Heartbeat timer to %d (in seconds)",
         r.profile.get_nf_heartBeat_timer());
     timer_nrf_heartbeat = itti_inst->timer_setup(
         r.profile.get_nf_heartBeat_timer(), 0, TASK_SMF_APP,
@@ -768,12 +768,11 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
-  Logger::smf_app().debug("NF Update NF response");
+  Logger::smf_app().debug("Handle NF Update response");
 
   if ((u.http_response_code == oai::common::sbi::http_status_code::OK) or
       (u.http_response_code ==
        oai::common::sbi::http_status_code::NO_CONTENT)) {
-    Logger::smf_app().debug("SMF has successfully registered to NRF.");
     Logger::smf_app().debug(
         "Set NRF Heartbeat timer (%d)",
         nf_instance_profile.get_nf_heartBeat_timer());
@@ -884,7 +883,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   Logger::smf_app().info(
       "Handle a PDU Session Create SM Context Request message from AMF, "
       "SUPI " SUPI_64_FMT ", %s",
-      supi64, snssai.to_model_snssai().to_string(0));
+      supi64, snssai.toString());
 
   // Step 2. Verify Procedure transaction id, pdu session id, message type,
   // request type, etc.

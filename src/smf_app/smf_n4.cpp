@@ -447,7 +447,6 @@ void smf_n4::handle_receive_association_setup_response(
           "IE!, ignore message");
       return;
     }
-    Logger::smf_n4().info("Received N4 ASSOCIATION SETUP RESPONSE");
     bool restore_n4_sessions = false;
     if (msg_ies_container.up_function_features.first) {
       pfcp_associations::get_instance().add_association(
