@@ -511,7 +511,7 @@ void xgpp_conv::sm_context_request_from_nas(
             (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
                 ->GetExtendedProtocolConfigurationOptions();
     if (conf_options_opt.has_value()) {
-      pcr.set_epco(conf_options_opt.value().Get());
+      pcr.set_epco((conf_options_opt.value()).Get());
     }
   }
 
