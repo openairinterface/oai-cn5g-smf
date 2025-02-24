@@ -19,15 +19,16 @@
  *      contact@openairinterface.org
  */
 
+#include "session_handler.hpp"
+
 #include <math.h>
 
-#include "session_handler.hpp"
 #include "FlowDirection.h"
-#include "conversions.hpp"
-#include "conversions.h"
-#include "smf_config.hpp"
+#include "QosFlowDescriptionParameter.hpp" #include "3gpp_commons.h"
 #include "Struct.hpp"
-#include "QosFlowDescriptionParameter.hpp"
+#include "conversions.h"
+#include "conversions.hpp"
+#include "smf_config.hpp"
 
 using namespace smf;
 using namespace oai::model::pcf;
@@ -347,7 +348,7 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 
   if (edge->qos_profile.gbrUlIsSet()) {
     oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
-    oai::nas::BitRate bit_rate                                           = {};
+    BitRate bit_rate                                                     = {};
     bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
     bit_rate.value = 1000;
     if (!parse_bitrate_string(edge->qos_profile.getGbrUl(), bit_rate)) {
@@ -360,7 +361,7 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 
   if (edge->qos_profile.gbrDlIsSet()) {
     oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
-    oai::nas::BitRate bit_rate                                           = {};
+    BitRate bit_rate                                                     = {};
     bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
     bit_rate.value = 1000;
     if (!parse_bitrate_string(edge->qos_profile.getGbrDl(), bit_rate)) {
@@ -373,7 +374,7 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 
   if (edge->qos_profile.maxbrUlIsSet()) {
     oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
-    oai::nas::BitRate bit_rate                                           = {};
+    BitRate bit_rate                                                     = {};
     bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
     bit_rate.value = 1000;
     if (!parse_bitrate_string(edge->qos_profile.getMaxbrUl(), bit_rate)) {
@@ -386,7 +387,7 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 
   if (edge->qos_profile.maxbrDlIsSet()) {
     oai::nas::QosFlowDescriptionParameter qos_flow_description_parameter = {};
-    oai::nas::BitRate bit_rate                                           = {};
+    BitRate bit_rate                                                     = {};
     bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
     bit_rate.value = 1000;
     if (!parse_bitrate_string(edge->qos_profile.getMaxbrDl(), bit_rate)) {
@@ -409,9 +410,9 @@ oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
 uint64_t session_handler::set_ngap_bitrate(
     Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string) {
   bitrate_unit_e unit_e;
-  oai::nas::BitRate bit_rate = {};
-  bit_rate.value             = 1000;
-  bit_rate.unit              = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+  BitRate bit_rate = {};
+  bit_rate.value   = 1000;
+  bit_rate.unit    = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
   if (!parse_bitrate_string(bitrate_string, bit_rate)) {
     Logger::smf_app().warn("Cannot parse bitrate string, use default value");
   }
@@ -548,7 +549,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
         } break;
 
         case oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink: {
-          std::optional<oai::nas::BitRate> gfbr_uplink =
+          std::optional<BitRate> gfbr_uplink =
               (parameter_list.value())[i].GetGfbrUplink();
           if (gfbr_uplink.has_value()) {
             std::string gfbr_uplink_str =
@@ -559,7 +560,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
         } break;
 
         case oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink: {
-          std::optional<oai::nas::BitRate> gfbr_downlink =
+          std::optional<BitRate> gfbr_downlink =
               (parameter_list.value())[i].GetGfbrDownlink();
           if (gfbr_downlink.has_value()) {
             std::string gfbr_downlink_str =
@@ -570,7 +571,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
         } break;
 
         case oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink: {
-          std::optional<oai::nas::BitRate> mfbr_uplink =
+          std::optional<BitRate> mfbr_uplink =
               (parameter_list.value())[i].GetMfbrUplink();
           if (mfbr_uplink.has_value()) {
             std::string mfbr_uplink_str =
@@ -581,7 +582,7 @@ qos_flow_context_updated session_handler::create_new_qos_rule(
         } break;
 
         case oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink: {
-          std::optional<oai::nas::BitRate> mfbr_downlink =
+          std::optional<BitRate> mfbr_downlink =
               (parameter_list.value())[i].GetMfbrDownlink();
           if (mfbr_downlink.has_value()) {
             std::string mfbr_downlink_str =

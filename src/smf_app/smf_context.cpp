@@ -28,8 +28,11 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
+#include "3gpp_commons.h"
 #include "3gpp_conversions.hpp"
 #include "EventNotification.h"
+#include "PduSessionModificationCommandReject.hpp"
+#include "PduSessionModificationRequest.hpp"
 #include "PduSessionType.h"
 #include "PlmnId.h"
 #include "RefToBinaryData.h"
@@ -39,6 +42,7 @@
 #include "SmPolicyDecision.h"
 #include "SmPolicyDeleteData.h"
 #include "Snssai.h"
+#include "_5gsmCause.hpp"
 #include "conversions.h"
 #include "http_client.hpp"
 #include "itti.hpp"
@@ -54,10 +58,6 @@
 #include "smf_procedure.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
-#include "_5gsmCause.hpp"
-#include "PduSessionModificationCommandReject.hpp"
-#include "PduSessionModificationRequest.hpp"
-#include "3gpp_commons.h"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -784,9 +784,9 @@ void smf_context::get_session_ambr(
       bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
       uint16_t ambr_dl_value, ambr_ul_value;
 
-      oai::nas::BitRate bit_rate = {};
-      bit_rate.unit  = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
-      bit_rate.value = 1;
+      BitRate bit_rate = {};
+      bit_rate.unit    = kBitRateUnitValueIsIncrementedInMultiplesOf1Mbps;
+      bit_rate.value   = 1;
       if (!parse_bitrate_string(sdc->session_ambr.downlink, bit_rate)) {
         Logger::smf_app().warn(
             "Could not set AMBR downlink value, use default value");

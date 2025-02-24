@@ -21,16 +21,19 @@
 
 #include "smf_n2.hpp"
 
-#include <arpa/inet.h>
-#include <stdexcept>
 #include <Ngap_GBR-QosInformation.h>
-#include "string.hpp"
+#include <arpa/inet.h>
 
-#include "smf.h"
+#include <stdexcept>
+
+#include "3gpp_commons.h"
+#include "Helpers.h"
+#include "PduSessionResourceSetupRequestTransfer.hpp"
 #include "PreemptionCapability_anyOf.h"
 #include "PreemptionVulnerability_anyOf.h"
-#include "Helpers.h"
 #include "conversions.h"
+#include "smf.h"
+#include "string.hpp"
 #include "utils.hpp"
 
 extern "C" {
@@ -38,6 +41,8 @@ extern "C" {
 #include "Ngap_Criticality.h"
 #include "Ngap_Dynamic5QIDescriptor.h"
 #include "Ngap_GTPTunnel.h"
+#include "Ngap_HandoverCommandTransfer.h"
+#include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
 #include "Ngap_NGAP-PDU.h"
 #include "Ngap_NonDynamic5QIDescriptor.h"
 #include "Ngap_PDUSessionResourceModifyRequestTransfer.h"
@@ -45,6 +50,7 @@ extern "C" {
 #include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
 #include "Ngap_PDUSessionResourceSetupRequestTransfer.h"
 #include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
+#include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
 #include "Ngap_ProcedureCode.h"
 #include "Ngap_ProtocolIE-Field.h"
 #include "Ngap_QosFlowAddOrModifyRequestItem.h"
@@ -52,14 +58,12 @@ extern "C" {
 #include "Ngap_QosFlowAddOrModifyResponseList.h"
 #include "Ngap_QosFlowSetupRequestItem.h"
 #include "Ngap_UL-NGU-UP-TNLModifyItem.h"
-#include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
-#include "Ngap_HandoverCommandTransfer.h"
-#include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
 //#include "dynamic_memory_check.h"
 }
 
 using namespace smf;
 using namespace oai::model::common;
+using namespace oai::ngap;
 extern smf_app* smf_app_inst;
 
 //------------------------------------------------------------------------------
@@ -69,7 +73,11 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   Logger::smf_n2().info(
       "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
 
-  bool result                                             = false;
+  bool result = false;
+  PduSessionResourceSetupRequestTransfer
+      pduSessionResourceSetupRequestTransfer = {};
+
+  // TODO: should be removed
   Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
   ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
       1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
@@ -103,18 +111,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   }
 
   // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
-  asn_set_empty(&ngap_IEs->protocolIEs.list);
-
+  PduSessionAggregateMaximumBitRate pduSessionAggregateMaximumBitRate = {};
   // SessionAMBR
   supi_t supi                     = sm_context_res.get_supi();
   supi64_t supi64                 = smf_supi_to_u64(supi);
@@ -122,20 +119,24 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   if (smf_app_inst->is_supi_2_smf_context(supi64)) {
     Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
+    oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+        session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
+    uint64_t bit_rate_dl = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForDownlink(),
+        session_ambr.GetUnitForDownlink());
+    uint64_t bit_rate_ul = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForUplink(),
+        session_ambr.GetUnitForUplink());
+    pduSessionAggregateMaximumBitRate.set(bit_rate_dl, bit_rate_ul);
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    oai::utils::utils::free_wrapper(
-        (void**) &pduSessionAggregateMaximumBitRate);
     return false;
   }
 
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
+  pduSessionResourceSetupRequestTransfer.setPduSessionAggregateMaximumBitRate(
+      pduSessionAggregateMaximumBitRate);
 
   // UPTransportLayerInformation
   pfcp::fteid_t ul_fteid = {};
@@ -1664,7 +1665,7 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
             qos_flow.get_qos_flow_descriptions().GetParametersList();
 
     for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
-      std::optional<oai::nas::BitRate> bit_rate =
+      std::optional<BitRate> bit_rate =
           qos_flow_description_parameter_list[j].GetBitRate();
       if (bit_rate.has_value()) {
         uint8_t parameter_identifier =
