@@ -35,6 +35,7 @@
 #include "smf.h"
 #include "string.hpp"
 #include "utils.hpp"
+#include "PduSessionType.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -75,7 +76,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
 
   bool result = false;
   PduSessionResourceSetupRequestTransfer
-      pduSessionResourceSetupRequestTransfer = {};
+      pdu_session_resource_setup_request_transfer = {};
 
   // TODO: should be removed
   Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
@@ -111,7 +112,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   }
 
   // PDUSessionAggregateMaximumBitRate
-  PduSessionAggregateMaximumBitRate pduSessionAggregateMaximumBitRate = {};
+  PduSessionAggregateMaximumBitRate pdu_session_aggregate_maximum_bit_rate = {};
   // SessionAMBR
   supi_t supi                     = sm_context_res.get_supi();
   supi64_t supi64                 = smf_supi_to_u64(supi);
@@ -128,14 +129,15 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     uint64_t bit_rate_ul = session_handler::parse_nas_value_unit_to_bps(
         session_ambr.GetSessionAmbrForUplink(),
         session_ambr.GetUnitForUplink());
-    pduSessionAggregateMaximumBitRate.set(bit_rate_dl, bit_rate_ul);
+    pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
     return false;
   }
-  pduSessionResourceSetupRequestTransfer.setPduSessionAggregateMaximumBitRate(
-      pduSessionAggregateMaximumBitRate);
+  pdu_session_resource_setup_request_transfer
+      .setPduSessionAggregateMaximumBitRate(
+          pdu_session_aggregate_maximum_bit_rate);
 
   // UL NG-U UP TNL Information (UP Transport Layer Information)
   pfcp::fteid_t ul_fteid = {};
@@ -144,75 +146,185 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
   // UpTransportLayerInformation upTransportLayerInformation;
-  UpTransportLayerInformation ulNgUUpTnlInformation = {};
-  TransportLayerAddress transportLayerAddress       = {};
-  GtpTeid gtpTeid                                   = {};
-  transportLayerAddress.setIpv4Address(ul_fteid.ipv4_address);
-  gtpTeid.set(ul_fteid.teid);
-  ulNgUUpTnlInformation.set(transportLayerAddress, gtpTeid);
-  pduSessionResourceSetupRequestTransfer.setUlNgUUpTnlInformation(
-      ulNgUUpTnlInformation);
+  UpTransportLayerInformation ul_ng_u_up_tnl_information = {};
+  TransportLayerAddress transport_layer_address          = {};
+  GtpTeid gtp_teid                                       = {};
+  transport_layer_address.setIpv4Address(ul_fteid.ipv4_address);
+  gtp_teid.set(ul_fteid.teid);
+  ul_ng_u_up_tnl_information.set(transport_layer_address, gtp_teid);
+  pdu_session_resource_setup_request_transfer.setUlNgUUpTnlInformation(
+      ul_ng_u_up_tnl_information);
 
   // TODO: Additional UL NG-U UP TNL Information
   // TODO: DataForwardingNotPossible
 
   // PDUSessionType
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* pduSessionType = nullptr;
-  pduSessionType = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionType->id          = Ngap_ProtocolIE_ID_id_PDUSessionType;
-  pduSessionType->criticality = Ngap_Criticality_reject;
-  pduSessionType->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
-  pduSessionType->value.choice.PDUSessionType =
+  uint8_t pdu_session_type =
       sm_context_res.get_pdu_session_type() -
       1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
+  // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
+  // TS 24.501)
+
+  pdu_session_resource_setup_request_transfer.setPduSessionType(
+      static_cast<e_Ngap_PDUSessionType>(pdu_session_type));
+
   Logger::smf_n2().debug(
       "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
 
-  // SecurityIndication
-  // TODO: should get from UDM
-  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
-  //    nullptr;
-  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
-  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
-  //   = Ngap_IntegrityProtectionIndication_not_needed;
-  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
-  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
+  // TODO: Security Indication
+  // TODO: Network Instance
 
-  // TODO: NetworkInstance
+  // QoS Flow Setup Request List
+  QosFlowSetupRequestList qos_flow_setup_request_list;
+  std::vector<QosFlowSetupRequestItem> qos_flow_setup_request_list_vector;
+  QosFlowSetupRequestItem qos_flow_setup_request_item;
 
-  // QosFlowSetupRequestList
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
-      nullptr;
-  qosFlowSetupRequestList =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          qos_flows.size(),
-          sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  qosFlowSetupRequestList->id = Ngap_ProtocolIE_ID_id_QosFlowSetupRequestList;
-  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowSetupRequestList->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
-
-  asn_set_empty(
-      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
-
-  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
-  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-      qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
   int i = 0;
   for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
+    auto qos_flow               = qos_flow_pair.second;
+    qos_flow_setup_request_item = get_qos_flow_setup_request_item(qos_flow);
+    /*
+        QosFlowIdentifier qos_flow_identifier = {};
+        qos_flow_identifier.set((uint8_t) qos_flow.qfi.qfi);
 
-    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
+        QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
 
-    ASN_SEQUENCE_ADD(
-        &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
-        &ngap_QosFlowSetupRequestItem[i]);
+        // QosCharacteristics
+        QosCharacteristics qos_characteristics             = {};
+        NonDynamic5qiDescriptor non_dynamic_5qi_descriptor = {};
+        FiveQI five_qi                                     = {};
+        if (qos_flow.qos_profile.r5qiIsSet())
+          five_qi.set(qos_flow.qos_profile.getR5qi());
+
+        std::optional<PriorityLevelQos> priority_level_qos_opt = std::nullopt;
+        if (qos_flow.qos_profile.priorityLevelIsSet()) {
+          PriorityLevelQos priority_level_qos = {};
+          priority_level_qos.set(qos_flow.qos_profile.getPriorityLevel());
+          priority_level_qos_opt =
+              std::make_optional<PriorityLevelQos>(priority_level_qos);
+        }
+        std::optional<AveragingWindow> averaging_window_opt = std::nullopt;
+        if (qos_flow.qos_profile.averWindowIsSet()) {
+          AveragingWindow averaging_window = {};
+          averaging_window.set(qos_flow.qos_profile.getAverWindow());
+          averaging_window_opt =
+              std::make_optional<AveragingWindow>(averaging_window);
+        }
+        std::optional<MaximumDataBurstVolume> maximum_data_burst_volume_opt =
+            std::nullopt;
+        if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
+          MaximumDataBurstVolume maximum_data_burst_volume = {};
+          maximum_data_burst_volume.set(qos_flow.qos_profile.getMaxDataBurstVol());
+          maximum_data_burst_volume_opt =
+              std::make_optional<MaximumDataBurstVolume>(maximum_data_burst_volume);
+        }
+
+        non_dynamic_5qi_descriptor.set(
+            five_qi, priority_level_qos_opt, averaging_window_opt,
+            maximum_data_burst_volume_opt);
+        qos_characteristics.set(non_dynamic_5qi_descriptor);
+
+        // AllocationAndRetentionPriority
+        AllocationAndRetentionPriority allocation_and_retention_priority = {};
+        PriorityLevelARP priority_level_arp                              = {};
+        Pre_emptionCapability pre_emption_capability                     = {};
+        Pre_emptionVulnerability pre_emption_vulnerability               = {};
+
+        priority_level_arp.set(qos_flow.qos_profile.getArp().getPriorityLevel());
+
+        auto preemptCapEnumValue =
+            qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
+        if (preemptCapEnumValue ==
+            PreemptionCapability_anyOf::ePreemptionCapability_anyOf::NOT_PREEMPT)
+       { pre_emption_capability.set(
+              Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption);
+        } else {
+          pre_emption_capability.set(
+              Ngap_Pre_emptionCapability_may_trigger_pre_emption);
+        }
+
+        auto preemptVulnEnumValue =
+            qos_flow.qos_profile.getArp().getPreemptVuln().getEnumValue();
+        if (preemptVulnEnumValue ==
+            PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
+                NOT_PREEMPTABLE) {
+          pre_emption_vulnerability.set(
+              Ngap_Pre_emptionVulnerability_not_pre_emptable);
+        } else {
+          pre_emption_vulnerability.set(Ngap_Pre_emptionVulnerability_pre_emptable);
+        }
+
+        allocation_and_retention_priority.set(
+            priority_level_arp, pre_emption_capability,
+       pre_emption_vulnerability);
+
+        // GbrQosFlowInformation
+        std::optional<GbrQosFlowInformation> gbr_qos_flow_information_opt =
+            std::nullopt;
+
+        // TODO: from old code, need to be fixed: check the if condition is
+       okay. if (qos_flow.qos_profile.gbrUlIsSet() &&
+            qos_flow.qos_profile.gbrDlIsSet() &&
+            qos_flow.qos_profile.maxbrUlIsSet() &&
+            qos_flow.qos_profile.maxbrDlIsSet()) {
+          long maximum_flow_bit_rate_dl;
+          long maximum_flow_bit_rate_ul;
+          long guaranteed_flow_bit_rate_dl;
+          long guaranteed_flow_bit_rate_ul;
+          GbrQosFlowInformation gbr_qos_flow_information = {};
+
+          std::vector<oai::nas::QosFlowDescriptionParameter>
+              qos_flow_description_parameter_list =
+                  qos_flow.get_qos_flow_descriptions().GetParametersList();
+
+          for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
+            std::optional<BitRate> bit_rate =
+                qos_flow_description_parameter_list[j].GetBitRate();
+            if (bit_rate.has_value()) {
+              uint8_t parameter_identifier =
+                  qos_flow_description_parameter_list[j].GetIdentifier();
+              if (parameter_identifier ==
+                  oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink) {
+                maximum_flow_bit_rate_ul =
+                    session_handler::parse_nas_value_unit_to_bps(
+                        bit_rate.value().value, bit_rate.value().unit);
+              } else if (
+                  parameter_identifier ==
+                  oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink)
+       { maximum_flow_bit_rate_dl =
+                    session_handler::parse_nas_value_unit_to_bps(
+                        bit_rate.value().value, bit_rate.value().unit);
+              } else if (
+                  parameter_identifier ==
+                  oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink) {
+                guaranteed_flow_bit_rate_ul =
+                    session_handler::parse_nas_value_unit_to_bps(
+                        bit_rate.value().value, bit_rate.value().unit);
+              } else if (
+                  parameter_identifier ==
+                  oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink)
+       { guaranteed_flow_bit_rate_dl =
+                    session_handler::parse_nas_value_unit_to_bps(
+                        bit_rate.value().value, bit_rate.value().unit);
+              }
+            }
+          }
+
+          gbr_qos_flow_information.set(
+              maximum_flow_bit_rate_dl, maximum_flow_bit_rate_ul,
+              guaranteed_flow_bit_rate_dl, guaranteed_flow_bit_rate_ul);
+          gbr_qos_flow_information_opt =
+              std::make_optional<GbrQosFlowInformation>(gbr_qos_flow_information);
+        }
+
+        qos_flow_level_qos_parameters.set(
+            qos_characteristics, allocation_and_retention_priority,
+            gbr_qos_flow_information_opt);
+
+        qos_flow_setup_request_item.set(
+            qos_flow_identifier, qos_flow_level_qos_parameters);
+    */
+    qos_flow_setup_request_list_vector.push_back(qos_flow_setup_request_item);
 
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, ARP priority level %d, "
@@ -225,7 +337,9 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     i++;
   }
 
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
+  qos_flow_setup_request_list.set(qos_flow_setup_request_list_vector);
+  pdu_session_resource_setup_request_transfer.setQosFlowSetupRequestList(
+      qos_flow_setup_request_list);
 
   // encode
   size_t buffer_size = BUF_LEN;
@@ -252,19 +366,6 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     result       = true;
   }
   // free memory
-  oai::utils::utils::free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  oai::utils::utils::free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation->value
-                                      .choice.UPTransportLayerInformation.choice
-                                      .gTPTunnel->transportLayerAddress.buf);
-  oai::utils::utils::free_wrapper(
-      (void**) &upTransportLayerInformation->value.choice
-          .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  oai::utils::utils::free_wrapper(
-      (void**) &upTransportLayerInformation->value.choice
-          .UPTransportLayerInformation.choice.gTPTunnel);
-  oai::utils::utils::free_wrapper((void**) &pduSessionType);
-  oai::utils::utils::free_wrapper((void**) &qosFlowSetupRequestList);
   oai::utils::utils::free_wrapper((void**) &ngap_IEs);
   oai::utils::utils::free_wrapper((void**) &buffer);
 
@@ -1671,6 +1772,158 @@ Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
   }
 
   return qosFlowLevelQosParameters;
+}
+
+oai::ngap::QosFlowSetupRequestItem smf_n2::get_qos_flow_setup_request_item(
+    const qos_flow_context_updated& qos_flow) {
+  QosFlowSetupRequestItem qos_flow_setup_request_item = {};
+
+  QosFlowIdentifier qos_flow_identifier = {};
+  qos_flow_identifier.set((uint8_t) qos_flow.qfi.qfi);
+
+  QosFlowLevelQosParameters qos_flow_level_qos_parameters =
+      get_qos_flow_level_qos_parameters(qos_flow);
+
+  qos_flow_setup_request_item.set(
+      qos_flow_identifier, qos_flow_level_qos_parameters);
+
+  return qos_flow_setup_request_item;
+}
+
+oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
+    const qos_flow_context_updated& qos_flow) {
+  QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
+
+  // QosCharacteristics
+  QosCharacteristics qos_characteristics             = {};
+  NonDynamic5qiDescriptor non_dynamic_5qi_descriptor = {};
+  FiveQI five_qi                                     = {};
+  if (qos_flow.qos_profile.r5qiIsSet())
+    five_qi.set(qos_flow.qos_profile.getR5qi());
+
+  std::optional<PriorityLevelQos> priority_level_qos_opt = std::nullopt;
+  if (qos_flow.qos_profile.priorityLevelIsSet()) {
+    PriorityLevelQos priority_level_qos = {};
+    priority_level_qos.set(qos_flow.qos_profile.getPriorityLevel());
+    priority_level_qos_opt =
+        std::make_optional<PriorityLevelQos>(priority_level_qos);
+  }
+  std::optional<AveragingWindow> averaging_window_opt = std::nullopt;
+  if (qos_flow.qos_profile.averWindowIsSet()) {
+    AveragingWindow averaging_window = {};
+    averaging_window.set(qos_flow.qos_profile.getAverWindow());
+    averaging_window_opt =
+        std::make_optional<AveragingWindow>(averaging_window);
+  }
+  std::optional<MaximumDataBurstVolume> maximum_data_burst_volume_opt =
+      std::nullopt;
+  if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
+    MaximumDataBurstVolume maximum_data_burst_volume = {};
+    maximum_data_burst_volume.set(qos_flow.qos_profile.getMaxDataBurstVol());
+    maximum_data_burst_volume_opt =
+        std::make_optional<MaximumDataBurstVolume>(maximum_data_burst_volume);
+  }
+
+  non_dynamic_5qi_descriptor.set(
+      five_qi, priority_level_qos_opt, averaging_window_opt,
+      maximum_data_burst_volume_opt);
+  qos_characteristics.set(non_dynamic_5qi_descriptor);
+
+  // AllocationAndRetentionPriority
+  AllocationAndRetentionPriority allocation_and_retention_priority = {};
+  PriorityLevelARP priority_level_arp                              = {};
+  Pre_emptionCapability pre_emption_capability                     = {};
+  Pre_emptionVulnerability pre_emption_vulnerability               = {};
+
+  priority_level_arp.set(qos_flow.qos_profile.getArp().getPriorityLevel());
+
+  auto preemptCapEnumValue =
+      qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
+  if (preemptCapEnumValue ==
+      PreemptionCapability_anyOf::ePreemptionCapability_anyOf::NOT_PREEMPT) {
+    pre_emption_capability.set(
+        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption);
+  } else {
+    pre_emption_capability.set(
+        Ngap_Pre_emptionCapability_may_trigger_pre_emption);
+  }
+
+  auto preemptVulnEnumValue =
+      qos_flow.qos_profile.getArp().getPreemptVuln().getEnumValue();
+  if (preemptVulnEnumValue ==
+      PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
+          NOT_PREEMPTABLE) {
+    pre_emption_vulnerability.set(
+        Ngap_Pre_emptionVulnerability_not_pre_emptable);
+  } else {
+    pre_emption_vulnerability.set(Ngap_Pre_emptionVulnerability_pre_emptable);
+  }
+
+  allocation_and_retention_priority.set(
+      priority_level_arp, pre_emption_capability, pre_emption_vulnerability);
+
+  // GbrQosFlowInformation
+  std::optional<GbrQosFlowInformation> gbr_qos_flow_information_opt =
+      std::nullopt;
+
+  // TODO: from old code, need to be fixed: check the if condition is okay.
+  if (qos_flow.qos_profile.gbrUlIsSet() && qos_flow.qos_profile.gbrDlIsSet() &&
+      qos_flow.qos_profile.maxbrUlIsSet() &&
+      qos_flow.qos_profile.maxbrDlIsSet()) {
+    long maximum_flow_bit_rate_dl;
+    long maximum_flow_bit_rate_ul;
+    long guaranteed_flow_bit_rate_dl;
+    long guaranteed_flow_bit_rate_ul;
+    GbrQosFlowInformation gbr_qos_flow_information = {};
+
+    std::vector<oai::nas::QosFlowDescriptionParameter>
+        qos_flow_description_parameter_list =
+            qos_flow.get_qos_flow_descriptions().GetParametersList();
+
+    for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
+      std::optional<BitRate> bit_rate =
+          qos_flow_description_parameter_list[j].GetBitRate();
+      if (bit_rate.has_value()) {
+        uint8_t parameter_identifier =
+            qos_flow_description_parameter_list[j].GetIdentifier();
+        if (parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink) {
+          maximum_flow_bit_rate_ul =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink) {
+          maximum_flow_bit_rate_dl =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink) {
+          guaranteed_flow_bit_rate_ul =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink) {
+          guaranteed_flow_bit_rate_dl =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        }
+      }
+    }
+
+    gbr_qos_flow_information.set(
+        maximum_flow_bit_rate_dl, maximum_flow_bit_rate_ul,
+        guaranteed_flow_bit_rate_dl, guaranteed_flow_bit_rate_ul);
+    gbr_qos_flow_information_opt =
+        std::make_optional<GbrQosFlowInformation>(gbr_qos_flow_information);
+  }
+
+  qos_flow_level_qos_parameters.set(
+      qos_characteristics, allocation_and_retention_priority,
+      gbr_qos_flow_information_opt);
+  return qos_flow_level_qos_parameters;
 }
 
 void smf_n2::set_ngap_bit_rate(

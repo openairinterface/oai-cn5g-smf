@@ -28,7 +28,7 @@
 #include "smf.h"
 #include "smf_app.hpp"
 #include "smf_msg.hpp"
-
+#include "QosFlowSetupRequestItem.hpp"
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
 #include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
@@ -52,6 +52,12 @@ class smf_n2 {
       const qos_flow_context_updated& qos_flow);
 
   static Ngap_QosFlowLevelQosParameters get_QoSFlowLevelQosParameters(
+      const qos_flow_context_updated& qos_flow);
+
+  static oai::ngap::QosFlowSetupRequestItem get_qos_flow_setup_request_item(
+      const qos_flow_context_updated& qos_flow);
+
+  static oai::ngap::QosFlowLevelQosParameters get_qos_flow_level_qos_parameters(
       const qos_flow_context_updated& qos_flow);
 
  public:
