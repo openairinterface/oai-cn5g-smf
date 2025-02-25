@@ -24,7 +24,8 @@
 #include <math.h>
 
 #include "FlowDirection.h"
-#include "QosFlowDescriptionParameter.hpp" #include "3gpp_commons.h"
+#include "QosFlowDescriptionParameter.hpp"
+#include "3gpp_commons.h"
 #include "Struct.hpp"
 #include "conversions.h"
 #include "conversions.hpp"

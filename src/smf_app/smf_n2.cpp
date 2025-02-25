@@ -134,57 +134,26 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
     return false;
   }
-
   pduSessionResourceSetupRequestTransfer.setPduSessionAggregateMaximumBitRate(
       pduSessionAggregateMaximumBitRate);
 
-  // UPTransportLayerInformation
+  // UL NG-U UP TNL Information (UP Transport Layer Information)
   pfcp::fteid_t ul_fteid = {};
-  // STEFAN: is a tunnel, you have one tunnel per pdusession (--> to be set only
-  // once)
-  ul_fteid.v4           = qos_flows.begin()->second.ul_fteid.v4;
-  ul_fteid.teid         = htonl(qos_flows.begin()->second.ul_fteid.teid);
-  ul_fteid.ipv4_address = qos_flows.begin()->second.ul_fteid.ipv4_address;
+  ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
+  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      upTransportLayerInformation = nullptr;
-  upTransportLayerInformation =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  upTransportLayerInformation->id =
-      Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLInformation;
-  upTransportLayerInformation->criticality = Ngap_Criticality_reject;
-  upTransportLayerInformation->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_UPTransportLayerInformation;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation
-      .present = Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+  // UpTransportLayerInformation upTransportLayerInformation;
+  UpTransportLayerInformation ulNgUUpTnlInformation = {};
+  TransportLayerAddress transportLayerAddress       = {};
+  GtpTeid gtpTeid                                   = {};
+  transportLayerAddress.setIpv4Address(ul_fteid.ipv4_address);
+  gtpTeid.set(ul_fteid.teid);
+  ulNgUUpTnlInformation.set(transportLayerAddress, gtpTeid);
+  pduSessionResourceSetupRequestTransfer.setUlNgUUpTnlInformation(
+      ulNgUUpTnlInformation);
 
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel = (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.size = sizeof(struct in_addr);
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.bits_unused = 0;
-
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.buf =
-      (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, upTransportLayerInformation);
-
+  // TODO: Additional UL NG-U UP TNL Information
   // TODO: DataForwardingNotPossible
 
   // PDUSessionType
@@ -294,7 +263,6 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   oai::utils::utils::free_wrapper(
       (void**) &upTransportLayerInformation->value.choice
           .UPTransportLayerInformation.choice.gTPTunnel);
-  oai::utils::utils::free_wrapper((void**) &upTransportLayerInformation);
   oai::utils::utils::free_wrapper((void**) &pduSessionType);
   oai::utils::utils::free_wrapper((void**) &qosFlowSetupRequestList);
   oai::utils::utils::free_wrapper((void**) &ngap_IEs);
