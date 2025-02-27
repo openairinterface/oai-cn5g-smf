@@ -455,30 +455,6 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
     Logger::smf_n2().error("OoS flow context to be updated list is empty");
     return false;
   }
-  for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
-    Logger::smf_n2().debug(
-        "QoS flow context to be updated with QFI %d", qos_flow.qfi.qfi);
-
-    // check the QoS Flow
-    if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
-        (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
-      // error
-      Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      return false;
-    }
-
-    Logger::smf_n2().debug(
-        "QoS Flow, UL F-TEID ID "
-        "0x%" PRIx32 ", IP Address %s ",
-        qos_flow.ul_fteid.teid,
-        oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
-    Logger::smf_n2().debug(
-        "QoS Flow, DL F-TEID ID"
-        "0x%" PRIx32 ", IP Address %s",
-        qos_flow.dl_fteid.teid,
-        oai::utils::conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
-  }
 
   std::shared_ptr<pdu_session_update_sm_context_response> sm_context_response =
       std::make_shared<pdu_session_update_sm_context_response>(sm_context_res);
