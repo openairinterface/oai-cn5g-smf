@@ -31,6 +31,7 @@
 #include "QosFlowSetupRequestItem.hpp"
 #include "PduSessionResourceSetupRequestTransfer.hpp"
 #include "PduSessionResourceModifyRequestTransfer.hpp"
+#include "Cause.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
@@ -220,27 +221,8 @@ class smf_n2 {
       n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
 
   bool create_n2_pdu_session_resource_release_command_transfer(
-      const std::shared_ptr<pdu_session_msg>& msg,
-      n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
-
-  /*
-   * Create N2 SM Information: PDU Session Resource Release Command Transfer IE
-   * This IE is included in the following messages:
-   * PDU Session Update SM Context Response (PDU Session Release UE-Initiated:
-   * section 4.3.4@3GPP TS 23.502, step 1) N1N2MessageTransfer Request​ (PDU
-   * Session Release SMF-Requested, step 1)
-   * @param [pdu_session_update_sm_context_response] sm_context_res: include
-   * necessary information for encoding NGAP msg
-   * @param [n2_sm_info_type_e] ngap_info_type: NGAP info's type
-   * @param [std::string&] ngap_msg_str store the created NGAP message in form
-   * of string
-   * @return boolean: True if the NGAP message has been created successfully,
-   * otherwise return false
-   *
-   */
-  bool create_n2_pdu_session_resource_release_command_transfer(
-      pdu_session_update_sm_context_response& sm_context_res,
-      n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
+      const oai::ngap::Cause& cause, n2_sm_info_type_e ngap_info_type,
+      std::string& ngap_msg_str);
 
   bool create_n2_path_switch_request_ack(
       pdu_session_update_sm_context_response& sm_context_res,

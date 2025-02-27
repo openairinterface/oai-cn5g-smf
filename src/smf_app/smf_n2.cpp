@@ -37,6 +37,7 @@
 #include "utils.hpp"
 #include "PduSessionType.hpp"
 #include "output_wrapper.hpp"
+#include "PduSessionResourceReleaseCommandTransfer.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -452,7 +453,7 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   if (qos_flows.empty()) {
     // Should not be empty, but could be because delete existing qos rule is not
     // supported yet
-    Logger::smf_n2().error("OoS flow context to be updated list is empty");
+    Logger::smf_n2().error("QoS flow context to be updated list is empty");
     return false;
   }
 
@@ -492,101 +493,38 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
 
 //------------------------------------------------------------------------------
 bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
-    const std::shared_ptr<pdu_session_msg>& msg,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+    const oai::ngap::Cause& cause, n2_sm_info_type_e ngap_info_type,
+    std::string& ngap_msg_str) {
   Logger::smf_n2().debug(
       "Create N2 SM Information: NGAP PDU Session Resource Release Command "
-      "Transfer IE");
+      "Transfer");
   bool result = false;
-  Ngap_PDUSessionResourceReleaseCommandTransfer_t*
-      ngap_resource_release_command_transfer = nullptr;
-  ngap_resource_release_command_transfer =
-      (Ngap_PDUSessionResourceReleaseCommandTransfer_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceReleaseCommandTransfer_t));
 
-  // TODO: To be completed, here's an example
-  ngap_resource_release_command_transfer->cause.present =
-      Ngap_Cause_PR_radioNetwork;
-  ngap_resource_release_command_transfer->cause.choice.radioNetwork = 1;
+  PduSessionResourceReleaseCommandTransfer
+      pdu_session_resource_release_command_transfer = {};
+  pdu_session_resource_release_command_transfer.setCause(cause);
 
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size =
+      pdu_session_resource_release_command_transfer.encode(buffer, BUF_LEN);
 
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceReleaseCommandTransfer, nullptr,
-      ngap_resource_release_command_transfer, (void**) &buffer);
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        "NGAP PDU Session Release Command encode failed (encoded size %d)",
+        "NGAP PDU Session Resource Setup Release Command Transfer encode "
+        "failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
 
-  // free memory
-  oai::utils::utils::free_wrapper(
-      (void**) &ngap_resource_release_command_transfer);
-  oai::utils::utils::free_wrapper((void**) &buffer);
-  return result;
-}
-
-//------------------------------------------------------------------------------
-bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
-    pdu_session_update_sm_context_response& sm_context_res,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
-  Logger::smf_n2().debug(
-      "Create N2 SM Information: NGAP PDU Session Resource Release Command "
-      "Transfer IE");
-  bool result = false;
-  Ngap_PDUSessionResourceReleaseCommandTransfer_t*
-      ngap_resource_release_command_transfer = nullptr;
-  ngap_resource_release_command_transfer =
-      (Ngap_PDUSessionResourceReleaseCommandTransfer_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceReleaseCommandTransfer_t));
-
-  // TODO: To be completed, here's an example
-  ngap_resource_release_command_transfer->cause.present =
-      Ngap_Cause_PR_radioNetwork;
-  ngap_resource_release_command_transfer->cause.choice.radioNetwork = 1;
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceReleaseCommandTransfer, nullptr,
-      ngap_resource_release_command_transfer, (void**) &buffer);
-  if (encoded_size < 0) {
-    Logger::smf_n2().warn(
-        "NGAP PDU Session Release Command encode failed (encoded size %d)",
-        encoded_size);
-    result = false;
-  } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
-
-    std::string ngap_message((char*) buffer, encoded_size);
-    ngap_msg_str = ngap_message;
-    result       = true;
-  }
-
-  // free memory
-  oai::utils::utils::free_wrapper(
-      (void**) &ngap_resource_release_command_transfer);
-  oai::utils::utils::free_wrapper((void**) &buffer);
   return result;
 }
 
@@ -598,6 +536,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "Create N2 SM Information: NGAP PDU Session Resource Setup Request "
       "Transfer IE");
   // TODO:
+  Logger::smf_n2().warn("This function has not been implemented!");
+
   return true;
 }
 
@@ -609,6 +549,8 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       "Create N2 SM Information: NGAP PDU Session Resource Modify Request "
       "Transfer IE");
   // TODO:
+  Logger::smf_n2().warn("This function has not been implemented!");
+
   return true;
 }
 

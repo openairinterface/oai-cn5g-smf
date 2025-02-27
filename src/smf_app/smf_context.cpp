@@ -58,6 +58,7 @@
 #include "smf_procedure.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "Cause.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -4615,10 +4616,12 @@ void smf_context::send_pdu_session_release_response(
           // N2 SM Information
           std::string n2_sm_info     = {};
           std::string n2_sm_info_hex = {};
+          oai::ngap::Cause cause     = {};
+          cause.set(1, Ngap_Cause_PR_radioNetwork);  // TODO: to be completed,
+                                                     // here's just an example
           smf_n2::get_instance()
               .create_n2_pdu_session_resource_release_command_transfer(
-                  session_release_msg, n2_sm_info_type_e::PDU_RES_REL_CMD,
-                  n2_sm_info);
+                  cause, n2_sm_info_type_e::PDU_RES_REL_CMD, n2_sm_info);
           conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
           resp->res.set_n2_sm_information(n2_sm_info_hex);
 
