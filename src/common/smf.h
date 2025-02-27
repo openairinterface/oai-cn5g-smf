@@ -199,7 +199,7 @@ typedef struct qos_profile_s {
 #define UDM_NUMBER_RETRIES 3
 
 // for N1N2
-#define BUF_LEN 512
+#define BUF_LEN 2046
 
 // FOR FUTURE PROMISE
 #define FUTURE_STATUS_TIMEOUT_MS 100

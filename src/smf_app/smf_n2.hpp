@@ -29,6 +29,8 @@
 #include "smf_app.hpp"
 #include "smf_msg.hpp"
 #include "QosFlowSetupRequestItem.hpp"
+#include "PduSessionResourceSetupRequestTransfer.hpp"
+
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
 #include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
@@ -70,6 +72,13 @@ class smf_n2 {
     static smf_n2 instance;
     return instance;
   }
+
+  bool create_n2_pdu_session_resource_setup_request_transfer(
+      const std::shared_ptr<pdu_session_sm_context_response>& sm_context_res,
+      const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+      n2_sm_info_type_e ngap_info_type,
+      oai::ngap::PduSessionResourceSetupRequestTransfer&
+          pdu_session_resource_setup_request_transfer);
 
   /*
    * Create N2 SM Information: PDU Session Resource Setup Request Transfer
