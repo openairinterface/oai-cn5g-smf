@@ -32,6 +32,7 @@
 #include "PduSessionResourceSetupRequestTransfer.hpp"
 #include "PduSessionResourceModifyRequestTransfer.hpp"
 #include "Cause.hpp"
+#include "PduSessionResourceSetupResponseTransfer.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
@@ -246,7 +247,8 @@ class smf_n2 {
    * @return status of the decode process
    */
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_PDUSessionResourceSetupResponseTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::PduSessionResourceSetupResponseTransfer>&
+          ngap_IE,
       const std::string& n2_sm_info);
 
   /*

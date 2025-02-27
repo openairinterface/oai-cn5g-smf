@@ -49,6 +49,7 @@
 #include "smf_app.hpp"
 #include "string.hpp"
 #include "AlwaysOnPduSessionIndication.hpp"
+#include "common_defs.hpp"
 
 using namespace smf;
 using namespace oai::utils;

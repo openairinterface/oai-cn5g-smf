@@ -61,6 +61,7 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "common_defs.hpp"
 
 extern "C" {
 //#include "dynamic_memory_check.h"

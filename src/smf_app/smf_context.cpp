@@ -59,6 +59,9 @@
 #include "smf_sbi.hpp"
 #include "string.hpp"
 #include "Cause.hpp"
+#include "PduSessionResourceSetupResponseTransfer.hpp"
+#include "QosFlowPerTnlInformation.hpp"
+#include "common_defs.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -83,6 +86,7 @@ using namespace smf;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 using namespace oai::common::sbi;
+using namespace oai::ngap;
 
 extern itti_mw* itti_inst;
 extern smf::smf_app* smf_app_inst;
@@ -1661,9 +1665,11 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
-  // Ngap_PDUSessionResourceSetupResponseTransfer
-  std::shared_ptr<Ngap_PDUSessionResourceSetupResponseTransfer_t> decoded_msg =
-      std::make_shared<Ngap_PDUSessionResourceSetupResponseTransfer_t>();
+  // PDUSessionResourceSetupResponseTransfer
+  std::shared_ptr<oai::ngap::PduSessionResourceSetupResponseTransfer>
+      decoded_msg = std::make_shared<
+          oai::ngap::PduSessionResourceSetupResponseTransfer>();
+
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
   if (decode_status == RETURNerror) {
@@ -1694,17 +1700,24 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
   }
 
   // store AN Tunnel Info + list of accepted QFIs
-  pfcp::fteid_t dl_teid = {};
-  memcpy(
-      &dl_teid.teid,
-      decoded_msg->dLQosFlowPerTNLInformation.uPTransportLayerInformation.choice
-          .gTPTunnel->gTP_TEID.buf,
-      TEID_GRE_KEY_LENGTH);
-  memcpy(
-      &dl_teid.ipv4_address,
-      decoded_msg->dLQosFlowPerTNLInformation.uPTransportLayerInformation.choice
-          .gTPTunnel->transportLayerAddress.buf,
-      4);
+  pfcp::fteid_t dl_teid                                     = {};
+  oai::ngap::QosFlowPerTnlInformation qos_flow_per_tnl_info = {};
+  decoded_msg->getDlQosFlowPerTnlInformation(qos_flow_per_tnl_info);
+
+  UpTransportLayerInformation up_transport_layer_information = {};
+  oai::ngap::AssociatedQosFlowList associated_qos_flow_list  = {};
+  qos_flow_per_tnl_info.get(
+      up_transport_layer_information, associated_qos_flow_list);
+
+  TransportLayerAddress transport_layer_address_ul = {};
+  GtpTeid gtp_teid_ul                              = {};
+  up_transport_layer_information.get(transport_layer_address_ul, gtp_teid_ul);
+  std::optional<struct in_addr> ipv4_addr_opt =
+      transport_layer_address_ul.getIpv4Address();
+  if (ipv4_addr_opt.has_value()) {
+    dl_teid.ipv4_address = ipv4_addr_opt.value();
+  }
+  gtp_teid_ul.get(dl_teid.teid);
 
   dl_teid.teid = ntohl(dl_teid.teid);
   dl_teid.v4   = 1;  // Only V4 for now
@@ -1718,20 +1731,20 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
       "uPTransportLayerInformation (AN IP Addr) %s",
       conv::toString(dl_teid.ipv4_address).c_str());
 
-  for (int i = 0;
-       i <
-       decoded_msg->dLQosFlowPerTNLInformation.associatedQosFlowList.list.count;
-       i++) {
-    pfcp::qfi_t qfi((uint8_t) (decoded_msg->dLQosFlowPerTNLInformation
-                                   .associatedQosFlowList.list.array[i])
-                        ->qosFlowIdentifier);
+  std::vector<oai::ngap::AssociatedQosFlowItem> associated_qos_flow_item_list;
+
+  associated_qos_flow_list.get(associated_qos_flow_item_list);
+  for (const auto& flow_item : associated_qos_flow_item_list) {
+    oai::ngap::QosFlowIdentifier qos_flow_identifier = {};
+    flow_item.get(qos_flow_identifier);
+    long qfi_value = 0;
+    qos_flow_identifier.get(qfi_value);
+    pfcp::qfi_t qfi((uint8_t) qfi_value);
     sm_context_request.get()->req.add_qfi(qfi);
     Logger::smf_app().debug(
-        "QoSFlowPerTNLInformation, AssociatedQosFlowList, QFI %d",
-        (decoded_msg->dLQosFlowPerTNLInformation.associatedQosFlowList.list
-             .array[i])
-            ->qosFlowIdentifier);
+        "QoSFlowPerTNLInformation, AssociatedQosFlowList, QFI %d", qfi_value);
   }
+
   return true;
 }
 
