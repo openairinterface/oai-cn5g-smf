@@ -30,6 +30,7 @@
 #include "smf_msg.hpp"
 #include "QosFlowSetupRequestItem.hpp"
 #include "PduSessionResourceSetupRequestTransfer.hpp"
+#include "PduSessionResourceModifyRequestTransfer.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
@@ -73,6 +74,22 @@ class smf_n2 {
     return instance;
   }
 
+  /*
+   * Create N2 SM Information: PDU Session Resource Setup Request Transfer
+   * This IE is included in N1N2MessageTransfer Request (Accept, PDU Session
+   * Establishment procedure - UE initiated)
+   * @param [      const std::shared_ptr<pdu_session_sm_context_response>&]
+   * sm_context_res: include necessary information for encoding NGAP msg
+   * @param [const std::map<uint8_t, qos_flow_context_updated>&] qos_flows: QoS
+   * flows info
+   * @param [n2_sm_info_type_e] ngap_info_type: NGAP info's type
+   * @param [oai::ngap::PduSessionResourceSetupRequestTransfer&]
+   * pdu_session_resource_setup_request_transfer:
+   * PduSessionResourceSetupRequestTransfer
+   * @return boolean: True if the NGAP message has been created successfully,
+   * otherwise return false
+   *
+   */
   bool create_n2_pdu_session_resource_setup_request_transfer(
       const std::shared_ptr<pdu_session_sm_context_response>& sm_context_res,
       const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
@@ -128,6 +145,29 @@ class smf_n2 {
   bool create_n2_pdu_session_resource_setup_request_transfer(
       pdu_session_report_response& msg, n2_sm_info_type_e ngap_info_type,
       std::string& ngap_msg_str);
+
+  /*
+   * Create N2 SM Information: PDU Session Resource Modify Request Transfer IE
+   * This IE is included in  PDU Session Update SM Context Response (PDU Session
+   * Modification procedure, UE-initiated, step 1)
+   * @param [      const std::shared_ptr<pdu_session_sm_context_response>&]
+   * sm_context_res: include necessary information for encoding NGAP msg
+   * @param [const std::map<uint8_t, qos_flow_context_updated>&] qos_flows: QoS
+   * flows info
+   * @param [n2_sm_info_type_e] ngap_info_type: NGAP info's type
+   * @param [oai::ngap::PduSessionResourceModifyRequestTransfer&]
+   * pdu_session_resource_modify_request_transfer:
+   * PduSessionResourceModifyRequestTransfer
+   * @return boolean: True if the NGAP message has been created successfully,
+   * otherwise return false
+   *
+   */
+  bool create_n2_pdu_session_resource_modify_request_transfer(
+      const std::shared_ptr<pdu_session_sm_context_response>& sm_context_res,
+      const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+      n2_sm_info_type_e ngap_info_type,
+      oai::ngap::PduSessionResourceModifyRequestTransfer&
+          pdu_session_resource_modify_request_transfer);
 
   /*
    * Create N2 SM Information: PDU Session Resource Modify Request Transfer IE
