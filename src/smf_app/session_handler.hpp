@@ -23,7 +23,6 @@
 
 #include <smf_msg.hpp>
 #include <smf_pfcp_association.hpp>
-#include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 #include "sdf_conversions.hpp"
 #include "QosRule.hpp"
 #include "QosFlowDescription.hpp"
@@ -182,9 +181,6 @@ class session_handler {
    * @param pdr_id
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
-
-  static uint64_t set_ngap_bitrate(
-      Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string);
 
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);

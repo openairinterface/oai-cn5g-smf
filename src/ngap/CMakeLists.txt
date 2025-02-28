@@ -20,13 +20,10 @@
 ################################################################################
 
 set(NGAP_DIR "${SRC_TOP_DIR}/ngap")
-include_directories(${SRC_TOP_DIR}/ngap/libngap)
-include_directories(${SRC_TOP_DIR}/ngap/libngap_ies)
-include_directories(${SRC_TOP_DIR}/ngap/utils)
 
 file(GLOB NGAP_src_files
-     ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap/*.c
-     ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies/*.c
+    ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap/*.c
+    ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies/*.c
     ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/ngap_msgs/*.cpp
     ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/ngap_ies/*.cpp
     ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/utils/*.cpp

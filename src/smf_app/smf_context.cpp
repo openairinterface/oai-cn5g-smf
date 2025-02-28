@@ -797,6 +797,7 @@ void smf_context::get_session_ambr(
   }
 }
 
+/*
 //------------------------------------------------------------------------------
 void smf_context::get_session_ambr(
     Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
@@ -844,7 +845,7 @@ void smf_context::get_session_ambr(
       "downlink %d",
       dnn.c_str(), bit_rate_ul, bit_rate_dl);
 }
-
+*/
 //------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_n11_create_sm_context_request> smreq) {

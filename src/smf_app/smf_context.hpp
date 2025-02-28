@@ -868,10 +868,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param [const std::string &] dnn
    * @return void
    */
-  void get_session_ambr(
-      Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
-      const snssai_t& snssai, const std::string& dnn);
-
+  /* void get_session_ambr(
+       Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
+       const snssai_t& snssai, const std::string& dnn);
+ */
   /*
    * Find the PDU Session with its ID
    * @param [const pdu_session_id_t &] psi: PDU Session ID
