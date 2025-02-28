@@ -32,6 +32,9 @@
 #include "3gpp_29.244.h"
 #include "3gpp_29.502.h"
 #include "3gpp_29.503.h"
+#include "Nas5gsmMessage.hpp"
+#include "QosRule.hpp"
+#include "SessionAmbr.hpp"
 #include "common_root_types.h"
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
@@ -41,14 +44,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
-#include "QosRule.hpp"
-#include "Nas5gsmMessage.hpp"
-#include "SessionAmbr.hpp"
-#include "smf_pfcp_association.hpp"
-
-extern "C" {
-#include "Ngap_PDUSessionAggregateMaximumBitRate.h"
-}
 
 using namespace boost::placeholders;
 

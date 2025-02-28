@@ -27,42 +27,17 @@
 #include <stdexcept>
 
 #include "3gpp_commons.h"
-#include "common_defs.h"
 #include "Helpers.h"
 #include "PduSessionResourceSetupRequestTransfer.hpp"
+#include "PduSessionType.hpp"
 #include "PreemptionCapability_anyOf.h"
 #include "PreemptionVulnerability_anyOf.h"
+#include "common_defs.h"
 #include "conversions.h"
+#include "output_wrapper.hpp"
 #include "smf.h"
 #include "string.hpp"
 #include "utils.hpp"
-#include "PduSessionType.hpp"
-#include "output_wrapper.hpp"
-
-extern "C" {
-#include "Ngap_AssociatedQosFlowItem.h"
-#include "Ngap_Criticality.h"
-#include "Ngap_Dynamic5QIDescriptor.h"
-#include "Ngap_GTPTunnel.h"
-#include "Ngap_HandoverCommandTransfer.h"
-#include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
-#include "Ngap_NGAP-PDU.h"
-#include "Ngap_NonDynamic5QIDescriptor.h"
-#include "Ngap_PDUSessionResourceModifyRequestTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseCommandTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupRequestTransfer.h"
-#include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
-#include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
-#include "Ngap_ProcedureCode.h"
-#include "Ngap_ProtocolIE-Field.h"
-#include "Ngap_QosFlowAddOrModifyRequestItem.h"
-#include "Ngap_QosFlowAddOrModifyResponseItem.h"
-#include "Ngap_QosFlowAddOrModifyResponseList.h"
-#include "Ngap_QosFlowSetupRequestItem.h"
-#include "Ngap_UL-NGU-UP-TNLModifyItem.h"
-//#include "dynamic_memory_check.h"
-}
 
 using namespace smf;
 using namespace oai::model::common;

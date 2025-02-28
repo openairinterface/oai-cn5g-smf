@@ -22,41 +22,30 @@
 #ifndef FILE_SMF_N2_HPP_SEEN
 #define FILE_SMF_N2_HPP_SEEN
 
-#include <string>
 #include <Ngap_QosFlowSetupRequestItem.h>
 
+#include <string>
+
+#include "Cause.hpp"
+#include "HandoverCommandTransfer.hpp"
+#include "HandoverPreparationUnsuccessfulTransfer.hpp"
+#include "HandoverRequestAcknowledgeTransfer.hpp"
+#include "HandoverRequiredTransfer.hpp"
+#include "HandoverResourceAllocationUnsuccessfulTransfer.hpp"
+#include "PathSwitchRequestAcknowledgeTransfer.hpp"
+#include "PathSwitchRequestTransfer.hpp"
+#include "PduSessionResourceModifyRequestTransfer.hpp"
+#include "PduSessionResourceModifyResponseTransfer.hpp"
+#include "PduSessionResourceReleaseCommandTransfer.hpp"
+#include "PduSessionResourceReleaseResponseTransfer.hpp"
+#include "PduSessionResourceSetupRequestTransfer.hpp"
+#include "PduSessionResourceSetupResponseTransfer.hpp"
+#include "PduSessionResourceSetupUnsuccessfulTransfer.hpp"
+#include "QosFlowSetupRequestItem.hpp"
+#include "SecondaryRatDataUsageReportTransfer.hpp"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "smf_msg.hpp"
-#include "QosFlowSetupRequestItem.hpp"
-#include "PduSessionResourceSetupRequestTransfer.hpp"
-#include "PduSessionResourceModifyRequestTransfer.hpp"
-#include "Cause.hpp"
-#include "PduSessionResourceSetupResponseTransfer.hpp"
-#include "PduSessionResourceReleaseCommandTransfer.hpp"
-#include "PathSwitchRequestAcknowledgeTransfer.hpp"
-#include "HandoverCommandTransfer.hpp"
-#include "HandoverPreparationUnsuccessfulTransfer.hpp"
-#include "PduSessionResourceModifyResponseTransfer.hpp"
-#include "PduSessionResourceReleaseResponseTransfer.hpp"
-#include "PathSwitchRequestTransfer.hpp"
-#include "HandoverRequiredTransfer.hpp"
-#include "HandoverRequestAcknowledgeTransfer.hpp"
-#include "SecondaryRatDataUsageReportTransfer.hpp"
-#include "HandoverResourceAllocationUnsuccessfulTransfer.hpp"
-#include "PduSessionResourceSetupUnsuccessfulTransfer.hpp"
-
-extern "C" {
-#include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupUnsuccessfulTransfer.h"
-#include "Ngap_PathSwitchRequestTransfer.h"
-#include "Ngap_HandoverRequiredTransfer.h"
-#include "Ngap_HandoverRequestAcknowledgeTransfer.h"
-#include "Ngap_HandoverResourceAllocationUnsuccessfulTransfer.h"
-#include "Ngap_SecondaryRATDataUsageReportTransfer.h"
-}
 
 namespace smf {
 

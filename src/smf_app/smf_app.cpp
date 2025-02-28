@@ -46,6 +46,7 @@
 #include "SmContextUpdateError.h"
 #include "async_shell_cmd.hpp"
 #include "common_defs.h"
+#include "common_defs.hpp"
 #include "conversions.hpp"
 #include "fqdn.hpp"
 #include "itti.hpp"
@@ -61,12 +62,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
-#include "common_defs.hpp"
-
-extern "C" {
-//#include "dynamic_memory_check.h"
-//#include "nas_message.h"
-}
 
 using namespace smf;
 using namespace oai::config::smf;
