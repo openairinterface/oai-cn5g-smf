@@ -33,6 +33,18 @@
 #include "PduSessionResourceModifyRequestTransfer.hpp"
 #include "Cause.hpp"
 #include "PduSessionResourceSetupResponseTransfer.hpp"
+#include "PduSessionResourceReleaseCommandTransfer.hpp"
+#include "PathSwitchRequestAcknowledgeTransfer.hpp"
+#include "HandoverCommandTransfer.hpp"
+#include "HandoverPreparationUnsuccessfulTransfer.hpp"
+#include "PduSessionResourceModifyResponseTransfer.hpp"
+#include "PduSessionResourceReleaseResponseTransfer.hpp"
+#include "PathSwitchRequestTransfer.hpp"
+#include "HandoverRequiredTransfer.hpp"
+#include "HandoverRequestAcknowledgeTransfer.hpp"
+#include "SecondaryRatDataUsageReportTransfer.hpp"
+#include "HandoverResourceAllocationUnsuccessfulTransfer.hpp"
+#include "PduSessionResourceSetupUnsuccessfulTransfer.hpp"
 
 extern "C" {
 #include "Ngap_PDUSessionResourceModifyResponseTransfer.h"
@@ -52,12 +64,6 @@ class smf_n2 {
  private:
   static void set_ngap_bit_rate(
       Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit);
-
-  static Ngap_QosFlowSetupRequestItem get_QoSFlowSetupRequestItem(
-      const qos_flow_context_updated& qos_flow);
-
-  static Ngap_QosFlowLevelQosParameters get_QoSFlowLevelQosParameters(
-      const qos_flow_context_updated& qos_flow);
 
   static oai::ngap::QosFlowSetupRequestItem get_qos_flow_setup_request_item(
       const qos_flow_context_updated& qos_flow);
@@ -240,71 +246,72 @@ class smf_n2 {
       n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
 
   /*
-   * Decode N2 SM Information Ngap_PDUSessionResourceSetupResponseTransfer
-   * @param [std::shared_ptr<Ngap_PDUSessionResourceSetupResponseTransfer_t>&]
-   * ngap_IE Store decoded NGAP message
+   * Decode N2 SM Information PDUSessionResourceModifyResponseTransfer
+   * @param [std::shared_ptr<PduSessionResourceSetupResponseTransfer>&]
+   * ngap_ie Store decoded NGAP message
    * @param [const std::string&] n2_sm_info N2 SM Information
    * @return status of the decode process
    */
   int decode_n2_sm_information(
       std::shared_ptr<oai::ngap::PduSessionResourceSetupResponseTransfer>&
-          ngap_IE,
+          ngap_ie,
       const std::string& n2_sm_info);
 
   /*
-   * Decode N2 SM Information Ngap_PDUSessionResourceModifyResponseTransfer_t
-   * @param [std::shared_ptr<Ngap_PDUSessionResourceModifyResponseTransfer_t>&]
-   * ngap_IE Store decoded NGAP message
+   * Decode N2 SM Information PDUSessionResourceModifyResponseTransfer
+   * @param [std::shared_ptr<PDUSessionResourceModifyResponseTransfer>&]
+   * ngap_ie Store decoded NGAP message
    * @param [std::string&] n2_sm_info N2 SM Information
    * @return status of the decode process
    */
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_PDUSessionResourceModifyResponseTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::PduSessionResourceModifyResponseTransfer>&
+          ngap_ie,
       const std::string& n2_sm_info);
 
   /*
-   * Decode N2 SM Information Ngap_PDUSessionResourceReleaseResponseTransfer_t
-   * @param [std::shared_ptr<Ngap_PDUSessionResourceReleaseResponseTransfer_t>&]
-   * ngap_IE Store decoded NGAP message
+   * Decode N2 SM Information PDUSessionResourceReleaseResponseTransfer
+   * @param [std::shared_ptr<PDUSessionResourceReleaseResponseTransfer>&]
+   * ngap_ie Store decoded NGAP message
    * @param [std::string&] n2_sm_info N2 SM Information
    * @return status of the decode process
    */
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_PDUSessionResourceReleaseResponseTransfer_t>&
-          ngap_IE,
+      std::shared_ptr<oai::ngap::PduSessionResourceReleaseResponseTransfer>&
+          ngap_ie,
       const std::string& n2_sm_info);
 
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>&
-          ngap_IE,
+      std::shared_ptr<
+          oai::ngap::HandoverResourceAllocationUnsuccessfulTransfer>& ngap_ie,
       const std::string& n2_sm_info);
   /*
-   * Decode N2 SM Information Ngap_PDUSessionResourceSetupUnsuccessfulTransfer
+   * Decode N2 SM Information PDUSessionResourceSetupUnsuccessfulTransfer
    * @param
-   * [std::shared_ptr<Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>&]
-   * ngap_IE Store decoded NGAP message
+   * [std::shared_ptr<PDUSessionResourceSetupUnsuccessfulTransfer>&]
+   * ngap_ie Store decoded NGAP message
    * @param [std::string&] n2_sm_info N2 SM Information
    * @return status of the decode process
    */
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>&
-          ngap_IE,
+      std::shared_ptr<oai::ngap::PduSessionResourceSetupUnsuccessfulTransfer>&
+          ngap_ie,
       const std::string& n2_sm_info);
 
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_PathSwitchRequestTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::PathSwitchRequestTransfer>& ngap_ie,
       const std::string& n2_sm_info);
 
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_HandoverRequiredTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::HandoverRequiredTransfer>& ngap_ie,
       const std::string& n2_sm_info);
 
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_HandoverRequestAcknowledgeTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::HandoverRequestAcknowledgeTransfer>& ngap_ie,
       const std::string& n2_sm_info);
 
   int decode_n2_sm_information(
-      std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t>& ngap_IE,
+      std::shared_ptr<oai::ngap::SecondaryRatDataUsageReportTransfer>& ngap_ie,
       const std::string& n2_sm_info);
 };
 

@@ -1672,7 +1672,7 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
 
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     // error, send error to AMF
     Logger::smf_app().warn(
         "Decode N2 SM (Ngap_PDUSessionResourceSetupResponseTransfer) "
@@ -1755,15 +1755,14 @@ bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
   std::string n1_sm_msg, n1_sm_msg_hex;
 
   // Ngap_PDUSessionResourceSetupUnsuccessfulTransfer
-  std::shared_ptr<Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>
-      decoded_msg = std::make_shared<
-          Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>();
+  std::shared_ptr<PduSessionResourceSetupUnsuccessfulTransfer> decoded_msg =
+      std::make_shared<PduSessionResourceSetupUnsuccessfulTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
 
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_PDUSessionResourceSetupUnsuccessfulTransfer) "
+        "Decode N2 SM (PDUSessionResourceSetupUnsuccessfulTransfer) "
         "failed!");
     // trigger to send reply to AMF
     smf_app_inst->trigger_update_context_error_response(
@@ -1798,15 +1797,15 @@ bool smf_context::handle_pdu_session_resource_modify_response_transfer(
     std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
-  // Ngap_PDUSessionResourceModifyResponseTransfer
-  std::shared_ptr<Ngap_PDUSessionResourceModifyResponseTransfer_t> decoded_msg =
-      std::make_shared<Ngap_PDUSessionResourceModifyResponseTransfer_t>();
+  // PDUSessionResourceModifyResponseTransfer
+  std::shared_ptr<PduSessionResourceModifyResponseTransfer> decoded_msg =
+      std::make_shared<PduSessionResourceModifyResponseTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
 
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_PDUSessionResourceModifyResponseTransfer) "
+        "Decode N2 SM (PduSessionResourceModifyResponseTransfer) "
         "failed!");
     // trigger to send reply to AMF
     smf_app_inst->trigger_update_context_error_response(
@@ -1823,33 +1822,48 @@ bool smf_context::handle_pdu_session_resource_modify_response_transfer(
   // DL transport layer address and the corresponding UL transport layer
   // address)
   pfcp::fteid_t dl_teid;
-  memcpy(
-      &dl_teid.teid,
-      decoded_msg->dL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID.buf,
-      TEID_GRE_KEY_LENGTH);
-  memcpy(
-      &dl_teid.ipv4_address,
-      decoded_msg->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-          ->transportLayerAddress.buf,
-      4);
 
-  dl_teid.teid = ntohl(dl_teid.teid);
-  dl_teid.v4   = 1;  // Only v4 for now
-  sm_context_request.get()->req.set_dl_fteid(dl_teid);
+  std::optional<UpTransportLayerInformation> dl_ng_u_up_tnl_information = {};
+  decoded_msg->getDlNgUUpTnlInformation(dl_ng_u_up_tnl_information);
+  if (dl_ng_u_up_tnl_information.has_value()) {
+    TransportLayerAddress transport_layer_address_ul = {};
+    GtpTeid gtp_teid_ul                              = {};
+    (dl_ng_u_up_tnl_information.value())
+        .get(transport_layer_address_ul, gtp_teid_ul);
+    std::optional<struct in_addr> ipv4_addr_opt =
+        transport_layer_address_ul.getIpv4Address();
+    if (ipv4_addr_opt.has_value()) {
+      dl_teid.ipv4_address = ipv4_addr_opt.value();
+    }
+    gtp_teid_ul.get(dl_teid.teid);
+
+    dl_teid.teid = ntohl(dl_teid.teid);
+    dl_teid.v4   = 1;  // Only v4 for now
+    sm_context_request.get()->req.set_dl_fteid(dl_teid);
+  }
 
   // list of Qos Flows which have been successfully setup or modified
-  if (decoded_msg->qosFlowAddOrModifyResponseList) {
-    for (int i = 0; i < decoded_msg->qosFlowAddOrModifyResponseList->list.count;
-         i++) {
+  std::optional<QosFlowAddOrModifyResponseList> qos_flow_response_list = {};
+  decoded_msg->getQosFlowAddOrModifyRequestList(qos_flow_response_list);
+  if (qos_flow_response_list.has_value()) {
+    std::vector<QosFlowAddOrModifyResponseItem> qos_response_item_list;
+    (qos_flow_response_list.value()).get(qos_response_item_list);
+    for (const auto& response_item : qos_response_item_list) {
+      QosFlowIdentifier qos_flow_identifier = {};
+      response_item.getQosFlowIdentifier(qos_flow_identifier);
       sm_context_request.get()->req.add_qfi(
-          (decoded_msg->qosFlowAddOrModifyResponseList->list.array[i])
-              ->qosFlowIdentifier);
+          (uint8_t) qos_flow_identifier.get());
     }
   }
 
-  // TODO: list of QoS Flows which have failed to be modified,
-  // qosFlowFailedToAddOrModifyList
-  // TODO: additionalDLQosFlowPerTNLInformation
+  // TODO: Additional DL QoS Flow per TNL Information
+  // TODO: QoS Flow Failed to Add or Modify List
+  // TODO: Additional NG-U UP TNL Information
+  // TODO: Redundant DL NG-U UP TNL Information
+  // TODO: Redundant UL NG-U UP TNL Information
+  // TODO: Additional Redundant DL QoS Flow per TNL Information
+  // TODO: Additional Redundant NG-U UP TNL Information
+  // TODO: Secondary RAT Usage Information
   return true;
 }
 
@@ -1861,13 +1875,12 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
   std::string n1_sm_msg, n1_sm_msg_hex;
 
   // TODO: SMF does nothing (Step 7, section 4.3.4.2@3GPP TS 23.502)
-  // Ngap_PDUSessionResourceReleaseResponseTransfer
-  std::shared_ptr<Ngap_PDUSessionResourceReleaseResponseTransfer_t>
-      decoded_msg =
-          std::make_shared<Ngap_PDUSessionResourceReleaseResponseTransfer_t>();
+  // PDUSessionResourceReleaseResponseTransfer
+  std::shared_ptr<PduSessionResourceReleaseResponseTransfer> decoded_msg =
+      std::make_shared<PduSessionResourceReleaseResponseTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     Logger::smf_app().warn(
         "Decode N2 SM (Ngap_PDUSessionResourceReleaseResponseTransfer) "
         "failed!");
@@ -2823,12 +2836,12 @@ bool smf_context::handle_ho_path_switch_req(
 
   // If the PDU session is requested to be switched to a new N3 endpoint
   if (sm_context_request->req.get_to_be_switched()) {
-    // Ngap_PathSwitchRequestTransfer
-    std::shared_ptr<Ngap_PathSwitchRequestTransfer_t> decoded_msg =
-        std::make_shared<Ngap_PathSwitchRequestTransfer_t>();
+    // PathSwitchRequestTransfer
+    std::shared_ptr<PathSwitchRequestTransfer> decoded_msg =
+        std::make_shared<PathSwitchRequestTransfer>();
     int decode_status = smf_n2::get_instance().decode_n2_sm_information(
         decoded_msg, n2_sm_information);
-    if (decode_status == RETURNerror) {
+    if (decode_status == KEncodeDecodeError) {
       // error, send error to AMF
       Logger::smf_app().warn(
           "Decode N2 SM (Ngap_PathSwitchRequestTransfer) "
@@ -2845,50 +2858,57 @@ bool smf_context::handle_ho_path_switch_req(
     // store AN Tunnel Info + list of accepted QFIs
     pfcp::fteid_t dl_teid = {};
 
-    if (decoded_msg->dL_NGU_UP_TNLInformation.present ==
-        Ngap_UPTransportLayerInformation_PR_gTPTunnel) {
-      memcpy(
-          &dl_teid.teid,
-          decoded_msg->dL_NGU_UP_TNLInformation.choice.gTPTunnel->gTP_TEID.buf,
-          TEID_GRE_KEY_LENGTH);
-      memcpy(
-          &dl_teid.ipv4_address,
-          decoded_msg->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-              ->transportLayerAddress.buf,
-          4);
+    UpTransportLayerInformation dl_ng_u_up_tnl_information = {};
+    decoded_msg->getDlNgUUpTnlInformation(dl_ng_u_up_tnl_information);
 
-      dl_teid.teid = ntohl(dl_teid.teid);
-      dl_teid.v4   = 1;  // Only V4 for now
-      sm_context_request.get()->req.set_dl_fteid(dl_teid);
+    TransportLayerAddress transport_layer_address_ul = {};
+    GtpTeid gtp_teid_ul                              = {};
+    dl_ng_u_up_tnl_information.get(transport_layer_address_ul, gtp_teid_ul);
+    std::optional<struct in_addr> ipv4_addr_opt =
+        transport_layer_address_ul.getIpv4Address();
+    if (ipv4_addr_opt.has_value()) {
+      dl_teid.ipv4_address = ipv4_addr_opt.value();
+    }
+    gtp_teid_ul.get(dl_teid.teid);
 
+    dl_teid.teid = ntohl(dl_teid.teid);
+    dl_teid.v4   = 1;  // Only V4 for now
+    sm_context_request.get()->req.set_dl_fteid(dl_teid);
+
+    Logger::smf_app().debug(
+        "DL GTP F-TEID (AN F-TEID) "
+        "0x%" PRIx32 " ",
+        dl_teid.teid);
+    Logger::smf_app().debug(
+        "dL_NGU_UP_TNLInformation (AN IP Addr) %s",
+        conv::toString(dl_teid.ipv4_address).c_str());
+
+    // QoS Flow Accepted List
+    QosFlowAcceptedList qos_flow_accepted_list = {};
+    decoded_msg->getQosFlowAcceptedList(qos_flow_accepted_list);
+
+    std::vector<oai::ngap::QosFlowAcceptedItem> qos_flow_accepted_item_list;
+    qos_flow_accepted_list.get(qos_flow_accepted_item_list);
+    for (const auto& flow_item : qos_flow_accepted_item_list) {
+      QosFlowIdentifier qos_flow_identifier = {};
+      flow_item.getQosFlowIdentifier(qos_flow_identifier);
+      pfcp::qfi_t qfi((uint8_t) (qos_flow_identifier.get()));
+
+      sm_context_request.get()->req.add_qfi(qfi);
       Logger::smf_app().debug(
-          "DL GTP F-TEID (AN F-TEID) "
-          "0x%" PRIx32 " ",
-          dl_teid.teid);
-      Logger::smf_app().debug(
-          "dL_NGU_UP_TNLInformation (AN IP Addr) %s",
-          conv::toString(dl_teid.ipv4_address).c_str());
-
-      for (int i = 0; i < decoded_msg->qosFlowAcceptedList.list.count; i++) {
-        pfcp::qfi_t qfi(
-            (uint8_t) (decoded_msg->qosFlowAcceptedList.list.array[i]
-                           ->qosFlowIdentifier));
-        sm_context_request.get()->req.add_qfi(qfi);
-        Logger::smf_app().debug(
-            "QoSFlowAcceptedList, QFI % d ",
-            (uint8_t) (decoded_msg->qosFlowAcceptedList.list.array[i]
-                           ->qosFlowIdentifier));
-      }
+          "QoSFlowAcceptedList, QFI % d ",
+          (uint8_t) (qos_flow_identifier.get()));
     }
 
-    // DL NG-U TNL Information Reused IE
-    if (decoded_msg->dL_NGU_TNLInformationReused != nullptr &&
-        (*decoded_msg->dL_NGU_TNLInformationReused ==
-         Ngap_DL_NGU_TNLInformationReused_true)) {
-      // TODO:
-    }
+    // TODO: DL NG-U TNL Information Reused
+    // TODO: User Plane Security Information
+    // TODO: Additional DL QoS Flow per TNL Information
+    // TODO: Redundant DL NG-U UP TNL Information
+    // TODO: Redundant DL NG-U UP TNL Information Reused
+    // TODO: Additional Redundant DL QoS Flow per TNL Information
+    // TODO: Used RSN Information
+    // TODO: Global RAN Node ID of Secondary NG-RAN Node
 
-    // TODO: User Plane Security Information IE
     return true;
   }
 
@@ -2913,15 +2933,15 @@ bool smf_context::handle_ho_preparation_request(
   sm_context_resp->session_procedure_type =
       session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP1;
 
-  // Ngap_HandoverRequiredTransfer
-  std::shared_ptr<Ngap_HandoverRequiredTransfer_t> decoded_msg =
-      std::make_shared<Ngap_HandoverRequiredTransfer_t>();
+  // HandoverRequiredTransfer
+  std::shared_ptr<HandoverRequiredTransfer> decoded_msg =
+      std::make_shared<HandoverRequiredTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     // error, send error to AMF
     Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_HandoverRequiredTransfer) "
+        "Decode N2 SM (HandoverRequiredTransfer) "
         "failed!");
     // trigger to send reply to AMF
     // TODO: to be updated with correct status/cause
@@ -2931,7 +2951,7 @@ bool smf_context::handle_ho_preparation_request(
     return false;
   }
 
-  if (decoded_msg->directForwardingPathAvailability != nullptr) {
+  if ((decoded_msg->getDirectForwardingPathAvailability()).has_value()) {
     Logger::smf_app().debug(
         "Ngap_HandoverRequiredTransfer, directForwardingPathAvailability");
     // TODO:
@@ -3003,15 +3023,15 @@ bool smf_context::handle_ho_preparation_request_ack(
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2;
 
-  // Ngap_HandoverRequestAcknowledgeTransfer
-  std::shared_ptr<Ngap_HandoverRequestAcknowledgeTransfer_t> decoded_msg =
-      std::make_shared<Ngap_HandoverRequestAcknowledgeTransfer_t>();
+  // HandoverRequestAcknowledgeTransfer
+  std::shared_ptr<HandoverRequestAcknowledgeTransfer> decoded_msg =
+      std::make_shared<HandoverRequestAcknowledgeTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     // Error, send error to AMF
     Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_HandoverRequestAcknowledgeTransfer) "
+        "Decode N2 SM (HandoverRequestAcknowledgeTransfer) "
         "failed!");
     // Trigger to send reply to AMF
     // TODO: to be updated with correct status/cause
@@ -3021,44 +3041,49 @@ bool smf_context::handle_ho_preparation_request_ack(
     return false;
   }
 
-  if (decoded_msg->dL_NGU_UP_TNLInformation.present) {
-    // Store AN Tunnel Info + list of accepted QFIs
-    pfcp::fteid_t dl_teid = {};
+  UpTransportLayerInformation dl_ng_u_up_tnl_information = {};
+  decoded_msg->getDlNgUUpTnlInformation(dl_ng_u_up_tnl_information);
 
-    memcpy(
-        &dl_teid.teid,
-        decoded_msg->dL_NGU_UP_TNLInformation.choice.gTPTunnel->gTP_TEID.buf,
-        TEID_GRE_KEY_LENGTH);
-    memcpy(
-        &dl_teid.ipv4_address,
-        decoded_msg->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-            ->transportLayerAddress.buf,
-        4);
-
-    dl_teid.teid = ntohl(dl_teid.teid);
-    dl_teid.v4   = 1;  // Only V4 for now
-    dl_teid.v6   = 0;
-    sm_context_request.get()->req.set_dl_fteid(dl_teid);
-
-    Logger::smf_app().debug(
-        "DL GTP F-TEID (AN F-TEID) "
-        "0x%" PRIx32 " ",
-        dl_teid.teid);
-    Logger::smf_app().debug(
-        "uPTransportLayerInformation (AN IP Addr) %s",
-        conv::toString(dl_teid.ipv4_address).c_str());
+  // Store AN Tunnel Info + list of accepted QFIs
+  pfcp::fteid_t dl_teid                            = {};
+  TransportLayerAddress transport_layer_address_ul = {};
+  GtpTeid gtp_teid_ul                              = {};
+  dl_ng_u_up_tnl_information.get(transport_layer_address_ul, gtp_teid_ul);
+  std::optional<struct in_addr> ipv4_addr_opt =
+      transport_layer_address_ul.getIpv4Address();
+  if (ipv4_addr_opt.has_value()) {
+    dl_teid.ipv4_address = ipv4_addr_opt.value();
   }
+  gtp_teid_ul.get(dl_teid.teid);
 
-  for (int i = 0; i < decoded_msg->qosFlowSetupResponseList.list.count; i++) {
-    pfcp::qfi_t qfi(
-        (uint8_t) (decoded_msg->qosFlowSetupResponseList.list.array[i])
-            ->qosFlowIdentifier);
-    sm_context_request.get()->req.add_qfi(qfi);
+  dl_teid.teid = ntohl(dl_teid.teid);
+  dl_teid.v4   = 1;  // Only V4 for now
+  dl_teid.v6   = 0;
+  sm_context_request.get()->req.set_dl_fteid(dl_teid);
+
+  Logger::smf_app().debug(
+      "DL GTP F-TEID (AN F-TEID) "
+      "0x%" PRIx32 " ",
+      dl_teid.teid);
+  Logger::smf_app().debug(
+      "uPTransportLayerInformation (AN IP Addr) %s",
+      conv::toString(dl_teid.ipv4_address).c_str());
+
+  // QoS Flow Setup Response List (Mandatory)
+  QosFlowListWithDataForwarding qos_flow_setup_response_list = {};
+  decoded_msg->getQosFlowSetupResponseList(qos_flow_setup_response_list);
+  std::vector<QosFlowItemWithDataForwarding> item_list;
+  qos_flow_setup_response_list.get(item_list);
+  for (const auto& item : item_list) {
+    QosFlowIdentifier qos_flow_identifier = {};
+    item.getQosFlowIdentifier(qos_flow_identifier);
+    pfcp::qfi_t qfi((uint8_t) (qos_flow_identifier.get()));
+
     Logger::smf_app().debug(
         "QoSFlowPerTNLInformation, AssociatedQosFlowList, QFI %d",
-        (decoded_msg->qosFlowSetupResponseList.list.array[i])
-            ->qosFlowIdentifier);
+        (uint8_t) (qos_flow_identifier.get()));
   }
+
   return true;
 }
 
@@ -3074,16 +3099,15 @@ bool smf_context::handle_ho_preparation_request_fail(
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2;
 
-  // Ngap_HandoverResourceAllocationUnsuccessfulTransfer
-  std::shared_ptr<Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>
-      decoded_msg = std::make_shared<
-          Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>();
+  // HandoverResourceAllocationUnsuccessfulTransfer
+  std::shared_ptr<HandoverResourceAllocationUnsuccessfulTransfer> decoded_msg =
+      std::make_shared<HandoverResourceAllocationUnsuccessfulTransfer>();
   int decode_status = smf_n2::get_instance().decode_n2_sm_information(
       decoded_msg, n2_sm_information);
-  if (decode_status == RETURNerror) {
+  if (decode_status == KEncodeDecodeError) {
     // error, send error to AMF
     Logger::smf_app().warn(
-        "Decode N2 SM (Ngap_HandoverResourceAllocationUnsuccessfulTransfer) "
+        "Decode N2 SM (HandoverResourceAllocationUnsuccessfulTransfer) "
         "failed!");
     // trigger to send reply to AMF
     // TODO: to be updated with correct status/cause
@@ -3138,16 +3162,16 @@ bool smf_context::handle_ho_execution(
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::N2_HO_EXECUTION_PHASE;
 
-  // Ngap_SecondaryRATDataUsageReportTransfer
+  // SecondaryRatDataUsageReportTransfer
   if (sm_context_request->req.n2_sm_info_is_set()) {
-    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t> decoded_msg =
-        std::make_shared<Ngap_SecondaryRATDataUsageReportTransfer_t>();
+    std::shared_ptr<SecondaryRatDataUsageReportTransfer> decoded_msg =
+        std::make_shared<SecondaryRatDataUsageReportTransfer>();
     int decode_status = smf_n2::get_instance().decode_n2_sm_information(
         decoded_msg, n2_sm_information);
-    if (decode_status == RETURNerror) {
+    if (decode_status == KEncodeDecodeError) {
       // error, send error to AMF
       Logger::smf_app().warn(
-          "Decode N2 SM (Ngap_SecondaryRATDataUsageReportTransfer) "
+          "Decode N2 SM (SecondaryRatDataUsageReportTransfer) "
           "failed!");
       // trigger to send reply to AMF
       smf_app_inst->trigger_update_context_error_response(

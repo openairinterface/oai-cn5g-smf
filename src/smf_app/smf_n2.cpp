@@ -38,10 +38,6 @@
 #include "utils.hpp"
 #include "PduSessionType.hpp"
 #include "output_wrapper.hpp"
-#include "PduSessionResourceReleaseCommandTransfer.hpp"
-#include "PathSwitchRequestAcknowledgeTransfer.hpp"
-#include "HandoverCommandTransfer.hpp"
-#include "HandoverPreparationUnsuccessfulTransfer.hpp"
 
 extern "C" {
 #include "Ngap_AssociatedQosFlowItem.h"
@@ -757,6 +753,8 @@ int smf_n2::decode_n2_sm_information(
   Logger::smf_n2().info(
       "Decode NGAP message (PDUSessionResourceSetupResponseTransfer) from N2 "
       "SM Information");
+  int result = KEncodeDecodeOK;
+
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
@@ -764,386 +762,220 @@ int smf_n2::decode_n2_sm_information(
 
   oai::utils::output_wrapper::print_buffer({}, "Content:", data, data_len);
 
-  if (ngap_ie->decode(data, data_len))
-    return KEncodeDecodeOK;
-  else {
+  if (!ngap_ie->decode(data, data_len)) {
     Logger::smf_n2().warn(
         "Decode PDUSessionResourceSetupResponseTransfer failed");
-    return KEncodeDecodeError;
+    result = KEncodeDecodeError;
   }
+
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+  return result;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<PduSessionResourceModifyResponseTransfer>& ngap_ie,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (PDUSessionResourceModifyResponseTransfer) "
+      "from N2 SM Information");
+  int result = KEncodeDecodeOK;
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  oai::utils::output_wrapper::print_buffer({}, "Content:", data, data_len);
+
+  // PDUSessionResourceModifyResponseTransfer
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupResponseTransfer failed");
+    result = KEncodeDecodeError;
+  }
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
 
   return KEncodeDecodeOK;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceModifyResponseTransfer_t>& ngap_IE,
+    std::shared_ptr<PduSessionResourceReleaseResponseTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceModifyResponseTransfer) "
+      "Decode NGAP message (PDUSessionResourceReleaseResponseTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceModifyResponseTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceModifyResponseTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupResponseTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return KEncodeDecodeError;
-  }
-  return KEncodeDecodeOK;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceReleaseResponseTransfer_t>& ngap_IE,
+    std::shared_ptr<oai::ngap::PduSessionResourceSetupUnsuccessfulTransfer>&
+        ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceReleaseResponseTransfer) "
+      "Decode NGAP message (PDUSessionResourceSetupUnsuccessfulTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceModifyResponseTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceReleaseResponseTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupUnsuccessfulTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>&
-        ngap_IE,
+    std::shared_ptr<PathSwitchRequestTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceSetupUnsuccessfulTransfer) "
+      "Decode NGAP message (PathSwitchRequestTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceSetupUnsuccessfulTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceSetupUnsuccessfulTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode PathSwitchRequestTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PathSwitchRequestTransfer_t>& ngap_IE,
+    std::shared_ptr<HandoverRequiredTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PathSwitchRequestTransfer) "
+      "Decode NGAP message (HandoverRequiredTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PathSwitchRequestTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PathSwitchRequestTransfer, (void**) &ngap_IE, (void*) data,
-      data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode HandoverRequiredTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverRequiredTransfer_t>& ngap_IE,
+    std::shared_ptr<HandoverRequestAcknowledgeTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_HandoverRequired) "
+      "Decode NGAP message (HandoverRequestAcknowledgeTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverRequiredTransfer, (void**) &ngap_IE, (void*) data,
-      data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode HandoverRequestAcknowledgeTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverRequestAcknowledgeTransfer_t>& ngap_IE,
-    const std::string& n2_sm_info) {
-  Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_HandoverRequestAcknowledgeTransfer) "
-      "from N2 SM Information");
-
-  unsigned int data_len = n2_sm_info.length();
-  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
-  memset(data, 0, data_len + 1);
-  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
-
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverRequestAcknowledgeTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
-  // free memory
-  oai::utils::utils::free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
-}
-
-//---------------------------------------------------------------------------------------------
-int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>&
-        ngap_IE,
+    std::shared_ptr<HandoverResourceAllocationUnsuccessfulTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
       "Decode NGAP message "
-      "(Ngap_HandoverResourceAllocationUnsuccessfulTransfer) "
+      "(HandoverResourceAllocationUnsuccessfulTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverResourceAllocationUnsuccessfulTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode HandoverResourceAllocationUnsuccessfulTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t>& ngap_IE,
+    std::shared_ptr<SecondaryRatDataUsageReportTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
       "Decode NGAP message "
-      "(Ngap_SecondaryRATDataUsageReportTransfer) "
+      "(SecondaryRATDataUsageReportTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_SecondaryRATDataUsageReportTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode SecondaryRATDataUsageReportTransfer failed");
+    result = KEncodeDecodeError;
+  }
   // free memory
   oai::utils::utils::free_wrapper((void**) &data);
 
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
+  return result;
 }
 
-Ngap_QosFlowSetupRequestItem_t smf_n2::get_QoSFlowSetupRequestItem(
-    const qos_flow_context_updated& qos_flow) {
-  Ngap_QosFlowSetupRequestItem_t ngap_QosFlowSetupRequestItem = {};
-  ngap_QosFlowSetupRequestItem.qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters =
-      get_QoSFlowLevelQosParameters(qos_flow);
-  return ngap_QosFlowSetupRequestItem;
-}
-
-Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
-    const smf::qos_flow_context_updated& qos_flow) {
-  Ngap_QosFlowLevelQosParameters_t qosFlowLevelQosParameters = {};
-  qosFlowLevelQosParameters.qosCharacteristics.present =
-      Ngap_QosCharacteristics_PR_nonDynamic5QI;
-  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI =
-      (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
-      qos_flow.qos_profile.getR5qi();
-  if (qos_flow.qos_profile.priorityLevelIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->priorityLevelQos =
-        (Ngap_PriorityLevelQos_t*) (calloc(1, sizeof(Ngap_PriorityLevelQos_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->priorityLevelQos) = qos_flow.qos_profile.getPriorityLevel();
-  }
-
-  if (qos_flow.qos_profile.averWindowIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->averagingWindow =
-        (Ngap_AveragingWindow_t*) (calloc(1, sizeof(Ngap_AveragingWindow_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->averagingWindow) = qos_flow.qos_profile.getAverWindow();
-  }
-
-  if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->maximumDataBurstVolume    = (Ngap_MaximumDataBurstVolume_t*) (calloc(
-        1, sizeof(Ngap_MaximumDataBurstVolume_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->maximumDataBurstVolume) = qos_flow.qos_profile.getMaxDataBurstVol();
-  }
-
-  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.getPriorityLevel();
-  auto preemptCapEnumValue =
-      qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
-  if (preemptCapEnumValue ==
-      PreemptionCapability_anyOf::ePreemptionCapability_anyOf::NOT_PREEMPT) {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionCapability =
-        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
-  } else {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionCapability =
-        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
-  }
-  auto preemptVulnEnumValue =
-      qos_flow.qos_profile.getArp().getPreemptVuln().getEnumValue();
-  if (preemptVulnEnumValue ==
-      PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
-          NOT_PREEMPTABLE) {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_not_pre_emptable;
-  } else {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionVulnerability = Ngap_Pre_emptionVulnerability_pre_emptable;
-  }
-  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.getArp().getPriorityLevel();
-
-  // FIXME check the if condition is okay.
-  if (qos_flow.qos_profile.gbrUlIsSet() && qos_flow.qos_profile.gbrDlIsSet() &&
-      qos_flow.qos_profile.maxbrUlIsSet() &&
-      qos_flow.qos_profile.maxbrDlIsSet()) {
-    qosFlowLevelQosParameters.gBR_QosInformation =
-        (Ngap_GBR_QosInformation_t*) (calloc(
-            1, sizeof(Ngap_GBR_QosInformation_t)));
-
-    std::vector<oai::nas::QosFlowDescriptionParameter>
-        qos_flow_description_parameter_list =
-            qos_flow.get_qos_flow_descriptions().GetParametersList();
-
-    for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
-      std::optional<BitRate> bit_rate =
-          qos_flow_description_parameter_list[j].GetBitRate();
-      if (bit_rate.has_value()) {
-        uint8_t parameter_identifier =
-            qos_flow_description_parameter_list[j].GetIdentifier();
-        if (parameter_identifier ==
-            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink) {
-          set_ngap_bit_rate(
-              qosFlowLevelQosParameters.gBR_QosInformation
-                  ->maximumFlowBitRateUL,
-              bit_rate.value().value, bit_rate.value().unit);
-        } else if (
-            parameter_identifier ==
-            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink) {
-          set_ngap_bit_rate(
-              qosFlowLevelQosParameters.gBR_QosInformation
-                  ->maximumFlowBitRateDL,
-              bit_rate.value().value, bit_rate.value().unit);
-        } else if (
-            parameter_identifier ==
-            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink) {
-          set_ngap_bit_rate(
-              qosFlowLevelQosParameters.gBR_QosInformation
-                  ->guaranteedFlowBitRateUL,
-              bit_rate.value().value, bit_rate.value().unit);
-        } else if (
-            parameter_identifier ==
-            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink) {
-          set_ngap_bit_rate(
-              qosFlowLevelQosParameters.gBR_QosInformation
-                  ->guaranteedFlowBitRateDL,
-              bit_rate.value().value, bit_rate.value().unit);
-        }
-      }
-    }
-  }
-
-  return qosFlowLevelQosParameters;
-}
-
+//---------------------------------------------------------------------------------------------
 oai::ngap::QosFlowSetupRequestItem smf_n2::get_qos_flow_setup_request_item(
     const qos_flow_context_updated& qos_flow) {
   QosFlowSetupRequestItem qos_flow_setup_request_item = {};
@@ -1160,6 +992,7 @@ oai::ngap::QosFlowSetupRequestItem smf_n2::get_qos_flow_setup_request_item(
   return qos_flow_setup_request_item;
 }
 
+//---------------------------------------------------------------------------------------------
 oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
     const qos_flow_context_updated& qos_flow) {
   QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
@@ -1296,6 +1129,7 @@ oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
   return qos_flow_level_qos_parameters;
 }
 
+//---------------------------------------------------------------------------------------------
 void smf_n2::set_ngap_bit_rate(
     Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit) {
   bit_rate.size = 8;
