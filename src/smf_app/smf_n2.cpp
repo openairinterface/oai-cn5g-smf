@@ -96,7 +96,27 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     uint64_t bit_rate_ul = session_handler::parse_nas_value_unit_to_bps(
         session_ambr.GetSessionAmbrForUplink(),
         session_ambr.GetUnitForUplink());
+
+    Logger::smf_n2().error(
+        "Get PduSessionAggregateMaximumBitRate GetSessionAmbrForDownlink 0x%x, "
+        "0x%x",
+        session_ambr.GetSessionAmbrForDownlink(),
+        session_ambr.GetUnitForDownlink());
+    Logger::smf_n2().error(
+        "Get PduSessionAggregateMaximumBitRate bit_rate_dl " SUPI_64_FMT "",
+        bit_rate_dl);
+    Logger::smf_n2().error(
+        "Get PduSessionAggregateMaximumBitRate GetSessionAmbrForUplink 0x%x, "
+        "0x%x",
+        session_ambr.GetSessionAmbrForUplink(),
+        session_ambr.GetUnitForUplink());
+    Logger::smf_n2().error(
+        "Get PduSessionAggregateMaximumBitRate bit_rate_ul " SUPI_64_FMT "",
+        bit_rate_ul);
+    bit_rate_dl = 100000000;  // TODO: for testing purpose, should be removed
+    bit_rate_ul = 100000000;  // TODO: for testing purpose, should be removed
     pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
+
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
