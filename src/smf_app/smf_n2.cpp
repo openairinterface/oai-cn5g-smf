@@ -113,8 +113,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     Logger::smf_n2().error(
         "Get PduSessionAggregateMaximumBitRate bit_rate_ul " SUPI_64_FMT "",
         bit_rate_ul);
-    bit_rate_dl = 100000000;  // TODO: for testing purpose, should be removed
-    bit_rate_ul = 100000000;  // TODO: for testing purpose, should be removed
+    bit_rate_dl = 1000000000;  // TODO: for testing purpose, should be removed
+    bit_rate_ul = 1000000000;  // TODO: for testing purpose, should be removed
     pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
 
   } else {
