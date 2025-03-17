@@ -1701,8 +1701,8 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
   }
   gtp_teid_ul.get(dl_teid.teid);
 
-  dl_teid.teid = ntohl(dl_teid.teid);
-  dl_teid.v4   = 1;  // Only V4 for now
+  // dl_teid.teid = ntohl(dl_teid.teid);
+  dl_teid.v4 = 1;  // Only V4 for now
   sm_context_request.get()->req.set_dl_fteid(dl_teid);
 
   Logger::smf_app().debug(
