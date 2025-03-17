@@ -1819,8 +1819,8 @@ bool smf_context::handle_pdu_session_resource_modify_response_transfer(
     }
     gtp_teid_ul.get(dl_teid.teid);
 
-    dl_teid.teid = ntohl(dl_teid.teid);
-    dl_teid.v4   = 1;  // Only v4 for now
+    // dl_teid.teid = ntohl(dl_teid.teid);
+    dl_teid.v4 = 1;  // Only v4 for now
     sm_context_request.get()->req.set_dl_fteid(dl_teid);
   }
 
@@ -2853,8 +2853,8 @@ bool smf_context::handle_ho_path_switch_req(
     }
     gtp_teid_ul.get(dl_teid.teid);
 
-    dl_teid.teid = ntohl(dl_teid.teid);
-    dl_teid.v4   = 1;  // Only V4 for now
+    // dl_teid.teid = ntohl(dl_teid.teid);
+    dl_teid.v4 = 1;  // Only V4 for now
     sm_context_request.get()->req.set_dl_fteid(dl_teid);
 
     Logger::smf_app().debug(
@@ -3038,9 +3038,9 @@ bool smf_context::handle_ho_preparation_request_ack(
   }
   gtp_teid_ul.get(dl_teid.teid);
 
-  dl_teid.teid = ntohl(dl_teid.teid);
-  dl_teid.v4   = 1;  // Only V4 for now
-  dl_teid.v6   = 0;
+  // dl_teid.teid = ntohl(dl_teid.teid);
+  dl_teid.v4 = 1;  // Only V4 for now
+  dl_teid.v6 = 0;
   sm_context_request.get()->req.set_dl_fteid(dl_teid);
 
   Logger::smf_app().debug(

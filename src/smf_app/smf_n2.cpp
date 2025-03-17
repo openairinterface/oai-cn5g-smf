@@ -375,12 +375,12 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   // TODO: only first flow is considered for now
   pfcp::fteid_t ul_fteid = {};
   ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
-  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.teid          = qos_flows.begin()->second.ul_fteid.teid;
   ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
   pfcp::fteid_t dl_fteid = {};
   dl_fteid.v4            = qos_flows.begin()->second.dl_fteid.v4;
-  dl_fteid.teid          = htonl(qos_flows.begin()->second.dl_fteid.teid);
+  dl_fteid.teid          = qos_flows.begin()->second.dl_fteid.teid;
   dl_fteid.ipv4_address  = qos_flows.begin()->second.dl_fteid.ipv4_address;
 
   UlNgUUpTnlModifyList ul_ng_u_up_tnl_modify_list = {};
