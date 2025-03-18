@@ -761,8 +761,8 @@ uint64_t session_handler::parse_nas_value_unit_to_bps(
   if (unit > kBitRateUnitValueIsIncrementedInMultiplesOf256Pbps)
     unit_value = kBitRateUnitValueIsIncrementedInMultiplesOf256Pbps;
 
-  if (unit > 0) {
-    bit_rate_value = value * pow(2, 10) * pow(2, (unit - 1) * 2);
+  if (unit_value > 0) {
+    bit_rate_value = value * pow(2, 10) * pow(2, (unit_value - 1) * 2);
   } else {
     bit_rate_value = value;
   }

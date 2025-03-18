@@ -761,12 +761,6 @@ void smf_context::get_session_ambr(
   if (nullptr != ss) {
     ss->find_dnn_configuration(dnn, sdc);
     if (nullptr != sdc) {
-      Logger::smf_app().debug(
-          "Default AMBR info from the subscription information, downlink %s, "
-          "uplink %s",
-          (sdc->session_ambr).downlink.c_str(),
-          (sdc->session_ambr).uplink.c_str());
-
       bitrate_unit_e ambr_dl_unit, ambr_ul_unit;
       uint16_t ambr_dl_value, ambr_ul_value;
 
@@ -795,6 +789,12 @@ void smf_context::get_session_ambr(
         "Could not get default info from the subscription information for AMBR "
         "Dl/UL value, use default 1 MBPS");
   }
+
+  Logger::smf_app().error(
+      "AMBR info from the subscription information, Downlink 0x%x, Uplink "
+      "0x%x",
+      session_ambr.GetSessionAmbrForDownlink(),
+      session_ambr.GetUnitForDownlink());
 }
 
 /*
@@ -1701,7 +1701,6 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
   }
   gtp_teid_ul.get(dl_teid.teid);
 
-  // dl_teid.teid = ntohl(dl_teid.teid);
   dl_teid.v4 = 1;  // Only V4 for now
   sm_context_request.get()->req.set_dl_fteid(dl_teid);
 
@@ -1818,8 +1817,6 @@ bool smf_context::handle_pdu_session_resource_modify_response_transfer(
       dl_teid.ipv4_address = ipv4_addr_opt.value();
     }
     gtp_teid_ul.get(dl_teid.teid);
-
-    // dl_teid.teid = ntohl(dl_teid.teid);
     dl_teid.v4 = 1;  // Only v4 for now
     sm_context_request.get()->req.set_dl_fteid(dl_teid);
   }
@@ -2852,8 +2849,6 @@ bool smf_context::handle_ho_path_switch_req(
       dl_teid.ipv4_address = ipv4_addr_opt.value();
     }
     gtp_teid_ul.get(dl_teid.teid);
-
-    // dl_teid.teid = ntohl(dl_teid.teid);
     dl_teid.v4 = 1;  // Only V4 for now
     sm_context_request.get()->req.set_dl_fteid(dl_teid);
 
@@ -3037,8 +3032,6 @@ bool smf_context::handle_ho_preparation_request_ack(
     dl_teid.ipv4_address = ipv4_addr_opt.value();
   }
   gtp_teid_ul.get(dl_teid.teid);
-
-  // dl_teid.teid = ntohl(dl_teid.teid);
   dl_teid.v4 = 1;  // Only V4 for now
   dl_teid.v6 = 0;
   sm_context_request.get()->req.set_dl_fteid(dl_teid);

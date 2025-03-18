@@ -39,15 +39,12 @@ class smf_support_features : public config_type {
  private:
   option_config_value m_local_subscription_infos{};
   option_config_value m_local_pcc_rules{};
-  option_config_value m_external_ausf{};
-  option_config_value m_external_udm{};
   option_config_value m_external_nssf{};
 
  public:
   explicit smf_support_features(
       bool local_subscription_info, bool local_pcc_rules);
-  explicit smf_support_features(
-      bool external_ausf, bool external_udm, bool external_nssf);
+  explicit smf_support_features(bool external_nssf);
 
   void from_yaml(const YAML::Node& node) override;
   nlohmann::json to_json() override;
