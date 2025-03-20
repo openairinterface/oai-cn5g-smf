@@ -265,9 +265,16 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   }
 
   // Encode
-  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
-  int encoded_size =
-      pdu_session_resource_setup_request_transfer.encode(buffer, BUF_LEN);
+  // TODO: get actual message length
+  auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
+  if (buffer == nullptr) {
+    Logger::smf_n2().error("Error when allocating buffer!");
+    return false;
+  }
+
+  int encoded_size = 0;
+  pdu_session_resource_setup_request_transfer.encode2NewBuffer(
+      buffer, encoded_size);
 
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
