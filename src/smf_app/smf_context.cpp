@@ -3053,7 +3053,7 @@ bool smf_context::handle_ho_preparation_request_ack(
     QosFlowIdentifier qos_flow_identifier = {};
     item.getQosFlowIdentifier(qos_flow_identifier);
     pfcp::qfi_t qfi((uint8_t) (qos_flow_identifier.get()));
-
+    sm_context_request.get()->req.add_qfi(qfi);
     Logger::smf_app().debug(
         "QoSFlowPerTNLInformation, AssociatedQosFlowList, QFI %d",
         (uint8_t) (qos_flow_identifier.get()));
