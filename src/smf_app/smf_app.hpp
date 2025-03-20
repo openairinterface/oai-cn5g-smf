@@ -675,6 +675,16 @@ class smf_app {
       std::shared_ptr<session_management_subscription> subscription);
 
   /*
+   * Set the default QoS parameters for the Session Management Subscription in
+   * case there is no info from the local configuration file
+   * @param [std::shared_ptr<dnn_configuration_t>] dnn_configuration: DNN
+   * configuration
+   * @return void
+   */
+  void set_default_qos_parameters(
+      std::shared_ptr<dnn_configuration_t>& dnn_configuration);
+
+  /*
    * Verify whether the UE request is valid according to the user subscription
    * and with local policies
    * @param [..]

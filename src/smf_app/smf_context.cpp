@@ -797,55 +797,6 @@ void smf_context::get_session_ambr(
       session_ambr.GetUnitForDownlink());
 }
 
-/*
-//------------------------------------------------------------------------------
-void smf_context::get_session_ambr(
-    Ngap_PDUSessionAggregateMaximumBitRate_t& session_ambr,
-    const snssai_t& snssai, const std::string& dnn) {
-  std::shared_ptr<session_management_subscription> ss = {};
-  std::shared_ptr<dnn_configuration_t> sdc            = {};
-  find_dnn_subscription(snssai, ss);
-
-  uint64_t bit_rate_dl = {110000000};  // TODO: to be updated
-  uint64_t bit_rate_ul = {110000000};  // TODO: to be updated
-
-  if (nullptr != ss) {
-    ss->find_dnn_configuration(dnn, sdc);
-
-    if (nullptr != sdc) {
-      Logger::smf_app().debug(
-          "Default AMBR info from the DNN configuration, uplink %s, downlink "
-          "%s",
-          sdc->session_ambr.uplink, sdc->session_ambr.downlink);
-      // Downlink
-      bit_rate_dl = session_handler::set_ngap_bitrate(
-          session_ambr.pDUSessionAggregateMaximumBitRateDL,
-          sdc->session_ambr.downlink);
-
-      // Uplink
-      bit_rate_ul = session_handler::set_ngap_bitrate(
-          session_ambr.pDUSessionAggregateMaximumBitRateUL,
-          sdc->session_ambr.uplink);
-    }
-  } else {
-    session_ambr.pDUSessionAggregateMaximumBitRateDL.size = 8;
-    session_ambr.pDUSessionAggregateMaximumBitRateDL.buf =
-        (uint8_t*) calloc(8, sizeof(uint8_t));
-    session_ambr.pDUSessionAggregateMaximumBitRateUL.size = 8;
-    session_ambr.pDUSessionAggregateMaximumBitRateUL.buf =
-        (uint8_t*) calloc(8, sizeof(uint8_t));
-    INT64_TO_BUFFER(
-        bit_rate_dl, session_ambr.pDUSessionAggregateMaximumBitRateDL.buf);
-    INT64_TO_BUFFER(
-        bit_rate_ul, session_ambr.pDUSessionAggregateMaximumBitRateUL.buf);
-  }
-
-  Logger::smf_app().debug(
-      "Get AMBR info from the subscription information (DNN %s), uplink %d "
-      "downlink %d",
-      dnn.c_str(), bit_rate_ul, bit_rate_dl);
-}
-*/
 //------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_n11_create_sm_context_request> smreq) {

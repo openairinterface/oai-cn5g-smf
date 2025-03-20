@@ -1954,72 +1954,16 @@ bool smf_app::get_session_management_subscription_data(
     }
   }
 
-  /*
-    for (int i = 0; i < smf_cfg->num_session_management_subscription; i++) {
-      if ((0 == dnn.compare(smf_cfg->session_management_subscription[i].dnn))
-    and (snssai.sST ==
-           smf_cfg->session_management_subscription[i].single_nssai.sST) and
-          (0 ==
-           snssai.sD.compare(
-               smf_cfg->session_management_subscription[i].single_nssai.sD))) {
-        // PDU Session Type
-        pdu_session_type_t pdu_session_type(
-            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
-        Logger::smf_app().debug(
-            "Default session type %s",
-            smf_cfg->session_management_subscription[i].session_type.c_str());
+  // If there's no corresponding info from the conf file, use the (hardcoded)
+  // default QoS parameters
+  set_default_qos_parameters(dnn_configuration);
+  subscription->insert_dnn_configuration(dnn, dnn_configuration);
+  return true;
+}
 
-        std::string session_type =
-            smf_cfg->session_management_subscription[i].session_type;
-        if (boost::iequals(session_type, "IPv4")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
-        } else if (boost::iequals(session_type, "IPv6")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV6;
-        } else if (boost::iequals(session_type, "IPv4v6")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6;
-        }
-
-        dnn_configuration->pdu_session_types.default_session_type =
-            pdu_session_type;
-
-        // SSC_Mode
-        dnn_configuration->ssc_modes.default_ssc_mode.ssc_mode =
-            smf_cfg->session_management_subscription[i].ssc_mode;
-
-        // 5gQosProfile
-        dnn_configuration->_5g_qos_profile._5qi =
-            smf_cfg->session_management_subscription[i].default_qos._5qi;
-        dnn_configuration->_5g_qos_profile.arp.priority_level =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.priority_level;
-        dnn_configuration->_5g_qos_profile.arp.preempt_cap =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.preempt_cap;
-        dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.preempt_vuln;
-        dnn_configuration->_5g_qos_profile.priority_level =
-            smf_cfg->session_management_subscription[i].default_qos.priority_level;
-
-        // Session_ambr
-        dnn_configuration->session_ambr.uplink =
-            smf_cfg->session_management_subscription[i].session_ambr.uplink;
-        dnn_configuration->session_ambr.downlink =
-            smf_cfg->session_management_subscription[i].session_ambr.downlink;
-        Logger::smf_app().debug(
-            "Session AMBR Uplink %s, Downlink %s",
-            dnn_configuration->session_ambr.uplink.c_str(),
-            dnn_configuration->session_ambr.downlink.c_str());
-
-        subscription->insert_dnn_configuration(dnn, dnn_configuration);
-        return true;
-      }
-    }
-  */
-  // Default QoS parameters
+//---------------------------------------------------------------------------------------------
+void smf_app::set_default_qos_parameters(
+    std::shared_ptr<dnn_configuration_t>& dnn_configuration) {
   dnn_configuration->pdu_session_types.default_session_type.pdu_session_type =
       pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
   // SSC_Mode
@@ -2034,8 +1978,6 @@ bool smf_app::get_session_management_subscription_data(
   // Session_ambr
   dnn_configuration->session_ambr.uplink   = "1000Mbps";
   dnn_configuration->session_ambr.downlink = "1000Mbps";
-  subscription->insert_dnn_configuration(dnn, dnn_configuration);
-  return true;
 }
 
 //---------------------------------------------------------------------------------------------
