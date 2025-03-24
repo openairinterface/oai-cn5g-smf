@@ -210,9 +210,6 @@ void session_handler::set_port_filter(
   uint16_t port_low                  = htons(port_range.start);
   uint16_t port_high                 = htons(port_range.end);
 
-  nas_filter.packet_filter_id        = filter_id;
-  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-
   oai::nas::PacketFilterComponent packet_filter_component = {};
 
   if (port_range.is_range) {
@@ -224,16 +221,16 @@ void session_handler::set_port_filter(
     packet_filter_component.value = blk2bstr(&int_range, 4);
     nas_filter.content.packet_filter_components.push_back(
         packet_filter_component);
-    nas_filter.content.length = blength(packet_filter_component.value) +
-                                1;  // 1 for packet filter component type
+    nas_filter.content.length += blength(packet_filter_component.value) +
+                                 1;  // 1 for packet filter component type
   } else {
     packet_filter_component.type = oai::nas::kQosRulePfctiSingleRemotePortType;
     // two octets which specify a port number
     packet_filter_component.value = blk2bstr(&port_low, 2);
     nas_filter.content.packet_filter_components.push_back(
         packet_filter_component);
-    nas_filter.content.length = blength(packet_filter_component.value) +
-                                1;  // 1 for packet filter component type
+    nas_filter.content.length += blength(packet_filter_component.value) +
+                                 1;  // 1 for packet filter component type
   }
 }
 
@@ -255,8 +252,8 @@ void session_handler::set_ip_filter(
 
   nas_filter.content.packet_filter_components.push_back(
       packet_filter_component);
-  nas_filter.content.length = blength(packet_filter_component.value) +
-                              1;  // 1 for packet filter component type
+  nas_filter.content.length += blength(packet_filter_component.value) +
+                               1;  // 1 for packet filter component type
 }
 
 //------------------------------------------------------------------------------
@@ -273,8 +270,7 @@ void session_handler::set_protocol_filter(
 
   nas_filter.content.packet_filter_components.push_back(
       packet_filter_component);
-  nas_filter.content.length = blength(packet_filter_component.value) +
-                              1;  // 1 for packet filter component type
+  nas_filter.content.length += 2;  // 1 for packet filter component type
 }
 
 // Comments about architecture
