@@ -958,19 +958,21 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Step 4. Create a context for this supi if not existed, otherwise update
   std::shared_ptr<smf_context> sc = {};
   if (is_supi_2_smf_context(supi64)) {
+    /*Logger::smf_app().debug(
+        "Update SMF context with SUPI " SUPI_64_FMT "", supi64);*/
     Logger::smf_app().debug(
-        "Update SMF context with SUPI " SUPI_64_FMT "", supi64);
+        "Context found, delete SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = supi_2_smf_context(supi64);
     sc->set_supi(supi);
-  } else {
-    Logger::smf_app().debug(
-        "Create a new SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = std::make_shared<smf_context>();
-    sc->set_supi(supi);
-    sc->set_supi_prefix(supi_prefix);
-    set_supi_2_smf_context(supi64, sc);
-    sc->set_plmn(smreq->req.get_plmn());  // PLMN
+    delete_smf_context(sc);
   }
+  Logger::smf_app().debug(
+      "Create a new SMF context with SUPI " SUPI_64_FMT "", supi64);
+  sc = std::make_shared<smf_context>();
+  sc->set_supi(supi);
+  sc->set_supi_prefix(supi_prefix);
+  set_supi_2_smf_context(supi64, sc);
+  sc->set_plmn(smreq->req.get_plmn());  // PLMN
 
   // Step 5. If colliding with an existing SM context (session is already
   // existed and request type is INITIAL_REQUEST). Delete the local context
