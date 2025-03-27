@@ -509,6 +509,13 @@ class smf_app {
       const supi64_t& supi, const pdu_session_id_t& pid) const;
 
   /*
+   * Remove a SMF Context Reference for Supi and PDU Session ID
+   * @param [const supi64_t &] supi64: Supi64
+   * @param [const pdu_session_id_t &] pid: PDU Session ID
+   */
+  void remove_smf_context_ref(
+      const supi64_t& supi, const pdu_session_id_t& pid);
+  /*
    * Find SMF Context Reference by its ID
    * @param [const scid_t &] scid: SM Context Reference ID
    * @param [std::shared_ptr<smf_context_ref> &] scf : Shared_ptr to a SMF

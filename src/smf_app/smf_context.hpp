@@ -315,6 +315,14 @@ class session_management_subscription {
       std::shared_ptr<dnn_configuration_t>& dnn_configuration);
 
   /*
+   * Remove a DNN configuration from the subscription
+   * @param [std::string] dnn
+   * @param [std::shared_ptr<dnn_configuration_t> &] dnn_configuration
+   * @return void
+   */
+  void remove_dnn_configuration(const std::string& dnn);
+
+  /*
    * Find a DNN configuration
    * @param [std::string] dnn
    * @param [std::shared_ptr<dnn_configuration_t> &] dnn_configuration
@@ -776,6 +784,14 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void insert_dnn_subscription(
       const snssai_t& snssai, const std::string& dnn,
       std::shared_ptr<session_management_subscription>& ss);
+
+  /*
+   * Remove a session management subscription from the SMF context
+   * @param [const snssai_t&] snssai
+   * @param [const dnn&] dnn
+   * @return void
+   */
+  void remove_dnn_subscription(const snssai_t& snssai, const std::string& dnn);
 
   /*
    * Verify whether a subscription data exist with a given dnn and snssai
