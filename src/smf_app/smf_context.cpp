@@ -363,6 +363,13 @@ void session_management_subscription::insert_dnn_configuration(
 }
 
 //------------------------------------------------------------------------------
+void session_management_subscription::remove_dnn_configuration(
+    const std::string& dnn) {
+  std::unique_lock lock(m_mutex);
+  dnn_configurations.erase(dnn);
+}
+
+//------------------------------------------------------------------------------
 void session_management_subscription::find_dnn_configuration(
     const std::string& dnn,
     std::shared_ptr<dnn_configuration_t>& dnn_configuration) const {
@@ -3300,9 +3307,9 @@ void smf_context::insert_dnn_subscription(
     std::shared_ptr<session_management_subscription> old_ss =
         dnn_subscriptions.at(key);
     std::shared_ptr<dnn_configuration_t> dnn_configuration = {};
-    ss.get()->find_dnn_configuration(dnn, dnn_configuration);
+    ss->find_dnn_configuration(dnn, dnn_configuration);
     if (dnn_configuration != nullptr) {
-      old_ss.get()->insert_dnn_configuration(dnn, dnn_configuration);
+      old_ss->insert_dnn_configuration(dnn, dnn_configuration);
     }
 
   } else {
@@ -3311,6 +3318,29 @@ void smf_context::insert_dnn_subscription(
   Logger::smf_app().info(
       "Inserted DNN Subscription, key: %ld dnn %s \n %s", key, dnn.c_str(),
       snssai.to_model_snssai().to_string(0));
+}
+
+//------------------------------------------------------------------------------
+void smf_context::remove_dnn_subscription(
+    const snssai_t& snssai, const std::string& dnn) {
+  // Get a unique key from S-NSSAI
+  uint32_t key = 0;
+  get_snssai_key(snssai, key);
+  Logger::smf_app().debug(
+      "Remove DNN Subscription, key: %ld dnn %s \n %s", key, dnn,
+      snssai.to_model_snssai().to_string(0));
+
+  std::unique_lock<std::recursive_mutex> lock(m_context);
+  if (dnn_subscriptions.count(key) > 0) {
+    if (dnn_subscriptions.at(key)->dnn_configuration(dnn)) {
+      dnn_subscriptions.at(key)->remove_dnn_configuration(dnn);
+    } else {
+      Logger::smf_app().debug("DNN %s not present - skipping removal", dnn);
+    }
+  } else {
+    Logger::smf_app().debug(
+        "SNSSAI Key %d not present - skipping removal", key);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -3324,7 +3354,7 @@ bool smf_context::is_dnn_snssai_subscription_data(
   if (dnn_subscriptions.count(key) > 0) {
     std::shared_ptr<session_management_subscription> ss =
         dnn_subscriptions.at(key);
-    if (ss.get()->dnn_configuration(dnn))
+    if (ss->dnn_configuration(dnn))
       return true;
     else
       return false;
@@ -3443,8 +3473,6 @@ bool smf_context::add_pdu_session(
 
 //------------------------------------------------------------------------------
 bool smf_context::remove_pdu_session(const pdu_session_id_t& psi) {
-  Logger::smf_app().debug(
-      "Failed to add PDU Session (Id %d) failed: invalid Id", psi);
   std::unique_lock lock(m_pdu_sessions_mutex);
   return (pdu_sessions.erase(psi) > 0);
 }
@@ -4730,6 +4758,38 @@ void smf_context::send_pdu_session_release_response(
   // clear the resources including addresses allocated to this Session and
   // associated QoS flows
   sps->deallocate_ressources(resp->res.get_dnn());
+
+  pdu_session_id_t pdu_session_id = req->req.get_pdu_session_id();
+  Logger::smf_app().debug(
+      "Remove PDU Session (Id %d) with DNN %s ans SNSSAI (%d, %s)",
+      pdu_session_id, resp->res.get_dnn(), resp->res.get_snssai().sst,
+      resp->res.get_snssai().sd);
+  if (!remove_pdu_session(pdu_session_id)) {
+    Logger::smf_app().debug(
+        "Failed to remove PDU Session (Id %d)", pdu_session_id);
+  }
+
+  // Check if the release is the last SNSSAI DNN combination
+  bool last_snssai_dnn_combination = true;
+  for (auto it : pdu_sessions) {
+    snssai_t snssai = it.second->get_snssai();
+    std::string dnn = it.second->get_dnn();
+    if (snssai == resp->res.get_snssai() and dnn == resp->res.get_dnn()) {
+      last_snssai_dnn_combination = false;
+      break;
+    }
+  }
+  if (last_snssai_dnn_combination) {
+    Logger::smf_app().debug(
+        "Last PDU Session with DNN %s ans SNSSAI (%d, %s) combination - remove "
+        "the smf context entry",
+        resp->res.get_dnn(), resp->res.get_snssai().sst,
+        resp->res.get_snssai().sd);
+    // TODO
+    remove_dnn_subscription(resp->res.get_snssai(), resp->res.get_dnn());
+  }
+
+  Logger::smf_app().info("SMF context: \n %s", toString().c_str());
 
   // send ITTI message to SMF_APP interface to trigger the response towards
   // AMFs
