@@ -37,7 +37,9 @@ using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
-const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION = 0b10;
+const uint8_t NAS_PACKET_FILTER_DOWNLINK_DIRECTION = 0b01;
+const uint8_t NAS_PACKET_FILTER_UPLINK_DIRECTION   = 0b10;
+const uint8_t NAS_PACKET_FILTER_BIDIRECTIONAL      = 0b11;
 
 //------------------------------------------------------------------------------
 void session_handler::set_session_graph(
@@ -136,13 +138,6 @@ void session_handler::set_nas_filter_from_edge(
     return;
   }
 
-  if (!is_uplink_flow_direction(flow)) {
-    Logger::smf_app().debug(
-        "Flow %s is not signaled to UE as it is not uplink",
-        flow.getFlowDescription());
-    return;
-  }
-
   if (!flow.isPacketFilterUsage()) {
     Logger::smf_app().debug(
         "Flow %s is not signaled to UE as packetFilterUsage is disabled",
@@ -173,49 +168,79 @@ void session_handler::set_nas_filter_from_edge(
   } else if (!parsed_filter.default_filter) {
     // TODO we should take into account the max number of supported packet
     // filters from UE
-    qos_rule.SetNumberOfPacketFilters(parsed_filter.filter_components);
+    qos_rule.SetNumberOfPacketFilters(
+        1);  // Must be dynamic for multiple FlowDescriptions TODO: set to
+             // number of flows
     oai::nas::PacketFilterCreateAndModifyAndReplace packet_filter = {};
-    packet_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-    packet_filter.packet_filter_id        = 1;
+    packet_filter.packet_filter_id                                = 1;
 
-    int filter_id = 1;
+    // Set packet filter direction based on flow direction
+    if (flow.flowDirectionIsSet()) {
+      auto flow_direction = flow.getFlowDirection().getEnumValue();
+      switch (flow_direction) {
+        case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
+          packet_filter.packet_filter_direction =
+              NAS_PACKET_FILTER_DOWNLINK_DIRECTION;
+          break;
+        case FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK:
+          packet_filter.packet_filter_direction =
+              NAS_PACKET_FILTER_UPLINK_DIRECTION;
+          break;
+        case FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL:
+        default:
+          packet_filter.packet_filter_direction =
+              NAS_PACKET_FILTER_BIDIRECTIONAL;
+      }
+    } else {
+      Logger::smf_n1().info(
+          "Flow Direction of flow %s is not set, will be set to BIDIRECTIONAL",
+          flow.getFlowDescription());
+      packet_filter.packet_filter_direction = NAS_PACKET_FILTER_BIDIRECTIONAL;
+    }
+
     if (parsed_filter.use_protocol_identifier) {
-      set_protocol_filter(
-          filter_id, packet_filter, parsed_filter.protocol_identifier);
-      qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
-      filter_id++;
+      set_protocol_filter(packet_filter, parsed_filter.protocol_identifier);
     }
 
     if (parsed_filter.src_ip_range.use_ip_range) {
-      set_ip_filter(filter_id, packet_filter, parsed_filter.src_ip_range);
-      qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
-      filter_id++;
+      set_ip_filter(packet_filter, parsed_filter.src_ip_range, true);
     }
+
     if (!parsed_filter.src_port_ranges.empty()) {
       for (const auto& port : parsed_filter.src_port_ranges) {
-        set_port_filter(filter_id, packet_filter, port);
-        qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
-        filter_id++;
+        set_port_filter(packet_filter, port, true);
       }
     }
+
+    if (parsed_filter.dst_ip_range.use_ip_range) {
+      set_ip_filter(packet_filter, parsed_filter.dst_ip_range, false);
+    }
+
+    if (!parsed_filter.dst_port_ranges.empty()) {
+      for (const auto& port : parsed_filter.dst_port_ranges) {
+        set_port_filter(packet_filter, port, false);
+      }
+    }
+
+    qos_rule.AddPacketFilterCreateAndModifyAndReplace(packet_filter);
   }
 }
 
 //------------------------------------------------------------------------------
 void session_handler::set_port_filter(
-    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
-    const port_range& port_range) {
-  nas_filter.packet_filter_id        = filter_id;
-  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-  uint16_t port_low                  = htons(port_range.start);
-  uint16_t port_high                 = htons(port_range.end);
+    oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    const port_range& port_range, bool remote) {
+  uint16_t port_low  = htons(port_range.start);
+  uint16_t port_high = htons(port_range.end);
 
   oai::nas::PacketFilterComponent packet_filter_component = {};
 
   if (port_range.is_range) {
-    uint32_t int_range           = 0;
-    int_range                    = ((uint32_t) port_high << 16) | port_low;
-    packet_filter_component.type = oai::nas::kQosRulePfctiRemotePortRangeType;
+    uint32_t int_range = 0;
+    int_range          = ((uint32_t) port_high << 16) | port_low;
+    packet_filter_component.type =
+        (remote) ? oai::nas::kQosRulePfctiRemotePortRangeType :
+                   oai::nas::kQosRulePfctiLocalPortRangeType;
     // sequence of a two octet port range low limit field and a two octet port
     // range high limit field
     packet_filter_component.value = blk2bstr(&int_range, 4);
@@ -224,7 +249,9 @@ void session_handler::set_port_filter(
     nas_filter.content.length += blength(packet_filter_component.value) +
                                  1;  // 1 for packet filter component type
   } else {
-    packet_filter_component.type = oai::nas::kQosRulePfctiSingleRemotePortType;
+    packet_filter_component.type =
+        (remote) ? oai::nas::kQosRulePfctiSingleRemotePortType :
+                   oai::nas::kQosRulePfctiSingleLocalPortType;
     // two octets which specify a port number
     packet_filter_component.value = blk2bstr(&port_low, 2);
     nas_filter.content.packet_filter_components.push_back(
@@ -236,13 +263,12 @@ void session_handler::set_port_filter(
 
 //------------------------------------------------------------------------------
 void session_handler::set_ip_filter(
-    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
-    const ip_range& ip_range) {
-  nas_filter.packet_filter_id        = filter_id;
-  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-
+    oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    const ip_range& ip_range, bool remote) {
   oai::nas::PacketFilterComponent packet_filter_component = {};
-  packet_filter_component.type = oai::nas::kQosRulePfctiIpv4RemoteAddressType;
+  packet_filter_component.type =
+      (remote) ? oai::nas::kQosRulePfctiIpv4RemoteAddressType :
+                 oai::nas::kQosRulePfctiIpv4LocalAddressType;
   // Sequence of a four octet IPv4 address field and a four octet IPv4 address
   // mask field
   // TODO: verify the order
@@ -258,11 +284,8 @@ void session_handler::set_ip_filter(
 
 //------------------------------------------------------------------------------
 void session_handler::set_protocol_filter(
-    int filter_id, oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+    oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
     uint8_t protocol_id) {
-  nas_filter.packet_filter_id        = filter_id;
-  nas_filter.packet_filter_direction = NAS_PACKET_FILTER_UPLINK_DIRECTION;
-
   oai::nas::PacketFilterComponent packet_filter_component = {};
   packet_filter_component.type =
       oai::nas::kQosRulePfctiProtocolIdentifierOrNextHeaderType;
@@ -270,7 +293,8 @@ void session_handler::set_protocol_filter(
 
   nas_filter.content.packet_filter_components.push_back(
       packet_filter_component);
-  nas_filter.content.length += 2;  // 1 for packet filter component type
+  nas_filter.content.length += blength(packet_filter_component.value) +
+                               1;  // 1 for packet filter component type
 }
 
 // Comments about architecture

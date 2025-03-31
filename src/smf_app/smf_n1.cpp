@@ -196,13 +196,13 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
     sc = smf_app_inst->supi_2_smf_context(supi64);
     oai::nas::QosFlowDescriptions qos_flow_descriptions(
         kIeiAuthorizedQosFlowDescriptions);
-    int i = 0;
+    std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qos_flow_pair : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qos_flow_pair.second.get_qos_flow_descriptions();
-      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
-      i++;
+      qos_flow_description_list.push_back(qos_flow_description);
     }
+    qos_flow_descriptions.Set(qos_flow_description_list);
     pdu_session_estb_accept->SetAuthorizedQosFlowDescriptions(
         qos_flow_descriptions);
   }
@@ -415,12 +415,14 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       sp->get_session_handler()->get_qos_flows_context_updated();
 
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
+    oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
+    std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qf.get_qos_flow_descriptions();
-      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
+      qos_flow_description_list.push_back(qos_flow_description);
     }
+    qos_flow_descriptions.Set(qos_flow_description_list);
     pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(
         qos_flow_descriptions);
   }
@@ -544,12 +546,14 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       sp->get_session_handler()->get_qos_flows_context_updated();
 
   if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    oai::nas::QosFlowDescriptions qos_flow_descriptions = {};
+    oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
+    std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qf.get_qos_flow_descriptions();
-      qos_flow_descriptions.AddQosFlowDescription(qos_flow_description);
+      qos_flow_description_list.push_back(qos_flow_description);
     }
+    qos_flow_descriptions.Set(qos_flow_description_list);
     pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(
         qos_flow_descriptions);
   }

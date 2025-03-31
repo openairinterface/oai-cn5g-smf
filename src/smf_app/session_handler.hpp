@@ -229,17 +229,14 @@ class session_handler {
       const std::shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule);
 
   void set_port_filter(
-      int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::port_range& port_range);
+      const oai::utils::sdf_conversions::port_range& port_range, bool remote);
 
   void set_ip_filter(
-      int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::ip_range& port_range);
+      const oai::utils::sdf_conversions::ip_range& port_range, bool remote);
 
   void set_protocol_filter(
-      int filter_id,
       oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
       uint8_t protocol_id);
 
