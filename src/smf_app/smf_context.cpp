@@ -4059,10 +4059,7 @@ void smf_context::update_qos_info(
     if (qos_rules.size() < i) break;
     qos_rules_ie = qos_rules[i];
 
-    //    qos_rules_ie =
-    //    nas_msg.plain.sm.pdu_session_modification_request.qosrules
-    //                       .qosrulesie[i];
-    length_of_rule = qos_rules_ie.GetLength();
+    length_of_rule = qos_rules_ie.GetIeLength();
 
     // If UE requested a new GBR flow
     if ((qos_rules_ie.GetRuleOperationCode() ==
@@ -4118,9 +4115,7 @@ void smf_context::update_qos_info(
         }
       }
     }
-    length_of_rule_ie -= (length_of_rule + 3);  // 2 for Length of QoS
-                                                // rules IE and 1 for QoS
-                                                // rule identifier
+    length_of_rule_ie -= length_of_rule;
     i++;
   }
 }
