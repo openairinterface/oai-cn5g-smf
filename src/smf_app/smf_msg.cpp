@@ -992,6 +992,19 @@ uint64_t pdu_session_report_response::get_trxn_id() const {
   return trxn_id;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_sm_policy_notificatiion::set_sm_policy_decision(
+    const oai::model::pcf::SmPolicyDecision& sm_policy_decision) {
+  m_sm_policy_decision = sm_policy_decision;
+}
+
+//-----------------------------------------------------------------------------
+oai::model::pcf::SmPolicyDecision pdu_session_sm_policy_notificatiion::get_sm_policy_decision()
+    const {
+  return m_sm_policy_decision;
+}
+//-----------------------------------------------------------------------------
+
 /*
  * class: Event Exposure
  */

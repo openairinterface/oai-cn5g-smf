@@ -36,6 +36,7 @@
 #include "3gpp_29.244.hpp"
 #include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
+#include "itti_msg_n7.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
 #include "msg_pfcp.hpp"
@@ -252,6 +253,10 @@ class session_update_sm_context_procedure : public smf_session_procedure {
         n4_triggered(),
         n11_triggered_pending(),
         n11_trigger(),
+        n7_triggered(false),
+        n7_triggered_pending(false),
+        n7_trigger(),
+        n7_trigger_pending(),
         session_procedure_type() {}
 
   /*
@@ -265,6 +270,18 @@ class session_update_sm_context_procedure : public smf_session_procedure {
       const std::shared_ptr<itti_n11_update_sm_context_request>& req,
       std::shared_ptr<itti_n11_update_sm_context_response> resp,
       const std::shared_ptr<smf::smf_context>& sc);
+
+  /*
+   * Execute N11 Update SM Context Request procedure
+   * @param [itti_n7_update_policy_notification_request] req
+   * @param [itti_n7_update_policy_notification_response] resp
+   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @return
+   */
+  smf_procedure_code run(
+    const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
+    std::shared_ptr<itti_n7_update_policy_notification_response> resp,
+    const std::shared_ptr<smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
@@ -281,6 +298,17 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_n11_update_sm_context_request> n11_trigger;
   std::shared_ptr<itti_n11_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
+
+  bool n7_triggered;
+  bool n7_triggered_pending;
+
+  std::shared_ptr<itti_n7_update_policy_notification_request> n7_trigger;
+  std::shared_ptr<itti_n7_update_policy_notification_response> n7_trigger_pending;
+
+  bool is_n7_triggered() const { return n7_triggered; }
+  void set_n7_triggered(bool triggered) { n7_triggered = triggered; }
+  bool is_n7_triggered_pending() const { return n7_triggered_pending; }
+  void set_n7_triggered_pending(bool pending) { n7_triggered_pending = pending; }
 
  private:
   /**

@@ -48,6 +48,7 @@
 extern "C" {
 #include "QOSRules.h"
 }
+#include "SmPolicyDecision.h"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -557,6 +558,36 @@ class pdu_session_report_response : public pdu_session_sm_context_response {
   std::map<uint8_t, qos_flow_context_updated> qos_flow_context_updateds;
   seid_t seid;
   uint64_t trxn_id;
+};
+
+//---------------------------------------------------------------------------------------
+// see smPolicyNotification (TS29512_Npcf_SMPolicyControl.yaml)
+class pdu_session_sm_policy_notificatiion
+    : public pdu_session_msg {
+ public:
+ pdu_session_sm_policy_notificatiion()
+    : pdu_session_msg(PDU_SESSION_UPDATE_SM_CONTEXT_REQUEST) {
+    m_sm_policy_decision = {};
+  }
+  pdu_session_sm_policy_notificatiion(
+      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      std::string dnn, snssai_t snssai)
+      : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
+    m_sm_policy_decision = {};
+  }
+  pdu_session_sm_policy_notificatiion(
+      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      std::string dnn, snssai_t snssai,
+      oai::model::pcf::SmPolicyDecision sm_policy_decision)
+      : pdu_session_msg(msg_type, supi, pdi, dnn, snssai),
+        m_sm_policy_decision(sm_policy_decision) {}
+  void set_sm_policy_decision(
+      const oai::model::pcf::SmPolicyDecision& sm_policy_decision);
+  oai::model::pcf::SmPolicyDecision get_sm_policy_decision() const;
+  
+
+ private:
+  oai::model::pcf::SmPolicyDecision m_sm_policy_decision;
 };
 
 class event_exposure_msg {

@@ -48,6 +48,7 @@
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include "http_client.hpp"
+#include "SmPolicyNotification.h"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -56,6 +57,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::smf;
+using namespace oai::model::pcf;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,

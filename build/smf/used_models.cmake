@@ -233,6 +233,8 @@ list(APPEND USED_PCF_MODEL_SRC_FILES
         ${PCF_MODEL_DIR}/SmPolicyDeleteData.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause_anyOf.cpp
+        # Sm Policy Notification
+        ${PCF_MODEL_DIR}/SmPolicyNotification.cpp
 )
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)

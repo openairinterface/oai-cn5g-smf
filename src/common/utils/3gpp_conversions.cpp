@@ -44,6 +44,8 @@
 #include "SmContextUpdateData.h"
 #include "conversions.hpp"
 
+using namespace oai::model::pcf;
+
 //------------------------------------------------------------------------------
 void xgpp_conv::paa_to_pfcp_ue_ip_address(
     const paa_t& paa, pfcp::ue_ip_address_t& ue_ip_address) {
@@ -578,6 +580,26 @@ void xgpp_conv::sm_context_request_from_nas(
           nas_msg.plain.sm.header.procedure_transaction_identity};
 
   pcr.set_pti(pti);
+}
+
+//------------------------------------------------------------------------------
+void xgpp_conv::policy_notification_from_openapi(
+  const oai::model::pcf::SmPolicyNotification& policyNotification,
+  smf::pdu_session_sm_policy_notificatiion& policy_notification) {
+  Logger::smf_app().debug(
+      "Convert SmPolicyNotification (OpenAPI) to "
+      "PDUSession_SmPolicyNotification");
+
+  // TODO: convert from OpenAPI to core type
+
+  // Set the policy decision
+  if (policyNotification.smPolicyDecisionIsSet()) {
+    policy_notification.set_sm_policy_decision(
+        policyNotification.getSmPolicyDecision());
+  } else {
+    Logger::smf_app().warn("No Policy Decision available");
+  }
+  
 }
 
 //------------------------------------------------------------------------------

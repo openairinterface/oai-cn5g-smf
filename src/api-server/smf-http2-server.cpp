@@ -51,6 +51,7 @@ using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
 using namespace oai::model::common;
+using namespace oai::model::pcf;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -391,7 +392,24 @@ void smf_http2_server::start() {
       NSMF_N7_CALLBACK,
       [&](const request& request, const response& response) {
         Logger::smf_api_server().error("NSMF_N7 callbak -> Enter");
+        
         request.on_data([&](const uint8_t* data, std::size_t len) {
+          // Get the smf_ref from the path parameter as per NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK
+          std::vector<std::string> split_result;
+          boost::split(
+              split_result, request.uri().path, boost::is_any_of("/"));
+          if (split_result.size() != 6) {
+            Logger::smf_api_server().warn("Requested URL is not implemented");
+            response.write_head(http_status_code::NOT_IMPLEMENTED);
+            response.end();
+            return;
+          }
+          std::string smf_ref = split_result[split_result.size() - 2];
+          std::string method  = split_result[split_result.size() - 1];
+          Logger::smf_api_server().info(
+              "smf_ref %s, method %s",
+              smf_ref.c_str(),
+              method.c_str());
           try {
             if (request.method().compare("GET") == 0) {
               // TODO: Get association
@@ -408,7 +426,7 @@ void smf_http2_server::start() {
               auto policy_notification_data =
                   nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
               this->update_policy_notification_handler(
-                  policy_notification_data, response);
+                  smf_ref, policy_notification_data, response);
               Logger::smf_api_server().error("NSMF_N7 callbak -> POST");
             }
           } catch (nlohmann::detail::exception& e) {
@@ -979,11 +997,15 @@ void smf_http2_server::create_event_subscription_handler(
 
 //------------------------------------------------------------------------------
 void smf_http2_server::update_policy_notification_handler(
-    const oai::model::pcf::SmPolicyNotification& smPolicyNotification, const response& response) {
+  const std::string& smf_ref, const oai::model::pcf::SmPolicyNotification& smPolicyNotification, const response& response) {
   
   Logger::smf_api_server().info("Received SmPolicyNotification Request");
 
-  // TODO: implement validation logic for handler
+  // Convert from SmPolicyNotification to internal message format
+  smf::pdu_session_sm_policy_notificatiion policy_notification = {};
+  
+  // TODO: Implement conversion from OpenAPI type to internal type
+  xgpp_conv::policy_notification_from_openapi(smPolicyNotification, policy_notification);
 
   // Handle the message in smf_app
 
@@ -999,17 +1021,52 @@ void smf_http2_server::update_policy_notification_handler(
 
   std::shared_ptr<itti_n7_update_policy_notification_request> itti_msg =
       std::make_shared<itti_n7_update_policy_notification_request>(
-          TASK_SMF_SBI, TASK_SMF_APP, promise_id);
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   // TODO: add request data
+  itti_msg->req = policy_notification;
   itti_msg->http_version = 2;
+
   m_smf_app->handle_n7_update_policy_notification(itti_msg);
 
 
-  // TODO: verify if the message is correctly handled
+ // TODO: verify if the message is correctly handled
+ boost::future_status status;
+ // wait for timeout or ready
+ status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+ if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
 
-  response.write_head(http_status_code::OK);
-  response.end();
+    // Wait for the result from UPF and send reply to PCF
+    nlohmann::json sm_context_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
 
+    uint32_t http_response_code = 0;
+    nlohmann::json json_data    = {};
+    header_map h             = {};
+
+    if (sm_context_response.find(kSbiResponseHttpResponseCode) != sm_context_response.end()) {
+      http_response_code = sm_context_response[kSbiResponseHttpResponseCode].get<int>();
+    }
+
+    if (http_response_code == 200) {
+      response.write_head(http_status_code::OK);
+      response.end();
+
+    } else {
+      // Problem details
+      if (sm_context_response.find("ProblemDetails") != sm_context_response.end()) {
+        json_data = sm_context_response["ProblemDetails"];
+      }
+      h.emplace("content-type", header_value{"application/problem+json"});
+      response.end(json_data.dump().c_str());
+    }
+  } else {
+    uint16_t http_code = http_status_code::REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
+  }
 }
 
 //------------------------------------------------------------------------------

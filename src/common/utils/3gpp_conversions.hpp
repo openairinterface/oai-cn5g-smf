@@ -41,12 +41,16 @@
 #include "itti_msg_n11.hpp"
 #include "nas_lib.h"
 #include "smf_msg.hpp"
+#include "SmPolicyNotification.h"
+#include "SmPolicyDecision.h"
 
 extern "C" {
 #include "nas_message.h"
 }
 
 namespace xgpp_conv {
+    
+using namespace oai::model::pcf;
 
 /*
  * Convert PAA to PFCP UE IP Addr
@@ -149,6 +153,18 @@ void smf_event_exposure_notification_from_openapi(
  */
 void sm_context_request_from_nas(
     const nas_message_t& nm, smf::pdu_session_create_sm_context_request& pcr);
+
+/*
+ * Convert smPolicyNotification from OpenAPI into policy_notification
+ * @param [const oai::model::pcf::SmPolicyNotification&] policyNotification:
+ * SmPolicyNotification in OpenAPI
+ * @param [smf::pdu_session_sm_policy_notificatiion&] policy_notification:
+ * pdu_session_sm_policy_notificatiion
+ * @return void
+ */
+void policy_notification_from_openapi(
+    const oai::model::pcf::SmPolicyNotification& policyNotification,
+    smf::pdu_session_sm_policy_notificatiion& policy_notification); 
 
 void create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,

@@ -57,9 +57,10 @@ class itti_n7_msg : public itti_msg {
 class itti_n7_update_policy_notification_request : public itti_n7_msg {
  public:
   itti_n7_update_policy_notification_request(
-      const task_id_t orig, const task_id_t dest, uint32_t promise_id)
+      const task_id_t orig, const task_id_t dest, uint32_t promise_id, const std::string& smf_ref)
       : itti_n7_msg(N7_UPDATE_POLICY_NOTIFICATION_REQUEST, orig, dest),
         pid(promise_id),
+        scid(smf_ref),
         http_version(1) {}
   itti_n7_update_policy_notification_request(
       const itti_n7_update_policy_notification_request& i)
@@ -77,9 +78,10 @@ class itti_n7_update_policy_notification_request : public itti_n7_msg {
   };
   
   // TODO: Add request message
+  smf::pdu_session_sm_policy_notificatiion req;
   uint32_t pid;
   uint8_t http_version;
-  std::string smf_instance_id;
+  std::string scid;  // SM Context ID
 };
 
 //-----------------------------------------------------------------------------

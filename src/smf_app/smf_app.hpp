@@ -413,6 +413,15 @@ class smf_app {
    * @return void
    */
   void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
+
+  /*
+   * Handle ITTI message N7 Update Policy Notification Response to trigger the response
+   * to AMF
+   * @param [itti_n7_update_policy_notification_response&] m
+   * @return void
+   */
+  void handle_itti_msg(itti_n7_update_policy_notification_response& m);
+
   /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
@@ -626,7 +635,7 @@ class smf_app {
    * @return void
    */
   void handle_n7_update_policy_notification(
-        std::shared_ptr<itti_n7_update_policy_notification_request>& itti_msg);
+        std::shared_ptr<itti_n7_update_policy_notification_request> pnreq);
 
   /*
    * Get the current SMF's configuration
