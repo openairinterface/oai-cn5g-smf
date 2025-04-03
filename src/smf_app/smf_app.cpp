@@ -296,6 +296,12 @@ void smf_app_task(void*) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
+      case N7_UPDATE_POLICY_NOTIFICATION_RESPONSE:
+        if (itti_n7_update_policy_notification_response* m =
+                dynamic_cast<itti_n7_update_policy_notification_response*>(msg)) {
+          smf_app_inst->handle_itti_msg(std::ref(*m));
+        }
+        break;
 
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {

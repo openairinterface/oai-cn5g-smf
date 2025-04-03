@@ -446,39 +446,51 @@ void smf_context::handle_itti_msg(
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
-    itti_n4_session_modification_response& smresp) {
+    itti_n4_session_modification_response& smresp) { 
   std::shared_ptr<smf_procedure> proc = {};
   if (find_procedure(smresp.trxn_id, proc)) {
     Logger::smf_app().debug(
         "Received N4 Session Modification Response sender teid " TEID_FMT
         "  pfcp_tx_id %" PRIX64 " ",
         smresp.seid, smresp.trxn_id);
-    smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
-    if (res != smf_procedure_code::CONTINUE) {
-      std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
-          std::static_pointer_cast<session_update_sm_context_procedure>(proc);
-      // If n7_triggered_pending is not empty, it means that the N7 SMF
-      // procedure is still pending and we need to send the N4 SMF
-      // response to N11
-      if (!proc_session_update->is_n7_triggered_pending()) {
-        Logger::smf_app().debug(
-            "N7 triggered pending is empty, sending N4 response to N11");
-        send_pdu_session_update_response(
-            proc_session_update->n11_trigger,
-            proc_session_update->n11_triggered_pending,
-            proc_session_update->session_procedure_type,
-            proc_session_update->sps);
-      } else {
-        Logger::smf_app().debug(
-            "N7 triggered pending, sending N4 response to N7");   
-        send_pdu_session_update_response(
-            proc_session_update->n7_trigger,
-            proc_session_update->n7_trigger_pending,
-            proc_session_update->session_procedure_type,
-            proc_session_update->sps);
-        proc_session_update->set_n7_triggered_pending(false);
+    // Call this in a try catch block to handle any exceptions
+    // that may occur in the handle_itti_msg function
+    // and log them appropriately
+    try {
+      // Handle the message
+      smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
+      if (res != smf_procedure_code::CONTINUE) {
+        std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
+            std::static_pointer_cast<session_update_sm_context_procedure>(proc);
+        // If n7_triggered_pending is not empty, it means that the N7 SMF
+        // procedure is still pending and we need to send the N4 SMF
+        // response to N11
+        if (!proc_session_update->is_n7_triggered_pending()) {
+          Logger::smf_app().debug(
+              "N7 triggered pending is empty, sending N4 response to N11");
+          send_pdu_session_update_response(
+              proc_session_update->n11_trigger,
+              proc_session_update->n11_triggered_pending,
+              proc_session_update->session_procedure_type,
+              proc_session_update->sps);
+        } else {
+          Logger::smf_app().debug(
+              "N7 triggered pending, sending N4 response to N7");   
+          send_pdu_session_update_response(
+              proc_session_update->n7_trigger,
+              proc_session_update->n7_trigger_pending,
+              proc_session_update->session_procedure_type,
+              proc_session_update->sps);
+          proc_session_update->set_n7_triggered_pending(false);
+        }
+        remove_procedure(proc.get());
       }
-      remove_procedure(proc.get());
+    } catch (const std::exception& e) {
+      Logger::smf_app().error(
+          "Exception occurred while handling N4 Session Modification Response: "
+          "%s",
+          e.what());
+      return;
     }
   } else {
     Logger::smf_app().debug(
@@ -3316,7 +3328,7 @@ bool smf_context::handle_n7_update_policy_notification(
   }
 
   // Process policy rules from notification
-  // TODO: Update PCC rules in the context based on policy notification
+  // TODO [PUN]: Update PCC rules in the context based on policy notification
 
   // Create itti_n7_update_policy_notification_response
   std::shared_ptr<itti_n7_update_policy_notification_response>
@@ -3326,6 +3338,7 @@ bool smf_context::handle_n7_update_policy_notification(
   
   // Find the pdu session 
   auto proc = std::make_shared<session_update_sm_context_procedure>(sp);
+  // TODO [PUN]: Set the session_procedure_type, is it needed?
   // proc->session_procedure_type         = procedure_type;
   
   proc->set_n7_triggered(true);
@@ -3341,6 +3354,9 @@ bool smf_context::handle_n7_update_policy_notification(
     Logger::smf_app().info(
         "PDU Session Update SM Context Request procedure failed");
 
+    // TODO [PUN]: Handle the error case
+
+
     remove_procedure(sproc.get());
     // Trigger to send reply to AMF
     smf_app_inst->trigger_http_response(
@@ -3349,15 +3365,6 @@ bool smf_context::handle_n7_update_policy_notification(
     return false;
   }
 
-  Logger::smf_app().info(
-      "Sending ITTI message %s to task TASK_SMF_APP to trigger response",
-      sm_context_resp_pending->get_msg_name());
-  int ret = itti_inst->send_msg(sm_context_resp_pending);
-  if (RETURNok != ret) {
-    Logger::smf_app().error(
-        "Could not send ITTI message %s to task TASK_SMF_APP",
-        sm_context_resp_pending->get_msg_name());
-  }
   return true;
 }
 
@@ -4710,6 +4717,7 @@ void smf_context::send_pdu_session_update_response(
       Logger::smf_app().info(
           "PDU Session Procedure Type %d", (int) session_procedure_type);
 
+      // TODO [PUN]: check we got all the relevant procedures
       switch (session_procedure_type) {
         case session_management_procedures_type_e::
             PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {

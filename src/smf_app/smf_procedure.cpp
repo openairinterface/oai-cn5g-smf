@@ -1421,9 +1421,8 @@ smf_procedure_code session_update_sm_context_procedure::run(
 smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     itti_n4_session_modification_response& resp,
     std::shared_ptr<smf::smf_context> sc) {
-  Logger::smf_app().info(
-      "Handle N4 Session Modification Response (PDU Session Id %d)",
-      n11_trigger->req.get_pdu_session_id());
+  Logger::smf_app().debug(
+      "Handle N4 Session Modification Response");
 
   pfcp::cause_t cause = {};
   resp.pfcp_ies.get(cause);
@@ -1434,7 +1433,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     n7_trigger_pending->res.set_cause(static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
 
-    // TODO: Perform operations need to update the state before sending a response
+    // TODO [PUN]: Perform operations need to update the state before sending a response
     // to the PCF. This may include updating the session state, notifying the
     // application, etc.
     // For example, if the response indicates that the modification was accepted,
@@ -1791,11 +1790,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
   }
   if (smf_app_inst->is_scid_2_smf_context(scid)) {
     scf = smf_app_inst->scid_2_smf_context(scid);
-    // up_node_id = scf.get()->upf_node_id;
   } else {
     Logger::smf_app().warn(
         "SM Context associated with this id " SCID_FMT " does not exit!", scid);
-    // TODO:
+    // TODO [PUN]: Handle error
     return smf_procedure_code::ERROR;
   }
 
@@ -1813,7 +1811,23 @@ smf_procedure_code session_update_sm_context_procedure::run(
     return smf_procedure_code::ERROR;
   }
 
-  // TODO: Update the values for UPF
+  // TODO [PUN]: Update the values for UPF
+
+  graph->start_asynch_dfs_procedure(false);
+
+  std::shared_ptr<pfcp_association> current_upf = {};
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges_to_update;
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges_to_update;
+
+  if (get_next_upf(dl_edges, ul_edges, current_upf) !=
+      smf_procedure_code::CONTINUE) {
+    Logger::smf_app().error("DL Procedure Error: No UPF to select");
+    return smf_procedure_code::ERROR;
+  }
+
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   n7_trigger           = sm_context_req;
   set_n7_triggered(true);
@@ -1824,11 +1838,11 @@ smf_procedure_code session_update_sm_context_procedure::run(
       TASK_SMF_APP, TASK_SMF_N4);
   n4_triggered->seid    = sps->up_fseid.seid;
   n4_triggered->trxn_id = this->trxn_id;
-  // n4_triggered->r_endpoint =
-  //     endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
+  n4_triggered->r_endpoint =
+      endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
 
-  // TODO: Update the PFCP IEs based on the N7 request
+  // TODO [PUN]: Update the PFCP IEs based on the N7 request
   // This includes setting up create/modify/remove rules based on PCC rule changes
 
 

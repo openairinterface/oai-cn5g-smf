@@ -391,19 +391,12 @@ void smf_http2_server::start() {
     NSMF_N7_BASE + smf_cfg->sbi_api_version + 
       NSMF_N7_CALLBACK,
       [&](const request& request, const response& response) {
-        Logger::smf_api_server().error("NSMF_N7 callbak -> Enter");
-        
         request.on_data([&](const uint8_t* data, std::size_t len) {
           // Get the smf_ref from the path parameter as per NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK
+          Logger::smf_api_server().debug("Received a N7 callback from PCF.");
           std::vector<std::string> split_result;
           boost::split(
               split_result, request.uri().path, boost::is_any_of("/"));
-          if (split_result.size() != 6) {
-            Logger::smf_api_server().warn("Requested URL is not implemented");
-            response.write_head(http_status_code::NOT_IMPLEMENTED);
-            response.end();
-            return;
-          }
           std::string smf_ref = split_result[split_result.size() - 2];
           std::string method  = split_result[split_result.size() - 1];
           Logger::smf_api_server().info(
@@ -412,22 +405,23 @@ void smf_http2_server::start() {
               method.c_str());
           try {
             if (request.method().compare("GET") == 0) {
-              // TODO: Get association
+              // TODO [PUN]: Get association
               Logger::smf_api_server().error("NSMF_N7 callbak -> GET");
             }
             if (request.method().compare("PUT") == 0 && len > 0) {
-              // TODO: Update association
+              // TODO [PUN]: Update association
               Logger::smf_api_server().error("NSMF_N7 callbak -> PUT");
             }
             if (request.method().compare("POST") == 0 && len > 0) {
-              // TODO: Create association
               std::string msg((char*) data, len);
+              Logger::smf_api_server().debug(
+                  "POST method. Message content \n %s",
+                  msg.c_str());
               oai::model::pcf::SmPolicyNotification policyNotification = {};
               auto policy_notification_data =
                   nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
               this->update_policy_notification_handler(
                   smf_ref, policy_notification_data, response);
-              Logger::smf_api_server().error("NSMF_N7 callbak -> POST");
             }
           } catch (nlohmann::detail::exception& e) {
             Logger::smf_sbi().warn(
@@ -435,11 +429,13 @@ void smf_http2_server::start() {
             response.write_head(http_status_code::BAD_REQUEST);
             response.end();
             return;
+          } catch (std::exception& e) {
+            Logger::smf_api_server().warn("Error: %s!", e.what());
+            response.write_head(http_status_code::INTERNAL_SERVER_ERROR);
+            response.end();
+            return;
           }
 
-          Logger::smf_api_server().error("NSMF_N7 callbak -> Default");
-          response.write_head(http_status_code::OK);
-          response.end();
         });
       });
 
@@ -1003,8 +999,6 @@ void smf_http2_server::update_policy_notification_handler(
 
   // Convert from SmPolicyNotification to internal message format
   smf::pdu_session_sm_policy_notificatiion policy_notification = {};
-  
-  // TODO: Implement conversion from OpenAPI type to internal type
   xgpp_conv::policy_notification_from_openapi(smPolicyNotification, policy_notification);
 
   // Handle the message in smf_app
@@ -1022,14 +1016,12 @@ void smf_http2_server::update_policy_notification_handler(
   std::shared_ptr<itti_n7_update_policy_notification_request> itti_msg =
       std::make_shared<itti_n7_update_policy_notification_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
-  // TODO: add request data
   itti_msg->req = policy_notification;
   itti_msg->http_version = 2;
 
   m_smf_app->handle_n7_update_policy_notification(itti_msg);
 
 
- // TODO: verify if the message is correctly handled
  boost::future_status status;
  // wait for timeout or ready
  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
