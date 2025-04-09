@@ -54,6 +54,15 @@ DH_Account = "oaisoftwarealliance"
 // Private Local Registry URL
 PrivateRegistryURL = 'selfix.sboai.cs.eurecom.fr'
 
+// Openshift project name
+Namespace = 'oaicicd-core'
+
+// Openshift server URL
+server = 'https://api.oai.cs.eurecom.fr:6443'
+
+// Docker build options
+dockerBuildOptions = '--no-cache '
+
 //-------------------------------------------------------------------------------
 // Pipeline start
 pipeline {
@@ -224,8 +233,9 @@ pipeline {
                   withCredentials([
                     [$class: 'UsernamePasswordMultiBinding', credentialsId: "${rhelOcCredentials}", usernameVariable: 'OC_Username', passwordVariable: 'OC_Password']
                   ]) {
-                    sh "oc login -u ${OC_Username} -p ${OC_Password}"
+                    sh "oc login -u ${OC_Username} -p ${OC_Password} --server=${server}"
                   }
+                  sh "oc project ${Namespace}"
                   sh "oc delete istag oai-smf:${smf_tag} || true"
                   // Copy the RHEL Host certificates for building
                   sh "./ci-scripts/common/python/recreate_entitlement.py"
@@ -237,7 +247,7 @@ pipeline {
                   // need python to wait for pod smf-build-cfg-1-build to be Completed or Error
                   // it fails if it detects error or timeout at 20 minutes
                   sh "./ci-scripts/common/python/check_build_pod_status.py --pod-name smf-build-cfg-1-build --log-file archives/smf_rhel_image_build.log"
-                  sh "oc describe istag oai-smf:${smf_tag} | grep 'Image Size:' >> archives/smf_rhel_image_build.log"
+                  sh "oc describe istag oai-smf:${smf_tag} -n ${Namespace} | grep 'Image Size:' >> archives/smf_rhel_image_build.log"
                 }
               }
             }
@@ -251,7 +261,7 @@ pipeline {
             }
             cleanup {
               script {
-                sh "oc delete build smf-build-cfg-1 || true"
+                sh "oc delete bc smf-build-cfg -n ${Namespace} || true"
                 sh "oc logout || true"
                 stash allowEmpty: true, includes: 'archives/smf_rhel_image_build.log', name: 'rhelBuildLog'
               }
@@ -489,6 +499,36 @@ pipeline {
             }
           }
         }
+        // Home-made RAN emulator
+        stage ('Robot-NorthBound-Test') {
+          steps {
+            script {
+              gitlabCommitStatus(name: "Robot-NorthBound-Test") {
+                localStatus = build job: 'OAI-CN5G-RobotTest-NorthBound-Testing',
+                  parameters: [
+                    string(name: 'SMF_TAG', value: String.valueOf(smf_tag)),
+                    string(name: 'SMF_BRANCH', value: String.valueOf(smf_branch))
+                  ], propagate: false
+                localResult = localStatus.getResult()
+
+                if (localStatus.resultIsBetterOrEqualTo('SUCCESS')) {
+                  echo "Robot-NorthBound-Test is OK"
+                } else {
+                  error "Robot-NorthBound-Test is is KO"
+                }
+              }
+            }
+          }
+          post {
+            always {
+              script {
+                copyArtifacts(projectName: 'OAI-CN5G-RobotTest-NorthBound-Testing',
+                              filter: '*.html',
+                              selector: lastCompleted())
+              }
+            }
+          }
+        }
       }
     }
     // We are only publishing the Ubuntu image to Docker-Hub
@@ -540,12 +580,6 @@ pipeline {
     }
     cleanup {
       script {
-        // Zipping all archived log files
-        sh "zip -r -qq docker_logs.zip archives"
-        if (fileExists('docker_logs.zip')) {
-          archiveArtifacts artifacts: 'docker_logs.zip'
-        }
-
         // Generating the HTML report(s)
         if ("MERGE".equals(env.gitlabActionType)) {
           sh "./ci-scripts/generateHtmlReport.py --job-name ${JOB_NAME} --build-id ${BUILD_ID} --build-url ${BUILD_URL} --git-url ${GIT_URL} --git-src-branch ${env.gitlabSourceBranch} --git-src-commit ${env.gitlabMergeRequestLastCommit} --git-merge-request --git-dst-branch ${env.gitlabTargetBranch} --git-dst-commit ${GIT_COMMIT}"
@@ -563,21 +597,10 @@ pipeline {
           archiveArtifacts artifacts: htmlFile
         }
 
-        // Sending email to commiter
-        if (params.sendToCommitterEmail != null) {
-          if (params.sendToCommitterEmail) {
-            emailext attachmentsPattern: '*results*.html',
-              body: '''Hi,
-
-
-Here are attached HTML report files for $PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS!
-
-Regards,
-OAI CI Team''',
-              replyTo: 'no-reply@openairinterface.org',
-              subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS!',
-              to: gitCommittorEmailAddr
-          }
+        // Zipping all archived log files
+        sh "zip -r -qq docker_logs.zip archives"
+        if (fileExists('docker_logs.zip')) {
+          archiveArtifacts artifacts: 'docker_logs.zip'
         }
       }
     }
