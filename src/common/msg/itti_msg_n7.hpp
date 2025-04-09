@@ -19,11 +19,12 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  itti_msg_n7.hpp
- *
- *  Created on:
- *  Author:
+/*! \file itti_msg_n7.hpp
+ \brief
+ \author  Tariro Mukute
+ \company phine.tech, University of Cape Town
+ \date 2025
+ \email: tariro.mukute@phine.tech
  */
 
 #ifndef ITTI_MSG_N7_HPP_INCLUDED_
