@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_http2-server.h
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_HTTP2_SERVER_SEEN
 #define FILE_SMF_HTTP2_SERVER_SEEN
 
@@ -48,7 +40,12 @@ using namespace oai::model::smf;
 class smf_http2_server {
  public:
   smf_http2_server(std::string addr, uint32_t port, smf::smf_app* smf_app_inst)
-      : m_address(addr), m_port(port), server(), m_smf_app(smf_app_inst) {}
+      : m_address(addr),
+        m_port(port),
+        server(),
+        m_smf_app(smf_app_inst),
+        running_server(false) {}
+  virtual ~smf_http2_server() = default;
   void start();
   void init(size_t thr) {}
   void create_sm_contexts_handler(

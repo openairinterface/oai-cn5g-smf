@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_qos_upf_edge.hpp
- \brief
- \author  Stefan Spettel
- \company phine.tech
- \date    2024
- \email:  stefan.spettel@phine.tech
- */
-
 #pragma once
 
 #include "3gpp_29.244.h"

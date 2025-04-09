@@ -280,7 +280,7 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/pfcp ${CMAKE_CURRENT_BINA
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/udp ${CMAKE_CURRENT_BINARY_DIR}/udp)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/api-server ${CMAKE_CURRENT_BINARY_DIR}/api-server)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/nas ${CMAKE_CURRENT_BINARY_DIR}/nas)
-
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/ngap ${CMAKE_CURRENT_BINARY_DIR}/ngap)
 #ENABLE_TESTING()
 #ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/test ${CMAKE_CURRENT_BINARY_DIR}/test)
 
@@ -301,18 +301,14 @@ include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/api-server)
 include_directories(${SRC_TOP_DIR}/api-server/api)
 include_directories(${SRC_TOP_DIR}/api-server/impl)
-include_directories(${SRC_TOP_DIR}/nas)
-include_directories(${SRC_TOP_DIR}/nas/ies)
-include_directories(${SRC_TOP_DIR}/nas/mm)
-include_directories(${SRC_TOP_DIR}/nas/mm/msg)
-include_directories(${SRC_TOP_DIR}/nas/sm)
-include_directories(${SRC_TOP_DIR}/nas/sm/msg)
-include_directories(${SRC_TOP_DIR}/nas/security)
-include_directories(${SRC_TOP_DIR}/ngap)
-include_directories(${SRC_TOP_DIR}/ngap/asn1c)
-include_directories(${SRC_TOP_DIR}/ngap/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/pfcp)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
@@ -339,7 +335,7 @@ IF(STATIC_LINKING)
 ENDIF(STATIC_LINKING)   
 
 target_link_libraries (smf ${ASAN} 
-    -Wl,--start-group CN_UTILS SMF UDP PFCP SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp cpr::cpr)
+    -Wl,--start-group CN_UTILS SMF UDP PFCP SMF_API -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NGAP NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp cpr::cpr)
 
 add_boolean_option(USE_LTTNG  False "Activate the LTTNG tracer, a debugging/monitoring framework" ON)
 if (USE_LTTNG)

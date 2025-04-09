@@ -19,71 +19,42 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n2.cpp
- \brief
- \author  Tien-Thinh NGUYEN, Keliang DU
- \company Eurecom
- \date 2019
- \email:  tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_n2.hpp"
 
-#include <arpa/inet.h>
-#include <stdexcept>
 #include <Ngap_GBR-QosInformation.h>
-#include "string.hpp"
+#include <arpa/inet.h>
 
-#include "smf.h"
+#include <stdexcept>
+
+#include "3gpp_commons.h"
+#include "Helpers.h"
+#include "PduSessionResourceSetupRequestTransfer.hpp"
+#include "PduSessionType.hpp"
 #include "PreemptionCapability_anyOf.h"
 #include "PreemptionVulnerability_anyOf.h"
-#include "Helpers.h"
+#include "common_defs.h"
 #include "conversions.h"
-
-extern "C" {
-#include "Ngap_AssociatedQosFlowItem.h"
-#include "Ngap_Criticality.h"
-#include "Ngap_Dynamic5QIDescriptor.h"
-#include "Ngap_GTPTunnel.h"
-#include "Ngap_NGAP-PDU.h"
-#include "Ngap_NonDynamic5QIDescriptor.h"
-#include "Ngap_PDUSessionResourceModifyRequestTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseCommandTransfer.h"
-#include "Ngap_PDUSessionResourceReleaseResponseTransfer.h"
-#include "Ngap_PDUSessionResourceSetupRequestTransfer.h"
-#include "Ngap_PDUSessionResourceSetupResponseTransfer.h"
-#include "Ngap_ProcedureCode.h"
-#include "Ngap_ProtocolIE-Field.h"
-#include "Ngap_QosFlowAddOrModifyRequestItem.h"
-#include "Ngap_QosFlowAddOrModifyResponseItem.h"
-#include "Ngap_QosFlowAddOrModifyResponseList.h"
-#include "Ngap_QosFlowSetupRequestItem.h"
-#include "Ngap_UL-NGU-UP-TNLModifyItem.h"
-#include "Ngap_PathSwitchRequestAcknowledgeTransfer.h"
-#include "Ngap_HandoverCommandTransfer.h"
-#include "Ngap_HandoverPreparationUnsuccessfulTransfer.h"
-#include "dynamic_memory_check.h"
-}
+#include "output_wrapper.hpp"
+#include "smf.h"
+#include "string.hpp"
+#include "utils.hpp"
 
 using namespace smf;
 using namespace oai::model::common;
+using namespace oai::ngap;
 extern smf_app* smf_app_inst;
 
 //------------------------------------------------------------------------------
 bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
-    pdu_session_create_sm_context_response& sm_context_res,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+    const std::shared_ptr<pdu_session_sm_context_response>& sm_context_res,
+    const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+    n2_sm_info_type_e ngap_info_type,
+    PduSessionResourceSetupRequestTransfer&
+        pdu_session_resource_setup_request_transfer) {
   Logger::smf_n2().info(
       "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
 
-  bool result                                             = false;
-  Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
-  ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
-
-  // get QoS flows
-  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
-  sm_context_res.get_all_qos_flow_context_created(qos_flows);
+  bool result = false;
 
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
@@ -104,151 +75,84 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
       // error
       Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      free_wrapper((void**) &ngap_IEs);
       return false;
     }
   }
 
   // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
-  asn_set_empty(&ngap_IEs->protocolIEs.list);
-
-  // SessionAMBR
-  supi_t supi                     = sm_context_res.get_supi();
+  PduSessionAggregateMaximumBitRate pdu_session_aggregate_maximum_bit_rate = {};
+  supi_t supi                     = sm_context_res->get_supi();
   supi64_t supi64                 = smf_supi_to_u64(supi);
   std::shared_ptr<smf_context> sc = {};
   if (smf_app_inst->is_supi_2_smf_context(supi64)) {
     Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
+    oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+        session_ambr, sm_context_res->get_snssai(), sm_context_res->get_dnn());
+    uint64_t bit_rate_dl = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForDownlink(),
+        session_ambr.GetUnitForDownlink());
+    uint64_t bit_rate_ul = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForUplink(),
+        session_ambr.GetUnitForUplink());
+    pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
+
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
     return false;
   }
+  pdu_session_resource_setup_request_transfer
+      .setPduSessionAggregateMaximumBitRate(
+          pdu_session_aggregate_maximum_bit_rate);
 
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
-
-  // UPTransportLayerInformation
+  // UL NG-U UP TNL Information (UP Transport Layer Information)
+  // TODO: only first flow is considered for now
   pfcp::fteid_t ul_fteid = {};
-  // STEFAN: is a tunnel, you have one tunnel per pdusession (--> to be set only
-  // once)
-  ul_fteid.v4           = qos_flows.begin()->second.ul_fteid.v4;
-  ul_fteid.teid         = htonl(qos_flows.begin()->second.ul_fteid.teid);
-  ul_fteid.ipv4_address = qos_flows.begin()->second.ul_fteid.ipv4_address;
+  ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
+  ul_fteid.teid          = qos_flows.begin()->second.ul_fteid.teid;
+  ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      upTransportLayerInformation = nullptr;
-  upTransportLayerInformation =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  upTransportLayerInformation->id =
-      Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLInformation;
-  upTransportLayerInformation->criticality = Ngap_Criticality_reject;
-  upTransportLayerInformation->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_UPTransportLayerInformation;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation
-      .present = Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+  UpTransportLayerInformation ul_ng_u_up_tnl_information = {};
+  TransportLayerAddress transport_layer_address          = {};
+  GtpTeid gtp_teid                                       = {};
+  transport_layer_address.setIpv4Address(ul_fteid.ipv4_address);
+  gtp_teid.set(ul_fteid.teid);
+  ul_ng_u_up_tnl_information.set(transport_layer_address, gtp_teid);
+  pdu_session_resource_setup_request_transfer.setUlNgUUpTnlInformation(
+      ul_ng_u_up_tnl_information);
 
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel = (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.size = sizeof(struct in_addr);
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.bits_unused = 0;
-
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.buf =
-      (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, upTransportLayerInformation);
-
+  // TODO: Additional UL NG-U UP TNL Information
   // TODO: DataForwardingNotPossible
 
   // PDUSessionType
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* pduSessionType = nullptr;
-  pduSessionType = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionType->id          = Ngap_ProtocolIE_ID_id_PDUSessionType;
-  pduSessionType->criticality = Ngap_Criticality_reject;
-  pduSessionType->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
-  pduSessionType->value.choice.PDUSessionType =
-      sm_context_res.get_pdu_session_type() -
+  uint8_t pdu_session_type =
+      sm_context_res->get_pdu_session_type() -
       1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
+  // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
+  // TS 24.501)
+
+  pdu_session_resource_setup_request_transfer.setPduSessionType(
+      static_cast<e_Ngap_PDUSessionType>(pdu_session_type));
+
   Logger::smf_n2().debug(
-      "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
+      "PDU Session Type: %d ", sm_context_res->get_pdu_session_type());
 
-  // SecurityIndication
-  // TODO: should get from UDM
-  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
-  //    nullptr;
-  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
-  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
-  //   = Ngap_IntegrityProtectionIndication_not_needed;
-  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
-  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
+  // TODO: Security Indication
+  // TODO: Network Instance
 
-  // TODO: NetworkInstance
+  // QoS Flow Setup Request List
+  QosFlowSetupRequestList qos_flow_setup_request_list;
+  std::vector<QosFlowSetupRequestItem> qos_flow_setup_request_list_vector;
+  QosFlowSetupRequestItem qos_flow_setup_request_item;
 
-  // QosFlowSetupRequestList
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
-      nullptr;
-  qosFlowSetupRequestList =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          qos_flows.size(),
-          sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  qosFlowSetupRequestList->id = Ngap_ProtocolIE_ID_id_QosFlowSetupRequestList;
-  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowSetupRequestList->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
-
-  asn_set_empty(
-      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
-
-  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
-  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-      qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
   int i = 0;
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
 
-    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
-
-    ASN_SEQUENCE_ADD(
-        &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
-        &ngap_QosFlowSetupRequestItem[i]);
+    qos_flow_setup_request_item = get_qos_flow_setup_request_item(qos_flow);
+    qos_flow_setup_request_list_vector.push_back(qos_flow_setup_request_item);
 
     Logger::smf_n2().info(
         "QoS parameters: QFI %d, ARP priority level %d, "
@@ -261,15 +165,51 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     i++;
   }
 
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
+  qos_flow_setup_request_list.set(qos_flow_setup_request_list_vector);
+  pdu_session_resource_setup_request_transfer.setQosFlowSetupRequestList(
+      qos_flow_setup_request_list);
 
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
+  return true;
+}
 
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceSetupRequestTransfer, nullptr, ngap_IEs,
-      (void**) &buffer);
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
+    pdu_session_create_sm_context_response& sm_context_res,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+  Logger::smf_n2().info(
+      "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
+
+  bool result = false;
+  PduSessionResourceSetupRequestTransfer
+      pdu_session_resource_setup_request_transfer = {};
+
+  // get QoS flows
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  sm_context_res.get_all_qos_flow_context_created(qos_flows);
+
+  std::shared_ptr<pdu_session_create_sm_context_response> sm_context_response =
+      std::make_shared<pdu_session_create_sm_context_response>(sm_context_res);
+  if (!create_n2_pdu_session_resource_setup_request_transfer(
+          sm_context_response, qos_flows, ngap_info_type,
+          pdu_session_resource_setup_request_transfer)) {
+    Logger::smf_n2().warn(
+        "Couldn't fill NGAP PDU Session Resource Setup Request Transfer "
+        "contents");
+    return false;
+  }
+
+  // Encode
+  // TODO: get actual message length
+  auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
+  if (buffer == nullptr) {
+    Logger::smf_n2().error("Error when allocating buffer!");
+    return false;
+  }
+
+  int encoded_size = 0;
+  pdu_session_resource_setup_request_transfer.encode2NewBuffer(
+      buffer, encoded_size);
+
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
         "NGAP PDU Session Resource Setup Request Transfer encode failed "
@@ -277,31 +217,13 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      printf(" (%d bytes)\n", (int) encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
-  // free memory
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel
-                   ->transportLayerAddress.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel);
-  free_wrapper((void**) &upTransportLayerInformation);
-  free_wrapper((void**) &pduSessionType);
-  free_wrapper((void**) &qosFlowSetupRequestList);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -313,10 +235,10 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
   Logger::smf_n2().info(
       "Create N2 SM Information, PDU Session Resource Setup Request Transfer");
 
-  bool result                                             = false;
-  Ngap_PDUSessionResourceSetupRequestTransfer_t* ngap_IEs = nullptr;
-  ngap_IEs = (Ngap_PDUSessionResourceSetupRequestTransfer_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransfer_t));
+  bool result = false;
+
+  PduSessionResourceSetupRequestTransfer
+      pdu_session_resource_setup_request_transfer = {};
 
   // get QoS flows
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
@@ -328,9 +250,61 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &ngap_IEs);
     return false;
   }
+
+  std::shared_ptr<pdu_session_update_sm_context_response> sm_context_response =
+      std::make_shared<pdu_session_update_sm_context_response>(sm_context_res);
+  if (!create_n2_pdu_session_resource_setup_request_transfer(
+          sm_context_response, qos_flows, ngap_info_type,
+          pdu_session_resource_setup_request_transfer)) {
+    Logger::smf_n2().warn(
+        "Couldn't fill NGAP PDU Session Resource Setup Request Transfer "
+        "contents");
+    return false;
+  }
+
+  // Encode
+  // TODO: get actual message length
+  auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
+  if (buffer == nullptr) {
+    Logger::smf_n2().error("Error when allocating buffer!");
+    return false;
+  }
+
+  int encoded_size = 0;
+  pdu_session_resource_setup_request_transfer.encode2NewBuffer(
+      buffer, encoded_size);
+
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Resource Setup Request Transfer encode failed "
+        "(encode size %d)",
+        encoded_size);
+    result = false;
+  } else {
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
+
+    std::string ngap_message((char*) buffer, encoded_size);
+    ngap_msg_str = ngap_message;
+    result       = true;
+  }
+
+  return result;
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
+    const std::shared_ptr<pdu_session_sm_context_response>& sm_context_res,
+    const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+    n2_sm_info_type_e ngap_info_type,
+    PduSessionResourceModifyRequestTransfer&
+        pdu_session_resource_modify_request_transfer) {
+  Logger::smf_n2().info(
+      "Create N2 SM Information, PDU Session Resource Modify Request Transfer");
+
+  bool result = false;
 
   for (const auto& qos_flow_pair : qos_flows) {
     auto qos_flow = qos_flow_pair.second;
@@ -340,8 +314,10 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         qos_flow.ul_fteid.teid,
         oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
     Logger::smf_n2().info(
-        "QoS parameters: QFI %d, Priority level %d, ARP priority level %d",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
+        "QoS parameters: QFI %d, 5QI: %d, Priority level %d, ARP priority "
+        "level %d",
+        qos_flow.qfi.qfi, qos_flow.qos_profile.getR5qi(),
+        qos_flow.qos_profile.getPriorityLevel(),
         qos_flow.qos_profile.getArp().getPriorityLevel());
 
     // check the QoS Flow
@@ -349,205 +325,105 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
       // error
       Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      free_wrapper((void**) &ngap_IEs);
       return false;
     }
   }
 
   // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
-  asn_set_empty(&ngap_IEs->protocolIEs.list);
-
-  // SessionAMBR
-  supi_t supi                     = sm_context_res.get_supi();
+  PduSessionAggregateMaximumBitRate pdu_session_aggregate_maximum_bit_rate = {};
+  supi_t supi                     = sm_context_res->get_supi();
   supi64_t supi64                 = smf_supi_to_u64(supi);
   std::shared_ptr<smf_context> sc = {};
   if (smf_app_inst->is_supi_2_smf_context(supi64)) {
     Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = smf_app_inst->supi_2_smf_context(supi64);
+    oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
+        session_ambr, sm_context_res->get_snssai(), sm_context_res->get_dnn());
+    uint64_t bit_rate_dl = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForDownlink(),
+        session_ambr.GetUnitForDownlink());
+    uint64_t bit_rate_ul = session_handler::parse_nas_value_unit_to_bps(
+        session_ambr.GetSessionAmbrForUplink(),
+        session_ambr.GetUnitForUplink());
+    pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
   } else {
     Logger::smf_n2().warn(
         "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
     return false;
   }
+  pdu_session_resource_modify_request_transfer
+      .setPduSessionAggregateMaximumBitRate(
+          pdu_session_aggregate_maximum_bit_rate);
 
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
-
-  // UPTransportLayerInformation
+  // UL NG-U UP TNL Modify List
+  // Ngap_UL_NGU_UP_TNLModifyList_t (included if the PDU Session modification
+  // was requested by the UE for a  PDU Session that has no established User
+  // Plane resources)
+  // TODO: only first flow is considered for now
   pfcp::fteid_t ul_fteid = {};
   ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
-  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
+  ul_fteid.teid          = qos_flows.begin()->second.ul_fteid.teid;
   ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
 
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t*
-      upTransportLayerInformation = nullptr;
-  upTransportLayerInformation =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  upTransportLayerInformation->id =
-      Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLInformation;
-  upTransportLayerInformation->criticality = Ngap_Criticality_reject;
-  upTransportLayerInformation->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_UPTransportLayerInformation;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation
-      .present = Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+  pfcp::fteid_t dl_fteid = {};
+  dl_fteid.v4            = qos_flows.begin()->second.dl_fteid.v4;
+  dl_fteid.teid          = qos_flows.begin()->second.dl_fteid.teid;
+  dl_fteid.ipv4_address  = qos_flows.begin()->second.dl_fteid.ipv4_address;
 
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel = (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.size = sizeof(struct in_addr);
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->transportLayerAddress.bits_unused = 0;
+  UlNgUUpTnlModifyList ul_ng_u_up_tnl_modify_list = {};
+  std::vector<UlNgUUpTnlModifyItem> ul_ngu_up_tnl_modify_item_list;
+  UlNgUUpTnlModifyItem ul_ngu_up_tnl_modify_item = {};
 
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  upTransportLayerInformation->value.choice.UPTransportLayerInformation.choice
-      .gTPTunnel->gTP_TEID.buf =
-      (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      upTransportLayerInformation->value.choice.UPTransportLayerInformation
-          .choice.gTPTunnel->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
+  UpTransportLayerInformation ul_ng_u_up_tnl_information_ul = {};
+  TransportLayerAddress transport_layer_address_ul          = {};
+  GtpTeid gtp_teid_ul                                       = {};
+  transport_layer_address_ul.setIpv4Address(ul_fteid.ipv4_address);
+  gtp_teid_ul.set(ul_fteid.teid);
+  ul_ng_u_up_tnl_information_ul.set(transport_layer_address_ul, gtp_teid_ul);
 
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, upTransportLayerInformation);
+  UpTransportLayerInformation ul_ng_u_up_tnl_information_dl = {};
+  TransportLayerAddress transport_layer_address_dl          = {};
+  GtpTeid gtp_teid_dl                                       = {};
+  transport_layer_address_dl.setIpv4Address(dl_fteid.ipv4_address);
+  gtp_teid_dl.set(dl_fteid.teid);
+  ul_ng_u_up_tnl_information_dl.set(transport_layer_address_dl, gtp_teid_dl);
 
-  // TODO: DataForwardingNotPossible
+  ul_ngu_up_tnl_modify_item.set(
+      ul_ng_u_up_tnl_information_ul, ul_ng_u_up_tnl_information_dl);
+  ul_ngu_up_tnl_modify_item_list.push_back(ul_ngu_up_tnl_modify_item);
+  ul_ng_u_up_tnl_modify_list.set(ul_ngu_up_tnl_modify_item_list);
 
-  // PDUSessionType
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* pduSessionType = nullptr;
-  pduSessionType = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  pduSessionType->id          = Ngap_ProtocolIE_ID_id_PDUSessionType;
-  pduSessionType->criticality = Ngap_Criticality_reject;
-  pduSessionType->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_PDUSessionType;
-  pduSessionType->value.choice.PDUSessionType =
-      sm_context_res.get_pdu_session_type() -
-      1;  // TODO: dirty code, difference between Ngap_PDUSessionType_ipv4 vs
-          // pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 (TS 38.413 vs
-          // TS 24.501)
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, pduSessionType);
-  Logger::smf_n2().debug(
-      "PDU Session Type: %d ", sm_context_res.get_pdu_session_type());
+  pdu_session_resource_modify_request_transfer.setUlNgUUpTnlModifyList(
+      ul_ng_u_up_tnl_modify_list);
 
-  // SecurityIndication
-  // TODO: should get from UDM
-  //    Ngap_PDUSessionResourceSetupRequestTransferIEs_t  *securityIndication =
-  //    nullptr;
-  //   securityIndication = (Ngap_PDUSessionResourceSetupRequestTransferIEs_t *)
-  //   calloc(1, sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  //   securityIndication->value.choice.SecurityIndication.integrityProtectionIndication
-  //   = Ngap_IntegrityProtectionIndication_not_needed;
-  //   securityIndication->value.choice.SecurityIndication.confidentialityProtectionIndication
-  //   = Ngap_ConfidentialityProtectionIndication_not_needed;
+  // TODO: Network Instance (Optional)
 
-  // TODO: NetworkInstance
-
-  // QosFlowSetupRequestList
-  Ngap_PDUSessionResourceSetupRequestTransferIEs_t* qosFlowSetupRequestList =
-      nullptr;
-  qosFlowSetupRequestList =
-      (Ngap_PDUSessionResourceSetupRequestTransferIEs_t*) calloc(
-          qos_flows.size(),
-          sizeof(Ngap_PDUSessionResourceSetupRequestTransferIEs_t));
-  qosFlowSetupRequestList->id = Ngap_ProtocolIE_ID_id_QosFlowSetupRequestList;
-  qosFlowSetupRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowSetupRequestList->value.present =
-      Ngap_PDUSessionResourceSetupRequestTransferIEs__value_PR_QosFlowSetupRequestList;
-
-  asn_set_empty(
-      &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list);
-
-  Ngap_QosFlowSetupRequestItem_t* ngap_QosFlowSetupRequestItem = nullptr;
-  ngap_QosFlowSetupRequestItem = (Ngap_QosFlowSetupRequestItem_t*) calloc(
-      qos_flows.size(), sizeof(Ngap_QosFlowSetupRequestItem_t));
-  int i = 0;
+  // QoS Flow Add or Modify Request List
+  QosFlowAddOrModifyRequestList qos_flow_list = {};
+  QosFlowAddOrModifyRequestItem qos_flow_item = {};
   for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
-
-    ngap_QosFlowSetupRequestItem[i] = get_QoSFlowSetupRequestItem(qos_flow);
-
-    ASN_SEQUENCE_ADD(
-        &qosFlowSetupRequestList->value.choice.QosFlowSetupRequestList.list,
-        &ngap_QosFlowSetupRequestItem[i]);
-    Logger::smf_n2().info(
-        "QoS parameters: QFI %d, ARP priority level %d, "
-        "qos_flow.qos_profile.arp.preempt_cap %d, "
-        "qos_flow.qos_profile.arp.preempt_vuln %d",
-        qos_flow.qfi.qfi, qos_flow.qos_profile.getPriorityLevel(),
-        qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
-    i++;
+    auto qos_flow                         = qos_flow_pair.second;
+    QosFlowIdentifier qos_flow_identifier = {};
+    qos_flow_identifier.set(qos_flow.qfi.qfi);
+    QosFlowLevelQosParameters qos_parameters =
+        get_qos_flow_level_qos_parameters(qos_flow);
+    qos_flow_item.setQosFlowIdentifier(qos_flow_identifier);
+    qos_flow_item.setQosFlowLevelQosParameters(qos_parameters);
+    qos_flow_list.addItem(qos_flow_item);
   }
+  pdu_session_resource_modify_request_transfer.setQosFlowAddOrModifyRequestList(
+      qos_flow_list);
 
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowSetupRequestList);
+  // TODO: QoS Flow to Release List (Optional)
+  // TODO: Additional UL NG-U UP TNL Information (Optional)
+  // TODO: Common Network Instance (Optional)
+  // TODO: Additional Redundant UL NG-U UP TNL Information (Optional)
+  // TODO: Redundant Common Network Instance (Optional)
+  // TODO: Redundant UL NG-U UP TNL Information (Optional)
+  // TODO: Security Indication (Optional)
 
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceSetupRequestTransfer, nullptr, ngap_IEs,
-      (void**) &buffer);
-  if (encoded_size < 0) {
-    Logger::smf_n2().warn(
-        "NGAP PDU Session Resource Setup Request Transfer encode failed "
-        "(encode size %d)",
-        encoded_size);
-    result = false;
-  } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      printf(" (%d bytes)\n", (int) encoded_size);
-    }
-
-    std::string ngap_message((char*) buffer, encoded_size);
-    ngap_msg_str = ngap_message;
-    result       = true;
-  }
-
-  // free memory
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel
-                   ->transportLayerAddress.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &upTransportLayerInformation->value.choice
-                   .UPTransportLayerInformation.choice.gTPTunnel);
-  free_wrapper((void**) &upTransportLayerInformation);
-  free_wrapper((void**) &pduSessionType);
-  free_wrapper((void**) &qosFlowSetupRequestList);
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem->qosFlowLevelQosParameters
-                   .qosCharacteristics.choice.nonDynamic5QI);
-  free_wrapper((void**) &ngap_QosFlowSetupRequestItem);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
-
-  return result;
+  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -559,345 +435,95 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       "Transfer");
 
   bool result = false;
+
+  PduSessionResourceModifyRequestTransfer
+      pdu_session_resource_modify_request_transfer = {};
+
   // get default QoS info
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   sm_context_res.get_all_qos_flow_context_updateds(qos_flows);
   if (qos_flows.empty()) {
     // Should not be empty, but could be because delete existing qos rule is not
     // supported yet
-    Logger::smf_n2().error("OoS flow context to be updated list is empty");
+    Logger::smf_n2().error("QoS flow context to be updated list is empty");
     return false;
   }
-  for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
-    Logger::smf_n2().debug(
-        "QoS flow context to be updated with QFI %d", qos_flow.qfi.qfi);
 
-    // check the QoS Flow
-    if ((qos_flow.qfi.qfi < QOS_FLOW_IDENTIFIER_FIRST) or
-        (qos_flow.qfi.qfi > QOS_FLOW_IDENTIFIER_LAST)) {
-      // error
-      Logger::smf_n2().error("Incorrect QFI %d", qos_flow.qfi.qfi);
-      return false;
-    }
-
-    Logger::smf_n2().debug(
-        "QoS Flow, UL F-TEID ID "
-        "0x%" PRIx32 ", IP Address %s ",
-        qos_flow.ul_fteid.teid,
-        oai::utils::conv::toString(qos_flow.ul_fteid.ipv4_address).c_str());
-    Logger::smf_n2().debug(
-        "QoS Flow, DL F-TEID ID"
-        "0x%" PRIx32 ", IP Address %s",
-        qos_flow.dl_fteid.teid,
-        oai::utils::conv::toString(qos_flow.dl_fteid.ipv4_address).c_str());
-  }
-
-  Ngap_PDUSessionResourceModifyRequestTransfer_t* ngap_IEs = nullptr;
-  ngap_IEs = (Ngap_PDUSessionResourceModifyRequestTransfer_t*) calloc(
-      1, sizeof(Ngap_PDUSessionResourceModifyRequestTransfer_t));
-
-  // PDUSessionAggregateMaximumBitRate
-  Ngap_PDUSessionResourceModifyRequestTransferIEs_t*
-      pduSessionAggregateMaximumBitRate = nullptr;
-  pduSessionAggregateMaximumBitRate =
-      (Ngap_PDUSessionResourceModifyRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceModifyRequestTransferIEs_t));
-  pduSessionAggregateMaximumBitRate->id =
-      Ngap_ProtocolIE_ID_id_PDUSessionAggregateMaximumBitRate;
-  pduSessionAggregateMaximumBitRate->criticality = Ngap_Criticality_reject;
-  pduSessionAggregateMaximumBitRate->value.present =
-      Ngap_PDUSessionResourceModifyRequestTransferIEs__value_PR_PDUSessionAggregateMaximumBitRate;
-
-  supi_t supi                     = sm_context_res.get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
-  std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
-    sc.get()->get_session_ambr(
-        pduSessionAggregateMaximumBitRate->value.choice
-            .PDUSessionAggregateMaximumBitRate,
-        sm_context_res.get_snssai(), sm_context_res.get_dnn());
-  } else {
+  std::shared_ptr<pdu_session_update_sm_context_response> sm_context_response =
+      std::make_shared<pdu_session_update_sm_context_response>(sm_context_res);
+  if (!create_n2_pdu_session_resource_modify_request_transfer(
+          sm_context_response, qos_flows, ngap_info_type,
+          pdu_session_resource_modify_request_transfer)) {
     Logger::smf_n2().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
-    // TODO:
-  }
-  ASN_SEQUENCE_ADD(
-      &ngap_IEs->protocolIEs.list, pduSessionAggregateMaximumBitRate);
-
-  // Ngap_UL_NGU_UP_TNLModifyList_t (included if the PDU Session modification
-  // was requested by the UE for a  PDU Session that has no established User
-  // Plane resources)
-  pfcp::fteid_t ul_fteid = {};
-  ul_fteid.v4            = qos_flows.begin()->second.ul_fteid.v4;
-  ul_fteid.teid          = htonl(qos_flows.begin()->second.ul_fteid.teid);
-  ul_fteid.ipv4_address  = qos_flows.begin()->second.ul_fteid.ipv4_address;
-
-  pfcp::fteid_t dl_fteid = {};
-  dl_fteid.v4            = qos_flows.begin()->second.dl_fteid.v4;
-  dl_fteid.teid          = htonl(qos_flows.begin()->second.dl_fteid.teid);
-  dl_fteid.ipv4_address  = qos_flows.begin()->second.dl_fteid.ipv4_address;
-
-  Ngap_PDUSessionResourceModifyRequestTransferIEs_t* ul_NGU_UP_TNLModifyList =
-      nullptr;
-  ul_NGU_UP_TNLModifyList =
-      (Ngap_PDUSessionResourceModifyRequestTransferIEs_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceModifyRequestTransferIEs_t));
-  ul_NGU_UP_TNLModifyList->id = Ngap_ProtocolIE_ID_id_UL_NGU_UP_TNLModifyList;
-  ul_NGU_UP_TNLModifyList->criticality = Ngap_Criticality_reject;
-  ul_NGU_UP_TNLModifyList->value.present =
-      Ngap_PDUSessionResourceModifyRequestTransferIEs__value_PR_UL_NGU_UP_TNLModifyList;
-  Ngap_UL_NGU_UP_TNLModifyItem_t* ngap_UL_NGU_UP_TNLModifyItem = nullptr;
-  ngap_UL_NGU_UP_TNLModifyItem = (Ngap_UL_NGU_UP_TNLModifyItem_t*) calloc(
-      1, sizeof(Ngap_UL_NGU_UP_TNLModifyItem_t));
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.present =
-      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel =
-      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-          ->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.size = sizeof(struct in_addr);
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.bits_unused = 0;
-
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->gTP_TEID.buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation.choice.gTPTunnel
-          ->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.present =
-      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel =
-      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-          ->transportLayerAddress.buf,
-      &dl_fteid.ipv4_address, sizeof(struct in_addr));
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.size = sizeof(struct in_addr);
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->transportLayerAddress.bits_unused = 0;
-
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->gTP_TEID.size = TEID_GRE_KEY_LENGTH;
-  ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-      ->gTP_TEID.buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation.choice.gTPTunnel
-          ->gTP_TEID.buf,
-      &dl_fteid.teid, TEID_GRE_KEY_LENGTH);
-  ASN_SEQUENCE_ADD(
-      &ul_NGU_UP_TNLModifyList->value.choice.UL_NGU_UP_TNLModifyList.list,
-      ngap_UL_NGU_UP_TNLModifyItem);
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, ul_NGU_UP_TNLModifyList);
-
-  // TODO: Ngap_NetworkInstance_t
-
-  // Ngap_QosFlowAddOrModifyRequestList_t
-  // TODO: to be completed
-  Ngap_PDUSessionResourceModifyRequestTransferIEs_t*
-      qosFlowAddOrModifyRequestList = nullptr;
-  qosFlowAddOrModifyRequestList =
-      (Ngap_PDUSessionResourceModifyRequestTransferIEs_t*) calloc(
-          qos_flows.size(),
-          sizeof(Ngap_PDUSessionResourceModifyRequestTransferIEs_t));
-
-  qosFlowAddOrModifyRequestList->id =
-      Ngap_ProtocolIE_ID_id_QosFlowAddOrModifyRequestList;
-  qosFlowAddOrModifyRequestList->criticality = Ngap_Criticality_reject;
-  qosFlowAddOrModifyRequestList->value.present =
-      Ngap_PDUSessionResourceModifyRequestTransferIEs__value_PR_QosFlowAddOrModifyRequestList;
-  Ngap_QosFlowAddOrModifyRequestItem* ngap_QosFlowAddOrModifyRequestItem =
-      nullptr;
-  ngap_QosFlowAddOrModifyRequestItem =
-      (Ngap_QosFlowAddOrModifyRequestItem*) calloc(
-          qos_flows.size(), sizeof(Ngap_QosFlowAddOrModifyRequestItem));
-  int i = 0;
-  for (const auto& qos_flow_pair : qos_flows) {
-    auto qos_flow = qos_flow_pair.second;
-
-    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowIdentifier = qos_flow.qfi.qfi;
-
-    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowLevelQosParameters =
-        (struct Ngap_QosFlowLevelQosParameters*) calloc(
-            1, sizeof(struct Ngap_QosFlowLevelQosParameters));
-    auto parameters = get_QoSFlowLevelQosParameters(qos_flow);
-    ngap_QosFlowAddOrModifyRequestItem[i].qosFlowLevelQosParameters =
-        &parameters;
-
-    ASN_SEQUENCE_ADD(
-        &qosFlowAddOrModifyRequestList->value.choice
-             .QosFlowAddOrModifyRequestList.list,
-        &ngap_QosFlowAddOrModifyRequestItem[i]);
-    i++;
+        "Couldn't fill NGAP PDU Session Resource Modify Request Transfer "
+        "contents");
+    return false;
   }
 
-  // Ngap_E_RAB_ID_t *e_RAB_ID;  //optional
-  ASN_SEQUENCE_ADD(&ngap_IEs->protocolIEs.list, qosFlowAddOrModifyRequestList);
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size =
+      pdu_session_resource_modify_request_transfer.encode(buffer, BUF_LEN);
 
-  // TODO: Ngap_QosFlowList_t - QoS to release list??
-  // TODO: Ngap_UPTransportLayerInformation_t
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceModifyRequestTransfer, nullptr, ngap_IEs,
-      (void**) &buffer);
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        "NGAP PDU Session Resource Modify Request Transfer encode failed "
-        "(encoded size %d)",
+        "NGAP PDU Session Resource Setup Modify Transfer encode failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      printf(" (%d bytes)\n", (int) encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
-
-  // free memory
-  free_wrapper((void**) &pduSessionAggregateMaximumBitRate);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->uL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem->dL_NGU_UP_TNLInformation
-                   .choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_UL_NGU_UP_TNLModifyItem);
-  free_wrapper((void**) &ul_NGU_UP_TNLModifyList);
-  free_wrapper(
-      (void**) &ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters
-          ->qosCharacteristics.choice.nonDynamic5QI);
-  free_wrapper(
-      (void**) &ngap_QosFlowAddOrModifyRequestItem->qosFlowLevelQosParameters);
-  free_wrapper((void**) &ngap_QosFlowAddOrModifyRequestItem);
-  free_wrapper((void**) &qosFlowAddOrModifyRequestList);
-  free_wrapper((void**) &ngap_IEs);
-  free_wrapper((void**) &buffer);
 
   return result;
 }
 
 //------------------------------------------------------------------------------
 bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
-    const std::shared_ptr<pdu_session_msg>& msg,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
+    const oai::ngap::Cause& cause, n2_sm_info_type_e ngap_info_type,
+    std::string& ngap_msg_str) {
   Logger::smf_n2().debug(
       "Create N2 SM Information: NGAP PDU Session Resource Release Command "
-      "Transfer IE");
+      "Transfer");
   bool result = false;
-  Ngap_PDUSessionResourceReleaseCommandTransfer_t*
-      ngap_resource_release_command_transfer = nullptr;
-  ngap_resource_release_command_transfer =
-      (Ngap_PDUSessionResourceReleaseCommandTransfer_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceReleaseCommandTransfer_t));
 
-  // TODO: To be completed, here's an example
-  ngap_resource_release_command_transfer->cause.present =
-      Ngap_Cause_PR_radioNetwork;
-  ngap_resource_release_command_transfer->cause.choice.radioNetwork = 1;
+  PduSessionResourceReleaseCommandTransfer
+      pdu_session_resource_release_command_transfer = {};
+  pdu_session_resource_release_command_transfer.setCause(cause);
 
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
+  // Encode
+  // TODO: get actual message length
+  auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
+  if (buffer == nullptr) {
+    Logger::smf_n2().error("Error when allocating buffer!");
+    return false;
+  }
 
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceReleaseCommandTransfer, nullptr,
-      ngap_resource_release_command_transfer, (void**) &buffer);
+  int encoded_size = 0;
+  pdu_session_resource_release_command_transfer.encode2NewBuffer(
+      buffer, encoded_size);
+
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        "NGAP PDU Session Release Command encode failed (encoded size %d)",
+        "NGAP PDU Session Resource Setup Release Command Transfer encode "
+        "failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
 
-  // free memory
-  free_wrapper((void**) &ngap_resource_release_command_transfer);
-  free_wrapper((void**) &buffer);
-  return result;
-}
-
-//------------------------------------------------------------------------------
-bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
-    pdu_session_update_sm_context_response& sm_context_res,
-    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
-  Logger::smf_n2().debug(
-      "Create N2 SM Information: NGAP PDU Session Resource Release Command "
-      "Transfer IE");
-  bool result = false;
-  Ngap_PDUSessionResourceReleaseCommandTransfer_t*
-      ngap_resource_release_command_transfer = nullptr;
-  ngap_resource_release_command_transfer =
-      (Ngap_PDUSessionResourceReleaseCommandTransfer_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceReleaseCommandTransfer_t));
-
-  // TODO: To be completed, here's an example
-  ngap_resource_release_command_transfer->cause.present =
-      Ngap_Cause_PR_radioNetwork;
-  ngap_resource_release_command_transfer->cause.choice.radioNetwork = 1;
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceReleaseCommandTransfer, nullptr,
-      ngap_resource_release_command_transfer, (void**) &buffer);
-  if (encoded_size < 0) {
-    Logger::smf_n2().warn(
-        "NGAP PDU Session Release Command encode failed (encoded size %d)",
-        encoded_size);
-    result = false;
-  } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
-
-    std::string ngap_message((char*) buffer, encoded_size);
-    ngap_msg_str = ngap_message;
-    result       = true;
-  }
-
-  // free memory
-  free_wrapper((void**) &ngap_resource_release_command_transfer);
-  free_wrapper((void**) &buffer);
   return result;
 }
 
@@ -909,6 +535,8 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "Create N2 SM Information: NGAP PDU Session Resource Setup Request "
       "Transfer IE");
   // TODO:
+  Logger::smf_n2().warn("This function has not been implemented!");
+
   return true;
 }
 
@@ -920,6 +548,8 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       "Create N2 SM Information: NGAP PDU Session Resource Modify Request "
       "Transfer IE");
   // TODO:
+  Logger::smf_n2().warn("This function has not been implemented!");
+
   return true;
 }
 
@@ -931,104 +561,10 @@ bool smf_n2::create_n2_pdu_session_resource_modify_response_transfer(
   Logger::smf_n2().debug(
       "Create N2 SM Information: NGAP PDU Session Resource Modify Response "
       "Transfer IE");
-  bool result = false;
+  // TODO:
+  Logger::smf_n2().warn("This function has not been implemented!");
 
-  Ngap_PDUSessionResourceModifyResponseTransfer_t*
-      ngap_resource_response_transfer = nullptr;
-  ngap_resource_response_transfer =
-      (Ngap_PDUSessionResourceModifyResponseTransfer_t*) calloc(
-          1, sizeof(Ngap_PDUSessionResourceModifyResponseTransfer_t));
-
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation =
-      (Ngap_UPTransportLayerInformation*) calloc(
-          1, sizeof(Ngap_UPTransportLayerInformation));
-
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->present =
-      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel =
-      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
-
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.size = 4;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf[0] = 0xc0;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf[1] = 0xa8;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf[2] = 0xf8;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf[3] = 0x9f;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.bits_unused = 0;
-
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.size = 4;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.buf = (uint8_t*) calloc(4, sizeof(uint8_t));
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.buf[0] = 0x00;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.buf[1] = 0x00;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.buf[2] = 0x00;
-  ngap_resource_response_transfer->dL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->gTP_TEID.buf[3] = 0x01;
-
-  ngap_resource_response_transfer->qosFlowAddOrModifyResponseList =
-      (Ngap_QosFlowAddOrModifyResponseList_t*) calloc(
-          1, sizeof(Ngap_QosFlowAddOrModifyResponseList_t));
-  Ngap_QosFlowAddOrModifyResponseItem* qosFlowAddOrModifyResponseItem = nullptr;
-  qosFlowAddOrModifyResponseItem =
-      (Ngap_QosFlowAddOrModifyResponseItem*) calloc(
-          1, sizeof(Ngap_QosFlowAddOrModifyResponseItem));
-  qosFlowAddOrModifyResponseItem->qosFlowIdentifier = 60;
-
-  ASN_SEQUENCE_ADD(
-      &ngap_resource_response_transfer->qosFlowAddOrModifyResponseList->list,
-      qosFlowAddOrModifyResponseItem);
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PDUSessionResourceModifyResponseTransfer, nullptr,
-      ngap_resource_response_transfer, (void**) &buffer);
-  if (encoded_size < 0) {
-    Logger::smf_n2().warn(
-        " NGAP PDU Session Resource Modify Response Transfer encode failed "
-        "(encoded size %d)",
-        encoded_size);
-    result = false;
-  } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
-
-    std::string ngap_message((char*) buffer, encoded_size);
-    ngap_msg_str = ngap_message;
-    result       = true;
-  }
-
-  // free memory
-  free_wrapper(
-      (void**) &ngap_resource_response_transfer->dL_NGU_UP_TNLInformation
-          ->choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->dL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->dL_NGU_UP_TNLInformation->choice.gTPTunnel);
-  free_wrapper((void**) &qosFlowAddOrModifyResponseItem);
-  free_wrapper((void**) &ngap_resource_response_transfer
-                   ->qosFlowAddOrModifyResponseList);
-  free_wrapper((void**) &ngap_resource_response_transfer);
-  free_wrapper((void**) &buffer);
-
-  return result;
+  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -1040,9 +576,7 @@ bool smf_n2::create_n2_path_switch_request_ack(
       "Create N2 SM Information: Path Switch Request Acknowledge Transfer IE");
   bool result = false;
 
-  Ngap_PathSwitchRequestAcknowledgeTransfer_t* path_switch_req_ack = nullptr;
-  path_switch_req_ack = (Ngap_PathSwitchRequestAcknowledgeTransfer_t*) calloc(
-      1, sizeof(Ngap_PathSwitchRequestAcknowledgeTransfer_t));
+  PathSwitchRequestAcknowledgeTransfer path_switch_req_ack = {};
 
   // TODO:
   pfcp::fteid_t ul_fteid            = {};
@@ -1057,78 +591,44 @@ bool smf_n2::create_n2_path_switch_request_ack(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &path_switch_req_ack);
     return false;
   }
 
+  // TODO: only first flow is considered for now
   ul_fteid = qos_flows.begin()->second.ul_fteid;
 
-  path_switch_req_ack->uL_NGU_UP_TNLInformation =
-      (Ngap_UPTransportLayerInformation*) calloc(
-          1, sizeof(Ngap_UPTransportLayerInformation));
+  UpTransportLayerInformation ul_ng_u_up_tnl_information = {};
+  TransportLayerAddress transport_layer_address          = {};
+  GtpTeid gtp_teid                                       = {};
+  transport_layer_address.setIpv4Address(ul_fteid.ipv4_address);
+  gtp_teid.set(ul_fteid.teid);
+  ul_ng_u_up_tnl_information.set(transport_layer_address, gtp_teid);
+  path_switch_req_ack.setUlNgUUpTnlInformation(ul_ng_u_up_tnl_information);
 
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->present =
-      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+  // TODO: Security Indication
+  // TODO: Additional NG-U UP TNL Information
+  // TODO: Redundant UL NG-U UP TNL Information
+  // TODO: Additional Redundant NG-U UP TNL Information
+  // TODO: QoS Flow Parameters List
 
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel =
-      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size = path_switch_req_ack.encode(buffer, BUF_LEN);
 
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.size = sizeof(struct in_addr);
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
-          ->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.bits_unused = 0;
-
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
-      .size = TEID_GRE_KEY_LENGTH;
-  path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
-      .buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      path_switch_req_ack->uL_NGU_UP_TNLInformation->choice.gTPTunnel->gTP_TEID
-          .buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  // TODO: Ngap_SecurityIndication (Optional)
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_PathSwitchRequestAcknowledgeTransfer, nullptr,
-      path_switch_req_ack, (void**) &buffer);
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        " Ngap_PathSwitchRequestAcknowledgeTransfer encode failed "
-        "(encoded size %d)",
+        "NGAP Path Switch Request Acknowledge Transfer encode failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
-
-  // free memory
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &path_switch_req_ack->uL_NGU_UP_TNLInformation->choice
-                   .gTPTunnel);
-  free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1142,9 +642,7 @@ bool smf_n2::create_n2_handover_command_transfer(
       "Create N2 SM Information: Handover Command Transfer IE");
   bool result = false;
 
-  Ngap_HandoverCommandTransfer_t* ho_command_transfer = nullptr;
-  ho_command_transfer = (Ngap_HandoverCommandTransfer_t*) calloc(
-      1, sizeof(Ngap_HandoverCommandTransfer_t));
+  HandoverCommandTransfer handover_command_transfer = {};
 
   // TODO:
   pfcp::fteid_t ul_fteid            = {};
@@ -1159,78 +657,47 @@ bool smf_n2::create_n2_handover_command_transfer(
     Logger::smf_n2().debug("QoS Flow context to be updated QFI %d", it->first);
 
   if (qos_flows.empty()) {
-    free_wrapper((void**) &ho_command_transfer);
     return false;
   }
 
+  // TODO: only first flow is considered for now
   ul_fteid = qos_flows.begin()->second.ul_fteid;
 
-  ho_command_transfer->dLForwardingUP_TNLInformation =
-      (Ngap_UPTransportLayerInformation*) calloc(
-          1, sizeof(Ngap_UPTransportLayerInformation));
+  UpTransportLayerInformation dl_forwarding_up_tnl_information = {};
+  TransportLayerAddress transport_layer_address                = {};
+  GtpTeid gtp_teid                                             = {};
+  transport_layer_address.setIpv4Address(ul_fteid.ipv4_address);
+  gtp_teid.set(ul_fteid.teid);
+  dl_forwarding_up_tnl_information.set(transport_layer_address, gtp_teid);
+  handover_command_transfer.setDlForwardingUpTnlInformation(
+      dl_forwarding_up_tnl_information);
 
-  ho_command_transfer->dLForwardingUP_TNLInformation->present =
-      Ngap_UPTransportLayerInformation_PR_gTPTunnel;
+  // TODO: QoS Flow to be Forwarded List
+  // TODO: Data Forwarding Response DRB List (Optional)
+  // TODO: Additional DL Forwarding UP TNL Information (Optional)
+  // TODO: UL Forwarding UP TNL Information (Optional)
+  // TODO: Additional UL Forwarding UP TNL Information (Optional)
+  // TODO: Data Forwarding Response E-RAB List (Optional)
+  // TODO: QoS Flow Failed to Setup List (Optional)
 
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel =
-      (Ngap_GTPTunnel_t*) calloc(1, sizeof(Ngap_GTPTunnel_t));
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size = handover_command_transfer.encode(buffer, BUF_LEN);
 
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.size = sizeof(struct in_addr);
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.buf =
-      (uint8_t*) calloc(sizeof(struct in_addr), sizeof(uint8_t));
-  memcpy(
-      ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
-          ->transportLayerAddress.buf,
-      &ul_fteid.ipv4_address, sizeof(struct in_addr));
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
-      ->transportLayerAddress.bits_unused = 0;
-
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel->gTP_TEID
-      .size = TEID_GRE_KEY_LENGTH;
-  ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel->gTP_TEID
-      .buf = (uint8_t*) calloc(TEID_GRE_KEY_LENGTH, sizeof(uint8_t));
-  memcpy(
-      ho_command_transfer->dLForwardingUP_TNLInformation->choice.gTPTunnel
-          ->gTP_TEID.buf,
-      &ul_fteid.teid, TEID_GRE_KEY_LENGTH);
-
-  // TODO: Ngap_SecurityIndication (Optional)
-
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_HandoverCommandTransfer, nullptr, ho_command_transfer,
-      (void**) &buffer);
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        " Ngap_HandoverCommandTransfer encode failed "
-        "(encoded size %d)",
+        "NGAP Handover Command Transfer encode failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
-
-  // free memory
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel->transportLayerAddress.buf);
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel->gTP_TEID.buf);
-  free_wrapper((void**) &ho_command_transfer->dLForwardingUP_TNLInformation
-                   ->choice.gTPTunnel);
-  free_wrapper((void**) &buffer);
 
   return result;
 }
@@ -1245,452 +712,421 @@ bool smf_n2::create_n2_handover_preparation_unsuccessful_transfer(
       "IE");
   bool result = false;
 
-  Ngap_HandoverPreparationUnsuccessfulTransfer_t*
-      ho_preparation_unsuccessrul_transfer = nullptr;
-  ho_preparation_unsuccessrul_transfer =
-      (Ngap_HandoverPreparationUnsuccessfulTransfer_t*) calloc(
-          1, sizeof(Ngap_HandoverPreparationUnsuccessfulTransfer_t));
+  HandoverPreparationUnsuccessfulTransfer
+      handover_preparation_unsuccessful_transfer = {};
+  Cause cause                                    = {};
+  // TODO: Just an example
+  cause.set(
+      Ngap_CauseRadioNetwork_ho_target_not_allowed, Ngap_Cause_PR_radioNetwork);
+  handover_preparation_unsuccessful_transfer.setCause(cause);
 
-  ho_preparation_unsuccessrul_transfer->cause.present =
-      Ngap_Cause_PR_radioNetwork;  // TODO
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size =
+      handover_preparation_unsuccessful_transfer.encode(buffer, BUF_LEN);
 
-  ho_preparation_unsuccessrul_transfer->cause.choice.radioNetwork =
-      Ngap_CauseRadioNetwork_ho_target_not_allowed;
-  // encode
-  size_t buffer_size = BUF_LEN;
-  char* buffer       = (char*) calloc(1, buffer_size);
-
-  ssize_t encoded_size = aper_encode_to_new_buffer(
-      &asn_DEF_Ngap_HandoverPreparationUnsuccessfulTransfer, nullptr,
-      ho_preparation_unsuccessrul_transfer, (void**) &buffer);
   if (encoded_size < 0) {
     Logger::smf_n2().warn(
-        " Ngap_HandoverPreparationUnsuccessfulTransfer encode failed "
-        "(encoded size %d)",
+        "NGAP Handover Preparation Unsuccessful Transfer encode failed "
+        "(encode size %d)",
         encoded_size);
     result = false;
   } else {
-    Logger::smf_n2().debug("N2 SM buffer data: ");
-    if (Logger::should_log(spdlog::level::debug)) {
-      for (int i = 0; i < encoded_size; i++) printf("%02x ", (char) buffer[i]);
-      Logger::smf_n2().debug(" (%d bytes) \n", encoded_size);
-    }
+    oai::utils::output_wrapper::print_buffer(
+        {}, "N2 SM Buffer Data:", buffer, encoded_size);
 
     std::string ngap_message((char*) buffer, encoded_size);
     ngap_msg_str = ngap_message;
     result       = true;
   }
 
+  return result;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<PduSessionResourceSetupResponseTransfer>& ngap_ie,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (PDUSessionResourceSetupResponseTransfer) from N2 "
+      "SM Information");
+  int result = KEncodeDecodeOK;
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  oai::utils::output_wrapper::print_buffer({}, "Content:", data, data_len);
+
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupResponseTransfer failed");
+    result = KEncodeDecodeError;
+  }
+
   // free memory
-  free_wrapper((void**) &buffer);
+  oai::utils::utils::free_wrapper((void**) &data);
+  return result;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<PduSessionResourceModifyResponseTransfer>& ngap_ie,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (PDUSessionResourceModifyResponseTransfer) "
+      "from N2 SM Information");
+  int result = KEncodeDecodeOK;
+
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  oai::utils::output_wrapper::print_buffer({}, "Content:", data, data_len);
+
+  // PDUSessionResourceModifyResponseTransfer
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupResponseTransfer failed");
+    result = KEncodeDecodeError;
+  }
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return KEncodeDecodeOK;
+}
+
+//---------------------------------------------------------------------------------------------
+int smf_n2::decode_n2_sm_information(
+    std::shared_ptr<PduSessionResourceReleaseResponseTransfer>& ngap_ie,
+    const std::string& n2_sm_info) {
+  Logger::smf_n2().info(
+      "Decode NGAP message (PDUSessionResourceReleaseResponseTransfer) "
+      "from N2 SM Information");
+
+  int result            = KEncodeDecodeOK;
+  unsigned int data_len = n2_sm_info.length();
+  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
+  memset(data, 0, data_len + 1);
+  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
+
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupResponseTransfer failed");
+    result = KEncodeDecodeError;
+  }
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
 
   return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceSetupResponseTransfer_t>& ngap_IE,
+    std::shared_ptr<oai::ngap::PduSessionResourceSetupUnsuccessfulTransfer>&
+        ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (PDUSessionResourceSetupResponseTransfer) from N2 "
-      "SM Information");
-  unsigned int data_len = n2_sm_info.length();
-  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
-  memset(data, 0, data_len + 1);
-  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
-
-  if (Logger::should_log(spdlog::level::debug)) {
-    printf("Content: ");
-    for (int i = 0; i < data_len; i++) printf(" %02x ", data[i]);
-    printf("\n");
-  }
-
-  // PDUSessionResourceSetupResponseTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceSetupResponseTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-    return RETURNerror;
-  }
-  return RETURNok;
-}
-
-//---------------------------------------------------------------------------------------------
-int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceModifyResponseTransfer_t>& ngap_IE,
-    const std::string& n2_sm_info) {
-  Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceModifyResponseTransfer) "
+      "Decode NGAP message (PDUSessionResourceSetupUnsuccessfulTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceModifyResponseTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceModifyResponseTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode PDUSessionResourceSetupUnsuccessfulTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceReleaseResponseTransfer_t>& ngap_IE,
+    std::shared_ptr<PathSwitchRequestTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceReleaseResponseTransfer) "
+      "Decode NGAP message (PathSwitchRequestTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceModifyResponseTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceReleaseResponseTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode PathSwitchRequestTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PDUSessionResourceSetupUnsuccessfulTransfer_t>&
-        ngap_IE,
+    std::shared_ptr<HandoverRequiredTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PDUSessionResourceSetupUnsuccessfulTransfer) "
+      "Decode NGAP message (HandoverRequiredTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PDUSessionResourceSetupUnsuccessfulTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PDUSessionResourceSetupUnsuccessfulTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode HandoverRequiredTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_PathSwitchRequestTransfer_t>& ngap_IE,
+    std::shared_ptr<HandoverRequestAcknowledgeTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_PathSwitchRequestTransfer) "
+      "Decode NGAP message (HandoverRequestAcknowledgeTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_PathSwitchRequestTransfer
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_PathSwitchRequestTransfer, (void**) &ngap_IE, (void*) data,
-      data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode HandoverRequestAcknowledgeTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverRequiredTransfer_t>& ngap_IE,
-    const std::string& n2_sm_info) {
-  Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_HandoverRequired) "
-      "from N2 SM Information");
-
-  unsigned int data_len = n2_sm_info.length();
-  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
-  memset(data, 0, data_len + 1);
-  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
-
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverRequiredTransfer, (void**) &ngap_IE, (void*) data,
-      data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
-}
-
-//---------------------------------------------------------------------------------------------
-int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverRequestAcknowledgeTransfer_t>& ngap_IE,
-    const std::string& n2_sm_info) {
-  Logger::smf_n2().info(
-      "Decode NGAP message (Ngap_HandoverRequestAcknowledgeTransfer) "
-      "from N2 SM Information");
-
-  unsigned int data_len = n2_sm_info.length();
-  unsigned char* data   = (unsigned char*) malloc(data_len + 1);
-  memset(data, 0, data_len + 1);
-  memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
-
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverRequestAcknowledgeTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
-  }
-  return RETURNok;
-}
-
-//---------------------------------------------------------------------------------------------
-int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_HandoverResourceAllocationUnsuccessfulTransfer_t>&
-        ngap_IE,
+    std::shared_ptr<HandoverResourceAllocationUnsuccessfulTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
       "Decode NGAP message "
-      "(Ngap_HandoverResourceAllocationUnsuccessfulTransfer) "
+      "(HandoverResourceAllocationUnsuccessfulTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_HandoverResourceAllocationUnsuccessfulTransfer,
-      (void**) &ngap_IE, (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn(
+        "Decode HandoverResourceAllocationUnsuccessfulTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------
 int smf_n2::decode_n2_sm_information(
-    std::shared_ptr<Ngap_SecondaryRATDataUsageReportTransfer_t>& ngap_IE,
+    std::shared_ptr<SecondaryRatDataUsageReportTransfer>& ngap_ie,
     const std::string& n2_sm_info) {
   Logger::smf_n2().info(
       "Decode NGAP message "
-      "(Ngap_SecondaryRATDataUsageReportTransfer) "
+      "(SecondaryRATDataUsageReportTransfer) "
       "from N2 SM Information");
 
+  int result            = KEncodeDecodeOK;
   unsigned int data_len = n2_sm_info.length();
   unsigned char* data   = (unsigned char*) malloc(data_len + 1);
   memset(data, 0, data_len + 1);
   memcpy((void*) data, (void*) n2_sm_info.c_str(), data_len);
 
-  // Ngap_HandoverRequired
-  asn_dec_rval_t rc = asn_decode(
-      nullptr, ATS_ALIGNED_CANONICAL_PER,
-      &asn_DEF_Ngap_SecondaryRATDataUsageReportTransfer, (void**) &ngap_IE,
-      (void*) data, data_len);
-
-  // free memory
-  free_wrapper((void**) &data);
-
-  if (rc.code != RC_OK) {
-    Logger::smf_n2().warn("asn_decode failed with code %d", rc.code);
-
-    return RETURNerror;
+  if (!ngap_ie->decode(data, data_len)) {
+    Logger::smf_n2().warn("Decode SecondaryRATDataUsageReportTransfer failed");
+    result = KEncodeDecodeError;
   }
-  return RETURNok;
+  // free memory
+  oai::utils::utils::free_wrapper((void**) &data);
+
+  return result;
 }
 
-Ngap_QosFlowSetupRequestItem_t smf_n2::get_QoSFlowSetupRequestItem(
+//---------------------------------------------------------------------------------------------
+oai::ngap::QosFlowSetupRequestItem smf_n2::get_qos_flow_setup_request_item(
     const qos_flow_context_updated& qos_flow) {
-  Ngap_QosFlowSetupRequestItem_t ngap_QosFlowSetupRequestItem = {};
-  ngap_QosFlowSetupRequestItem.qosFlowIdentifier = (uint8_t) qos_flow.qfi.qfi;
-  ngap_QosFlowSetupRequestItem.qosFlowLevelQosParameters =
-      get_QoSFlowLevelQosParameters(qos_flow);
-  return ngap_QosFlowSetupRequestItem;
+  QosFlowSetupRequestItem qos_flow_setup_request_item = {};
+
+  QosFlowIdentifier qos_flow_identifier = {};
+  qos_flow_identifier.set((uint8_t) qos_flow.qfi.qfi);
+
+  QosFlowLevelQosParameters qos_flow_level_qos_parameters =
+      get_qos_flow_level_qos_parameters(qos_flow);
+
+  qos_flow_setup_request_item.set(
+      qos_flow_identifier, qos_flow_level_qos_parameters);
+
+  return qos_flow_setup_request_item;
 }
 
-Ngap_QosFlowLevelQosParameters smf_n2::get_QoSFlowLevelQosParameters(
-    const smf::qos_flow_context_updated& qos_flow) {
-  Ngap_QosFlowLevelQosParameters_t qosFlowLevelQosParameters = {};
-  qosFlowLevelQosParameters.qosCharacteristics.present =
-      Ngap_QosCharacteristics_PR_nonDynamic5QI;
-  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI =
-      (Ngap_NonDynamic5QIDescriptor_t*) (calloc(
-          1, sizeof(Ngap_NonDynamic5QIDescriptor_t)));
-  qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI->fiveQI =
-      qos_flow.qos_profile.getR5qi();
+//---------------------------------------------------------------------------------------------
+oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
+    const qos_flow_context_updated& qos_flow) {
+  QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
+
+  // QosCharacteristics
+  QosCharacteristics qos_characteristics             = {};
+  NonDynamic5qiDescriptor non_dynamic_5qi_descriptor = {};
+  FiveQI five_qi                                     = {};
+  if (qos_flow.qos_profile.r5qiIsSet())
+    five_qi.set(qos_flow.qos_profile.getR5qi());
+
+  std::optional<PriorityLevelQos> priority_level_qos_opt = std::nullopt;
   if (qos_flow.qos_profile.priorityLevelIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->priorityLevelQos =
-        (Ngap_PriorityLevelQos_t*) (calloc(1, sizeof(Ngap_PriorityLevelQos_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->priorityLevelQos) = qos_flow.qos_profile.getPriorityLevel();
+    PriorityLevelQos priority_level_qos = {};
+    priority_level_qos.set(qos_flow.qos_profile.getPriorityLevel());
+    priority_level_qos_opt =
+        std::make_optional<PriorityLevelQos>(priority_level_qos);
   }
-
+  std::optional<AveragingWindow> averaging_window_opt = std::nullopt;
   if (qos_flow.qos_profile.averWindowIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->averagingWindow =
-        (Ngap_AveragingWindow_t*) (calloc(1, sizeof(Ngap_AveragingWindow_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->averagingWindow) = qos_flow.qos_profile.getAverWindow();
+    AveragingWindow averaging_window = {};
+    averaging_window.set(qos_flow.qos_profile.getAverWindow());
+    averaging_window_opt =
+        std::make_optional<AveragingWindow>(averaging_window);
   }
-
+  std::optional<MaximumDataBurstVolume> maximum_data_burst_volume_opt =
+      std::nullopt;
   if (qos_flow.qos_profile.maxDataBurstVolIsSet()) {
-    qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-        ->maximumDataBurstVolume    = (Ngap_MaximumDataBurstVolume_t*) (calloc(
-        1, sizeof(Ngap_MaximumDataBurstVolume_t)));
-    *(qosFlowLevelQosParameters.qosCharacteristics.choice.nonDynamic5QI
-          ->maximumDataBurstVolume) = qos_flow.qos_profile.getMaxDataBurstVol();
+    MaximumDataBurstVolume maximum_data_burst_volume = {};
+    maximum_data_burst_volume.set(qos_flow.qos_profile.getMaxDataBurstVol());
+    maximum_data_burst_volume_opt =
+        std::make_optional<MaximumDataBurstVolume>(maximum_data_burst_volume);
   }
 
-  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.getPriorityLevel();
+  non_dynamic_5qi_descriptor.set(
+      five_qi, priority_level_qos_opt, averaging_window_opt,
+      maximum_data_burst_volume_opt);
+  qos_characteristics.set(non_dynamic_5qi_descriptor);
+
+  // AllocationAndRetentionPriority
+  AllocationAndRetentionPriority allocation_and_retention_priority = {};
+  PriorityLevelARP priority_level_arp                              = {};
+  Pre_emptionCapability pre_emption_capability                     = {};
+  Pre_emptionVulnerability pre_emption_vulnerability               = {};
+
+  priority_level_arp.set(qos_flow.qos_profile.getArp().getPriorityLevel());
+
   auto preemptCapEnumValue =
       qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
   if (preemptCapEnumValue ==
       PreemptionCapability_anyOf::ePreemptionCapability_anyOf::NOT_PREEMPT) {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionCapability =
-        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption;
+    pre_emption_capability.set(
+        Ngap_Pre_emptionCapability_shall_not_trigger_pre_emption);
   } else {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionCapability =
-        Ngap_Pre_emptionCapability_may_trigger_pre_emption;
+    pre_emption_capability.set(
+        Ngap_Pre_emptionCapability_may_trigger_pre_emption);
   }
+
   auto preemptVulnEnumValue =
       qos_flow.qos_profile.getArp().getPreemptVuln().getEnumValue();
   if (preemptVulnEnumValue ==
       PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
           NOT_PREEMPTABLE) {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionVulnerability =
-        Ngap_Pre_emptionVulnerability_not_pre_emptable;
+    pre_emption_vulnerability.set(
+        Ngap_Pre_emptionVulnerability_not_pre_emptable);
   } else {
-    qosFlowLevelQosParameters.allocationAndRetentionPriority
-        .pre_emptionVulnerability = Ngap_Pre_emptionVulnerability_pre_emptable;
+    pre_emption_vulnerability.set(Ngap_Pre_emptionVulnerability_pre_emptable);
   }
-  qosFlowLevelQosParameters.allocationAndRetentionPriority.priorityLevelARP =
-      qos_flow.qos_profile.getArp().getPriorityLevel();
 
-  // FIXME check the if condition is okay.
+  allocation_and_retention_priority.set(
+      priority_level_arp, pre_emption_capability, pre_emption_vulnerability);
+
+  // GbrQosFlowInformation
+  std::optional<GbrQosFlowInformation> gbr_qos_flow_information_opt =
+      std::nullopt;
+
+  // TODO: from old code, need to be fixed: check the if condition is okay.
   if (qos_flow.qos_profile.gbrUlIsSet() && qos_flow.qos_profile.gbrDlIsSet() &&
       qos_flow.qos_profile.maxbrUlIsSet() &&
       qos_flow.qos_profile.maxbrDlIsSet()) {
-    qosFlowLevelQosParameters.gBR_QosInformation =
-        (Ngap_GBR_QosInformation_t*) (calloc(
-            1, sizeof(Ngap_GBR_QosInformation_t)));
+    long maximum_flow_bit_rate_dl;
+    long maximum_flow_bit_rate_ul;
+    long guaranteed_flow_bit_rate_dl;
+    long guaranteed_flow_bit_rate_ul;
+    GbrQosFlowInformation gbr_qos_flow_information = {};
 
-    for (int j = 0;
-         j < qos_flow.qos_flow_description_content.numberofparameters; j++) {
-      if (qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_UPLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateUL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_MFBR_DOWNLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation->maximumFlowBitRateDL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_UPLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation
-                ->guaranteedFlowBitRateUL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
-      } else if (
-          qos_flow.qos_flow_description_content.parameterslist[j]
-              .parameteridentifier == PARAMETER_IDENTIFIER_GFBR_DOWNLINK) {
-        set_ngap_bit_rate(
-            qosFlowLevelQosParameters.gBR_QosInformation
-                ->guaranteedFlowBitRateDL,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.value,
-            qos_flow.qos_flow_description_content.parameterslist[j]
-                .parametercontents.gfbrormfbr_uplinkordownlink.uint);
+    std::vector<oai::nas::QosFlowDescriptionParameter>
+        qos_flow_description_parameter_list =
+            qos_flow.get_qos_flow_descriptions().GetParametersList();
+
+    for (int j = 0; j < qos_flow_description_parameter_list.size(); j++) {
+      std::optional<BitRate> bit_rate =
+          qos_flow_description_parameter_list[j].GetBitRate();
+      if (bit_rate.has_value()) {
+        uint8_t parameter_identifier =
+            qos_flow_description_parameter_list[j].GetIdentifier();
+        if (parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrUplink) {
+          maximum_flow_bit_rate_ul =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierMfbrDownlink) {
+          maximum_flow_bit_rate_dl =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrUplink) {
+          guaranteed_flow_bit_rate_ul =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        } else if (
+            parameter_identifier ==
+            oai::nas::kQosFlowDescriptionParameterIdentifierGfbrDownlink) {
+          guaranteed_flow_bit_rate_dl =
+              session_handler::parse_nas_value_unit_to_bps(
+                  bit_rate.value().value, bit_rate.value().unit);
+        }
       }
     }
+
+    gbr_qos_flow_information.set(
+        maximum_flow_bit_rate_dl, maximum_flow_bit_rate_ul,
+        guaranteed_flow_bit_rate_dl, guaranteed_flow_bit_rate_ul);
+    gbr_qos_flow_information_opt =
+        std::make_optional<GbrQosFlowInformation>(gbr_qos_flow_information);
   }
 
-  return qosFlowLevelQosParameters;
+  qos_flow_level_qos_parameters.set(
+      qos_characteristics, allocation_and_retention_priority,
+      gbr_qos_flow_information_opt);
+  return qos_flow_level_qos_parameters;
 }
 
+//---------------------------------------------------------------------------------------------
 void smf_n2::set_ngap_bit_rate(
     Ngap_BitRate_t& bit_rate, uint16_t value, uint8_t unit) {
   bit_rate.size = 8;

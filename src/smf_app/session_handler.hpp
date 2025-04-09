@@ -19,21 +19,13 @@
  *      contact@openairinterface.org
  */
 
-/*! \file session_handler.hpp
- \brief
- \author  Lukas ROTHENEDER, Stefan SPETTEL
- \company phine.tech
- \date 2024
- \email:  lukas.rotheneder@phine.tech, stefan.spettel@phine.tech
- */
-
 #include <memory>
 
 #include <smf_msg.hpp>
 #include <smf_pfcp_association.hpp>
-#include <QOSFlowDescriptions.h>
-#include "Ngap_PDUSessionAggregateMaximumBitRate.h"
 #include "sdf_conversions.hpp"
+#include "QosRule.hpp"
+#include "QosFlowDescription.hpp"
 
 #pragma once
 
@@ -101,20 +93,19 @@ class session_handler {
    * Add a QoS Rule
    * @param qos_rule
    */
-  void add_qos_rule(const QOSRulesIE& qos_rule);
+  void add_qos_rule(const oai::nas::QosRule& qos_rule);
 
   /**
    * should  store the QoS Rule and create a news QOS_FLOW / EDGE  based on
-   * QOSFlowDescriptionsContents and QOSRulesIE. returns a
+   * QOSFlowDescriptionsContents and QosRule. returns a
    * qos_flow_context_updated
    *
-   * @param qos_flow_description_content
+   * @param qos_flow_description
    * @return qos_flow_context_updated
    */
-
-  ::smf::qos_flow_context_updated create_new_qos_rule(
-      QOSRulesIE& qos_rule,
-      const QOSFlowDescriptionsContents& qos_flow_description_content);
+  qos_flow_context_updated create_new_qos_rule(
+      oai::nas::QosRule& qos_rules_ie,
+      const oai::nas::QosFlowDescription& qos_flow_description);
 
   /**
    * Update QoS Rules (TODO description because what is exactly the point of
@@ -122,14 +113,15 @@ class session_handler {
    * @param qos_rules_ie
    * @return
    */
-  ::smf::qos_flow_context_updated update_qos_rule(QOSRulesIE qos_rules_ie);
+  ::smf::qos_flow_context_updated update_qos_rule(
+      oai::nas::QosRule qos_rules_ie);
 
   /**
    * Get all QoS rules that need to be updated with UE. Are based on the set
    * QFIs to be updated
    * @return
    */
-  std::vector<QOSRulesIE> get_qos_rules();
+  std::vector<oai::nas::QosRule> get_qos_rules();
 
   //
   // General
@@ -190,9 +182,6 @@ class session_handler {
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
 
-  static uint64_t set_ngap_bitrate(
-      Ngap_BitRate_t& ngap_bitrate, const std::string& bitrate_string);
-
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
@@ -217,7 +206,7 @@ class session_handler {
 
   // TODO all of this is out-of-sync with new QoS handling, should update all in
   // UPF graph
-  std::map<uint8_t, QOSRulesIE> m_qos_rules;  // QRI <-> QoS Rules
+  std::map<uint8_t, oai::nas::QosRule> m_qos_rules;  // QRI <-> QoS Rules
   std::vector<uint8_t> m_qos_rules_to_be_synchronised;
   std::vector<uint8_t> m_qos_rules_to_be_removed;
 
@@ -237,33 +226,30 @@ class session_handler {
   void release_qos_rule_id(const uint8_t& rule_id);
 
   void set_nas_filter_from_edge(
-      const std::shared_ptr<qos_upf_edge>& edge, QOSRulesIE& qos_rule);
+      const std::shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule);
 
   void set_port_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::port_range& port_range);
+      oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+      const oai::utils::sdf_conversions::port_range& port_range, bool remote);
+
   void set_ip_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
-      const oai::utils::sdf_conversions::ip_range& port_range);
+      oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
+      const oai::utils::sdf_conversions::ip_range& port_range, bool remote);
+
   void set_protocol_filter(
-      int filter_id, Create_ModifyAndAdd_ModifyAndReplace& nas_filter,
+      oai::nas::PacketFilterCreateAndModifyAndReplace& nas_filter,
       uint8_t protocol_id);
 
-  QOSRulesIE qos_rule_from_edge(const std::shared_ptr<qos_upf_edge>& edge);
+  oai::nas::QosRule qos_rule_from_edge(
+      const std::shared_ptr<qos_upf_edge>& edge);
 
   static uint8_t nas_unit_from_bitrate_unit(
       const oai::utils::sdf_conversions::bitrate_unit_e& bitrate_unit);
 
-  static void set_nas_bitrate(
-      uint8_t type, const std::string& bitrate_string,
-      ParametersList& nas_value);
-
-  QOSFlowDescriptionsContents qos_flow_description_from_edge(
+  oai::nas::QosFlowDescription qos_flow_description_from_edge(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
-
-  static map<uint8_t, uint64_t> bpsMap;
 
   static bool is_flow_direction(
       bool uplink, const oai::model::pcf::FlowInformation& flow_direction);

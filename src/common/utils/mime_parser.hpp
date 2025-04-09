@@ -19,14 +19,9 @@
  *      contact@openairinterface.org
  */
 
-/*! \file mime_parser.hpp
- \brief
- \author
- \company Eurecom
- \email:
- */
 #ifndef FILE_MIME_PARSER_HPP_SEEN
 #define FILE_MIME_PARSER_HPP_SEEN
+
 #include <string>
 #include <map>
 #include <vector>

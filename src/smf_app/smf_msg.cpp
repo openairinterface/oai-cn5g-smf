@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_msg.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
 #include "smf_msg.hpp"
 
 using namespace smf;
@@ -54,12 +47,12 @@ void qos_flow_context_updated::set_dl_fteid(const pfcp::fteid_t& teid) {
 }
 
 //-----------------------------------------------------------------------------
-void qos_flow_context_updated::add_qos_rule(const QOSRulesIE& rule) {
-  uint8_t rule_id = rule.qosruleidentifer;
+void qos_flow_context_updated::add_qos_rule(const oai::nas::QosRule& rule) {
+  uint8_t rule_id = rule.GetQosRuleId();
   if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
       (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
     qos_rules.erase(rule_id);
-    qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, rule));
+    qos_rules.insert(std::pair<uint8_t, oai::nas::QosRule>(rule_id, rule));
     Logger::smf_app().trace(
         "qos_flow_context_updated::add_qos_rule(%d) success", rule_id);
   }
@@ -73,10 +66,23 @@ void qos_flow_context_updated::set_qos_profile(
 
 //-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_qos_flow_descriptions(
-    const QOSFlowDescriptionsContents& flow_description_content) {
-  qos_flow_description_content = flow_description_content;
+    const oai::nas::QosFlowDescription& flow_description) {
+  qos_flow_description = flow_description;
 }
 
+//-----------------------------------------------------------------------------
+void qos_flow_context_updated::get_qos_flow_descriptions(
+    oai::nas::QosFlowDescription& flow_description) const {
+  flow_description = qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
+oai::nas::QosFlowDescription
+qos_flow_context_updated::get_qos_flow_descriptions() const {
+  return qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
 /*
  * class: PDU Session MSG
  */
@@ -301,14 +307,12 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
  * class: PDU Session SM Context Request
  */
 //-----------------------------------------------------------------------------
-extended_protocol_discriminator_t pdu_session_sm_context_request::get_epd()
-    const {
+uint8_t pdu_session_sm_context_request::get_epd() const {
   return m_epd;
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_sm_context_request::set_epd(
-    const extended_protocol_discriminator_t& epd) {
+void pdu_session_sm_context_request::set_epd(const uint8_t& epd) {
   m_epd = epd;
 }
 

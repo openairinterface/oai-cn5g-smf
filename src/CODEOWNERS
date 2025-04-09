@@ -1,0 +1,34 @@
+# CODEOWNERS  
+src/smf-app
+ - Lionel GAUTHIER, Eurecom
+ - Tien Thinh NGUYEN, Eurecom 
+ - Lukas ROTHENEDER, Phine.tech
+ - Stefan SPETTEL, Phine.tech
+ - Keliang DU, Bupt
+
+src/itti
+ - Lionel GAUTHIER, Eurecom
+ - Tien Thinh NGUYEN, Eurecom
+
+src/common
+ - Lionel Gauthier, Eurecom
+ - Sebastien ROUX, Eurecom 
+ - Tien Thinh NGUYEN, Eurecom
+ - Puzyu DUKL, Bupt
+ - Stefan SPETTEL, Phine.tech
+ 
+NGAP 
+ - To be updated
+
+SBI
+ - Tien Thinh NGUYEN, Eurecom
+
+NAS 
+- Philippe MOREL, Eurecom
+- Sebastien ROUX, Eurecom
+- Lionel GAUTHIER, Eurecom
+- Keliang DU, BUPT
+- Tien Thinh NGUYEN, Eurecom
+  
+UTILS: To be updated
+ 

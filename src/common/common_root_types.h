@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file common_root_types.h
- \brief
- \company Eurecom
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef FILE_COMMON_ROOT_TYPES_SEEN
 #define FILE_COMMON_ROOT_TYPES_SEEN
 

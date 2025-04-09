@@ -193,32 +193,32 @@ void IndividualSMContextApiImpl::update_sm_context(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(http::CURL_MIME_BOUNDARY)));
+              std::string(http::MIME_BOUNDARY)));
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(http::CURL_MIME_BOUNDARY)));
+              std::string(http::MIME_BOUNDARY)));
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(http::CURL_MIME_BOUNDARY)));
+              std::string(http::MIME_BOUNDARY)));
     } else if (json_data.size() > 0) {
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));
