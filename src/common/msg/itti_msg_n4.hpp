@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file itti_msg_n4.hpp
- \author  Lionel GAUTHIER
- \date 2019
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef ITTI_MSG_N4_HPP_INCLUDED_
 #define ITTI_MSG_N4_HPP_INCLUDED_
 

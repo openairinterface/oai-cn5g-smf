@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  itti_msg_n11.hpp
- *
- *  Created on:
- *  Author:
- */
-
 #ifndef ITTI_MSG_N11_HPP_INCLUDED_
 #define ITTI_MSG_N11_HPP_INCLUDED_
 

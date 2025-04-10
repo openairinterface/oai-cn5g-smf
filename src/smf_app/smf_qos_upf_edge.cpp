@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_qos_upf_edge.cpp
- \brief
- \author  Stefan Spettel
- \company phine.tech
- \date    2024
- \email:  stefan.spettel@phine.tech
- */
-
 #include "smf_qos_upf_edge.hpp"
 
 // TODO remove again after putting in model directly

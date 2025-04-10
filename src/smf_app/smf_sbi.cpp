@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_sbi.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_sbi.hpp"
 
 #include <stdexcept>
@@ -44,13 +36,7 @@
 #include "smf_app.hpp"
 #include "smf_config.hpp"
 #include "http_client.hpp"
-
-extern "C" {
-#include "dynamic_memory_check.h"
-}
-
-// using namespace Pistache::Http;
-// using namespace Pistache::Http::Mime;
+#include "sbi_helper.hpp"
 
 using namespace smf;
 using namespace oai::common::sbi;
@@ -62,14 +48,6 @@ extern smf_sbi* smf_sbi_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
-
-// To read content of the response from AMF
-static std::size_t callback(
-    const char* in, std::size_t size, std::size_t num, std::string* out) {
-  const std::size_t totalBytes(size * num);
-  out->append(in, totalBytes);
-  return totalBytes;
-}
 
 //------------------------------------------------------------------------------
 void smf_sbi_task(void* args_p) {
@@ -178,12 +156,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         sm_context_res->res.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -251,12 +229,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         sm_session_modification->msg.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -295,10 +273,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     std::string n1_message = report_msg->res.get_n1_sm_message();
     // prepare the body content for Curl
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n1_message, n2_message);
+        body, json_part, oai::http::MIME_BOUNDARY, n1_message, n2_message);
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n2_message,
+        body, json_part, oai::http::MIME_BOUNDARY, n2_message,
         multipart_related_content_part_e::NGAP);
   }
 
@@ -519,8 +497,7 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u",
-      resp.status_code);
+      "NF Instance Update, response from NRF, HTTP Code: %u", resp.status_code);
 
   // if ((resp.status_code == http_status_code::OK) or
   //    (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -591,8 +568,7 @@ void smf_sbi::subscribe_upf_status_notify(
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d",
-      resp.status_code);
+      "NFSubscribeNotify, response from NRF, HTTP Code: %d", resp.status_code);
 
   std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
       itti_msg_response =
@@ -625,27 +601,32 @@ bool smf_sbi::get_sm_data(
     const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
     std::shared_ptr<session_management_subscription>& subscription,
     plmn_t plmn) {
-  nlohmann::json jsonData = {};
-  std::string query_str   = {};
-  std::string mcc         = plmn.mcc;
-  std::string mnc         = plmn.mnc;
+  nlohmann::json json_data = {};
+  std::string query_str    = {};
+  std::string mcc          = plmn.mcc;
+  std::string mnc          = plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
               ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
               "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
-  std::string url =
+
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
+
+  std::string udm_url =
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
-      NUDM_SDM_BASE +
+      oai::common::sbi::sbi_helper::UdmSdmBase +
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(NUDM_SDM_GET_SM_DATA_URL, smf_supi64_to_string(supi)) +
-      query_str;
+      fmt::format(fmr_format_str, smf_supi64_to_string(supi)) + query_str;
 
-  Logger::smf_sbi().debug("UDM's URL: %s ", url.c_str());
+  Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
   request req;
-  req.uri       = url;
+  req.uri = udm_url;
+  // TODO: add retry mechanism, probably directly inside HTTP Client lib
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
@@ -655,50 +636,53 @@ bool smf_sbi::get_sm_data(
       resp.status_code);
 
   if (resp.status_code == http_status_code::OK) {
-    Logger::smf_sbi().debug("Got successful response from UDM, URL: %s ", url);
+    Logger::smf_sbi().debug(
+        "Got successful response from UDM, URL: %s ", udm_url);
     try {
-      jsonData = nlohmann::json::parse(resp.body);
+      json_data = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
-      Logger::smf_sbi().warn("Could not parse json data from UDM");
+      Logger::smf_sbi().warn("Could not parse Json data from UDM");
     }
   } else {
     Logger::smf_sbi().warn(
-        "Could not get response from UDM, URL %s, retry ...", url);
+        "Could not get response from UDM, URL %s, retry ...", udm_url);
     // retry
     // TODO
   }
 
   // Process the response
-  if (!jsonData.empty()) {
-    if (jsonData.type() == json::value_t::array) {
-      if (!jsonData[0].empty())
-        jsonData = jsonData[0];  // Array with only 1 member!
+  if (!json_data.empty()) {
+    if (json_data.type() == json::value_t::array) {
+      if (!json_data[0].empty())
+        json_data = json_data[0];  // Array with only 1 member!
     }
 
-    Logger::smf_sbi().debug("Response from UDM %s", jsonData.dump().c_str());
+    Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
     // Verify SNSSAI
-    if (jsonData.find("singleNssai") == jsonData.end()) return false;
-    if (jsonData["singleNssai"].find("sst") != jsonData["singleNssai"].end()) {
-      uint8_t sst = jsonData["singleNssai"]["sst"].get<uint8_t>();
+    if (json_data.find("singleNssai") == json_data.end()) return false;
+    if (json_data["singleNssai"].find("sst") !=
+        json_data["singleNssai"].end()) {
+      uint8_t sst = json_data["singleNssai"]["sst"].get<uint8_t>();
       if (sst != snssai.sst) {
         return false;
       }
     }
-    if (jsonData["singleNssai"].find("sd") != jsonData["singleNssai"].end()) {
-      std::string sd_str = jsonData["singleNssai"]["sd"];
+    if (json_data["singleNssai"].find("sd") != json_data["singleNssai"].end()) {
+      std::string sd_str = json_data["singleNssai"]["sd"];
       if (sd_str != snssai.sd) {
         return false;
       }
     }
 
     // Verify DNN configurations
-    if (jsonData.find("dnnConfigurations") == jsonData.end()) return false;
+    if (json_data.find("dnnConfigurations") == json_data.end()) return false;
     Logger::smf_sbi().debug(
-        "DNN Configurations %s", jsonData["dnnConfigurations"].dump().c_str());
+        "DNN Configurations %s", json_data["dnnConfigurations"].dump().c_str());
 
     // Retrieve SessionManagementSubscription and store in the context
-    for (nlohmann::json::iterator it = jsonData["dnnConfigurations"].begin();
-         it != jsonData["dnnConfigurations"].end(); ++it) {
+    // TODO: use SessionManagementSubscriptionData model
+    for (nlohmann::json::iterator it = json_data["dnnConfigurations"].begin();
+         it != json_data["dnnConfigurations"].end(); ++it) {
       Logger::smf_sbi().debug("DNN %s", it.key().c_str());
       if (it.key().compare(dnn) == 0) {
         // Get DNN configuration

@@ -19,17 +19,9 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_msg.hpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
-#include <QOSFlowDescriptions.h>
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
@@ -45,9 +37,8 @@
 #include "smf.h"
 #include "smf_profile.hpp"
 #include "3gpp_24.501.hpp"
-extern "C" {
-#include "QOSRules.h"
-}
+#include "QosRule.hpp"
+#include "QosFlowDescription.hpp"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -81,17 +72,20 @@ class qos_flow_context_updated {
   void set_qfi(const pfcp::qfi_t& q);
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
-  void add_qos_rule(const QOSRulesIE& rule);
+  void add_qos_rule(const oai::nas::QosRule& rule);
   void set_qos_profile(const oai::model::pcf::QosData& profile);
   void set_qos_flow_descriptions(
-      const QOSFlowDescriptionsContents& flow_description_content);
+      const oai::nas::QosFlowDescription& flow_description);
+  void get_qos_flow_descriptions(
+      oai::nas::QosFlowDescription& flow_description) const;
+  oai::nas::QosFlowDescription get_qos_flow_descriptions() const;
 
   uint8_t cause_value;
   pfcp::qfi_t qfi;
   pfcp::fteid_t ul_fteid;
   pfcp::fteid_t dl_fteid;
-  std::map<uint8_t, QOSRulesIE> qos_rules;
-  QOSFlowDescriptionsContents qos_flow_description_content;
+  std::map<uint8_t, oai::nas::QosRule> qos_rules;
+  oai::nas::QosFlowDescription qos_flow_description;
   oai::model::pcf::QosData qos_profile;
   bool to_be_removed;
 };
@@ -211,13 +205,13 @@ class pdu_session_sm_context_request : public pdu_session_msg {
     m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
   }
 
-  extended_protocol_discriminator_t get_epd() const;
-  void set_epd(const extended_protocol_discriminator_t& epd);
+  uint8_t get_epd() const;
+  void set_epd(const uint8_t& epd);
   uint8_t get_message_type() const;
   void set_message_type(const uint8_t& message_type);
 
  private:
-  extended_protocol_discriminator_t m_epd;
+  uint8_t m_epd;
   uint8_t m_message_type;
 };
 

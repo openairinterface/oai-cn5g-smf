@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_app.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_app.hpp"
 
 #include <boost/algorithm/string.hpp>
@@ -42,6 +34,10 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
+#include "Nas5gsmMessage.hpp"
+#include "PduSessionEstablishmentAccept.hpp"
+#include "PduSessionEstablishmentReject.hpp"
+#include "PduSessionEstablishmentRequest.hpp"
 #include "ProblemDetails.h"
 #include "RefToBinaryData.h"
 #include "SmContextCreateError.h"
@@ -50,6 +46,7 @@
 #include "SmContextUpdateError.h"
 #include "async_shell_cmd.hpp"
 #include "common_defs.h"
+#include "common_defs.hpp"
 #include "conversions.hpp"
 #include "fqdn.hpp"
 #include "itti.hpp"
@@ -65,11 +62,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
-
-extern "C" {
-#include "dynamic_memory_check.h"
-#include "nas_message.h"
-}
 
 using namespace smf;
 using namespace oai::config::smf;
@@ -812,40 +804,28 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       "version %d)",
       smreq->http_version);
   // Handle PDU Session Create SM Context Request (Section 4.3.2@3GPP TS 23.502)
-  std::string n1_sm_message, n1_sm_message_hex;
-  nas_message_t decoded_nas_msg       = {};
+  std::string n1_sm_message           = {};
+  std::string n1_sm_message_hex       = {};
   cause_value_5gsm_e cause_n1         = {cause_value_5gsm_e::CAUSE_0_UNKNOWN};
   pdu_session_type_t pdu_session_type = {};
   pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
+  auto nas_message                    = std::make_shared<Nas5gsmMessage>();
 
   // Step 1. Decode NAS and get the necessary information
-  int decoder_rc = smf_n1::get_instance().decode_n1_sm_container(
-      decoded_nas_msg, smreq->req.get_n1_sm_message());
-
+  int decoded_size = smf_n1::get_instance().decode_n1_sm_container(
+      nas_message, smreq->req.get_n1_sm_message());
   // Failed to decode, send reply to AMF with PDU Session Establishment Reject
-  if (decoder_rc != RETURNok) {
+  if (decoded_size == KEncodeDecodeError) {
     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
-
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      // Trigger the reply to AMF
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
-
   // Get necessary info from NAS
-  xgpp_conv::sm_context_request_from_nas(decoded_nas_msg, smreq->req);
+  xgpp_conv::sm_context_request_from_nas(nas_message, smreq->req);
 
   pdu_session_type.pdu_session_type = smreq->req.get_pdu_session_type();
   // Support IPv4/IPv4v6 for now
@@ -860,20 +840,9 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   if ((pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4) and
       (pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4V6)) {
     // PDU Session Establishment Reject
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message, cause_n1)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
-    return;
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message, cause_n1, http_status_code::FORBIDDEN,
+        PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, smreq->pid);
   }
 
   // Get SUPI, SNSSAI
@@ -891,7 +860,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Check PTI
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          decoded_nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_message->GetHeader().GetProcedureTransactionIdentity()};
   if ((pti.procedure_transaction_id ==
        PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED) ||
       (pti.procedure_transaction_id > PROCEDURE_TRANSACTION_IDENTITY_LAST)) {
@@ -899,26 +868,18 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         "Invalid PTI value (PTI = %d)", pti.procedure_transaction_id);
     // PDU Session Establishment Reject including cause "#81 Invalid PTI value"
     // (section 7.3.1 @3GPP TS 24.501)
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_81_INVALID_PTI_VALUE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_81_INVALID_PTI_VALUE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
 
   // Check PDU Session ID
   pdu_session_id_t pdu_session_id =
-      decoded_nas_msg.plain.sm.header.pdu_session_identity;
+      nas_message->GetHeader().GetPduSessionIdentity();
+
   if ((pdu_session_id == PDU_SESSION_IDENTITY_UNASSIGNED) ||
       (pdu_session_id > PDU_SESSION_IDENTITY_LAST)) {
     Logger::smf_app().warn("Invalid PDU Session ID value (%d)", pdu_session_id);
@@ -931,7 +892,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   }
 
   // Check Message Type
-  uint8_t message_type = decoded_nas_msg.plain.sm.header.message_type;
+  uint8_t message_type = nas_message->GetHeader().GetMessageType();
   if (message_type != PDU_SESSION_ESTABLISHMENT_REQUEST) {
     Logger::smf_app().warn(
         "Invalid Message Type (Message Type = %d)", message_type);
@@ -939,27 +900,19 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     //(24.501 (section 7.4)) implementation dependent->do similar to UE:
     // response with a 5GSM STATUS message including cause "#98 message type not
     // compatible with protocol state."
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::
-                CAUSE_98_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN,
-          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_message_hex,
-          smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::
+            CAUSE_98_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        smreq->pid);
     return;
   }
 
   // Check Request Type
   std::string request_type = smreq->req.get_request_type();
-  if (request_type.compare("INITIAL_REQUEST") != 0) {
+  if (request_type.compare("INITIAL_REQUEST") !=
+      0) {  // TODO: avoid using direclty hard-coded value
     Logger::smf_app().warn(
         "Invalid Request Type (Request Type = %s)", request_type.c_str());
     //"Existing PDU Session", AMF should use PDUSession_UpdateSMContext instead
@@ -968,7 +921,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     return;
   }
 
-  // If no DNN information from UE, set to default value
+  // If no DNN information from UE, set to the default value
   std::string dnn = smreq->req.get_dnn();
   if (dnn.length() == 0) {
     dnn = smf_cfg->get_default_dnn();
@@ -990,19 +943,11 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         "DNN %s, ignore message!",
         dnn.c_str());
     // PDU Session Establishment Reject
-    if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-            smreq->req, n1_sm_message,
-            cause_value_5gsm_e::CAUSE_27_MISSING_OR_UNKNOWN_DNN)) {
-      conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-      // Trigger the reply to AMF
-      trigger_create_context_error_response(
-          http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_DNN_DENIED,
-          n1_sm_message_hex, smreq->pid);
-    } else {
-      trigger_http_response(
-          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-    }
+    reply_with_pdu_session_establishment_reject(
+        smreq->req, n1_sm_message,
+        cause_value_5gsm_e::CAUSE_27_MISSING_OR_UNKNOWN_DNN,
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_DNN_DENIED,
+        smreq->pid);
     return;
   }
 
@@ -1012,15 +957,15 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     Logger::smf_app().debug(
         "Update SMF context with SUPI " SUPI_64_FMT "", supi64);
     sc = supi_2_smf_context(supi64);
-    sc.get()->set_supi(supi);
+    sc->set_supi(supi);
   } else {
     Logger::smf_app().debug(
         "Create a new SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = std::shared_ptr<smf_context>(new smf_context());
-    sc.get()->set_supi(supi);
-    sc.get()->set_supi_prefix(supi_prefix);
+    sc = std::make_shared<smf_context>();
+    sc->set_supi(supi);
+    sc->set_supi_prefix(supi_prefix);
     set_supi_2_smf_context(supi64, sc);
-    sc.get()->set_plmn(smreq->req.get_plmn());  // PLMN
+    sc->set_plmn(smreq->req.get_plmn());  // PLMN
   }
 
   // Step 5. If colliding with an existing SM context (session is already
@@ -1030,7 +975,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   if (is_scid_2_smf_context(supi64, pdu_session_id) &&
       (request_type.compare("INITIAL_REQUEST") == 0)) {
     // Remove smf_pdu_session (including all flows associated to this session)
-    sc.get()->remove_pdu_session(pdu_session_id);
+    sc->remove_pdu_session(pdu_session_id);
     Logger::smf_app().warn(
         "PDU Session already existed (SUPI " SUPI_64_FMT ", PDU Session ID %d)",
         supi64, pdu_session_id);
@@ -1041,21 +986,20 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   std::string dnn_selection_mode = smreq->req.get_dnn_selection_mode();
   // If the Session Management Subscription data is not available, get from
   // configuration file or UDM
-  if (not sc.get()->is_dnn_snssai_subscription_data(dnn, snssai)) {
+  if (not sc->is_dnn_snssai_subscription_data(dnn, snssai)) {
     Logger::smf_app().debug(
         "The Session Management Subscription data is not available");
-    std::shared_ptr<session_management_subscription> subscription =
-        std::shared_ptr<session_management_subscription>(
-            new session_management_subscription(snssai));
+    auto subscription =
+        std::make_shared<session_management_subscription>(snssai);
 
     if (not use_local_configuration_subscription_data(dnn_selection_mode)) {
       Logger::smf_app().debug(
           "Retrieve Session Management Subscription data from the UDM");
       plmn_t plmn = {};
-      sc.get()->get_plmn(plmn);
+      sc->get_plmn(plmn);
       if (smf_sbi_inst->get_sm_data(supi64, dnn, snssai, subscription, plmn)) {
         // Update dnn_context with subscription info
-        sc.get()->insert_dnn_subscription(snssai, dnn, subscription);
+        sc->insert_dnn_subscription(snssai, dnn, subscription);
       } else {
         // Cannot retrieve information from UDM, reject PDU session
         // establishment
@@ -1064,22 +1008,12 @@ void smf_app::handle_pdu_session_create_sm_context_request(
             "retrieve the Session Management Subscription from UDM, ignore the "
             "message!");
         // PDU Session Establishment Reject
-        if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
-                smreq->req, n1_sm_message,
-                cause_value_5gsm_e::
-                    CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED)) {
-          conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
-          // Trigger reply to AMF
-          trigger_create_context_error_response(
-              http_status_code::FORBIDDEN,
-              PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED,
-              n1_sm_message_hex, smreq->pid);
-
-        } else {
-          trigger_http_response(
-              http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
-              N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
-        }
+        reply_with_pdu_session_establishment_reject(
+            smreq->req, n1_sm_message,
+            cause_value_5gsm_e::
+                CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+            http_status_code::FORBIDDEN,
+            PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
         return;
       }
     } else {
@@ -1090,25 +1024,40 @@ void smf_app::handle_pdu_session_create_sm_context_request(
       if (get_session_management_subscription_data(
               supi64, dnn, snssai, subscription)) {
         // update dnn_context with subscription info
-        sc.get()->insert_dnn_subscription(snssai, dnn, subscription);
+        sc->insert_dnn_subscription(snssai, dnn, subscription);
+      } else {
+        // Cannot get subscription info from the local configuration, reject PDU
+        // session establishment
+        Logger::smf_app().warn(
+            "Received a PDU Session Create SM Context Request, couldn't "
+            "retrieve the Session Management Subscription from the local "
+            "configuration, ignore the "
+            "message!");
+        // PDU Session Establishment Reject
+        reply_with_pdu_session_establishment_reject(
+            smreq->req, n1_sm_message,
+            cause_value_5gsm_e::
+                CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+            http_status_code::FORBIDDEN,
+            PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
+        return;
       }
     }
   }
 
   // Step 8. Generate a SMF context Id and store the corresponding information
   // in a map (SM_Context_ID, (supi, pdu_session_id))
-  scid_t scid = generate_smf_context_ref();
-  std::shared_ptr<smf_context_ref> scf =
-      std::shared_ptr<smf_context_ref>(new smf_context_ref());
-  scf.get()->supi           = supi;
-  scf.get()->pdu_session_id = pdu_session_id;
+  scid_t scid         = generate_smf_context_ref();
+  auto scf            = std::make_shared<smf_context_ref>();
+  scf->supi           = supi;
+  scf->pdu_session_id = pdu_session_id;
   set_scid_2_smf_context(scid, scf);
   smreq->set_scid(scid);
 
   Logger::smf_app().debug("Generated a SMF Context ID " SCID_FMT " ", scid);
 
   // Step 9. Let the context handle the message
-  sc.get()->handle_pdu_session_create_sm_context_request(smreq);
+  sc->handle_pdu_session_create_sm_context_request(smreq);
 }
 
 //------------------------------------------------------------------------------
@@ -1556,7 +1505,10 @@ bool smf_app::update_smf_configuration(nlohmann::json& json_data) {
 //------------------------------------------------------------------------------
 bool smf_app::is_supi_2_smf_context(const supi64_t& supi) const {
   std::shared_lock lock(m_supi2smf_context);
-  return bool{supi2smf_context.count(supi) > 0};
+  if (supi2smf_context.count(supi) > 0) {
+    if (supi2smf_context.at(supi) != nullptr) return true;
+  }
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -2002,72 +1954,16 @@ bool smf_app::get_session_management_subscription_data(
     }
   }
 
-  /*
-    for (int i = 0; i < smf_cfg->num_session_management_subscription; i++) {
-      if ((0 == dnn.compare(smf_cfg->session_management_subscription[i].dnn))
-    and (snssai.sST ==
-           smf_cfg->session_management_subscription[i].single_nssai.sST) and
-          (0 ==
-           snssai.sD.compare(
-               smf_cfg->session_management_subscription[i].single_nssai.sD))) {
-        // PDU Session Type
-        pdu_session_type_t pdu_session_type(
-            pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
-        Logger::smf_app().debug(
-            "Default session type %s",
-            smf_cfg->session_management_subscription[i].session_type.c_str());
+  // If there's no corresponding info from the conf file, use the (hardcoded)
+  // default QoS parameters
+  set_default_qos_parameters(dnn_configuration);
+  subscription->insert_dnn_configuration(dnn, dnn_configuration);
+  return true;
+}
 
-        std::string session_type =
-            smf_cfg->session_management_subscription[i].session_type;
-        if (boost::iequals(session_type, "IPv4")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
-        } else if (boost::iequals(session_type, "IPv6")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV6;
-        } else if (boost::iequals(session_type, "IPv4v6")) {
-          pdu_session_type.pdu_session_type =
-              pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6;
-        }
-
-        dnn_configuration->pdu_session_types.default_session_type =
-            pdu_session_type;
-
-        // SSC_Mode
-        dnn_configuration->ssc_modes.default_ssc_mode.ssc_mode =
-            smf_cfg->session_management_subscription[i].ssc_mode;
-
-        // 5gQosProfile
-        dnn_configuration->_5g_qos_profile._5qi =
-            smf_cfg->session_management_subscription[i].default_qos._5qi;
-        dnn_configuration->_5g_qos_profile.arp.priority_level =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.priority_level;
-        dnn_configuration->_5g_qos_profile.arp.preempt_cap =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.preempt_cap;
-        dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
-            smf_cfg->session_management_subscription[i]
-                .default_qos.arp.preempt_vuln;
-        dnn_configuration->_5g_qos_profile.priority_level =
-            smf_cfg->session_management_subscription[i].default_qos.priority_level;
-
-        // Session_ambr
-        dnn_configuration->session_ambr.uplink =
-            smf_cfg->session_management_subscription[i].session_ambr.uplink;
-        dnn_configuration->session_ambr.downlink =
-            smf_cfg->session_management_subscription[i].session_ambr.downlink;
-        Logger::smf_app().debug(
-            "Session AMBR Uplink %s, Downlink %s",
-            dnn_configuration->session_ambr.uplink.c_str(),
-            dnn_configuration->session_ambr.downlink.c_str());
-
-        subscription->insert_dnn_configuration(dnn, dnn_configuration);
-        return true;
-      }
-    }
-  */
-  // Default QoS parameters
+//---------------------------------------------------------------------------------------------
+void smf_app::set_default_qos_parameters(
+    std::shared_ptr<dnn_configuration_t>& dnn_configuration) {
   dnn_configuration->pdu_session_types.default_session_type.pdu_session_type =
       pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
   // SSC_Mode
@@ -2082,8 +1978,6 @@ bool smf_app::get_session_management_subscription_data(
   // Session_ambr
   dnn_configuration->session_ambr.uplink   = "1000Mbps";
   dnn_configuration->session_ambr.downlink = "1000Mbps";
-  subscription->insert_dnn_configuration(dnn, dnn_configuration);
-  return true;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -2438,4 +2332,25 @@ void smf_app::trigger_upf_status_notification_subscribe() {
 //------------------------------------------------------------------------------
 std::string smf_app::get_smf_instance_id() const {
   return smf_instance_id;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::reply_with_pdu_session_establishment_reject(
+    pdu_session_msg& msg, std::string& n1_sm_message,
+    cause_value_5gsm_e sm_cause, const uint32_t& http_code,
+    const uint8_t& cause, uint32_t& promise_id) {
+  if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
+          msg, n1_sm_message, sm_cause)) {
+    std::string n1_sm_message_hex = {};
+    conv::convert_string_2_hex(n1_sm_message, n1_sm_message_hex);
+    // Trigger the reply to AMF
+    trigger_create_context_error_response(
+        http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
+        n1_sm_message_hex, promise_id);
+  } else {
+    // Trigger the reply to AMF
+    trigger_http_response(
+        http_status_code::INTERNAL_SERVER_ERROR, promise_id,
+        N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+  }
 }
