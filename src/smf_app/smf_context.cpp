@@ -333,6 +333,16 @@ uint8_t smf_pdu_session::get_number_retransmission_T3592() const {
   return number_retransmission_T3592;
 }
 
+const std::vector<pfcp::framed_route_t>& smf_pdu_session::get_ipv4_frame_route()
+    const {
+  return ipv4_frame_route;
+}
+
+void smf_pdu_session::add_ipv4_frame_route(
+    const pfcp::framed_route_t& ipv4_fr) {
+  smf_pdu_session::ipv4_frame_route.push_back(ipv4_fr);
+}
+
 //------------------------------------------------------------------------------
 void session_management_subscription::insert_dnn_configuration(
     const std::string& dnn,
@@ -968,6 +978,13 @@ void smf_context::handle_pdu_session_create_sm_context_request(
           set_paa       = true;
           paa_static_ip = true;
         }
+      }
+
+      // IPv4 Framed Route
+      for (auto ipv4_frame_route : sdc->ipv4_frame_routes) {
+        pfcp::framed_route_s framed_route;
+        framed_route.framed_route = ipv4_frame_route;
+        sp->add_ipv4_frame_route(framed_route);
       }
     }
   }

@@ -369,6 +369,21 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     create_pdr.set(outer_header_removal);
     pdi.set(edge->qfi);  // QFI - QoS Flow ID
   }
+
+  // Framed IPv4 Route
+  if (!sps->ipv4_frame_route.empty()) {
+    if (up_features.frrt) {
+      for (const auto& framed_route : sps->ipv4_frame_route) {
+        pdi.set(framed_route);
+        Logger::smf_app().debug(
+            "Framed Route %s is set", framed_route.framed_route);
+      }
+    } else {
+      Logger::smf_app().warn(
+          "Received framed routing information from UDM but UPF does not "
+          "support framed routing.");
+    }
+  }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
   // TODO: Ethernet PDU Session Information
