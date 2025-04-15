@@ -669,7 +669,7 @@ bool smf_sbi::get_sm_data(
     }
     if (json_data["singleNssai"].find("sd") != json_data["singleNssai"].end()) {
       std::string sd_str = json_data["singleNssai"]["sd"];
-      if (sd_str != snssai.sd) {
+      if (!boost::iequals(sd_str, snssai.sd)) {
         return false;
       }
     }
