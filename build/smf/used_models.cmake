@@ -235,12 +235,17 @@ list(APPEND USED_PCF_MODEL_SRC_FILES
         ${PCF_MODEL_DIR}/PduSessionRelCause_anyOf.cpp
 )
 
+list(APPEND USED_UDM_MODEL_SRC_FILES
+        ${UDM_MODEL_DIR}/SmfRegistration.cpp
+)
+
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
 
 # we also use NRF models
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/udm/udm.cmake)
 
 # finally, we have to include common_model.cmake (has to be last
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)

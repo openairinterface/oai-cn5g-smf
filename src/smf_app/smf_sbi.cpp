@@ -816,6 +816,63 @@ void smf_sbi::subscribe_sm_data() {
 }
 
 //------------------------------------------------------------------------------
+bool smf_sbi::register_smf_with_udm(
+    const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
+    const oai::model::udm::SmfRegistration& smf_registration) {
+  Logger::smf_sbi().debug(
+      "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
+
+  nlohmann::json json_data = {};
+
+  // TODO: Create new wrapper for SBI Helper to handle this
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::UdmUeCmPathSmfRegistrationPduSession,
+      fmr_format_str);
+
+  std::string udm_url =
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
+      oai::common::sbi::sbi_helper::UdmUeCmBase +
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+          ->get_sbi()
+          .get_api_version() +
+      fmt::format(fmr_format_str, smf_supi64_to_string(supi));
+
+  Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
+
+  nlohmann::json json_body = {};
+  to_json(json_body, smf_registration);
+  std::string req_body = json_data.dump();
+  request req = http_client_inst->prepare_json_request(udm_url, req_body);
+  // TODO: add retry mechanism, probably directly inside HTTP Client lib
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug(
+      "Register with UDM for this PDU Session, response from UDM, HTTP "
+      "Code: %d",
+      resp.status_code);
+
+  if ((resp.status_code == http_status_code::OK) or
+      (resp.status_code == http_status_code::CREATED) or
+      (resp.status_code == http_status_code::NO_CONTENT)) {
+    try {
+      json_data = nlohmann::json::parse(resp.body);
+    } catch (json::exception& e) {
+      Logger::smf_sbi().warn("Could not parse Json data from UDM");
+    }
+  } else {
+    Logger::smf_sbi().warn(
+        "Could not get response from UDM, URL %s, retry ...", udm_url);
+    // TODO: retry
+    return false;
+  }
+
+  // TODO: Process the response
+  return true;
+}
+
+//------------------------------------------------------------------------------
 std::string smf_sbi::get_nrf_base_url() {
   auto nrf_sbi = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
   return nrf_sbi.get_url() + NNRF_NFM_BASE + nrf_sbi.get_api_version() +
