@@ -658,21 +658,24 @@ bool smf_sbi::get_sm_data(
     }
 
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
+
     // Verify SNSSAI
+    oai::model::common::Snssai snssai_model_requested =
+        snssai.to_model_snssai();
+    oai::model::common::Snssai snssai_model_from_udm = {};
+
     if (json_data.find("singleNssai") == json_data.end()) return false;
     if (json_data["singleNssai"].find("sst") !=
         json_data["singleNssai"].end()) {
       uint8_t sst = json_data["singleNssai"]["sst"].get<uint8_t>();
-      if (sst != snssai.sst) {
-        return false;
-      }
+      snssai_model_from_udm.setSst(sst);
     }
     if (json_data["singleNssai"].find("sd") != json_data["singleNssai"].end()) {
       std::string sd_str = json_data["singleNssai"]["sd"];
-      if (sd_str != snssai.sd) {
-        return false;
-      }
+      snssai_model_from_udm.setSd(sd_str);
     }
+
+    if (snssai_model_from_udm != snssai_model_requested) return false;
 
     // Verify DNN configurations
     if (json_data.find("dnnConfigurations") == json_data.end()) return false;
