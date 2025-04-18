@@ -4391,9 +4391,11 @@ void smf_context::send_pdu_session_update_response(
   // TODO: check we got all responses vs
   // resp->res.flow_context_modified
 
-  // TODO: Optional: send ITTI message to N10 to trigger UDM registration
-  // (Nudm_UECM_Registration)  see TS29503_Nudm_UECM.yaml (
-  // /{ueId}/registrations/smf-registrations/{pduSessionId}:)
+  // SMF registers to the UDM for this PDU Session
+  // see TS29503_Nudm_UECM.yaml, Nudm_UECM_Registration:
+  // nudm-uecm/v1/{ueId}/registrations/smf-registrations/{pduSessionId}:
+
+  // TODO: use ITTI message to N10 to trigger UDM registration
   supi64_t supi64 = smf_supi_to_u64(req->req.get_supi());
   pdu_session_id_t pdu_session_id =
       (pdu_session_id_t) req->req.get_pdu_session_id();
@@ -4412,7 +4414,7 @@ void smf_context::send_pdu_session_update_response(
     // Use the first TAI
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
-
+  // Register with the UDM
   smf_sbi_inst->register_smf_with_udm(supi64, pdu_session_id, smf_registration);
 
   // Process the response

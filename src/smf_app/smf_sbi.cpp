@@ -847,11 +847,10 @@ bool smf_sbi::register_smf_with_udm(
   // TODO: add retry mechanism, probably directly inside HTTP Client lib
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
-  Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "Register with UDM for this PDU Session, response from UDM, HTTP "
-      "Code: %d",
-      resp.status_code);
+      "Register with UDM for this PDU Session, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
 
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::CREATED) or
