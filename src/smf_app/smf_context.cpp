@@ -3423,8 +3423,7 @@ bool smf_context::get_pdu_session_info(
 
 //------------------------------------------------------------------------------
 void smf_context::handle_sm_context_status_change(
-    const scid_t& scid, const std::string& status,
-    const uint8_t& http_version) const {
+    const scid_t& scid, const std::string& status) const {
   Logger::smf_app().debug(
       "Send request to N11 to triger SM Context Status Notification to AMF, "
       "SMF Context ID " SCID_FMT " ",
@@ -3456,7 +3455,6 @@ void smf_context::handle_sm_context_status_change(
   itti_msg->scid              = scid;
   itti_msg->sm_context_status = status;
   itti_msg->amf_status_uri    = get_amf_status_uri();
-  itti_msg->http_version      = http_version;
 
   int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {

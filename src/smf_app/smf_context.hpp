@@ -952,12 +952,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * Handle SM Context Status Change (Send notification AMF)
    * @param [scid_t] scid: SMF Context ID
    * @param [uint32_t] status: Updated status
-   * @param [uint8_t] http_version: HTTP version
    * @return void
    */
   void handle_sm_context_status_change(
-      const scid_t& scid, const std::string& status,
-      const uint8_t& http_version) const;
+      const scid_t& scid, const std::string& status) const;
 
   /*
    * Trigger PDU Session Release Notification (Send notification AMF)
