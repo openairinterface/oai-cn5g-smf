@@ -352,7 +352,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
     // Subscribe to SM Context Status Change
     sm_context_status_connection =
         event_sub.subscribe_sm_context_status(boost::bind(
-            &smf_context::handle_sm_context_status_change, this, _1, _2, _3));
+            &smf_context::handle_sm_context_status_change, this, _1, _2));
     // Subscribe to PDU Session Release (event exposure)
     ee_pdu_session_release_connection =
         event_sub.subscribe_ee_pdu_session_release(boost::bind(
