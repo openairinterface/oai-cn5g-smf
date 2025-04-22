@@ -836,7 +836,7 @@ bool smf_sbi::register_smf_with_udm(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(fmr_format_str, smf_supi64_to_string(supi));
+      fmt::format(fmr_format_str, smf_supi64_to_string(supi), pdu_session_id);
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
