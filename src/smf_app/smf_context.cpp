@@ -1569,8 +1569,7 @@ bool smf_context::handle_pdu_session_release_complete(
 
   Logger::smf_app().debug("Signal the SM Context Status Change");
   std::string status = "RELEASED";
-  event_sub.sm_context_status(
-      scid, status, sm_context_request.get()->http_version);
+  event_sub.sm_context_status(scid, status);
 
   // TODO: Notify AMF that the SM context for this PDU session is released
   if (sp.get()->get_pdu_session_status() ==
