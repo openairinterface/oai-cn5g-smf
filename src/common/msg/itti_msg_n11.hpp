@@ -318,23 +318,20 @@ class itti_n11_notify_sm_context_status : public itti_n11_msg {
       : itti_n11_msg(N11_SESSION_NOTIFY_SM_CONTEXT_STATUS, orig, dest),
         scid(0),
         sm_context_status(),
-        amf_status_uri(),
-        http_version() {}
+        amf_status_uri() {}
 
   itti_n11_notify_sm_context_status(const itti_n11_notify_sm_context_status& i)
       : itti_n11_msg(i),
         scid(i.scid),
         sm_context_status(i.sm_context_status),
-        amf_status_uri(i.amf_status_uri),
-        http_version(i.http_version) {}
+        amf_status_uri(i.amf_status_uri) {}
   itti_n11_notify_sm_context_status(
       const itti_n11_notify_sm_context_status& i, const task_id_t orig,
       const task_id_t dest)
       : itti_n11_msg(i, orig, dest),
         scid(i.scid),
         sm_context_status(i.sm_context_status),
-        amf_status_uri(i.amf_status_uri),
-        http_version(i.http_version) {}
+        amf_status_uri(i.amf_status_uri) {}
   const char* get_msg_name() { return "N11_SESSION_NOTIFY_SM_CONTEXT_STATUS"; };
   void set_scid(scid_t id) { scid = id; };
   void set_sm_context_status(std::string status) {
@@ -343,7 +340,6 @@ class itti_n11_notify_sm_context_status : public itti_n11_msg {
   scid_t scid;  // SM Context ID
   std::string sm_context_status;
   std::string amf_status_uri;
-  uint8_t http_version;
 };
 
 //-----------------------------------------------------------------------------

@@ -321,9 +321,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
 //------------------------------------------------------------------------------
 void smf_sbi::send_sm_context_status_notification(
     std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status) {
-  Logger::smf_sbi().debug(
-      "Send SM Context Status Notification to AMF(HTTP version %d)",
-      sm_context_status->http_version);
+  Logger::smf_sbi().debug("Send SM Context Status Notification to AMF");
   Logger::smf_sbi().debug(
       "AMF URI: %s", sm_context_status->amf_status_uri.c_str());
 

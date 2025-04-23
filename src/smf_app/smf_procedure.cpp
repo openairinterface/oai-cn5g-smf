@@ -1440,14 +1440,25 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
-    // TODO: Nsmf_PDUSession_SMContextStatusNotify
-    /*  If the PDU Session establishment is not successful, the SMF informs
-     the AMF by invoking Nsmf_PDUSession_SMContextStatusNotify (Release). The
-     SMF also releases any N4 session(s) created, any PDU Session address if
-     allocated (e.g. IP address) and releases the association with PCF, if
-     any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
-     */
-    // TODO: should we return here with smf_procedure_code::ERROR;
+    // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
+    // is not successful, the SMF informs the AMF by invoking
+    // Nsmf_PDUSession_SMContextStatusNotify (Release). The
+    // SMF also releases any N4 session(s) created, any PDU Session address if
+    // allocated (e.g. IP address) and releases the association with PCF, if
+    // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
+
+    scid_t scid = {};
+    try {
+      scid = std::stoi(n11_trigger->scid);
+    } catch (const std::exception& err) {
+      Logger::smf_app().warn(
+          "SM Context associated with this id %s does not exit!",
+          n11_trigger->scid.c_str());
+    }
+    sc->handle_sm_context_status_change(scid, "RELEASED");
+
+    return smf_procedure_code::ERROR;
+
   } else {
     n11_triggered_pending->res.set_cause(
         static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));

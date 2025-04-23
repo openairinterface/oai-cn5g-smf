@@ -1570,8 +1570,7 @@ bool smf_context::handle_pdu_session_release_complete(
 
   Logger::smf_app().debug("Signal the SM Context Status Change");
   std::string status = "RELEASED";
-  event_sub.sm_context_status(
-      scid, status, sm_context_request.get()->http_version);
+  event_sub.sm_context_status(scid, status);
 
   // TODO: Notify AMF that the SM context for this PDU session is released
   if (sp.get()->get_pdu_session_status() ==
@@ -3424,8 +3423,7 @@ bool smf_context::get_pdu_session_info(
 
 //------------------------------------------------------------------------------
 void smf_context::handle_sm_context_status_change(
-    const scid_t& scid, const std::string& status,
-    const uint8_t& http_version) const {
+    const scid_t& scid, const std::string& status) const {
   Logger::smf_app().debug(
       "Send request to N11 to triger SM Context Status Notification to AMF, "
       "SMF Context ID " SCID_FMT " ",
@@ -3457,7 +3455,6 @@ void smf_context::handle_sm_context_status_change(
   itti_msg->scid              = scid;
   itti_msg->sm_context_status = status;
   itti_msg->amf_status_uri    = get_amf_status_uri();
-  itti_msg->http_version      = http_version;
 
   int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
