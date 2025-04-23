@@ -70,6 +70,7 @@ using namespace oai::common::sbi;
 using namespace oai::ngap;
 
 extern itti_mw* itti_inst;
+extern smf_sbi* smf_sbi_inst;
 extern smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -4390,9 +4391,33 @@ void smf_context::send_pdu_session_update_response(
   // TODO: check we got all responses vs
   // resp->res.flow_context_modified
 
-  // TODO: Optional: send ITTI message to N10 to trigger UDM registration
-  // (Nudm_UECM_Registration)  see TS29503_Nudm_UECM.yaml (
-  // /{ueId}/registrations/smf-registrations/{pduSessionId}:)
+  // SMF registers to the UDM for this PDU Session
+  // see TS29503_Nudm_UECM.yaml, Nudm_UECM_Registration:
+  // nudm-uecm/v1/{ueId}/registrations/smf-registrations/{pduSessionId}:
+
+  // TODO: use ITTI message to N10 to trigger UDM registration
+  supi64_t supi64 = smf_supi_to_u64(req->req.get_supi());
+  pdu_session_id_t pdu_session_id =
+      (pdu_session_id_t) req->req.get_pdu_session_id();
+
+  // Set SMF registration info
+  oai::model::udm::SmfRegistration smf_registration = {};
+  smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
+  smf_registration.setPduSessionId(pdu_session_id);
+  auto smf_info = smf_cfg->smf()->get_smf_info();
+  if (smf_info.getSNssaiSmfInfoList().size() > 0) {
+    // Use the first SNssai
+    smf_registration.setSingleNssai(
+        (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
+  }
+  if (smf_info.getTaiList().size() > 0) {
+    // Use the first TAI
+    smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
+  }
+  // Register with the UDM
+  smf_sbi_inst->register_smf_with_udm(supi64, pdu_session_id, smf_registration);
+
+  // Process the response
   if (resp->res.get_cause() ==
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
     switch (session_procedure_type) {
