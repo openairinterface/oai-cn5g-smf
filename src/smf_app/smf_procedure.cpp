@@ -1453,7 +1453,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     } catch (const std::exception& err) {
       Logger::smf_app().warn(
           "SM Context associated with this id %s does not exit!",
-          sm_context_req->scid.c_str());
+          n11_trigger->scid.c_str());
     }
     sc->handle_sm_context_status_change(scid, "RELEASED");
 
