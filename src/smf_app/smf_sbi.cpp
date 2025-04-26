@@ -872,6 +872,6 @@ bool smf_sbi::register_smf_with_udm(
 //------------------------------------------------------------------------------
 std::string smf_sbi::get_nrf_base_url() {
   auto nrf_sbi = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  return nrf_sbi.get_url() + NNRF_NFM_BASE + nrf_sbi.get_api_version() +
-         NNRF_NF_REGISTER_URL;
+  return nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
+         nrf_sbi.get_api_version() + NNRF_NF_REGISTER_URL;
 }
