@@ -2315,7 +2315,7 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   json_data["validityTime"] = "20390531T235959";
 
   auto nrf_sbi    = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  std::string url = nrf_sbi.get_url() + NNRF_NFM_BASE +
+  std::string url = nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
                     nrf_sbi.get_api_version() + NNRF_NF_STATUS_SUBSCRIBE_URL;
 
   itti_msg->url          = url;
