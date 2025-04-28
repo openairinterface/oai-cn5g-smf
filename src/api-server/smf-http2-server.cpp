@@ -51,6 +51,25 @@ using namespace oai::common::sbi;
 void smf_http2_server::start() {
   boost::system::error_code ec;
 
+  boost::asio::ssl::context tls(boost::asio::ssl::context::sslv23);
+  bool enable_tls = smf_cfg->get_tls_config().enable_tls();
+
+  if (enable_tls) {
+    try {
+      std::string key_file =
+          smf_cfg->get_tls_config().get_cert_key_path() + "/oai_smf.key";
+      std::string certificate_file =
+          smf_cfg->get_tls_config().get_cert_certificate_path() +
+          "/oai_smf.crt";
+      tls.use_private_key_file(key_file, boost::asio::ssl::context::pem);
+      tls.use_certificate_chain_file(certificate_file);
+      configure_tls_context_easy(ec, tls);
+    } catch (exception& e) {
+      Logger::smf_app().error("%s", e.what());
+      enable_tls = false;
+    }
+  }
+
   Logger::smf_api_server().info("HTTP2 server being started");
   // Create SM Context Request
   server.handle(
@@ -377,9 +396,20 @@ void smf_http2_server::start() {
       });
 
   running_server = true;
-  if (server.listen_and_serve(ec, m_address, std::to_string(m_port))) {
+
+  bool server_status = false;
+  if (enable_tls) {
+    server_status =
+        server.listen_and_serve(ec, tls, m_address, std::to_string(m_port));
+  } else {
+    server_status =
+        server.listen_and_serve(ec, m_address, std::to_string(m_port));
+  }
+
+  if (server_status) {
     Logger::smf_api_server().error("HTTP2 server error: %s", ec.message());
   }
+
   running_server = false;
   Logger::smf_api_server().info("HTTP2 server fully stopped");
   return;
