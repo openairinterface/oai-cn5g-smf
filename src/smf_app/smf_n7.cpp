@@ -186,7 +186,9 @@ bool smf_pcf_client::discover_pcf_from_config_file(
   api_version = smf_cfg->get_nf(oai::config::PCF_CONFIG_NAME)
                     ->get_sbi()
                     .get_api_version();
-  addr = smf_cfg->get_nf(oai::config::PCF_CONFIG_NAME)->get_sbi().get_url();
+  addr = smf_cfg->get_nf(oai::config::PCF_CONFIG_NAME)
+             ->get_sbi()
+             .get_url(smf_cfg->enable_tls());
   return true;
 }
 

@@ -613,7 +613,9 @@ bool smf_sbi::get_sm_data(
       oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
 
   std::string udm_url =
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+          ->get_sbi()
+          .get_url(smf_cfg->enable_tls()) +
       oai::common::sbi::sbi_helper::UdmSdmBase +
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
@@ -829,7 +831,9 @@ bool smf_sbi::register_smf_with_udm(
       fmr_format_str);
 
   std::string udm_url =
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+          ->get_sbi()
+          .get_url(smf_cfg->enable_tls()) +
       oai::common::sbi::sbi_helper::UdmUeCmBase +
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
@@ -872,6 +876,6 @@ bool smf_sbi::register_smf_with_udm(
 //------------------------------------------------------------------------------
 std::string smf_sbi::get_nrf_base_url() {
   auto nrf_sbi = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  return nrf_sbi.get_url() + NNRF_NFM_BASE + nrf_sbi.get_api_version() +
-         NNRF_NF_REGISTER_URL;
+  return nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
+         nrf_sbi.get_api_version() + NNRF_NF_REGISTER_URL;
 }

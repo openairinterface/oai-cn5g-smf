@@ -4139,8 +4139,9 @@ void smf_context::update_qos_info(
 std::string smf_context::get_amf_addr_from_amf_status_uri(
     const std::string& status_uri) {
   std::vector<std::string> split_result;
-  std::string amf_addr_str =
-      smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)->get_sbi().get_url();
+  std::string amf_addr_str = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+                                 ->get_sbi()
+                                 .get_url(smf_cfg->enable_tls());
 
   boost::split(split_result, status_uri, boost::is_any_of("/"));
   if (split_result.size() >= 3) {
@@ -4158,7 +4159,11 @@ std::string smf_context::get_amf_addr_from_amf_status_uri(
     if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
-      amf_addr_str = "http://" + full_addr;
+      if (smf_cfg->enable_tls())
+        amf_addr_str = "https://" + full_addr;
+      else
+        amf_addr_str = "http://" + full_addr;
+      ;
       Logger::smf_api_server().debug("AMF IP Addr %s", amf_addr_str.c_str());
     }
   }
@@ -4347,8 +4352,8 @@ void smf_context::send_pdu_session_create_response(
         resp->res.get_snssai().sd;
     // N1N2MsgTxfrFailureNotification
     std::string callback_uri =
-        smf_cfg->local().get_sbi().get_url() + NSMF_PDU_SESSION_BASE +
-        smf_cfg->local().get_sbi().get_api_version() +
+        smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
+        NSMF_PDU_SESSION_BASE + smf_cfg->local().get_sbi().get_api_version() +
         fmt::format(
             NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi_str.c_str());
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
