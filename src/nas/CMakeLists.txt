@@ -19,43 +19,24 @@
 #      contact@openairinterface.org
 ################################################################################
 
-set(NAS_DIR "${SRC_TOP_DIR}/nas")
-include_directories(${NAS_DIR})
-include_directories(${NAS_DIR}/ies)
-include_directories(${NAS_DIR}/mm)
-include_directories(${NAS_DIR}/mm/msg)
-include_directories(${NAS_DIR}/sm)
-include_directories(${NAS_DIR}/sm/msg)
-include_directories(${NAS_DIR}/security)
-include_directories(${SRC_TOP_DIR}/ngap/asn1c)
-include_directories(${SRC_TOP_DIR}/ngap/ies)
-include_directories(${SRC_TOP_DIR}/common)
-include_directories(${SRC_TOP_DIR}/common/msg)
-include_directories(${SRC_TOP_DIR}/common/utils)
-include_directories(${SRC_TOP_DIR}/common/utils/bstr)
-include_directories(${SRC_TOP_DIR}/common/nas)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
-# we only include the NAS utils, we should change that when we re-use common-src NAS lib
+set(NAS_DIR "${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas")
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/3gpp)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
 
 file(GLOB NAS_src_files
-    ${NAS_DIR}/*.c
-    ${NAS_DIR}/ies/*.c
-    ${NAS_DIR}/network/*.c
-    ${NAS_DIR}/mm/msg/*.c
-    ${NAS_DIR}/mm/*.c
-    ${NAS_DIR}/sm/*.c
-    ${NAS_DIR}/sm/msg/*.c
-    ${SRC_TOP_DIR}/common/utils/*.c
-    ${SRC_TOP_DIR}/common/utils/bstr/*.c
-    ${SRC_TOP_DIR}/nas/security/*.c
-    ${SRC_TOP_DIR}/common/*.c
-    ${SRC_TOP_DIR}/ngap/asn1c/*.c
-    ${SRC_TOP_DIR}/ngap/ies/*.c
-    ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils/*.c
-)   
+  ${NAS_DIR}/common/*.cpp
+  ${NAS_DIR}/5gsm-msgs/*.cpp
+  ${NAS_DIR}/ies/*.cpp
+  ${NAS_DIR}/utils/*.c
+  ${NAS_DIR}/utils/*.cpp
+)
 
-add_library(NAS ${NAS_src_files} ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES})
+add_library (NAS ${NAS_src_files})

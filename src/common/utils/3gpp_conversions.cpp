@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file 3gpp_conversions.cpp
- * \brief
- * \author Lionel Gauthier
- * \company Eurecom
- * \email: lionel.gauthier@eurecom.fr
- */
 #include "3gpp_conversions.hpp"
 
 #include <ctype.h>
@@ -43,6 +37,10 @@
 #include "SmContextReleaseData.h"
 #include "SmContextUpdateData.h"
 #include "conversions.hpp"
+#include "PduSessionType.hpp"
+#include "PduSessionEstablishmentRequest.hpp"
+#include "ExtendedProtocolConfigurationOptions.hpp"
+using namespace oai::nas;
 
 using namespace oai::model::pcf;
 
@@ -95,68 +93,6 @@ void xgpp_conv::pdn_ip_to_pfcp_ue_ip_address(
     case PDU_SESSION_TYPE_E_ETHERNET:
     case PDU_SESSION_TYPE_E_RESERVED:
     default:;
-  }
-}
-
-//------------------------------------------------------------------------------
-void xgpp_conv::pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco) {
-  pco.ext                          = pco_nas.ext;
-  pco.spare                        = pco_nas.spare;
-  pco.configuration_protocol       = pco_nas.configuration_protocol;
-  pco.num_protocol_or_container_id = pco_nas.num_protocol_or_container_id;
-
-  for (int i = 0; i < pco.num_protocol_or_container_id; i++) {
-    pco_protocol_or_container_id_t pco_item = {};
-
-    pco_item.length_of_protocol_id_contents =
-        pco_nas.protocol_or_container_ids[i].length;
-    pco_item.protocol_id = pco_nas.protocol_or_container_ids[i].id;
-
-    // pco.protocol_or_container_ids[i].length_of_protocol_id_contents =
-    // pco_nas.protocol_or_container_ids[i].length;
-    // pco.protocol_or_container_ids[i].protocol_id =
-    // pco_nas.protocol_or_container_ids[i].id;
-    if (pco_nas.protocol_or_container_ids[i].contents != nullptr) {
-      unsigned char data[512] = {'\0'};
-      memcpy(
-          (void*) &data,
-          (void*) pco_nas.protocol_or_container_ids[i].contents->data,
-          pco_nas.protocol_or_container_ids[i].contents->slen);
-      std::string msg_bstr(
-          (char*) data, pco_nas.protocol_or_container_ids[i].contents->slen);
-      // pco.protocol_or_container_ids[i].protocol_id_contents  = msg_bstr;
-      pco_item.protocol_id_contents = msg_bstr;
-    }
-
-    pco.protocol_or_container_ids.push_back(pco_item);
-  }
-}
-
-//------------------------------------------------------------------------------
-void xgpp_conv::pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas) {
-  pco_nas.ext                          = pco.ext;
-  pco_nas.spare                        = pco.spare;
-  pco_nas.configuration_protocol       = pco.configuration_protocol;
-  pco_nas.num_protocol_or_container_id = pco.num_protocol_or_container_id;
-
-  for (int i = 0; i < pco.num_protocol_or_container_id; i++) {
-    pco_nas.protocol_or_container_ids[i].length =
-        pco.protocol_or_container_ids[i].length_of_protocol_id_contents;
-    pco_nas.protocol_or_container_ids[i].id =
-        pco.protocol_or_container_ids[i].protocol_id;
-
-    pco_nas.protocol_or_container_ids[i].contents = bfromcstralloc(
-        pco.protocol_or_container_ids[i].protocol_id_contents.length(), "\0");
-    pco_nas.protocol_or_container_ids[i].contents->slen =
-        pco.protocol_or_container_ids[i].protocol_id_contents.length();
-    memcpy(
-        (void*) pco_nas.protocol_or_container_ids[i].contents->data,
-        (void*) pco.protocol_or_container_ids[i].protocol_id_contents.c_str(),
-        pco.protocol_or_container_ids[i].protocol_id_contents.length());
   }
 }
 
@@ -537,26 +473,30 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_request_from_nas(
-    const nas_message_t& nas_msg,
+    const std::shared_ptr<Nas5gsmMessage>& nas_msg,
     smf::pdu_session_create_sm_context_request& pcr) {
   pdu_session_type_t pdu_session_type = {};
   pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
+
   // Extended Protocol Discriminator
-  pcr.set_epd(nas_msg.header.extended_protocol_discriminator);
+  pcr.set_epd(nas_msg->GetHeader().GetEpd());
+
   // Message Type
-  pcr.set_message_type(nas_msg.plain.sm.header.message_type);
+  uint8_t message_type = nas_msg->GetHeader().GetMessageType();
+  pcr.set_message_type(message_type);
   // TODO: Integrity protection maximum data rate (Mandatory)
 
   // PDU session type (Optional)
-  if (nas_msg.plain.sm.header.message_type ==
-      PDU_SESSION_ESTABLISHMENT_REQUEST) {
-    Logger::smf_app().debug(
-        "PDU Session Type %d",
-        nas_msg.plain.sm.pdu_session_establishment_request._pdusessiontype
-            .pdu_session_type_value);
-    pdu_session_type.pdu_session_type =
-        nas_msg.plain.sm.pdu_session_establishment_request._pdusessiontype
-            .pdu_session_type_value;
+  if (message_type == PDU_SESSION_ESTABLISHMENT_REQUEST) {
+    std::optional<PduSessionType> pdu_session_type_opt =
+        (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
+            ->GetPduSessionType();
+    if (pdu_session_type_opt.has_value()) {
+      Logger::smf_app().debug(
+          "PDU Session Type %d", pdu_session_type_opt.value().GetValue());
+      pdu_session_type.pdu_session_type =
+          pdu_session_type_opt.value().GetValue();
+    }
   }
   pcr.set_pdu_session_type(pdu_session_type.pdu_session_type);
 
@@ -567,17 +507,20 @@ void xgpp_conv::sm_context_request_from_nas(
   // TODO: SMPDUDNRequestContainer
 
   // ExtendedProtocolConfigurationOptions
-  protocol_configuration_options_t pco = {};
-  pco_nas_to_core(
-      nas_msg.plain.sm.pdu_session_establishment_request
-          .extendedprotocolconfigurationoptions,
-      pco);
-  pcr.set_epco(pco);
+  if (message_type == PDU_SESSION_ESTABLISHMENT_REQUEST) {
+    std::optional<oai::nas::ExtendedProtocolConfigurationOptions>
+        conf_options_opt =
+            (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
+                ->GetExtendedProtocolConfigurationOptions();
+    if (conf_options_opt.has_value()) {
+      pcr.set_epco((conf_options_opt.value()).Get());
+    }
+  }
 
   // PTI
   procedure_transaction_id_t pti = {
       .procedure_transaction_id =
-          nas_msg.plain.sm.header.procedure_transaction_identity};
+          nas_msg->GetHeader().GetProcedureTransactionIdentity()};
 
   pcr.set_pti(pti);
 }

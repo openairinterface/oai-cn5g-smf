@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file 3gpp_conversions.hpp
- \brief
- \author Lionel Gauthier
- \company Eurecom
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef FILE_3GPP_CONVERSIONS_HPP_SEEN
 #define FILE_3GPP_CONVERSIONS_HPP_SEEN
 
@@ -39,14 +32,12 @@
 #include "SmContextUpdateMessage.h"
 #include "endpoint.hpp"
 #include "itti_msg_n11.hpp"
-#include "nas_lib.h"
 #include "smf_msg.hpp"
 #include "SmPolicyNotification.h"
 #include "SmPolicyDecision.h"
+#include "Nas5gsmMessage.hpp"
 
-extern "C" {
-#include "nas_message.h"
-}
+using namespace oai::nas;
 
 namespace xgpp_conv {
     
@@ -73,26 +64,6 @@ void pdn_ip_to_pfcp_ue_ip_address(
     const pdu_session_type_t& pdu_session_type,
     const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
     pfcp::ue_ip_address_t& ue_ip_address);
-
-/*
- * Convert PCO in NAS into core type
- * @param [const protocol_configuration_options_nas_t&] pco_nas: PCO in NAS msg
- * @param [protocol_configuration_options_t&] pco: PCO in core type
- * @return void
- */
-void pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco);
-
-/*
- * Convert PCO in core type to NAS type
- * @param [const protocol_configuration_options_t&] pco: PCO in cpre type
- * @param [protocol_configuration_options_nas_t&] pco_nas: PCO in NAS type
- * @return void
- */
-void pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas);
 
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU
@@ -146,13 +117,14 @@ void smf_event_exposure_notification_from_openapi(
 
 /*
  * Convert NAS to SM Context Request msg
- * @param [const nas_message_t&] nm: NAS msg
+ * @param [const std::shared_ptr<Nas5gsmMessage>&] nas_msg: 5GSM NAS message
  * @param [smf::pdu_session_create_sm_context_request&] pcr: PDU
  * SessionCreateSMContextRequest msg
  * @return void
  */
 void sm_context_request_from_nas(
-    const nas_message_t& nm, smf::pdu_session_create_sm_context_request& pcr);
+    const std::shared_ptr<Nas5gsmMessage>& nas_msg,
+    smf::pdu_session_create_sm_context_request& pcr);
 
 /*
  * Convert smPolicyNotification from OpenAPI into policy_notification

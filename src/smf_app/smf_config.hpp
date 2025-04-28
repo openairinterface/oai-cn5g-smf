@@ -19,15 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config.hpp
- * \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN, Stefan Spettel
- \company Eurecom, phine.tech
- \date 2023
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr,
- stefan.spettel@phine.tech
- */
-
 #pragma once
 
 #include <arpa/inet.h>
@@ -52,8 +43,6 @@ namespace oai::config::smf {
 const std::string USE_LOCAL_PCC_RULES_CONFIG_VALUE = "use_local_pcc_rules";
 const std::string USE_LOCAL_SUBSCRIPTION_INFOS_CONFIG_VALUE =
     "use_local_subscription_info";
-const std::string USE_EXTERNAL_AUSF_CONFIG_VALUE = "use_external_ausf";
-const std::string USE_EXTERNAL_UDM_CONFIG_VALUE  = "use_external_udm";
 const std::string USE_EXTERNAL_NSSF_CONFIG_VALUE = "use_external_nssf";
 const std::string NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS =
     "send_default_qos_characteristics";

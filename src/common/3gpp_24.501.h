@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  This file contains NAS header bits format
- *  Refer TS24.007 TS24.501
- *  Author: Puzyu Dukl (BUPT), Tien-Thinh NGUYEN (EURECOM)
- *  Time:
- *  Email:
- */
-
 #ifndef FILE_3GPP_24_501_H_SEEN
 #define FILE_3GPP_24_501_H_SEEN
 #include <netinet/in.h>

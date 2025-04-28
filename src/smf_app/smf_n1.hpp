@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n1.hpp
- * \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_N1_HPP_SEEN
 #define FILE_SMF_N1_HPP_SEEN
 
@@ -35,10 +27,9 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
+#include "Nas5gsmMessage.hpp"
 
-extern "C" {
-#include "nas_message.h"
-}
+using namespace oai::nas;
 
 namespace smf {
 
@@ -48,6 +39,7 @@ class smf_n1 {
   smf_n1(){};
   smf_n1(smf_n1 const&) = delete;
   void operator=(smf_n1 const&) = delete;
+  virtual ~smf_n1(){};
 
  public:
   static smf_n1& get_instance() {
@@ -174,12 +166,12 @@ class smf_n1 {
 
   /*
    * Decode N1 SM Container into the NAS mesasge (using NAS lib)
-   * @param [nas_message_t&] nas_msg Store NAS message after decoded
+   * @param [Nas5gsmMessage&] nas_msg Store NAS message after decoded
    * @param [const std::string&] n1_sm_msg N1 SM Container
    * @return status of the decode process
    */
   int decode_n1_sm_container(
-      nas_message_t& nas_msg, const std::string& n1_sm_msg);
+      std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg);
 };
 
 }  // namespace smf

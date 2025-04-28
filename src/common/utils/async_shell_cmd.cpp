@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file async_shell_cmd.cpp
-   \brief
-   \author  Lionel GAUTHIER
-   \date 2017
-   \email: lionel.gauthier@eurecom.fr
-*/
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>

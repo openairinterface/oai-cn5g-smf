@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_sbi.hpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_SBI_HPP_SEEN
 #define FILE_SMF_SBI_HPP_SEEN
 
@@ -36,6 +29,7 @@
 #include "3gpp_29.503.h"
 #include "smf.h"
 #include "smf_context.hpp"
+#include "SmfRegistration.h"
 
 namespace smf {
 
@@ -159,6 +153,18 @@ class smf_sbi {
    *
    */
   void subscribe_sm_data();
+
+  /*
+   * Get SM subscription data from UDM
+   * @param [const supi64_t &] supi
+   * @param [const pdu_session_id_t &] PDU Session ID
+   * @param [const oai::model::udm::SmfRegistration &] SMF Registration Info
+   * @return bool: True if successful, otherwise false
+   *
+   */
+  bool register_smf_with_udm(
+      const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
+      const oai::model::udm::SmfRegistration& smf_registration);
 
   /*
    * Generate an unique value for promise id

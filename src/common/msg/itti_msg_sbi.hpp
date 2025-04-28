@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  itti_msg_sbi.hpp
- *
- *  Created on:
- *  Author:
- */
-
 #ifndef ITTI_MSG_SBI_HPP_INCLUDED_
 #define ITTI_MSG_SBI_HPP_INCLUDED_
 

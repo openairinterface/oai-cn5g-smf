@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file logger.hpp
-\brief
-\author Stefan Spettel
-\company OpenAirInterface Software Alliance
-\date 2022
-\email: stefan.spettel@eurecom.fr
-*/
-
 #pragma once
 
 #include "logger_base.hpp"

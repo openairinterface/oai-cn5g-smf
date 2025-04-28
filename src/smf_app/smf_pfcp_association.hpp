@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_pfcp_association.hpp
- \author  Lionel GAUTHIER
- \date 2019
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 #define FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 

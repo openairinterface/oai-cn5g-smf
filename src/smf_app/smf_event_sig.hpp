@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event_sig.hpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_EVENT_SIG_HPP_SEEN
 #define FILE_SMF_EVENT_SIG_HPP_SEEN
 
@@ -43,7 +35,7 @@ namespace smf {
 // Signal for PDU session status
 // SCID, PDU Session Status, HTTP version
 typedef bs2::signal_type<
-    void(scid_t, const std::string&, uint8_t),
+    void(scid_t, const std::string&),
     bs2::keywords::mutex_type<bs2::dummy_mutex>>::type sm_context_status_sig_t;
 
 // Signal for Event exposure

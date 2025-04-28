@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_app.hpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_APP_HPP_SEEN
 #define FILE_SMF_APP_HPP_SEEN
 
@@ -701,6 +693,16 @@ class smf_app {
       std::shared_ptr<session_management_subscription> subscription);
 
   /*
+   * Set the default QoS parameters for the Session Management Subscription in
+   * case there is no info from the local configuration file
+   * @param [std::shared_ptr<dnn_configuration_t>] dnn_configuration: DNN
+   * configuration
+   * @return void
+   */
+  void set_default_qos_parameters(
+      std::shared_ptr<dnn_configuration_t>& dnn_configuration);
+
+  /*
    * Verify whether the UE request is valid according to the user subscription
    * and with local policies
    * @param [..]
@@ -914,6 +916,10 @@ class smf_app {
       pdu_session_update_sm_context_response& sm_context_response,
       uint32_t& pid);
 
+  void reply_with_pdu_session_establishment_reject(
+      pdu_session_msg& msg, std::string& n1_sm_message,
+      cause_value_5gsm_e sm_cause, const uint32_t& http_code,
+      const uint8_t& cause, uint32_t& promise_id);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID
