@@ -52,7 +52,7 @@ void smf_http2_server::start() {
   boost::system::error_code ec;
 
   boost::asio::ssl::context tls(boost::asio::ssl::context::sslv23);
-  bool enable_tls = smf_cfg->get_tls_config().enable_tls();
+  bool enable_tls = smf_cfg->enable_tls();
 
   if (enable_tls) {
     try {
@@ -64,7 +64,7 @@ void smf_http2_server::start() {
       tls.use_private_key_file(key_file, boost::asio::ssl::context::pem);
       tls.use_certificate_chain_file(certificate_file);
       configure_tls_context_easy(ec, tls);
-    } catch (exception& e) {
+    } catch (std::exception& e) {
       Logger::smf_app().error("%s", e.what());
       enable_tls = false;
     }
@@ -397,18 +397,13 @@ void smf_http2_server::start() {
 
   running_server = true;
 
-  bool server_status = false;
   if (enable_tls) {
-    server_status =
-        server.listen_and_serve(ec, tls, m_address, std::to_string(m_port));
+    server.listen_and_serve(ec, tls, m_address, std::to_string(m_port));
   } else {
-    server_status =
-        server.listen_and_serve(ec, m_address, std::to_string(m_port));
+    server.listen_and_serve(ec, m_address, std::to_string(m_port));
   }
 
-  if (server_status) {
-    Logger::smf_api_server().error("HTTP2 server error: %s", ec.message());
-  }
+  Logger::smf_api_server().error("HTTP2 server status: %s", ec.message());
 
   running_server = false;
   Logger::smf_api_server().info("HTTP2 server fully stopped");
