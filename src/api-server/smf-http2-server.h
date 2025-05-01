@@ -34,6 +34,7 @@
 #include "smf.h"
 #include "smf_app.hpp"
 #include "uint_generator.hpp"
+#include "TerminationNotification.h"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -74,10 +75,15 @@ class smf_http2_server {
   void update_configuration_handler(
       nlohmann::json& configuration_info, const response& response);
 
-  void update_policy_notification_handler(
-    const std::string& smf_ref,
-    const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
-    const response& response);
+  void modify_sm_context_handler(
+      const std::string& scid,
+      const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+      const response& response);
+
+  void terminate_policy_notification_handler(
+      const std::string& scid,
+      const oai::model::pcf::TerminationNotification& terminationNotification,
+      const response& response);
 
   void stop();
 

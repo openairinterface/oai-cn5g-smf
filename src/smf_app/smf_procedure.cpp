@@ -1429,41 +1429,38 @@ smf_procedure_code session_update_sm_context_procedure::run(
 smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     itti_n4_session_modification_response& resp,
     std::shared_ptr<smf::smf_context> sc) {
-  Logger::smf_app().debug(
-      "Handle N4 Session Modification Response");
+  Logger::smf_app().debug("Handle N4 Session Modification Response");
 
   pfcp::cause_t cause = {};
   resp.pfcp_ies.get(cause);
 
   if (is_n7_triggered_pending()) {
     // This is a response to a policy-triggered modification
-    
+
     n7_trigger_pending->res.set_cause(static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
 
-    // TODO [PUN]: Perform operations need to update the state before sending a response
-    // to the PCF. This may include updating the session state, notifying the
-    // application, etc.
-    // For example, if the response indicates that the modification was accepted,
-    // you may want to update the session state accordingly.
-    // If the response indicates that the modification was rejected, you may
-    // want to handle the rejection appropriately (e.g., by notifying the
-    // application or rolling back any changes made during the modification
-    // process).
+    // TODO [PUN]: Perform operations need to update the state before sending a
+    // response to the PCF. This may include updating the session state,
+    // notifying the application, etc. For example, if the response indicates
+    // that the modification was accepted, you may want to update the session
+    // state accordingly. If the response indicates that the modification was
+    // rejected, you may want to handle the rejection appropriately (e.g., by
+    // notifying the application or rolling back any changes made during the
+    // modification process).
 
-            
     if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
       n7_trigger_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+          static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
       // TODO: Fill response data if needed
     } else {
-      n7_trigger_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+      n7_trigger_pending->res.set_cause(static_cast<uint8_t>(
+          cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
     }
-   
+
     return smf_procedure_code::OK;
   }
-  
+
   n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
 
@@ -1789,14 +1786,15 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
    */
 }
 
+//------------------------------------------------------------------------------
 // Update run method to support N7 triggers
 smf_procedure_code session_update_sm_context_procedure::run(
-  const std::shared_ptr<itti_n7_update_policy_notification_request>& sm_context_req,
-  std::shared_ptr<itti_n7_update_policy_notification_response> sm_context_resp,
-  const std::shared_ptr<smf::smf_context>& sc) {
-
-  Logger::smf_app().info(
-      "Running Session Update procedure (N7 triggered)");
+    const std::shared_ptr<itti_n7_update_policy_notification_request>&
+        sm_context_req,
+    std::shared_ptr<itti_n7_update_policy_notification_response>
+        sm_context_resp,
+    const std::shared_ptr<smf::smf_context>& sc) {
+  Logger::smf_app().info("Running Session Update procedure (N7 triggered)");
   // Get UPF node
   std::shared_ptr<smf_context_ref> scf = {};
   scid_t scid                          = {};
@@ -1848,11 +1846,11 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
-  n7_trigger           = sm_context_req;
+  n7_trigger = sm_context_req;
   set_n7_triggered(true);
   n7_trigger_pending = std::move(sm_context_resp);
   set_n7_triggered_pending(true);
-  
+
   n4_triggered = std::make_shared<itti_n4_session_modification_request>(
       TASK_SMF_APP, TASK_SMF_N4);
   n4_triggered->seid    = sps->up_fseid.seid;
@@ -1860,16 +1858,14 @@ smf_procedure_code session_update_sm_context_procedure::run(
   n4_triggered->r_endpoint =
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
-
   // TODO [PUN]: Update the PFCP IEs based on the N7 request
-  // This includes setting up create/modify/remove rules based on PCC rule changes
-
-
+  // This includes setting up create/modify/remove rules based on PCC rule
+  // changes
 
   // Send to UPF
   Logger::smf_app().info(
-      "Sending N4 Session Modification Request to UPF (trxn_id: %d)", n4_triggered->trxn_id);
-
+      "Sending N4 Session Modification Request to UPF (trxn_id: %d)",
+      n4_triggered->trxn_id);
 
   Logger::smf_app().info(
       "Sending ITTI message %s to task TASK_SMF_N4",
@@ -1882,5 +1878,5 @@ smf_procedure_code session_update_sm_context_procedure::run(
     return smf_procedure_code::ERROR;
   }
 
-return smf_procedure_code::OK;
+  return smf_procedure_code::OK;
 }

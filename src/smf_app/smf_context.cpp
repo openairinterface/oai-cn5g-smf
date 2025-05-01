@@ -438,7 +438,7 @@ void smf_context::handle_itti_msg(
 
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
-    itti_n4_session_modification_response& smresp) { 
+    itti_n4_session_modification_response& smresp) {
   std::shared_ptr<smf_procedure> proc = {};
   if (find_procedure(smresp.trxn_id, proc)) {
     Logger::smf_app().debug(
@@ -450,10 +450,13 @@ void smf_context::handle_itti_msg(
     // and log them appropriately
     try {
       // Handle the message
-      smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
+      smf_procedure_code res =
+          proc->handle_itti_msg(smresp, shared_from_this());
       if (res != smf_procedure_code::CONTINUE) {
-        std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
-            std::static_pointer_cast<session_update_sm_context_procedure>(proc);
+        std::shared_ptr<session_update_sm_context_procedure>
+            proc_session_update =
+                std::static_pointer_cast<session_update_sm_context_procedure>(
+                    proc);
         // If n7_triggered_pending is not empty, it means that the N7 SMF
         // procedure is still pending and we need to send the N4 SMF
         // response to N11
@@ -467,7 +470,7 @@ void smf_context::handle_itti_msg(
               proc_session_update->sps);
         } else {
           Logger::smf_app().debug(
-              "N7 triggered pending, sending N4 response to N7");   
+              "N7 triggered pending, sending N4 response to N7");
           send_pdu_session_update_response(
               proc_session_update->n7_trigger,
               proc_session_update->n7_trigger_pending,
@@ -915,20 +918,23 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
 
   sp->policy_ptr->id = smreq->scid;
-  // TODO [Policy Control] The SMF shall set the notification URI for the PCF to use
+  // [Policy Control] The SMF shall set the notification URI for the PCF to use
   // to notify the SMF of policy decisions. The SMF shall set the notification
   // The URI value will have the base uri of the SMF
-  std::string notification_uri = smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() + 
-    NSMF_N7_BASE + smf_cfg->sbi_api_version +
-          NSMF_N7_CALLBACK +
-          fmt::format(
-            NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK, std::to_string(sp->policy_ptr->id).c_str());
+  std::string notification_uri =
+      smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
+      NSMF_N7_CALLBACK_BASE + smf_cfg->sbi_api_version +
+      fmt::format(
+          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
+          std::to_string(sp->policy_ptr->id).c_str());
   // Add association id to url
   Logger::smf_app().debug(fmt::format(
-      "Set the notification URI {} for the PCF to use to notify the SMF of ", notification_uri.c_str()));
+      "Set the notification URI {} for the PCF to use to notify the SMF of ",
+      notification_uri.c_str()));
   sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
 
-  // NOTE: The decision in association (sp->policy_ptr) is updated from the response from PCF
+  // NOTE: The decision in association (sp->policy_ptr) is updated from the
+  // response from PCF
   n7::sm_policy_status_code status =
       n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
   if (status != n7::sm_policy_status_code::CREATED) {
@@ -3197,58 +3203,56 @@ bool smf_context::handle_ho_cancellation(
 }
 
 //------------------------------------------------------------------------------
-bool smf_context::handle_n7_update_policy_notification(
-  std::shared_ptr<itti_n7_update_policy_notification_request> pnreq) {
-  Logger::smf_app().info("SMF Context: Handle a N7 Update Policy Notification");
+bool smf_context::handle_pdu_session_modify_sm_context_request(
+    std::shared_ptr<itti_sbi_modify_sm_context_request> smreq) {
+  Logger::smf_app().info("Handle a PDU Session Modify SM Context Request");
 
-  pdu_session_sm_policy_notificatiion pn_req_msg = pnreq->req;
-  // Step 1: Retrieve the PDU session context. At this stage the pdu session must exist
+  // Step 1: Retrieve the PDU session context. At this stage the pdu session
+  // must exist
   std::shared_ptr<smf_pdu_session> sp = {};
-  if (!find_pdu_session(pn_req_msg.get_pdu_session_id(), sp)) {
+  if (!find_pdu_session(smreq->req.get_pdu_session_id(), sp)) {
     // error
     Logger::smf_app().warn("PDU session context does not exist!");
-    // trigger to send reply to AMF
+    // trigger to send reply to the NF consumer
     smf_app_inst->trigger_http_response(
-        http_status_code::NOT_FOUND, pnreq->pid,
-        N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
     return false;
   }
 
-  // Process policy rules from notification
-  // TODO [PUN]: Update PCC rules in the context based on policy notification
+  // Process the request
 
-  // Create itti_n7_update_policy_notification_response
-  std::shared_ptr<itti_n7_update_policy_notification_response>
-      sm_context_resp_pending =
-          std::make_shared<itti_n7_update_policy_notification_response>(
-              TASK_SMF_APP, TASK_SMF_APP, pnreq->pid);
-  
-  // Find the pdu session 
-  auto proc = std::make_shared<session_update_sm_context_procedure>(sp);
-  // TODO [PUN]: Set the session_procedure_type, is it needed?
-  // proc->session_procedure_type         = procedure_type;
-  
-  proc->set_n7_triggered(true);
-  proc->set_n7_triggered_pending(true);
-  
+  // TODO: Update PCC rules in the context based on policy notification
+
+  // Store HttpResponse and session-related information to be used when
+  // receiving the response from UPF
+  std::shared_ptr<itti_sbi_modify_sm_context_response> sm_context_resp_pending =
+      std::make_shared<itti_sbi_modify_sm_context_response>(
+          TASK_SMF_APP, TASK_SMF_APP, smreq->pid);
+
+  // TODO: Assign necessary information for the response
+  // sm_context_resp_pending->res
+
+  auto proc = std::make_shared<session_modify_sm_context_procedure>(sp);
+
   // Add procedure to the context
   std::shared_ptr<smf_procedure> sproc = proc;
+  proc->session_procedure_type         = smreq->session_procedure_type;
   insert_procedure(sproc);
-  
+
   // Run the procedure
-  if (proc->run(pnreq, sm_context_resp_pending, shared_from_this()) ==
+  if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==
       smf_procedure_code::ERROR) {
     Logger::smf_app().info(
-        "PDU Session Update SM Context Request procedure failed");
+        "PDU Session Modify SM Context Request procedure failed");
 
-    // TODO [PUN]: Handle the error case
-
+    // TODO: Handle the error case
 
     remove_procedure(sproc.get());
     // Trigger to send reply to AMF
     smf_app_inst->trigger_http_response(
-        http_status_code::FORBIDDEN, pnreq->pid,
-        N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
+        http_status_code::FORBIDDEN, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
     return false;
   }
 
@@ -4681,39 +4685,36 @@ void smf_context::send_pdu_session_update_response(
 
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_update_response(
-  const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
-  const std::shared_ptr<itti_n7_update_policy_notification_response>& resp,
-  const session_management_procedures_type_e& session_procedure_type,
-  const std::shared_ptr<smf_pdu_session>& sps) {
+    const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
+    const std::shared_ptr<itti_n7_update_policy_notification_response>& resp,
+    const session_management_procedures_type_e& session_procedure_type,
+    const std::shared_ptr<smf_pdu_session>& sps) {
+  if (resp->res.get_cause() ==
+      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+    Logger::smf_app().info(
+        "PDU Session Procedure Type %d", (int) session_procedure_type);
 
+    // TODO [PUN]: check we got all the relevant procedures
+    switch (session_procedure_type) {
+      case session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
+        // No need to create N1/N2 Container
+        Logger::smf_app().info(
+            "PDU Session Modification UE-initiated (Step 2)");
+      } break;
 
-    if (resp->res.get_cause() ==
-    static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
-      Logger::smf_app().info(
-          "PDU Session Procedure Type %d", (int) session_procedure_type);
+      case session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_UE_INITIATED_STEP3: {
+        // No need to create N1/N2 Container
+        Logger::smf_app().info(
+            "PDU Session Modification UE-initiated (Step 3)");
+      } break;
 
-      // TODO [PUN]: check we got all the relevant procedures
-      switch (session_procedure_type) {
-        case session_management_procedures_type_e::
-            PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
-          // No need to create N1/N2 Container
-          Logger::smf_app().info(
-              "PDU Session Modification UE-initiated (Step 2)");
-        } break;
-
-        case session_management_procedures_type_e::
-            PDU_SESSION_MODIFICATION_UE_INITIATED_STEP3: {
-          // No need to create N1/N2 Container
-          Logger::smf_app().info(
-              "PDU Session Modification UE-initiated (Step 3)");
-        } break;
-
-        default: {
-          Logger::smf_app().info(
-              "Unknown session procedure type %d",
-              (int) session_procedure_type);
-        }
+      default: {
+        Logger::smf_app().info(
+            "Unknown session procedure type %d", (int) session_procedure_type);
       }
+    }
   } else {
     resp->res.set_http_code(http_status_code::NOT_ACCEPTABLE);
   }
@@ -4721,13 +4722,12 @@ void smf_context::send_pdu_session_update_response(
   Logger::smf_app().info(
       "Sending ITTI message %s to task TASK_SMF_APP", resp->get_msg_name());
   // resp->session_procedure_type = session_procedure_type;
-  int ret                      = itti_inst->send_msg(resp);
+  int ret = itti_inst->send_msg(resp);
   if (RETURNok != ret) {
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_APP",
         resp->get_msg_name());
   }
-
 }
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_release_response(

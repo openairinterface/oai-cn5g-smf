@@ -30,6 +30,7 @@
 #include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_n7.hpp"
+#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
 #include "msg_pfcp.hpp"
@@ -272,9 +273,9 @@ class session_update_sm_context_procedure : public smf_session_procedure {
    * @return
    */
   smf_procedure_code run(
-    const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
-    std::shared_ptr<itti_n7_update_policy_notification_response> resp,
-    const std::shared_ptr<smf::smf_context>& sc);
+      const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
+      std::shared_ptr<itti_n7_update_policy_notification_response> resp,
+      const std::shared_ptr<smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
@@ -296,12 +297,15 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   bool n7_triggered_pending;
 
   std::shared_ptr<itti_n7_update_policy_notification_request> n7_trigger;
-  std::shared_ptr<itti_n7_update_policy_notification_response> n7_trigger_pending;
+  std::shared_ptr<itti_n7_update_policy_notification_response>
+      n7_trigger_pending;
 
   bool is_n7_triggered() const { return n7_triggered; }
   void set_n7_triggered(bool triggered) { n7_triggered = triggered; }
   bool is_n7_triggered_pending() const { return n7_triggered_pending; }
-  void set_n7_triggered_pending(bool pending) { n7_triggered_pending = pending; }
+  void set_n7_triggered_pending(bool pending) {
+    n7_triggered_pending = pending;
+  }
 
  private:
   /**
@@ -359,6 +363,56 @@ class session_release_sm_context_procedure : public smf_session_procedure {
   smf_procedure_code send_n4_session_deletion_request();
 };
 
+//------------------------------------------------------------------------------
+class session_modify_sm_context_procedure : public smf_session_procedure {
+ public:
+  explicit session_modify_sm_context_procedure(
+      std::shared_ptr<smf_pdu_session>& ps)
+      : smf_session_procedure(ps),
+        sbi_trigger(),
+        sbi_triggered_pending(),
+        session_procedure_type() {}
+
+  /*
+   * Execute Modify SM Context Request procedure
+   * @param [itti_sbi_modify_sm_context_request] req
+   * @param [itti_sbi_modify_sm_context_response] resp
+   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @return
+   */
+  smf_procedure_code run(
+      const std::shared_ptr<itti_sbi_modify_sm_context_request>& req,
+      std::shared_ptr<itti_sbi_modify_sm_context_response> resp,
+      const std::shared_ptr<smf::smf_context>& sc);
+
+  /*
+   * Handle N4 Session Modification Response from UPF
+   * @param [itti_n4_session_modification_response] resp
+   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @return void
+   */
+  smf_procedure_code handle_itti_msg(
+      itti_n4_session_modification_response& resp,
+      std::shared_ptr<smf::smf_context> sc) override;
+
+  std::shared_ptr<itti_n4_session_modification_request> n4_triggered;
+
+  std::shared_ptr<itti_sbi_modify_sm_context_request> sbi_trigger;
+  std::shared_ptr<itti_sbi_modify_sm_context_response> sbi_triggered_pending;
+  session_management_procedures_type_e session_procedure_type;
+
+ private:
+  /**
+   * Sends a session modification request, based on the graph
+   * Does only consider normal DL procedures
+   * @return OK when successful, ERROR otherwise
+   */
+  smf_procedure_code send_n4_session_modification_request(
+      const std::vector<pfcp::qfi_t>& list_of_qfis);
+
+  void remove_pdrs_fars_qers(
+      const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
+};
 }  // namespace smf
 #include "../smf_app/smf_context.hpp"
 

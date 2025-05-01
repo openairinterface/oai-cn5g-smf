@@ -290,7 +290,8 @@ void smf_app_task(void*) {
         break;
       case N7_UPDATE_POLICY_NOTIFICATION_RESPONSE:
         if (itti_n7_update_policy_notification_response* m =
-                dynamic_cast<itti_n7_update_policy_notification_response*>(msg)) {
+                dynamic_cast<itti_n7_update_policy_notification_response*>(
+                    msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
@@ -1076,7 +1077,6 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Step 9. Let the context handle the message
   // NOTE: The actual processing of the message is done here
   sc->handle_pdu_session_create_sm_context_request(smreq);
-
 }
 
 //------------------------------------------------------------------------------
@@ -1504,29 +1504,12 @@ void smf_app::handle_sbi_update_configuration(
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_n7_update_policy_notification(
-    std::shared_ptr<itti_n7_update_policy_notification_request> pnreq) {
-  Logger::smf_app().info(
-      "Handle an N7 Update Policy Notification from a NF (HTTP version "
-      "%d)",
-      pnreq->http_version);
+void smf_app::handle_pdu_session_modify_sm_context_request(
+    std::shared_ptr<itti_sbi_modify_sm_context_request> smreq) {
+  Logger::smf_app().info("Handle a PDU Session Modify SM Context Request");
 
   // Step 1. Get SUPI, PDU Session ID from sm_context
-  scid_t scid = {};
-  try {
-    scid = std::stoi(pnreq->scid);
-  } catch (const std::exception& err) {
-    Logger::smf_app().warn(
-        "Received a PDU Session Update SM Context Request, couldn't retrieve "
-        "the corresponding SMF context, ignore message!");
-    // Trigger to send reply to PCF
-    trigger_http_response(
-        http_status_code::NOT_FOUND, pnreq->pid,
-        N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
-
-    return;
-  }
-
+  scid_t scid                          = smreq->scid;
   std::shared_ptr<smf_context_ref> scf = {};
 
   if (is_scid_2_smf_context(scid)) {
@@ -1534,10 +1517,10 @@ void smf_app::handle_n7_update_policy_notification(
   } else {
     Logger::smf_app().warn(
         "SM Context associated with this id " SCID_FMT " does not exit!", scid);
-    // Trigger to send reply to AMF
+    // Trigger to send reply to the NF consumer
     trigger_http_response(
-      http_status_code::NOT_FOUND, pnreq->pid,
-      N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
     return;
   }
 
@@ -1550,16 +1533,15 @@ void smf_app::handle_n7_update_policy_notification(
     Logger::smf_app().debug(
         "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
   } else {
-    // Send PDUSession_SMUpdateContext Response to AMF
+    // Trigger to send reply to the NF consumer
     Logger::smf_app().warn(
-        "Received PDU Session Update SM Context Request with Supi " SUPI_64_FMT
+        "Received a PDU Session Modify SM Context Request with "
+        "Supi " SUPI_64_FMT
         "couldn't retrieve the corresponding SMF context, ignore message!",
         supi64);
-    // Trigger to send reply to AMF
     trigger_http_response(
-      http_status_code::NOT_FOUND, pnreq->pid,
-      N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
-
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
     return;
   }
 
@@ -1567,30 +1549,29 @@ void smf_app::handle_n7_update_policy_notification(
   std::shared_ptr<smf_pdu_session> sp = {};
   if (!sc.get()->find_pdu_session(scf.get()->pdu_session_id, sp)) {
     Logger::smf_app().warn(
-        "Received PDU Session Update SM Context Request, couldn't retrieve "
-        "the corresponding SMF context, ignore message!");
-    // Trigger to send reply to AMF
+        "Received a PDU Session Modify SM Context Request, couldn't retrieve "
+        "the corresponding PDU Session context, ignore message!");
+    // Trigger to send reply to the NF consumer
     trigger_http_response(
-      http_status_code::NOT_FOUND, pnreq->pid,
-      N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
     return;
   }
 
-  // Step 4. Store SUPI, DNN, NSSAI in itti_n11_update_sm_context_request to be
-  // processed later on
-  pnreq->req.set_supi(scf.get()->supi);
-  pnreq->req.set_pdu_session_id(scf.get()->pdu_session_id);
-  pnreq->req.set_dnn(sp.get()->get_dnn());
-  pnreq->req.set_snssai(sp.get()->get_snssai());
+  // Step 4. Store SUPI, DNN, NSSAI in the request message to be processed later
+  // on
+  smreq->req.set_supi(scf.get()->supi);
+  smreq->req.set_pdu_session_id(scf.get()->pdu_session_id);
+  smreq->req.set_dnn(sp.get()->get_dnn());
+  smreq->req.set_snssai(sp.get()->get_snssai());
 
- 
-  if (!sc.get()->handle_n7_update_policy_notification(pnreq)) {
+  if (!sc.get()->handle_pdu_session_modify_sm_context_request(smreq)) {
     Logger::smf_app().warn(
-        "Received N7 Update Policy Notification Request, couldn't process!");
-    // trigger to send reply to AMF
+        "Received a PDU Session Modify SM Context Request, couldn't process!");
+    // trigger to send reply to the NF consumer
     trigger_http_response(
-      http_status_code::INTERNAL_SERVER_ERROR, pnreq->pid,
-      N7_UPDATE_POLICY_NOTIFICATION_RESPONSE);
+        http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
   }
   return;
 }

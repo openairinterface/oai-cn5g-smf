@@ -36,6 +36,7 @@
 #include "pistache/http.h"
 #include "smf_profile.hpp"
 #include "PatchItem.h"
+#include "SmPolicyNotification.h"
 
 class itti_n7_msg : public itti_msg {
  public:
@@ -44,8 +45,7 @@ class itti_n7_msg : public itti_msg {
       const task_id_t dest)
       : itti_msg(msg_type, orig, dest) {}
   itti_n7_msg(const itti_n7_msg& i) : itti_msg(i) {}
-  itti_n7_msg(
-      const itti_n7_msg& i, const task_id_t orig, const task_id_t dest)
+  itti_n7_msg(const itti_n7_msg& i, const task_id_t orig, const task_id_t dest)
       : itti_n7_msg(i) {
     origin      = orig;
     destination = dest;
@@ -58,31 +58,27 @@ class itti_n7_msg : public itti_msg {
 class itti_n7_update_policy_notification_request : public itti_n7_msg {
  public:
   itti_n7_update_policy_notification_request(
-      const task_id_t orig, const task_id_t dest, uint32_t promise_id, const std::string& smf_ref)
+      const task_id_t orig, const task_id_t dest, uint32_t promise_id,
+      const std::string& association_id)
       : itti_n7_msg(N7_UPDATE_POLICY_NOTIFICATION_REQUEST, orig, dest),
         pid(promise_id),
-        scid(smf_ref),
-        http_version(1) {}
+        scid(association_id) {}
   itti_n7_update_policy_notification_request(
       const itti_n7_update_policy_notification_request& i)
-      : itti_n7_msg(i),
-        pid(i.pid),
-        http_version(i.http_version) {}
+      : itti_n7_msg(i), pid(i.pid) {}
   itti_n7_update_policy_notification_request(
       const itti_n7_update_policy_notification_request& i, const task_id_t orig,
       const task_id_t dest)
-      : itti_n7_msg(i, orig, dest),
-        pid(i.pid),
-        http_version(i.http_version) {}
+      : itti_n7_msg(i, orig, dest), pid(i.pid) {}
   const char* get_msg_name() {
     return "N7_UPDATE_POLICY_NOTIFICATION_REQUEST";
   };
-  
+
   // TODO: Add request message
-  smf::pdu_session_sm_policy_notificatiion req;
+  oai::model::pcf::SmPolicyNotification sm_policy_notification;
   uint32_t pid;
-  uint8_t http_version;
-  std::string scid;  // SM Context ID
+  std::string scid;
+  smf::pdu_session_msg req;
 };
 
 //-----------------------------------------------------------------------------

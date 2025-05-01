@@ -407,8 +407,8 @@ class smf_app {
   void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
 
   /*
-   * Handle ITTI message N7 Update Policy Notification Response to trigger the response
-   * to AMF
+   * Handle ITTI message N7 Update Policy Notification Response to trigger the
+   * response to AMF
    * @param [itti_n7_update_policy_notification_response&] m
    * @return void
    */
@@ -622,12 +622,12 @@ class smf_app {
       std::shared_ptr<itti_sbi_update_smf_configuration>& c);
 
   /*
-   * Handle N7 API for update policy notification
-   * @param [std::shared_ptr<itti_n7_update_policy_notification_request>&] c
+   * Handle UE or Network-requested PDU Session Modification Request
+   * @param [std::shared_ptr<itti_sbi_modify_sm_context_request>&] pnreq
    * @return void
    */
-  void handle_n7_update_policy_notification(
-        std::shared_ptr<itti_n7_update_policy_notification_request> pnreq);
+  void handle_pdu_session_modify_sm_context_request(
+      std::shared_ptr<itti_sbi_modify_sm_context_request> smreq);
 
   /*
    * Get the current SMF's configuration
