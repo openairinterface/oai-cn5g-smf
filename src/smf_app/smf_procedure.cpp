@@ -1760,3 +1760,25 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
    and PDU Session Id
    */
 }
+
+//------------------------------------------------------------------------------
+smf_procedure_code
+session_modify_sm_context_procedure::send_n4_session_modification_request(
+    const std::vector<pfcp::qfi_t>& list_of_qfis) {
+  return smf_procedure_code::CONTINUE;
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code session_modify_sm_context_procedure::run(
+    const std::shared_ptr<itti_sbi_modify_sm_context_request>& req,
+    std::shared_ptr<itti_sbi_modify_sm_context_response> resp,
+    const std::shared_ptr<smf::smf_context>& sc) {
+  return smf_procedure_code::OK;
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code session_modify_sm_context_procedure::handle_itti_msg(
+    itti_n4_session_modification_response& resp,
+    std::shared_ptr<smf::smf_context> sc) {
+  return smf_procedure_code::OK;
+}

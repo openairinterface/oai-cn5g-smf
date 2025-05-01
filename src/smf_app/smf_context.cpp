@@ -3200,31 +3200,30 @@ bool smf_context::handle_pdu_session_modify_sm_context_request(
 
   // TODO: Assign necessary information for the response
   // sm_context_resp_pending->res
-  /*
-    auto proc = std::make_shared<session_modify_sm_context_procedure>(sp);
 
-    // Add procedure to the context
-    std::shared_ptr<smf_procedure> sproc = proc;
-    proc->session_procedure_type         = smreq->session_procedure_type;
-    insert_procedure(sproc);
+  auto proc = std::make_shared<session_modify_sm_context_procedure>(sp);
 
+  // Add procedure to the context
+  std::shared_ptr<smf_procedure> sproc = proc;
+  proc->session_procedure_type         = smreq->session_procedure_type;
+  insert_procedure(sproc);
 
-    // Run the procedure
-    if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==
-        smf_procedure_code::ERROR) {
-      Logger::smf_app().info(
-          "PDU Session Modify SM Context Request procedure failed");
+  // Run the procedure
+  if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==
+      smf_procedure_code::ERROR) {
+    Logger::smf_app().info(
+        "PDU Session Modify SM Context Request procedure failed");
 
-      // TODO: Handle the error case
+    // TODO: Handle the error case
 
-      remove_procedure(sproc.get());
-      // Trigger to send reply to AMF
-      smf_app_inst->trigger_http_response(
-          http_status_code::FORBIDDEN, smreq->pid,
-          SBI_MODIFY_SM_CONTEXT_RESPONSE);
-      return false;
-    }
-  */
+    remove_procedure(sproc.get());
+    // Trigger to send reply to AMF
+    smf_app_inst->trigger_http_response(
+        http_status_code::FORBIDDEN, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return false;
+  }
+
   return true;
 }
 
