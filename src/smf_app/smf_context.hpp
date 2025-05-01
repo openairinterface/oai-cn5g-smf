@@ -1141,6 +1141,17 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::shared_ptr<smf_pdu_session>& sps);
 
   /**
+   * Create a PDU session UPDATE response, based on the content of resp
+   * @param resp
+   * @pram session_procedure_type The session procedure type of this reply
+   */
+  void send_pdu_session_update_response(
+      const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
+      const std::shared_ptr<itti_n7_update_policy_notification_response>& resp,
+      const session_management_procedures_type_e& session_procedure_type,
+      const std::shared_ptr<smf_pdu_session>& sps);
+
+  /**
    * Create a PDU session Release response, based on the content of resp
    * @param resp
    */

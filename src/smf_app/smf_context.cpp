@@ -887,7 +887,23 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
 
   sp->policy_ptr->id = smreq->scid;
+  // [Policy Control] The SMF shall set the notification URI for the PCF to use
+  // to notify the SMF of policy decisions. The SMF shall set the notification
+  // The URI value will have the base uri of the SMF
+  std::string notification_uri =
+      smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
+      NSMF_N7_CALLBACK_BASE + smf_cfg->sbi_api_version +
+      fmt::format(
+          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
+          std::to_string(sp->policy_ptr->id).c_str());
+  // Add association id to url
+  Logger::smf_app().debug(fmt::format(
+      "Set the notification URI {} for the PCF to use to notify the SMF of ",
+      notification_uri.c_str()));
+  sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
 
+  // NOTE: The decision in association (sp->policy_ptr) is updated from the
+  // response from PCF
   n7::sm_policy_status_code status =
       n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
   if (status != n7::sm_policy_status_code::CREATED) {
@@ -3150,6 +3166,63 @@ bool smf_context::handle_ho_cancellation(
   // TODO: release resources ...
   sp.get()->set_ho_state(ho_state_e::HO_STATE_NONE);
   // Delete targetServingNfId
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool smf_context::handle_pdu_session_modify_sm_context_request(
+    std::shared_ptr<itti_sbi_modify_sm_context_request> smreq) {
+  Logger::smf_app().info("Handle a PDU Session Modify SM Context Request");
+
+  // Step 1: Retrieve the PDU session context. At this stage the pdu session
+  // must exist
+  std::shared_ptr<smf_pdu_session> sp = {};
+  if (!find_pdu_session(smreq->req.get_pdu_session_id(), sp)) {
+    // error
+    Logger::smf_app().warn("PDU session context does not exist!");
+    // trigger to send reply to the NF consumer
+    smf_app_inst->trigger_http_response(
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return false;
+  }
+
+  // Process the request
+
+  // TODO: Update PCC rules in the context based on policy notification
+
+  // Store HttpResponse and session-related information to be used when
+  // receiving the response from UPF
+  std::shared_ptr<itti_sbi_modify_sm_context_response> sm_context_resp_pending =
+      std::make_shared<itti_sbi_modify_sm_context_response>(
+          TASK_SMF_APP, TASK_SMF_APP, smreq->pid);
+
+  // TODO: Assign necessary information for the response
+  // sm_context_resp_pending->res
+
+  auto proc = std::make_shared<session_modify_sm_context_procedure>(sp);
+
+  // Add procedure to the context
+  std::shared_ptr<smf_procedure> sproc = proc;
+  proc->session_procedure_type         = smreq->session_procedure_type;
+  insert_procedure(sproc);
+
+  // Run the procedure
+  if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==
+      smf_procedure_code::ERROR) {
+    Logger::smf_app().info(
+        "PDU Session Modify SM Context Request procedure failed");
+
+    // TODO: Handle the error case
+
+    remove_procedure(sproc.get());
+    // Trigger to send reply to AMF
+    smf_app_inst->trigger_http_response(
+        http_status_code::FORBIDDEN, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return false;
+  }
 
   return true;
 }

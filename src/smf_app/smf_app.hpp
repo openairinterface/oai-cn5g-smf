@@ -612,6 +612,14 @@ class smf_app {
       std::shared_ptr<itti_sbi_update_smf_configuration>& c);
 
   /*
+   * Handle UE or Network-requested PDU Session Modification Request
+   * @param [std::shared_ptr<itti_sbi_modify_sm_context_request>&] pnreq
+   * @return void
+   */
+  void handle_pdu_session_modify_sm_context_request(
+      std::shared_ptr<itti_sbi_modify_sm_context_request> smreq);
+
+  /*
    * Get the current SMF's configuration
    * @param [nlohmann::json&]: json_data: Store SMF configuration
    * @return true if success, otherwise return false

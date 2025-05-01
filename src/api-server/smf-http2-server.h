@@ -29,13 +29,17 @@
 #include "SmContextMessage.h"
 #include "SmContextReleaseMessage.h"
 #include "SmContextUpdateMessage.h"
+#include "SmPolicyNotification.h"
+#include "SmPolicyDecision.h"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "uint_generator.hpp"
+#include "TerminationNotification.h"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
+using namespace oai::model::pcf;
 
 class smf_http2_server {
  public:
@@ -70,6 +74,16 @@ class smf_http2_server {
   void get_configuration_handler(const response& response);
   void update_configuration_handler(
       nlohmann::json& configuration_info, const response& response);
+
+  void modify_sm_context_handler(
+      const std::string& scid,
+      const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+      const response& response);
+
+  void terminate_policy_notification_handler(
+      const std::string& scid,
+      const oai::model::pcf::TerminationNotification& terminationNotification,
+      const response& response);
 
   void stop();
 

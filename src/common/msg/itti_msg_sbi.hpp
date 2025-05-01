@@ -113,4 +113,71 @@ class itti_sbi_update_smf_configuration : public itti_sbi_msg {
   nlohmann::json configuration;
 };
 
+//-----------------------------------------------------------------------------
+class itti_sbi_modify_sm_context_request : public itti_sbi_msg {
+ public:
+  itti_sbi_modify_sm_context_request(
+      const task_id_t orig, const task_id_t dest, uint32_t promise_id,
+      scid_t sc_id)
+      : itti_sbi_msg(SBI_MODIFY_SM_CONTEXT_REQUEST, orig, dest),
+        pid(promise_id),
+        req(),
+        scid(sc_id),
+        session_procedure_type() {}
+  itti_sbi_modify_sm_context_request(
+      const itti_sbi_modify_sm_context_request& i)
+      : itti_sbi_msg(i),
+        pid(),
+        req(i.req),
+        scid(i.scid),
+        session_procedure_type(i.session_procedure_type) {}
+  itti_sbi_modify_sm_context_request(
+      const itti_sbi_modify_sm_context_request& i, const task_id_t orig,
+      const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        pid(i.pid),
+        req(i.req),
+        scid(i.scid),
+        session_procedure_type(i.session_procedure_type) {}
+  const char* get_msg_name() { return "SBI_MODIFY_SM_CONTEXT_REQUEST"; };
+  void set_scid(scid_t id) { scid = id; };
+  smf::pdu_session_modify_sm_context_request req;
+  session_management_procedures_type_e session_procedure_type;
+  scid_t scid;   // SM Context ID
+  uint32_t pid;  // Promise Id
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_modify_sm_context_response : public itti_sbi_msg {
+ public:
+  itti_sbi_modify_sm_context_response(
+      const task_id_t orig, const task_id_t dest, uint32_t promise_id)
+      : itti_sbi_msg(SBI_MODIFY_SM_CONTEXT_RESPONSE, orig, dest),
+        pid(promise_id),
+        scid(0),
+        session_procedure_type() {}
+  itti_sbi_modify_sm_context_response(
+      const itti_sbi_modify_sm_context_response& i)
+      : itti_sbi_msg(i),
+        pid(i.pid),
+        res(i.res),
+        scid(i.scid),
+        session_procedure_type(i.session_procedure_type) {}
+  itti_sbi_modify_sm_context_response(
+      const itti_sbi_modify_sm_context_response& i, const task_id_t orig,
+      const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        pid(i.pid),
+        res(i.res),
+        scid(i.scid),
+        session_procedure_type(i.session_procedure_type) {}
+  const char* get_msg_name() { return "SBI_MODIFY_SM_CONTEXT_RESPONSE"; };
+  void set_scid(scid_t id) { scid = id; };
+
+  smf::pdu_session_modify_sm_context_response res;
+  session_management_procedures_type_e session_procedure_type;
+  scid_t scid;   // SM Context ID
+  uint32_t pid;  // Promise Id
+};
+
 #endif /* ITTI_MSG_SBI_HPP_INCLUDED_ */

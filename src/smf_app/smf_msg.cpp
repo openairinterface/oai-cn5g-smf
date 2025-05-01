@@ -842,6 +842,7 @@ void pdu_session_update_sm_context_response::from_json(
     m_smf_context_uri = data["smf_context_uri"].get<std::string>();
   }
 }
+
 /*
  * class: PDU Session Release SM Context Response
  */
@@ -857,6 +858,35 @@ void pdu_session_release_sm_context_response::from_json(
     const nlohmann::json& data) {
   pdu_session_sm_context_response::from_json(data);
 }
+
+/*
+ * class: PDU Session Modify SM Context Request
+ */
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
+}
+
+/*
+//-----------------------------------------------------------------------------
+void
+pdu_session_modify_sm_context_request::set_procedure_type(session_management_procedures_type_e
+type) { procedure_type = type;
+};
+
+
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::get_procedure_type
+(session_management_procedures_type_e& type) const { type= procedure_type;
+}
+*/
 
 /*
  * class: PDU Session Modification Network Requested
