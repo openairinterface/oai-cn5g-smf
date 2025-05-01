@@ -739,6 +739,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
+  bool handle_pdu_session_modify_sm_context_request(
+      std::shared_ptr<itti_sbi_modify_sm_context_request> smreq);
   /*
    * Check the validity of the request according to user subscription and local
    * policies
@@ -1137,17 +1139,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   void send_pdu_session_update_response(
       const std::shared_ptr<itti_n11_update_sm_context_request>& req,
       const std::shared_ptr<itti_n11_update_sm_context_response>& resp,
-      const session_management_procedures_type_e& session_procedure_type,
-      const std::shared_ptr<smf_pdu_session>& sps);
-
-  /**
-   * Create a PDU session UPDATE response, based on the content of resp
-   * @param resp
-   * @pram session_procedure_type The session procedure type of this reply
-   */
-  void send_pdu_session_update_response(
-      const std::shared_ptr<itti_n7_update_policy_notification_request>& req,
-      const std::shared_ptr<itti_n7_update_policy_notification_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
       const std::shared_ptr<smf_pdu_session>& sps);
 

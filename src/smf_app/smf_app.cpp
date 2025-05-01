@@ -1484,6 +1484,79 @@ void smf_app::handle_sbi_update_configuration(
   }
 }
 
+//------------------------------------------------------------------------------
+void smf_app::handle_pdu_session_modify_sm_context_request(
+    std::shared_ptr<itti_sbi_modify_sm_context_request> smreq) {
+  Logger::smf_app().info("Handle a PDU Session Modify SM Context Request");
+
+  // Step 1. Get SUPI, PDU Session ID from sm_context
+  scid_t scid                          = smreq->scid;
+  std::shared_ptr<smf_context_ref> scf = {};
+
+  if (is_scid_2_smf_context(scid)) {
+    scf = scid_2_smf_context(scid);
+  } else {
+    Logger::smf_app().warn(
+        "SM Context associated with this id " SCID_FMT " does not exit!", scid);
+    // Trigger to send reply to the NF consumer
+    trigger_http_response(
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return;
+  }
+
+  supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
+
+  // Step 3. Find the smf context
+  std::shared_ptr<smf_context> sc = {};
+  if (is_supi_2_smf_context(supi64)) {
+    sc = supi_2_smf_context(supi64);
+    Logger::smf_app().debug(
+        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+  } else {
+    // Trigger to send reply to the NF consumer
+    Logger::smf_app().warn(
+        "Received a PDU Session Modify SM Context Request with "
+        "Supi " SUPI_64_FMT
+        "couldn't retrieve the corresponding SMF context, ignore message!",
+        supi64);
+    trigger_http_response(
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return;
+  }
+
+  // Get PDU Session
+  std::shared_ptr<smf_pdu_session> sp = {};
+  if (!sc.get()->find_pdu_session(scf.get()->pdu_session_id, sp)) {
+    Logger::smf_app().warn(
+        "Received a PDU Session Modify SM Context Request, couldn't retrieve "
+        "the corresponding PDU Session context, ignore message!");
+    // Trigger to send reply to the NF consumer
+    trigger_http_response(
+        http_status_code::NOT_FOUND, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+    return;
+  }
+
+  // Step 4. Store SUPI, DNN, NSSAI in the request message to be processed later
+  // on
+  smreq->req.set_supi(scf.get()->supi);
+  smreq->req.set_pdu_session_id(scf.get()->pdu_session_id);
+  smreq->req.set_dnn(sp.get()->get_dnn());
+  smreq->req.set_snssai(sp.get()->get_snssai());
+
+  if (!sc.get()->handle_pdu_session_modify_sm_context_request(smreq)) {
+    Logger::smf_app().warn(
+        "Received a PDU Session Modify SM Context Request, couldn't process!");
+    // trigger to send reply to the NF consumer
+    trigger_http_response(
+        http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
+        SBI_MODIFY_SM_CONTEXT_RESPONSE);
+  }
+  return;
+}
+
 //---------------------------------------------------------------------------------------------
 bool smf_app::read_smf_configuration(nlohmann::json& json_data) {
   smf_cfg->to_json(json_data);

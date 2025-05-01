@@ -31,6 +31,7 @@
 #include "itti_msg_n4.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
+#include "itti_msg_sbi.hpp"
 #include "msg_pfcp.hpp"
 #include "smf_msg.hpp"
 #include "uint_generator.hpp"
