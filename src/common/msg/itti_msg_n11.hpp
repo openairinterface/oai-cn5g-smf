@@ -119,7 +119,9 @@ class itti_n11_update_sm_context_request : public itti_n11_msg {
         pid(promise_id),
         scid(),
         req(),
-        http_version() {}
+        http_version(),
+        session_procedure_type(
+            session_management_procedures_type_e::PROCEDURE_TYPE_UNKNOWN) {}
   itti_n11_update_sm_context_request(
       const task_id_t orig, const task_id_t dest, int32_t promise_id,
       const std::string id)
@@ -127,14 +129,17 @@ class itti_n11_update_sm_context_request : public itti_n11_msg {
         req(),
         pid(promise_id),
         scid(id),
-        http_version() {}
+        http_version(),
+        session_procedure_type(
+            session_management_procedures_type_e::PROCEDURE_TYPE_UNKNOWN) {}
   itti_n11_update_sm_context_request(
       const itti_n11_update_sm_context_request& i)
       : itti_n11_msg(i),
         req(i.req),
         pid(i.pid),
         scid(i.scid),
-        http_version(i.http_version) {}
+        http_version(i.http_version),
+        session_procedure_type(i.session_procedure_type) {}
 
   const char* get_msg_name() {
     return "N11_SESSION_UPDATE_SM_CONTEXT_REQUEST";
@@ -143,6 +148,7 @@ class itti_n11_update_sm_context_request : public itti_n11_msg {
   uint32_t pid;
   std::string scid;  // SM Context ID
   uint8_t http_version;
+  session_management_procedures_type_e session_procedure_type;
 };
 
 //-----------------------------------------------------------------------------
@@ -239,21 +245,26 @@ class itti_n11_release_sm_context_request : public itti_n11_msg {
       const task_id_t orig, const task_id_t dest, uint32_t promise_id)
       : itti_n11_msg(N11_SESSION_RELEASE_SM_CONTEXT_REQUEST, orig, dest),
         pid(promise_id),
-        http_version(1) {}
+        http_version(1),
+        session_procedure_type(
+            session_management_procedures_type_e::PROCEDURE_TYPE_UNKNOWN) {}
   itti_n11_release_sm_context_request(
       const task_id_t orig, const task_id_t dest, uint32_t promise_id,
       const std::string id)
       : itti_n11_msg(N11_SESSION_RELEASE_SM_CONTEXT_REQUEST, orig, dest),
         pid(promise_id),
         scid(id),
-        http_version(1) {}
+        http_version(1),
+        session_procedure_type(
+            session_management_procedures_type_e::PROCEDURE_TYPE_UNKNOWN) {}
   itti_n11_release_sm_context_request(
       const itti_n11_release_sm_context_request& i)
       : itti_n11_msg(i),
         pid(i.pid),
         scid(i.scid),
         req(i.req),
-        http_version(i.http_version) {}
+        http_version(i.http_version),
+        session_procedure_type(i.session_procedure_type) {}
   itti_n11_release_sm_context_request(
       const itti_n11_release_sm_context_request& i, const task_id_t orig,
       const task_id_t dest)
@@ -261,7 +272,8 @@ class itti_n11_release_sm_context_request : public itti_n11_msg {
         pid(i.pid),
         scid(i.scid),
         req(i.req),
-        http_version(i.http_version) {}
+        http_version(i.http_version),
+        session_procedure_type(i.session_procedure_type) {}
   const char* get_msg_name() {
     return "N11_SESSION_RELEASE_SM_CONTEXT_REQUEST";
   };
@@ -269,6 +281,7 @@ class itti_n11_release_sm_context_request : public itti_n11_msg {
   std::string scid;      // SM Context ID
   uint32_t pid;          // Promise Id
   uint8_t http_version;  // HTTP version
+  session_management_procedures_type_e session_procedure_type;
 };
 
 //-----------------------------------------------------------------------------

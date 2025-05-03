@@ -739,8 +739,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
-  bool handle_pdu_session_modify_sm_context_request(
-      std::shared_ptr<itti_sbi_modify_sm_context_request> smreq);
   /*
    * Check the validity of the request according to user subscription and local
    * policies

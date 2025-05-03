@@ -193,9 +193,8 @@ typedef struct qos_profile_s {
 #define NNRF_NF_STATUS_SUBSCRIBE_URL "/subscriptions"
 #define NNRF_NF_STATUS_NOTIFY_BASE "/nsmf-nfstatus-notify/"
 
-// Callbacks for N7 interface
-#define NSMF_N7_CALLBACK_BASE "/nsmf-callback/"
-#define NSMF_N7_CALLBACK "/callback/"
+// Callbacks
+#define NSMF_CALLBACK_BASE "/nsmf-callback/"
 #define NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK                                 \
   "{}/sm-policy-control-notify"  // Association Id
 

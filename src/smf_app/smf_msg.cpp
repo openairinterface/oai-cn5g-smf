@@ -776,6 +776,18 @@ void pdu_session_update_sm_context_request::set_target_id(
   m_ng_ran_target_id = value;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
+}
+
 /*
  * class: PDU Session Update SM Context Response
  */
@@ -841,6 +853,22 @@ void pdu_session_update_sm_context_response::from_json(
   if (data.find("smf_context_uri") != data.end()) {
     m_smf_context_uri = data["smf_context_uri"].get<std::string>();
   }
+}
+
+/*
+ * class: PDU Session Release SM Context Request
+ */
+
+//-----------------------------------------------------------------------------
+void pdu_session_release_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_release_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
 }
 
 /*

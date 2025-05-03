@@ -113,6 +113,7 @@ class itti_sbi_update_smf_configuration : public itti_sbi_msg {
   nlohmann::json configuration;
 };
 
+/*
 //-----------------------------------------------------------------------------
 class itti_sbi_modify_sm_context_request : public itti_sbi_msg {
  public:
@@ -179,5 +180,6 @@ class itti_sbi_modify_sm_context_response : public itti_sbi_msg {
   scid_t scid;   // SM Context ID
   uint32_t pid;  // Promise Id
 };
+*/
 
 #endif /* ITTI_MSG_SBI_HPP_INCLUDED_ */

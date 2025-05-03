@@ -408,6 +408,9 @@ class pdu_session_update_sm_context_request
   std::string get_target_serving_nf_id() const;
   bool target_serving_nf_id_is_set() const;
 
+  void set_json_data(const nlohmann::json& data);
+  void get_json_data(nlohmann::json& data) const;
+
  private:
   std::vector<pfcp::qfi_t> qfis;
   pfcp::fteid_t dl_fteid;  // AN Tunnel Info
@@ -434,6 +437,8 @@ class pdu_session_update_sm_context_request
   bool m_target_id_is_set;
   std::string m_target_serving_nf_id;
   bool m_target_serving_nf_id_is_set;
+
+  nlohmann::json json_data;
 };
 
 //---------------------------------------------------------------------------------------
@@ -471,7 +476,11 @@ class pdu_session_release_sm_context_request : public pdu_session_msg {
   pdu_session_release_sm_context_request()
       : pdu_session_msg(PDU_SESSION_RELEASE_SM_CONTEXT_REQUEST){};
 
+  void set_json_data(const nlohmann::json& data);
+  void get_json_data(nlohmann::json& data) const;
+
  private:
+  nlohmann::json json_data;
   // From smContextReleaseData
   // cause:
   // ngApCause:

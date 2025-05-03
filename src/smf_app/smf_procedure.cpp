@@ -1399,6 +1399,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
       send_n4 = true;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO:
+      send_n4 = false;
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1580,6 +1586,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       continue_n4 = false;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      continue_n4 = false;
+      // TODO:
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1759,280 +1771,4 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
    association it had stored between the SMF identity and the associated DNN
    and PDU Session Id
    */
-}
-
-//------------------------------------------------------------------------------
-smf_procedure_code
-session_modify_sm_context_procedure::send_n4_session_modification_request(
-    const std::vector<pfcp::qfi_t>& list_of_qfis) {
-  return smf_procedure_code::CONTINUE;
-}
-
-//------------------------------------------------------------------------------
-smf_procedure_code session_modify_sm_context_procedure::run(
-    const std::shared_ptr<itti_sbi_modify_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_sbi_modify_sm_context_response> sm_context_resp,
-    const std::shared_ptr<smf::smf_context>& sc) {
-  // Handle SM Modify sm context request
-  // The SMF initiates an N4 Session Modification procedure with the UPF. The
-  // SMF provides the updated info to UPF e.g., PCC rules
-
-  bool send_n4 = false;
-  Logger::smf_app().info("Perform a procedure - Modify SM Context Request");
-  // TODO check if compatible with ongoing procedures if any
-  // Get UPF node
-  std::shared_ptr<smf_context_ref> scf = {};
-  scid_t scid                          = sm_context_req->scid;
-
-  if (smf_app_inst->is_scid_2_smf_context(scid)) {
-    scf = smf_app_inst->scid_2_smf_context(scid);
-    // up_node_id = scf.get()->upf_node_id;
-  } else {
-    Logger::smf_app().warn(
-        "SM Context associated with this id " SCID_FMT " does not exit!", scid);
-    // TODO:
-    return smf_procedure_code::ERROR;
-  }
-
-  std::shared_ptr<smf_pdu_session> sp = {};
-  if (!sc->find_pdu_session(scf->pdu_session_id, sp)) {
-    Logger::smf_app().warn("PDU session context does not exist!");
-    return smf_procedure_code::ERROR;
-  }
-
-  std::shared_ptr<upf_graph> graph =
-      sps->get_session_handler()->get_session_graph();
-
-  if (!graph) {
-    Logger::smf_app().warn("PDU session does not have a UPF association");
-    return smf_procedure_code::ERROR;
-  }
-
-  graph->start_asynch_dfs_procedure(false);
-
-  std::shared_ptr<pfcp_association> current_upf = {};
-  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
-  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
-  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges_to_update;
-  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges_to_update;
-
-  if (get_next_upf(dl_edges, ul_edges, current_upf) !=
-      smf_procedure_code::CONTINUE) {
-    Logger::smf_app().error("DL Procedure Error: No UPF to select");
-    return smf_procedure_code::ERROR;
-  }
-
-  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
-
-  //-------------------
-  sbi_trigger           = sm_context_req;
-  sbi_triggered_pending = std::move(sm_context_resp);
-
-  n4_triggered = std::make_shared<itti_n4_session_modification_request>(
-      TASK_SMF_APP, TASK_SMF_N4);
-  n4_triggered->seid    = sps->up_fseid.seid;
-  n4_triggered->trxn_id = this->trxn_id;
-  n4_triggered->r_endpoint =
-      endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
-
-  // QoS Flow to be modified
-  pdu_session_modify_sm_context_request sm_context_req_msg =
-      sm_context_req->req;
-  std::vector<pfcp::qfi_t> list_of_qfis_to_be_modified = {};
-  // sm_context_req_msg.get_qfis(list_of_qfis_to_be_modified);
-
-  sps->get_session_handler()->set_qfis_to_be_updated(
-      list_of_qfis_to_be_modified);
-
-  if (!is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
-      !is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update)) {
-    // TODO check on NAS, maybe can reject some QFIs and accept others?
-    Logger::smf_app().error(
-        "PDU Session establishment modification failed. Wrong QFI. Sending "
-        "reject");
-    sbi_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
-    return smf_procedure_code::ERROR;
-  }
-
-  Logger::smf_app().debug(
-      "Session procedure type: %s",
-      session_management_procedures_type_e2str
-          .at(static_cast<int>(session_procedure_type))
-          .c_str());
-
-  pfcp::fteid_t gnb_fteid = {};
-  // TODO: sm_context_req_msg.get_dl_fteid(gnb_fteid);
-
-  switch (session_procedure_type) {
-    case session_management_procedures_type_e::
-        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      for (const auto& dl_edge : dl_edges_to_update) {
-        if (gnb_fteid == dl_edge->next_hop_fteid) {
-          Logger::smf_app().debug(
-              "QFI %d dl_fteid unchanged", dl_edge->qfi.qfi);
-          continue;
-        } else {
-          dl_edge->next_hop_fteid = gnb_fteid;
-        }
-      }
-      return send_n4_session_modification_request(list_of_qfis_to_be_modified);
-    }
-
-    default: {
-      Logger::smf_app().error(
-          "Modify SM Context procedure: Unknown session management type %d",
-          (int) session_procedure_type);
-    }
-  }
-
-  if (send_n4) {
-    Logger::smf_app().info(
-        "Sending ITTI message %s to task TASK_SMF_N4",
-        n4_triggered->get_msg_name());
-    int ret = itti_inst->send_msg(n4_triggered);
-    if (RETURNok != ret) {
-      Logger::smf_app().error(
-          "Could not send ITTI message %s to task TASK_SMF_N4",
-          n4_triggered->get_msg_name());
-      return smf_procedure_code::ERROR;
-    }
-  } else {
-    Logger::smf_app().error(
-        "Modify SM Context procedure: There is no QoS flow to be modified");
-    return smf_procedure_code::ERROR;
-  }
-  return smf_procedure_code::OK;
-}
-
-//------------------------------------------------------------------------------
-smf_procedure_code session_modify_sm_context_procedure::handle_itti_msg(
-    itti_n4_session_modification_response& resp,
-    std::shared_ptr<smf::smf_context> sc) {
-  Logger::smf_app().info(
-      "Handle N4 Session Modification Response (PDU Session Id %d)",
-      sbi_trigger->req.get_pdu_session_id());
-
-  pfcp::cause_t cause = {};
-  resp.pfcp_ies.get(cause);
-
-  sbi_triggered_pending->res.set_cause(static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
-
-  if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
-    // TODO:
-
-    scid_t scid = sbi_trigger->scid;
-    sc->handle_sm_context_status_change(scid, "RELEASED");
-
-    return smf_procedure_code::ERROR;
-
-  } else {
-    sbi_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
-  }
-
-  // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
-  // Session
-  std::vector<pfcp::qfi_t> list_of_qfis_to_be_modified = {};
-  // TODO: sbi_trigger->req.get_qfis(list_of_qfis_to_be_modified);
-
-  std::shared_ptr<pfcp_association> current_upf = {};
-  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges{};
-  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
-  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges_to_update{};
-  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges_to_update{};
-
-  if (get_current_upf(dl_edges, ul_edges, current_upf) ==
-      smf_procedure_code::ERROR) {
-    Logger::smf_app().error("SMF DL procedure: Could not get current UPF");
-    // TODO is this enough as an error message? We have cause 31 but not
-    // values
-    return smf_procedure_code::ERROR;
-  }
-  // TODO put in helper function or make a get_current_upf with this
-  if (!is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
-      !is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update)) {
-    // TODO check on NAS, maybe can reject some QFIs and accept others?
-    Logger::smf_app().error(
-        "PDU Session establishment modification failed. Wrong QFI. Sending "
-        "reject");
-    sbi_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
-    return smf_procedure_code::ERROR;
-  }
-
-  bool continue_n4 = true;
-
-  Logger::smf_app().debug(
-      "Session procedure type: %s",
-      session_management_procedures_type_e2str
-          .at(static_cast<int>(session_procedure_type))
-          .c_str());
-
-  nlohmann::json json_data = {};
-  std::map<uint8_t, qos_flow_context_updated> qos_flow_context_to_be_updateds =
-      {};
-  // TODO: sbi_triggered_pending->res.get_all_qos_flow_context_updateds(
-  //   qos_flow_context_to_be_updateds);
-  // TODO: sbi_triggered_pending->res.remove_all_qos_flow_context_updateds();
-  for (const auto& it : qos_flow_context_to_be_updateds)
-    Logger::smf_app().debug("QoS Flow context to be modified QFI %d", it.first);
-
-  switch (session_procedure_type) {
-    case session_management_procedures_type_e::
-        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      std::vector<pfcp::qfi_t> used_qfis = associate_fteid_with_created_pdrs(
-          resp.pfcp_ies.created_pdrs, ul_edges_to_update);
-      // if it is not empty, we have created PDR with F-TEID in PDU session
-      // modification
-      if (!used_qfis.empty()) {
-        check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
-      }
-      continue_n4 = true;
-      /* the difference between normal PDU session establishment and HO is:
-       * in PDU sess establishment, we have to make DL tunnels for all UPFs,
-       * e.g. in ULCL or other modes When we have a handover (at least in SCC 1)
-       * we only change the first UPF
-       */
-    } break;
-    case session_management_procedures_type_e::HO_PATH_SWITCH_REQ:
-    case session_management_procedures_type_e::N2_HO_PREPARATION_PHASE_STEP2: {
-      std::vector<pfcp::qfi_t> used_qfis = associate_fteid_with_created_pdrs(
-          resp.pfcp_ies.created_pdrs, ul_edges_to_update);
-      if (!used_qfis.empty()) {
-        check_if_all_qfis_are_handled(list_of_qfis_to_be_modified, used_qfis);
-      }
-      continue_n4 = false;
-    } break;
-
-    default: {
-      Logger::smf_app().error(
-          "Update SM Context procedure: Unknown session management type %d",
-          (int) session_procedure_type);
-    }
-  }
-
-  std::shared_ptr<pfcp_association> next_upf = {};
-  std::vector<std::shared_ptr<qos_upf_edge>> next_dl_edges{};
-  std::vector<std::shared_ptr<qos_upf_edge>> next_ul_edges{};
-
-  if (continue_n4 && get_next_upf(next_dl_edges, next_ul_edges, next_upf) ==
-                         smf_procedure_code::CONTINUE) {
-    return send_n4_session_modification_request(list_of_qfis_to_be_modified);
-  }
-
-  for (const auto& flow :
-       sps->get_session_handler()->get_qos_flows_context_updated()) {
-    // TODO: sbi_triggered_pending->res.add_qos_flow_context_updated(flow);
-  }
-
-  sbi_triggered_pending->res.set_http_code(
-      oai::common::sbi::http_status_code::OK);
-
-  return smf_procedure_code::OK;
 }
