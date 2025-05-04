@@ -25,7 +25,7 @@
 
 #include <stdexcept>
 
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "AllowedSscMode.hpp"
 #include "PduSessionAuthenticationCommand.hpp"
 #include "PduSessionAuthenticationComplete.hpp"

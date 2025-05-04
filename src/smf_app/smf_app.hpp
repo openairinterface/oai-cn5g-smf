@@ -34,7 +34,7 @@
 #include "3gpp_29.502.h"
 #include "ProblemDetails.h"
 #include "UpfInfo.h"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf.h"
@@ -356,54 +356,54 @@ class smf_app {
   /*
    * Handle ITTI message N11 Create SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_create_sm_context_response&] snc
+   * @param [itti_sbi_create_sm_context_response&] snc
    * @return void
    */
-  void handle_itti_msg(itti_n11_create_sm_context_response& snc);
+  void handle_itti_msg(itti_sbi_create_sm_context_response& snc);
 
   /*
    * Handle ITTI message N11 Update SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_update_sm_context_response&] m
+   * @param [itti_sbi_update_sm_context_response&] m
    * @return void
    */
-  void handle_itti_msg(itti_n11_update_sm_context_response& m);
+  void handle_itti_msg(itti_sbi_update_sm_context_response& m);
 
   /*
    * Handle ITTI message N11 Release SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_release_sm_context_response&] m
+   * @param [itti_sbi_release_sm_context_response&] m
    * @return void
    */
-  void handle_itti_msg(itti_n11_release_sm_context_response& m);
+  void handle_itti_msg(itti_sbi_release_sm_context_response& m);
 
   /*
    * Handle ITTI message from N11 (N1N2MessageTransfer Response)
-   * @param [itti_n11_n1n2_message_transfer_response_status&] snm
+   * @param [itti_sbi_n1n2_message_transfer_response_status&] snm
    * @return void
    */
-  void handle_itti_msg(itti_n11_n1n2_message_transfer_response_status& snm);
+  void handle_itti_msg(itti_sbi_n1n2_message_transfer_response_status& snm);
 
   /*
    * Handle ITTI message from N11 (NFRegiser Response)
-   * @param [itti_n11_register_nf_instance_response&] r
+   * @param [itti_sbi_register_nf_instance_response&] r
    * @return void
    */
-  void handle_itti_msg(itti_n11_register_nf_instance_response& r);
+  void handle_itti_msg(itti_sbi_register_nf_instance_response& r);
 
   /*
    * Handle ITTI message from N11 (NFUpdate Response)
-   * @param [itti_n11_update_nf_instance_response&] u
+   * @param [itti_sbi_update_nf_instance_response&] u
    * @return void
    */
-  void handle_itti_msg(itti_n11_update_nf_instance_response& u);
+  void handle_itti_msg(itti_sbi_update_nf_instance_response& u);
 
   /*
    * Handle ITTI message from N11 (NFSubscribeNotify Response)
-   * @param [itti_n11_subscribe_upf_status_notify_response&] u
+   * @param [itti_sbi_subscribe_upf_status_notify_response&] u
    * @return void
    */
-  void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
+  void handle_itti_msg(itti_sbi_subscribe_upf_status_notify_response& r);
   /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
@@ -552,29 +552,29 @@ class smf_app {
 
   /*
    * Handle PDUSession_CreateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_create_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_create_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_create_sm_context_request> smreq);
 
   /*
    * Handle PDUSession_UpdateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_update_sm_context_request(
-      std::shared_ptr<itti_n11_update_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_update_sm_context_request> smreq);
   /*
    * Handle PDUSession_ReleaseSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_release_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_release_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_release_sm_context_request(
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_release_sm_context_request> smreq);
 
   /*
    * Handle Event Exposure Msg from AMF

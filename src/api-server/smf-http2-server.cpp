@@ -29,9 +29,9 @@
 
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
 #include "smf.h"
@@ -529,8 +529,8 @@ void smf_http2_server::create_sm_contexts_handler(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_request>(
+  std::shared_ptr<itti_sbi_create_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -671,9 +671,9 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_update_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
+  // Handle the itti_sbi_update_sm_context_request message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -793,8 +793,8 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_ReleaseSMContext Request: PDU Session Release "
       "request from AMF.");
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->scid         = smf_ref;
@@ -1061,8 +1061,8 @@ void smf_http2_server::modify_sm_context_handler(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the message in smf_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid_str);
   itti_msg->req                    = sm_context_req_msg;
   itti_msg->http_version           = 2;
@@ -1139,8 +1139,8 @@ void smf_http2_server::terminate_policy_notification_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid);
   itti_msg->req                    = sm_context_req_msg;
   itti_msg->http_version           = 2;
