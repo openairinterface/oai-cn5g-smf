@@ -117,7 +117,8 @@ enum class session_management_procedures_type_e {
   N2_HO_EXECUTION_PHASE                       = 19,
   N2_HO_CANCELLATION_PHASE                    = 20,
   PDU_SESSION_MODIFICATION_PCF_INITIATED      = 21,
-  PDU_SESSION_TEST                            = 22
+  PDU_SESSION_RELEASE_PCF_INITIATED           = 22,
+  PDU_SESSION_TEST                            = 23
 };
 
 static const std::vector<std::string> session_management_procedures_type_e2str =

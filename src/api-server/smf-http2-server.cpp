@@ -402,11 +402,12 @@ void smf_http2_server::start() {
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
-            Logger::smf_api_server().debug("Received a N7 callback from PCF.");
+            Logger::smf_api_server().debug("Received a callback");
             std::string msg((char*) data, len);
             Logger::smf_api_server().debug(
                 "Message content \n %s", msg.c_str());
 
+            // Verify request's method
             if (!boost::iequals(request.method(), "POST")) {
               response.write_head(http_status_code::BAD_REQUEST);
               response.end();
@@ -1142,10 +1143,10 @@ void smf_http2_server::terminate_policy_notification_handler(
   std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
       std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid);
-  itti_msg->req                    = sm_context_req_msg;
-  itti_msg->http_version           = 2;
-  itti_msg->session_procedure_type = session_management_procedures_type_e::
-      PDU_SESSION_MODIFICATION_PCF_INITIATED;
+  itti_msg->req          = sm_context_req_msg;
+  itti_msg->http_version = 2;
+  itti_msg->session_procedure_type =
+      session_management_procedures_type_e::PDU_SESSION_RELEASE_PCF_INITIATED;
   m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
 
   // TODO: use wait_for_result from common src
