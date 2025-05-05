@@ -41,6 +41,7 @@ using namespace oai::http;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 
+//------------------------------------------------------------------------------
 uint32_t smf_n7::select_pcf(const SmPolicyContextData& context) {
   // TODO PCF selection
 
@@ -73,6 +74,7 @@ uint32_t smf_n7::select_pcf(const SmPolicyContextData& context) {
   return 1;
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_n7::create_sm_policy_association(
     policy_association& association) {
   uint32_t pcf_id = select_pcf(association.context);
@@ -104,6 +106,7 @@ sm_policy_status_code smf_n7::create_sm_policy_association(
   return res;
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_n7::remove_sm_policy_association(
     const policy_association& association,
     const SmPolicyDeleteData& delete_data) {
@@ -114,11 +117,12 @@ sm_policy_status_code smf_n7::remove_sm_policy_association(
   return storage->remove_policy_association(association, delete_data);
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_n7::update_sm_policy_association(
-    policy_association& association,
-    const SmPolicyUpdateContextData& update_data) {
+    const SmPolicyUpdateContextData& update_data,
+    std::shared_ptr<policy_association>& association) {
   std::shared_ptr<policy_storage> storage =
-      get_policy_storage(association.pcf_id);
+      get_policy_storage(association->pcf_id);
 
   if (!storage) return sm_policy_status_code::PCF_NOT_AVAILABLE;
 
@@ -135,6 +139,7 @@ std::shared_ptr<policy_storage> smf_n7::get_policy_storage(uint32_t pcf_id) {
   return it->second;
 }
 
+//------------------------------------------------------------------------------
 smf_n7::~smf_n7() {
   Logger::smf_n7().info("Deleting SMF N7 instance...");
 }
@@ -142,7 +147,7 @@ smf_n7::~smf_n7() {
 ///////////////////////////////////////////////////////////////////////////
 /////////////////////// smf_pcf_client ////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-
+//------------------------------------------------------------------------------
 std::shared_ptr<smf_pcf_client> smf_pcf_client::discover_pcf(
     const Snssai& snssai, const PlmnId& plmn_id, const std::string& dnn) {
   if (smf_cfg->use_local_pcc_rules) {
@@ -169,6 +174,7 @@ std::shared_ptr<smf_pcf_client> smf_pcf_client::discover_pcf(
   return std::make_unique<smf_pcf_client>(pcf_addr, api_version);
 }
 
+//------------------------------------------------------------------------------
 bool smf_pcf_client::discover_pcf_with_nrf(
     std::string& addr, std::string& api_version, const Snssai& snssai,
     const PlmnId& plmn_id, const std::string& dnn) {
@@ -177,6 +183,7 @@ bool smf_pcf_client::discover_pcf_with_nrf(
   return false;
 }
 
+//------------------------------------------------------------------------------
 bool smf_pcf_client::discover_pcf_from_config_file(
     std::string& addr, std::string& api_version, const Snssai& snssai,
     const PlmnId& plmn_id, const std::string& dnn) {
@@ -192,6 +199,7 @@ bool smf_pcf_client::discover_pcf_from_config_file(
   return true;
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_pcf_client::create_policy_association(
     policy_association& association) {
   nlohmann::json json_data;
@@ -271,6 +279,7 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
   return response;
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_pcf_client::remove_policy_association(
     const policy_association& association,
     const SmPolicyDeleteData& delete_data) {
@@ -296,10 +305,11 @@ sm_policy_status_code smf_pcf_client::remove_policy_association(
   }
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_pcf_client::update_policy_association(
     const SmPolicyUpdateContextData& update_data,
-    policy_association& association) {
-  std::string uri = association.pcf_location + "/" + update_suffix;
+    std::shared_ptr<policy_association>& association) {
+  std::string uri = association->pcf_location + "/" + update_suffix;
   nlohmann::json json_data;
   to_json(json_data, update_data);
   request req   = http_client_inst->prepare_json_request(uri, json_data.dump());
@@ -315,7 +325,7 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
     case http_status_code::OK:
       try {
         json_resp = nlohmann::json::parse(resp.body);
-        from_json(json_resp, association.decision);
+        from_json(json_resp, association->decision);
       } catch (nlohmann::json::exception& e) {
         Logger::smf_n7().warn("Could not parse the SM Policy Association");
         return sm_policy_status_code::INTERNAL_ERROR;
@@ -333,6 +343,7 @@ sm_policy_status_code smf_pcf_client::update_policy_association(
   }
 }
 
+//------------------------------------------------------------------------------
 sm_policy_status_code smf_pcf_client::get_policy_association(
     policy_association& association) {
   std::string uri = association.pcf_location;
@@ -370,6 +381,7 @@ sm_policy_status_code smf_pcf_client::get_policy_association(
   }
 }
 
+//------------------------------------------------------------------------------
 smf_pcf_client::~smf_pcf_client() {
   Logger::smf_n7().debug("Deleting PCF client instance");
 }

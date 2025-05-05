@@ -153,7 +153,7 @@ class policy_storage {
    */
   virtual sm_policy_status_code update_policy_association(
       const oai::model::pcf::SmPolicyUpdateContextData& update_data,
-      policy_association& association) = 0;
+      std::shared_ptr<policy_association>& association) = 0;
   /**
    * @brief Get the the policy association together with the original context
    *
@@ -207,7 +207,7 @@ class smf_pcf_client : public policy_storage {
 
   sm_policy_status_code update_policy_association(
       const oai::model::pcf::SmPolicyUpdateContextData& update_data,
-      policy_association& association) override;
+      std::shared_ptr<policy_association>& association) override;
 
   sm_policy_status_code get_policy_association(
       policy_association& association) override;
@@ -281,15 +281,14 @@ class smf_n7 {
   /**
    * @brief Updates an SM Policy Association, requires the triggers to be set as
    * defined in 3GPP TS 29.512
-   *
-   * @param association The association to update
    * @param update_data The update context data
+   * @param association The association to update
    * @return sm_policy_status_code OK in case of success, otherwise NOT_FOUND,
    * INTERNAL_ERROR, PCF_NOT_AVAILABLE
    */
   sm_policy_status_code update_sm_policy_association(
-      policy_association& association,
-      const oai::model::pcf::SmPolicyUpdateContextData& update_data);
+      const oai::model::pcf::SmPolicyUpdateContextData& update_data,
+      std::shared_ptr<policy_association>& association);
 
  private:
   /**
