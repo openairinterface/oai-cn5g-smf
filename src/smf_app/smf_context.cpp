@@ -1145,7 +1145,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   // Use Npcf_SMPolicyControl_Update request to trigger SMF initiated SM Policy
   // Association Modification and update SM Policy Association
-  if (is_sm_policy_modification) {
+  if (is_sm_policy_modification and use_pcf_policy) {
     status = n7::smf_n7::get_instance().update_sm_policy_association(
         sm_policy_update_context_data, sp->policy_ptr);
     if (status != n7::sm_policy_status_code::OK) {
