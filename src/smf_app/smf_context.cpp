@@ -1098,40 +1098,37 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::string amf_addr_str = get_amf_addr_from_amf_status_uri(amf_status_uri);
   set_amf_addr(amf_addr_str);
 
-  // TODO: Step 8. SMF-initiated SM Policy Modification (with PCF) to report UE
-  // IP address
-  // change (allocated)
+  // Step 8. SMF-initiated SM Policy Modification (with PCF) to report UE
+  // IP address change (allocated)
   bool is_sm_policy_modification = false;
   oai::model::pcf::SmPolicyUpdateContextData sm_policy_update_context_data = {};
   // Set allocated UE IP addr
   switch (sp->pdu_session_type.pdu_session_type) {
     case PDU_SESSION_TYPE_E_IPV4V6: {
       Logger::smf_app().debug("PDU Session Type IPv4v6");
-      Logger::smf_app().info(
-          "Allocated UE IPv4 Addr: %s",
-          inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      std::string ue_ipv4_addr_str =
+          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
 
-      sm_policy_update_context_data.setIpv4Address(
-          inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
       char str_addr6[INET6_ADDRSTRLEN];
       if (inet_ntop(
               AF_INET6, &paa.ipv6_address, str_addr6, sizeof(str_addr6))) {
         Logger::smf_app().info("Allocated UE IPv6 prefix: %s", str_addr6);
+        std::string ue_ipv6_prefix_str             = std::string(str_addr6);
         oai::model::common::Ipv6Prefix ipv6_prefix = {};
-        ipv6_prefix.setIpv6Prefix(str_addr6);
+        ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
         sm_policy_update_context_data.setIpv6AddressPrefix(ipv6_prefix);
       }
       is_sm_policy_modification = true;
 
     }; break;
     case PDU_SESSION_TYPE_E_IPV4: {
-      Logger::smf_app().debug("PDU Session Type IPv4v6");
-      Logger::smf_app().info(
-          "Allocated UE IPv4 Addr: %s",
-          inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
-
-      sm_policy_update_context_data.setIpv4Address(
-          inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      Logger::smf_app().debug("PDU Session Type IPv4");
+      std::string ue_ipv4_addr_str =
+          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
       is_sm_policy_modification = true;
     } break;
 
