@@ -892,7 +892,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // The URI value will have the base uri of the SMF
   std::string notification_uri =
       smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
-      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version +
+      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
       fmt::format(
           NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
           std::to_string(sp->policy_ptr->id).c_str());
