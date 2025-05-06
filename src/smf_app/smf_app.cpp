@@ -1045,7 +1045,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     }
   }
 
-  // Step 8. Generate a SMF context Id and store the corresponding information
+  // Step 7. Generate a SMF context Id and store the corresponding information
   // in a map (SM_Context_ID, (supi, pdu_session_id))
   scid_t scid         = generate_smf_context_ref();
   auto scf            = std::make_shared<smf_context_ref>();
@@ -1056,7 +1056,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   Logger::smf_app().debug("Generated a SMF Context ID " SCID_FMT " ", scid);
 
-  // Step 9. Let the context handle the message
+  // Step 8. Let the context handle the message
   sc->handle_pdu_session_create_sm_context_request(smreq);
 }
 
