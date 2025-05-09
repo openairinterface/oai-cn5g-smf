@@ -44,6 +44,7 @@
 #include "SmPolicyContextData.h"
 #include "SmPolicyDecision.h"
 #include "SmPolicyDeleteData.h"
+#include "SmPolicyUpdateContextData.h"
 #include "Snssai.h"
 #include "_5gsmCause.hpp"
 #include "common_defs.hpp"
@@ -1097,7 +1098,61 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::string amf_addr_str = get_amf_addr_from_amf_status_uri(amf_status_uri);
   set_amf_addr(amf_addr_str);
 
-  // TODO: Step 8. SMF-initiated SM Policy Modification (with PCF)
+  // Step 8. SMF-initiated SM Policy Modification (with PCF) to report UE
+  // IP address change (allocated)
+  bool is_sm_policy_modification = false;
+  oai::model::pcf::SmPolicyUpdateContextData sm_policy_update_context_data = {};
+  // Set allocated UE IP addr
+  switch (sp->pdu_session_type.pdu_session_type) {
+    case PDU_SESSION_TYPE_E_IPV4V6: {
+      Logger::smf_app().debug("PDU Session Type IPv4v6");
+      std::string ue_ipv4_addr_str =
+          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
+
+      char str_addr6[INET6_ADDRSTRLEN];
+      if (inet_ntop(
+              AF_INET6, &paa.ipv6_address, str_addr6, sizeof(str_addr6))) {
+        Logger::smf_app().info("Allocated UE IPv6 prefix: %s", str_addr6);
+        std::string ue_ipv6_prefix_str             = std::string(str_addr6);
+        oai::model::common::Ipv6Prefix ipv6_prefix = {};
+        ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
+        sm_policy_update_context_data.setIpv6AddressPrefix(ipv6_prefix);
+      }
+      is_sm_policy_modification = true;
+
+    }; break;
+    case PDU_SESSION_TYPE_E_IPV4: {
+      Logger::smf_app().debug("PDU Session Type IPv4");
+      std::string ue_ipv4_addr_str =
+          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
+      is_sm_policy_modification = true;
+    } break;
+
+    case PDU_SESSION_TYPE_E_IPV6: {
+      // TODO:
+      Logger::smf_app().warn("IPv6 is not supported yet!");
+    } break;
+
+    default: {
+      Logger::smf_app().error(
+          "Unknown PDN type %d", sp->pdu_session_type.pdu_session_type);
+    }
+  }
+
+  // Use Npcf_SMPolicyControl_Update request to trigger SMF initiated SM Policy
+  // Association Modification and update SM Policy Association
+  if (is_sm_policy_modification and use_pcf_policy) {
+    status = n7::smf_n7::get_instance().update_sm_policy_association(
+        sm_policy_update_context_data, sp->policy_ptr);
+    if (status != n7::sm_policy_status_code::OK) {
+      Logger::smf_n7().info(
+          "SM Policy Association Modification was not successful");
+    }
+  }
 
   // Step 9. Create session establishment procedure and run the procedure
   // if request is accepted
@@ -1720,7 +1775,8 @@ bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
     return false;
   }
 
-  // PDU Session Establishment Reject, 24.501 cause "#26 Insufficient resources"
+  // PDU Session Establishment Reject, 24.501 cause "#26 Insufficient
+  // resources"
   if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
           sm_context_request.get()->req, n1_sm_msg,
           cause_value_5gsm_e::CAUSE_26_INSUFFICIENT_RESOURCES)) {
@@ -2015,7 +2071,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     // Step 1. Decode NAS and get the necessary information
     int decoded_size = smf_n1::get_instance().decode_n1_sm_container(
         nas_message, smreq->req.get_n1_sm_message());
-    // Failed to decode, send reply to AMF with PDU Session Establishment Reject
+    // Failed to decode, send reply to AMF with PDU Session Establishment
+    // Reject
     if (decoded_size == KEncodeDecodeError) {
       Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
       smf_app_inst->trigger_update_context_error_response(
@@ -2079,7 +2136,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
         Logger::smf_app().debug("PDU_SESSION_RELEASE_REQUEST");
         Logger::smf_app().info(
-            "PDU Session Release (UE-Initiated), processing N1 SM Information");
+            "PDU Session Release (UE-Initiated), processing N1 SM "
+            "Information");
         procedure_type = session_management_procedures_type_e::
             PDU_SESSION_RELEASE_UE_REQUESTED_STEP1;
 
@@ -2188,7 +2246,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // Section 4.3.3.2@3GPP TS 23.502 or SMF-Requested)(Step 2)
 
         Logger::smf_app().info(
-            "PDU Session Modification Procedure, processing N2 SM Information");
+            "PDU Session Modification Procedure, processing N2 SM "
+            "Information");
         procedure_type = session_management_procedures_type_e::
             PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2;
 
@@ -2212,7 +2271,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // PDU Session Release procedure (UE-initiated, Section 4.3.4.2@3GPP
         // TS 23.502 or SMF-Requested)(Step 2)
         Logger::smf_app().info(
-            "PDU Session Release (UE-initiated), processing N2 SM Information");
+            "PDU Session Release (UE-initiated), processing N2 SM "
+            "Information");
 
         procedure_type = session_management_procedures_type_e::
             PDU_SESSION_RELEASE_UE_REQUESTED_STEP2;
@@ -2330,14 +2390,14 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       } break;
 
       case n2_sm_info_type_e::PDU_RES_NTY: {
-        // PDU Session Resource Notify (from AN to AMF/SMF, Section 8.2.4 @3GPP
-        // TS 38.413) PDU Session Resource Notify Transfer
+        // PDU Session Resource Notify (from AN to AMF/SMF, Section 8.2.4
+        // @3GPP TS 38.413) PDU Session Resource Notify Transfer
         // TODO: to be completed
       } break;
 
       case n2_sm_info_type_e::PDU_RES_NTY_REL: {
-        // PDU Session Resource Notify (from AN to AMF/SMF, Section 8.2.4 @3GPP
-        // TS 38.413) PDU Session Resource Notify Released Transfer
+        // PDU Session Resource Notify (from AN to AMF/SMF, Section 8.2.4
+        // @3GPP TS 38.413) PDU Session Resource Notify Released Transfer
         // TODO: to be completed
       } break;
 
@@ -2454,7 +2514,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           smf_procedure_code::ERROR) {
         // error
         Logger::smf_app().info(
-            "PDU Update SM Context Request procedure failed (session procedure "
+            "PDU Update SM Context Request procedure failed (session "
+            "procedure "
             "type %s)",
             session_management_procedures_type_e2str
                 .at(static_cast<int>(procedure_type))
@@ -2600,10 +2661,11 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
   // TODO, Step 6
   /*  If the PDU Session establishment is not successful, the SMF informs the
-   AMF by invoking Nsmf_PDUSession_SMContextStatusNotify (Release). The SMF also
-   releases any N4 session(s) created, any PDU Session address if allocated
-   (e.g. IP address) and releases the association with PCF, if any. In this
-   case, step 19 is skipped. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
+   AMF by invoking Nsmf_PDUSession_SMContextStatusNotify (Release). The SMF
+   also releases any N4 session(s) created, any PDU Session address if
+   allocated (e.g. IP address) and releases the association with PCF, if any.
+   In this case, step 19 is skipped. see step 18, section 4.3.2.2.1@3GPP
+   TS 23.502)
    */
   return true;
 }
@@ -2912,8 +2974,8 @@ bool smf_context::handle_ho_preparation_request(
   pdu_session_id_t pdu_session_id =
       sm_context_request->req.get_pdu_session_id();
 
-  // TODO: Check Target ID whether N2 Handover for the indicated PDU Session can
-  // be accepted Select UPF (should be done in Procedure)
+  // TODO: Check Target ID whether N2 Handover for the indicated PDU Session
+  // can be accepted Select UPF (should be done in Procedure)
   if (!check_handover_possibility(ran_target_id, pdu_session_id)) {
     // TODO:
     return false;
@@ -3245,8 +3307,8 @@ bool smf_context::find_dnn_subscription(
 //------------------------------------------------------------------------------
 bool smf_context::verify_sm_context_request(
     std::shared_ptr<itti_n11_create_sm_context_request> smreq) {
-  // check the validity of the UE request according to the user subscription or
-  // local policies
+  // check the validity of the UE request according to the user subscription
+  // or local policies
   // TODO: need to be implemented
   return true;
 }
