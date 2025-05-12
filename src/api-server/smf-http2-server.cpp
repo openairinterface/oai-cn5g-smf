@@ -1123,22 +1123,20 @@ void smf_http2_server::terminate_policy_notification_handler(
       "Received a PCF-initiated SM Policy Association Termination Request "
       "(TerminationNotification Request)");
 
+  // Send response to the PCF
+  response.write_head(http_status_code::NO_CONTENT);
+  response.end();
+
+  // Process the request in APP
   smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
   nlohmann::json termination_notification                        = {};
 
   to_json(termination_notification, terminationNotification);
   sm_context_req_msg.set_json_data(termination_notification);
 
-  // Handle the message in smf_app
-  boost::shared_ptr<boost::promise<nlohmann::json>> p =
-      boost::make_shared<boost::promise<nlohmann::json>>();
-  boost::shared_future<nlohmann::json> f;
-  f = p->get_future();
-
   // Generate ID for this promise (to be used in SMF-APP)
   uint32_t promise_id = m_smf_app->generate_promise_id();
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
-  m_smf_app->add_promise(promise_id, p);
 
   std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
       std::make_shared<itti_sbi_release_sm_context_request>(
@@ -1148,48 +1146,6 @@ void smf_http2_server::terminate_policy_notification_handler(
   itti_msg->session_procedure_type =
       session_management_procedures_type_e::PDU_SESSION_RELEASE_PCF_INITIATED;
   m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
-
-  // TODO: use wait_for_result from common src
-  boost::future_status status;
-  // wait for timeout or ready
-  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
-  if (status == boost::future_status::ready) {
-    assert(f.is_ready());
-    assert(f.has_value());
-    assert(!f.has_exception());
-
-    // Wait for the result from UPF and send reply to PCF
-    nlohmann::json policy_notification_response = f.get();
-    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
-
-    uint32_t http_response_code = 0;
-    nlohmann::json json_data    = {};
-    header_map h                = {};
-
-    if (policy_notification_response.find(kSbiResponseHttpResponseCode) !=
-        policy_notification_response.end()) {
-      http_response_code =
-          policy_notification_response[kSbiResponseHttpResponseCode].get<int>();
-    }
-
-    if (http_response_code == 200) {
-      response.write_head(http_status_code::OK);
-      response.end();
-
-    } else {
-      // Problem details
-      if (policy_notification_response.find("ProblemDetails") !=
-          policy_notification_response.end()) {
-        json_data = policy_notification_response["ProblemDetails"];
-      }
-      h.emplace("content-type", header_value{"application/problem+json"});
-      response.end(json_data.dump().c_str());
-    }
-  } else {
-    uint16_t http_code = http_status_code::REQUEST_TIMEOUT;
-    response.write_head(http_code);
-    response.end();
-  }
 }
 
 //------------------------------------------------------------------------------
