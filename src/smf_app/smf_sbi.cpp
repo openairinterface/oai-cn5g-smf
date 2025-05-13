@@ -45,6 +45,7 @@ using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
+extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
@@ -604,12 +605,11 @@ bool smf_sbi::retrieve_sm_data(
     const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg) {
   nlohmann::json json_data = {};
   std::string query_str    = {};
-  std::string mcc          = msg->plmn.mcc;
-  std::string mnc          = msg->plmn.mnc;
 
   query_str = "?single-nssai={\"sst\":" + std::to_string(msg->snssai.sst) +
               ",\"sd\":\"" + msg->snssai.sd + "\"}&dnn=" + msg->dnn +
-              "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
+              "&plmn-id={\"mcc\":\"" + msg->plmn.mcc + "\",\"mnc\":\"" +
+              msg->plmn.mnc + "\"}";
 
   std::string fmr_format_str = {};
   oai::common::sbi::sbi_helper::get_fmt_format_form(
@@ -644,7 +644,7 @@ bool smf_sbi::retrieve_sm_data(
     try {
       json_data = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
-      Logger::smf_sbi().warn("Could not parse Json data from UDM");
+      Logger::smf_sbi().warn("Could not parse JSON data from UDM");
     }
   } else {
     Logger::smf_sbi().warn(
@@ -661,6 +661,15 @@ bool smf_sbi::retrieve_sm_data(
     }
 
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
+
+    // Notify to the result
+    nlohmann::json response_data                = {};
+    response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[kSbiResponseJsonData]         = json_data;
+    if (msg->promise_id > 0) {
+      smf_app_inst->make_future_ready(response_data, msg->promise_id);
+      return true;
+    }
 
     return true;
   } else {

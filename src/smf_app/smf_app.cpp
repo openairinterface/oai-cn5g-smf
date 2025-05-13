@@ -340,7 +340,7 @@ smf_app::smf_app(const std::string& config_file)
     : m_seid2smf_context(),
       m_supi2smf_context(),
       m_scid2smf_context(),
-      m_sbi_server_promises() {
+      m_promises() {
   Logger::smf_app().startup("Starting...");
 
   supi2smf_context = {};
@@ -710,7 +710,7 @@ void smf_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
 
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -719,7 +719,7 @@ void smf_app::handle_itti_msg(itti_n11_update_sm_context_response& m) {
       "PDU Session Update SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -728,7 +728,7 @@ void smf_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
       "PDU Session Release SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -1445,7 +1445,7 @@ void smf_app::handle_sbi_get_configuration(
 
   // Notify to the result
   if (itti_msg->promise_id > 0) {
-    trigger_http_response(response_data, itti_msg->promise_id);
+    make_future_ready(response_data, itti_msg->promise_id);
     return;
   }
 }
@@ -1484,7 +1484,7 @@ void smf_app::handle_sbi_update_configuration(
 
   // Notify to the result
   if (itti_msg->promise_id > 0) {
-    trigger_http_response(response_data, itti_msg->promise_id);
+    make_future_ready(response_data, itti_msg->promise_id);
     return;
   }
 }
@@ -1988,8 +1988,8 @@ void smf_app::set_default_qos_parameters(
 //---------------------------------------------------------------------------------------------
 void smf_app::add_promise(
     uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p) {
-  std::unique_lock lock(m_sbi_server_promises);
-  sbi_server_promises.emplace(id, p);
+  std::unique_lock lock(m_promises);
+  promises.emplace(id, p);
 }
 
 //---------------------------------------------------------------------------------------------
@@ -2061,15 +2061,15 @@ void smf_app::trigger_update_context_error_response(
 }
 
 //------------------------------------------------------------------------------
-void smf_app::trigger_http_response(
+void smf_app::make_future_ready(
     const nlohmann::json& response_message_json, uint32_t& pid) {
   Logger::smf_app().debug(
       "Trigger the response from SMF: Set promise with ID %ld to ready", pid);
-  std::unique_lock lock(m_sbi_server_promises);
-  if (sbi_server_promises.count(pid) > 0) {
-    sbi_server_promises[pid]->set_value(response_message_json);
+  std::unique_lock lock(m_promises);
+  if (promises.count(pid) > 0) {
+    promises[pid]->set_value(response_message_json);
     // Remove this promise from list
-    sbi_server_promises.erase(pid);
+    promises.erase(pid);
   }
 }
 
@@ -2082,7 +2082,7 @@ void smf_app::trigger_http_response(
   nlohmann::json response_message_json = {};
   response_message_json["http_code"]   = http_code;
 
-  trigger_http_response(response_message_json, promise_id);
+  make_future_ready(response_message_json, promise_id);
   return;
 }
 
@@ -2098,7 +2098,7 @@ void smf_app::trigger_session_create_sm_context_response(
 
   nlohmann::json response_message_json = {};
   sm_context_response.to_json(response_message_json);
-  trigger_http_response(response_message_json, pid);
+  make_future_ready(response_message_json, pid);
   return;
 }
 
@@ -2113,7 +2113,7 @@ void smf_app::trigger_session_update_sm_context_response(
       pid);
   nlohmann::json response_message_json = {};
   sm_context_response.to_json(response_message_json);
-  trigger_http_response(response_message_json, pid);
+  make_future_ready(response_message_json, pid);
   return;
 }
 
@@ -2403,12 +2403,12 @@ bool smf_app::get_sm_data(
     Logger::smf_app().debug("Got result for promise ID %d", promise_id);
     nlohmann::json result = result_opt.value();
 
-    if (result.find("httpResponseCode") != result.end()) {
-      http_response_code = result["httpResponseCode"].get<int>();
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
     }
 
-    if (result.find("json_data") != result.end()) {
-      json_data = result["json_data"];
+    if (result.find(kSbiResponseJsonData) != result.end()) {
+      json_data = result[kSbiResponseJsonData];
     }
 
   } else {

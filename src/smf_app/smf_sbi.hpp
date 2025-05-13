@@ -133,20 +133,13 @@ class smf_sbi {
   void subscribe_upf_status_notify(
       std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg);
 
-  bool retrieve_sm_data(const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg);
   /*
    * Get SM subscription data from UDM
-   * @param [const supi64_t &] supi
-   * @param [const std::string &] dnn
-   * @param [const snssai_t &] snssai
-   * @param [std::shared_ptr<session_management_subscription>] subscription
+   * @param [const std::shared_ptr<itti_sbi_retrieve_sm_data>&] msg
    * @return bool: True if successful, otherwise false
    *
    */
-  bool get_sm_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-      std::shared_ptr<session_management_subscription>& subscription,
-      plmn_t plmn = {});
+  bool retrieve_sm_data(const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg);
 
   /*
    * Subscribe to be notify from UDM
