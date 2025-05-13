@@ -989,6 +989,11 @@ class smf_app {
    * @return SMF instance ID
    */
   std::string get_smf_instance_id() const;
+
+  bool get_sm_data(
+      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+      std::shared_ptr<session_management_subscription>& subscription,
+      plmn_t plmn);
 };
 }  // namespace smf
 #include "smf_config.hpp"

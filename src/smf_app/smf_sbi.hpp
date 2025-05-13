@@ -30,6 +30,7 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "SmfRegistration.h"
+#include "itti_msg_sbi.hpp"
 
 namespace smf {
 
@@ -132,6 +133,7 @@ class smf_sbi {
   void subscribe_upf_status_notify(
       std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg);
 
+  bool retrieve_sm_data(const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg);
   /*
    * Get SM subscription data from UDM
    * @param [const supi64_t &] supi
