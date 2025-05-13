@@ -35,7 +35,7 @@
 #include "IndividualSMContextApiImpl.h"
 #include <nghttp2/asio_http2_server.h>
 #include "mime_parser.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
 
 namespace oai {
@@ -76,9 +76,9 @@ void IndividualSMContextApiImpl::release_sm_context(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_release_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
+  // Handle the itti_sbi_release_sm_context_request message in smf_app
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smContextRef);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 1;
@@ -139,9 +139,9 @@ void IndividualSMContextApiImpl::update_sm_context(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_update_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
+  // Handle the itti_sbi_update_sm_context_request message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smContextRef);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 1;

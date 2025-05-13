@@ -225,8 +225,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   void set_snssai(const snssai_t s);
 
-  void set_pending_n11_msg(const std::shared_ptr<itti_n11_msg>& msg);
-  void get_pending_n11_msg(std::shared_ptr<itti_n11_msg>& msg) const;
+  void set_pending_n11_msg(const std::shared_ptr<itti_sbi_msg>& msg);
+  void get_pending_n11_msg(std::shared_ptr<itti_sbi_msg>& msg) const;
   void set_number_retransmission_T3591(const uint8_t& n);
   void get_number_retransmission_T3591(uint8_t& n) const;
   uint8_t get_number_retransmission_T3591() const;
@@ -287,7 +287,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   mutable std::shared_mutex m_pdu_session_mutex;
 
  private:
-  std::shared_ptr<itti_n11_msg> pending_n11_msg;
+  std::shared_ptr<itti_sbi_msg> pending_n11_msg;
   uint8_t number_retransmission_T3591;
   uint8_t number_retransmission_T3592;
 };
@@ -456,29 +456,29 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   /*
    * Handle messages from AMF (e.g., PDU_SESSION_CreateSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request] smreq Request
+   * @param [std::shared_ptr<itti_sbi_create_sm_context_request] smreq Request
    * message
    * @return void
    */
   void handle_pdu_session_create_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_create_sm_context_request> smreq);
   /*
    * Handle messages from AMF (e.g., PDU_SESSION_UpdateSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request] smreq Request
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request] smreq Request
    * message
    * @return void
    */
   bool handle_pdu_session_update_sm_context_request(
-      std::shared_ptr<itti_n11_update_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_update_sm_context_request> smreq);
 
   /*
    * Handle messages from AMF (e.g., PDU_SESSION_ReleaseSMContextRequest)
-   * @param [std::shared_ptr<itti_n11_release_sm_context_request] smreq Request
+   * @param [std::shared_ptr<itti_sbi_release_sm_context_request] smreq Request
    * message
    * @return void
    */
   void handle_pdu_session_release_sm_context_request(
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_release_sm_context_request> smreq);
 
   /*
    * Handle network-requested session modification (SMF, AN, AMF -requested)
@@ -493,261 +493,261 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * Handle PDU Session Modification Request
    * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
    * message received from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_request(
       std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Modification Complete
    * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
    * message received from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_complete(
       std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Modification Command Reject
    * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
    * message received from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_modification_command_reject(
       std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Release Request
    * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
    * message received from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_release_request(
       std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Release Complete
    * @param [std::shared_ptr<oai::nas::Nas5gsmMessage>&] nas_message: NAS
    * message received from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_release_complete(
       std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle Service Request
    * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_service_request(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle AN Release procedure
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if SMF can handle successful, otherwise return false
    */
   bool handle_an_release(
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle PDU Session Resource Setup Response Transfer
    * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_resource_setup_response_transfer(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request);
 
   /*
    * Handle PDU Session Resource Setup Unsuccessful Transfer
    * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_resource_setup_unsuccessful_transfer(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request);
 
   /*
    * Handle PDU Session Resource Modify Response Transfer
    * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_resource_modify_response_transfer(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request);
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request);
 
   /*
    * Handle PDU Session Resource Release Response Transfer
    * @param [std::string&] n2_sm_information: NGAP message in form of string
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
    * @return True if handle successful, otherwise return false
    */
   bool handle_pdu_session_resource_release_response_transfer(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle Xn Handover Patch Switch Request
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_path_switch_req(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle N2 Handover Preparation (Phrase 1- Preparing)
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_preparation_request(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle N2 Handover Preparation (Phrase 2- Prepared)
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_preparation_request_ack(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle N2 Handover Preparation failure
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_preparation_request_fail(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle N2 Handover Execution
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_execution(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Handle N2 Handover Cancellation
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&]
    * sm_context_request: Request message
-   * @param [std::shared_ptr<itti_n11_update_sm_context_response>&]
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_response>&]
    * sm_context_resp: Response message
    * @param [std::shared_ptr<smf_pdu_session>&] sp: PDU session
    * @return True if handle successful, otherwise return false
    */
   bool handle_ho_cancellation(
       std::string& n2_sm_information,
-      std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-      std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+      std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+      std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
       std::shared_ptr<smf_pdu_session>& sp);
 
   /*
    * Check the validity of the request according to user subscription and local
    * policies
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request>] smreq
+   * @param [std::shared_ptr<itti_sbi_create_sm_context_request>] smreq
    * @return true if the request is valid, otherwise return false
    *
    */
   bool verify_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_create_sm_context_request> smreq);
 
   /*
    * Insert a session management subscription into the SMF context
@@ -1118,7 +1118,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param http_status
    */
   void send_pdu_session_establishment_response_reject(
-      const std::shared_ptr<itti_n11_create_sm_context_request>& smreq,
+      const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
       cause_value_5gsm_e cause,
       pdu_session_application_error_e application_error, uint16_t http_status);
 
@@ -1127,7 +1127,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param resp
    */
   void send_pdu_session_create_response(
-      const std::shared_ptr<itti_n11_create_sm_context_response>& resp);
+      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp);
 
   /**
    * Create a PDU session UPDATE response, based on the content of resp
@@ -1135,8 +1135,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @pram session_procedure_type The session procedure type of this reply
    */
   void send_pdu_session_update_response(
-      const std::shared_ptr<itti_n11_update_sm_context_request>& req,
-      const std::shared_ptr<itti_n11_update_sm_context_response>& resp,
+      const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
+      const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
       const std::shared_ptr<smf_pdu_session>& sps);
 
@@ -1145,8 +1145,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * @param resp
    */
   void send_pdu_session_release_response(
-      const std::shared_ptr<itti_n11_release_sm_context_request>& req,
-      const std::shared_ptr<itti_n11_release_sm_context_response>& resp,
+      const std::shared_ptr<itti_sbi_release_sm_context_request>& req,
+      const std::shared_ptr<itti_sbi_release_sm_context_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
       const std::shared_ptr<smf_pdu_session>& sps);
 

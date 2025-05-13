@@ -37,6 +37,7 @@
 #include "smf.h"
 #include "smf_profile.hpp"
 #include "3gpp_24.501.hpp"
+#include "SmPolicyDecision.h"
 #include "QosRule.hpp"
 #include "QosFlowDescription.hpp"
 
@@ -49,6 +50,8 @@ typedef enum {
   PDU_SESSION_UPDATE_SM_CONTEXT_RESPONSE,
   PDU_SESSION_RELEASE_SM_CONTEXT_REQUEST,
   PDU_SESSION_RELEASE_SM_CONTEXT_RESPONSE,
+  PDU_SESSION_MODIFY_SM_CONTEXT_REQUEST,
+  PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE,
   PDU_SESSION_MODIFICATION_SMF_REQUESTED,
   PDU_SESSION_REPORT_RESPONSE,
   PDU_SESSION_MSG_TYPE_MAX
@@ -405,6 +408,9 @@ class pdu_session_update_sm_context_request
   std::string get_target_serving_nf_id() const;
   bool target_serving_nf_id_is_set() const;
 
+  void set_json_data(const nlohmann::json& data);
+  void get_json_data(nlohmann::json& data) const;
+
  private:
   std::vector<pfcp::qfi_t> qfis;
   pfcp::fteid_t dl_fteid;  // AN Tunnel Info
@@ -431,6 +437,8 @@ class pdu_session_update_sm_context_request
   bool m_target_id_is_set;
   std::string m_target_serving_nf_id;
   bool m_target_serving_nf_id_is_set;
+
+  nlohmann::json json_data;
 };
 
 //---------------------------------------------------------------------------------------
@@ -468,7 +476,11 @@ class pdu_session_release_sm_context_request : public pdu_session_msg {
   pdu_session_release_sm_context_request()
       : pdu_session_msg(PDU_SESSION_RELEASE_SM_CONTEXT_REQUEST){};
 
+  void set_json_data(const nlohmann::json& data);
+  void get_json_data(nlohmann::json& data) const;
+
  private:
+  nlohmann::json json_data;
   // From smContextReleaseData
   // cause:
   // ngApCause:
@@ -492,6 +504,43 @@ class pdu_session_release_sm_context_response
   void from_json(const nlohmann::json& data);
 
  private:
+  // TODO:
+};
+
+//---------------------------------------------------------------------------------------
+class pdu_session_modify_sm_context_request : public pdu_session_msg {
+ public:
+  pdu_session_modify_sm_context_request()
+      : pdu_session_msg(PDU_SESSION_MODIFY_SM_CONTEXT_REQUEST) {}
+  pdu_session_modify_sm_context_request(
+      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      : pdu_session_msg(
+            PDU_SESSION_MODIFY_SM_CONTEXT_REQUEST, supi, pdi, dnn, snssai) {}
+
+  void set_json_data(const nlohmann::json& data);
+  void get_json_data(nlohmann::json& data) const;
+
+  // void set_procedure_type(session_management_procedures_type_e type);
+  // void get_procedure_type (session_management_procedures_type_e& type) const;
+ private:
+  nlohmann::json json_data;
+  // session_management_procedures_type_e procedure_type;
+};
+
+//---------------------------------------------------------------------------------------
+class pdu_session_modify_sm_context_response
+    : public pdu_session_sm_context_response {
+ public:
+  pdu_session_modify_sm_context_response()
+      : pdu_session_sm_context_response(
+            PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE) {}
+  pdu_session_modify_sm_context_response(
+      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      : pdu_session_sm_context_response(
+            PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE, supi, pdi, dnn, snssai) {}
+
+ private:
+  // TODO:
 };
 
 //---------------------------------------------------------------------------------------
@@ -551,6 +600,34 @@ class pdu_session_report_response : public pdu_session_sm_context_response {
   std::map<uint8_t, qos_flow_context_updated> qos_flow_context_updateds;
   seid_t seid;
   uint64_t trxn_id;
+};
+
+//---------------------------------------------------------------------------------------
+// see smPolicyNotification (TS29512_Npcf_SMPolicyControl.yaml)
+class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
+ public:
+  pdu_session_sm_policy_notificatiion()
+      : pdu_session_msg(PDU_SESSION_UPDATE_SM_CONTEXT_REQUEST) {
+    m_sm_policy_decision = {};
+  }
+  pdu_session_sm_policy_notificatiion(
+      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      std::string dnn, snssai_t snssai)
+      : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
+    m_sm_policy_decision = {};
+  }
+  pdu_session_sm_policy_notificatiion(
+      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      std::string dnn, snssai_t snssai,
+      oai::model::pcf::SmPolicyDecision sm_policy_decision)
+      : pdu_session_msg(msg_type, supi, pdi, dnn, snssai),
+        m_sm_policy_decision(sm_policy_decision) {}
+  void set_sm_policy_decision(
+      const oai::model::pcf::SmPolicyDecision& sm_policy_decision);
+  oai::model::pcf::SmPolicyDecision get_sm_policy_decision() const;
+
+ private:
+  oai::model::pcf::SmPolicyDecision m_sm_policy_decision;
 };
 
 class event_exposure_msg {

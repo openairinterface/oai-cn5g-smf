@@ -27,7 +27,7 @@
 #include "3gpp_29.244.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
 #include "itti.hpp"
@@ -911,8 +911,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_create_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& sm_context_req,
-    const std::shared_ptr<itti_n11_create_sm_context_response>& sm_context_resp,
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& sm_context_req,
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf::smf_context> sc) {
   Logger::smf_app().info("Perform a procedure - Create SM Context Request");
   // TODO check if compatible with ongoing procedures if any
@@ -1183,8 +1183,8 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_update_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp,
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp,
     const std::shared_ptr<smf::smf_context>& sc) {
   // Handle SM update sm context request
   // The SMF initiates an N4 Session Modification procedure with the UPF. The
@@ -1399,6 +1399,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
       send_n4 = true;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO:
+      send_n4 = false;
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1580,6 +1586,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       continue_n4 = false;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      continue_n4 = false;
+      // TODO:
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1659,8 +1671,8 @@ session_release_sm_context_procedure::send_n4_session_deletion_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_release_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_release_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_release_sm_context_response> sm_context_res,
+    const std::shared_ptr<itti_sbi_release_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_release_sm_context_response> sm_context_res,
     const std::shared_ptr<smf::smf_context>& sc) {
   Logger::smf_app().info("Release SM Context Request");
   // TODO check if compatible with ongoing procedures if any

@@ -116,7 +116,9 @@ enum class session_management_procedures_type_e {
   N2_HO_PREPARATION_PHASE_STEP2               = 18,
   N2_HO_EXECUTION_PHASE                       = 19,
   N2_HO_CANCELLATION_PHASE                    = 20,
-  PDU_SESSION_TEST                            = 21
+  PDU_SESSION_MODIFICATION_PCF_INITIATED      = 21,
+  PDU_SESSION_RELEASE_PCF_INITIATED           = 22,
+  PDU_SESSION_TEST                            = 23
 };
 
 static const std::vector<std::string> session_management_procedures_type_e2str =
@@ -191,6 +193,11 @@ typedef struct qos_profile_s {
 #define NNRF_NF_REGISTER_URL "/nf-instances/"
 #define NNRF_NF_STATUS_SUBSCRIBE_URL "/subscriptions"
 #define NNRF_NF_STATUS_NOTIFY_BASE "/nsmf-nfstatus-notify/"
+
+// Callbacks
+#define NSMF_CALLBACK_BASE "/nsmf-callback/"
+#define NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK                                 \
+  "{}/sm-policy-control-notify"  // Association Id
 
 // for CURL
 #define NF_CURL_TIMEOUT_MS 3000L
