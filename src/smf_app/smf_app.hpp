@@ -105,11 +105,11 @@ class smf_app {
 
   mutable std::shared_mutex m_scid2smf_context;
   mutable std::shared_mutex m_smf_event_subscriptions;
-  // Store promise IDs for Create/Update session
-  mutable std::shared_mutex m_sbi_server_promises;
+  // Store promise IDs
+  mutable std::shared_mutex m_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
-      sbi_server_promises;
+      promises;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
@@ -781,20 +781,6 @@ class smf_app {
   void start_nf_discovery();
 
   /*
-   * To store a promise of a PDU Session Create SM Contex Response to be
-   * triggered when the result is ready
-   * @param [uint32_t] id: promise id
-   * @param [boost::shared_ptr<
-   * boost::promise<pdu_session_create_sm_context_response> >&] p: pointer to
-   * the promise
-   * @return void
-   */
-  void add_promise(
-      uint32_t id,
-      boost::shared_ptr<boost::promise<pdu_session_create_sm_context_response>>&
-          p);
-
-  /*
    * To store a promise of a SBI Server response message to be
    * triggered when the result is ready
    * @param [uint32_t] id: promise id
@@ -853,15 +839,13 @@ class smf_app {
       const std::string& n1_sm_msg, uint32_t& promise_id);
 
   /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const nlohmann::json&] response_message_json: response message in
-   * JSON format
+   * Make the future ready by setting the value of the corresponding promise to
+   * ready
+   * @param [const nlohmann::json&] json_value: value in JSON format
    * @param [uint32_t &] promise_id: Promise Id
    * @return void
    */
-  void trigger_http_response(
-      const nlohmann::json& response_message_json, uint32_t& pid);
+  void make_future_ready(const nlohmann::json& json_value, uint32_t& pid);
 
   /*
    * To trigger the response to the HTTP server by set the value of the
@@ -989,6 +973,11 @@ class smf_app {
    * @return SMF instance ID
    */
   std::string get_smf_instance_id() const;
+
+  bool get_sm_data(
+      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+      std::shared_ptr<session_management_subscription>& subscription,
+      plmn_t plmn);
 };
 }  // namespace smf
 #include "smf_config.hpp"

@@ -45,6 +45,7 @@ using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
+extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
@@ -110,6 +111,16 @@ void smf_sbi_task(void* args_p) {
         smf_sbi_inst->subscribe_upf_status_notify(
             std::static_pointer_cast<itti_sbi_subscribe_upf_status_notify>(
                 shared_msg));
+        break;
+
+      case SBI_RETRIEVE_SM_DATA:
+        smf_sbi_inst->retrieve_sm_data(
+            std::static_pointer_cast<itti_sbi_retrieve_sm_data>(shared_msg));
+        break;
+
+      case SBI_REGISTER_WITH_UDM:
+        smf_sbi_inst->register_with_udm(
+            std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
         break;
 
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
@@ -595,18 +606,15 @@ void smf_sbi::subscribe_upf_status_notify(
 }
 
 //------------------------------------------------------------------------------
-bool smf_sbi::get_sm_data(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-    std::shared_ptr<session_management_subscription>& subscription,
-    plmn_t plmn) {
+bool smf_sbi::retrieve_sm_data(
+    const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg) {
   nlohmann::json json_data = {};
   std::string query_str    = {};
-  std::string mcc          = plmn.mcc;
-  std::string mnc          = plmn.mnc;
 
-  query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
-              ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
-              "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
+  query_str = "?single-nssai={\"sst\":" + std::to_string(msg->snssai.sst) +
+              ",\"sd\":\"" + msg->snssai.sd + "\"}&dnn=" + msg->dnn +
+              "&plmn-id={\"mcc\":\"" + msg->plmn.mcc + "\",\"mnc\":\"" +
+              msg->plmn.mnc + "\"}";
 
   std::string fmr_format_str = {};
   oai::common::sbi::sbi_helper::get_fmt_format_form(
@@ -620,7 +628,7 @@ bool smf_sbi::get_sm_data(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(fmr_format_str, smf_supi64_to_string(supi)) + query_str;
+      fmt::format(fmr_format_str, smf_supi64_to_string(msg->supi)) + query_str;
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
@@ -641,7 +649,7 @@ bool smf_sbi::get_sm_data(
     try {
       json_data = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
-      Logger::smf_sbi().warn("Could not parse Json data from UDM");
+      Logger::smf_sbi().warn("Could not parse JSON data from UDM");
     }
   } else {
     Logger::smf_sbi().warn(
@@ -652,158 +660,16 @@ bool smf_sbi::get_sm_data(
 
   // Process the response
   if (!json_data.empty()) {
-    if (json_data.type() == json::value_t::array) {
-      if (!json_data[0].empty())
-        json_data = json_data[0];  // Array with only 1 member!
-    }
-
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
-
-    // Verify SNSSAI
-    oai::model::common::Snssai snssai_model_requested =
-        snssai.to_model_snssai();
-    oai::model::common::Snssai snssai_model_from_udm = {};
-
-    if (json_data.find("singleNssai") == json_data.end()) return false;
-    if (json_data["singleNssai"].find("sst") !=
-        json_data["singleNssai"].end()) {
-      uint8_t sst = json_data["singleNssai"]["sst"].get<uint8_t>();
-      snssai_model_from_udm.setSst(sst);
-    }
-    if (json_data["singleNssai"].find("sd") != json_data["singleNssai"].end()) {
-      std::string sd_str = json_data["singleNssai"]["sd"];
-      snssai_model_from_udm.setSd(sd_str);
+    // Notify to the result
+    nlohmann::json response_data                = {};
+    response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[kSbiResponseJsonData]         = json_data;
+    if (msg->promise_id > 0) {
+      smf_app_inst->make_future_ready(response_data, msg->promise_id);
+      return true;
     }
 
-    if (snssai_model_from_udm != snssai_model_requested) return false;
-
-    // Verify DNN configurations
-    if (json_data.find("dnnConfigurations") == json_data.end()) return false;
-    Logger::smf_sbi().debug(
-        "DNN Configurations %s", json_data["dnnConfigurations"].dump().c_str());
-
-    // Retrieve SessionManagementSubscription and store in the context
-    // TODO: use SessionManagementSubscriptionData model
-    for (nlohmann::json::iterator it = json_data["dnnConfigurations"].begin();
-         it != json_data["dnnConfigurations"].end(); ++it) {
-      Logger::smf_sbi().debug("DNN %s", it.key().c_str());
-      if (it.key().compare(dnn) == 0) {
-        // Get DNN configuration
-        try {
-          std::shared_ptr<dnn_configuration_t> dnn_configuration =
-              std::make_shared<dnn_configuration_t>();
-          // PDU Session Type (Mandatory)
-          std::string default_session_type =
-              it.value()["pduSessionTypes"]["defaultSessionType"];
-          Logger::smf_sbi().debug(
-              "Default session type %s", default_session_type.c_str());
-          pdu_session_type_t pdu_session_type(default_session_type);
-          dnn_configuration->pdu_session_types.default_session_type =
-              pdu_session_type;
-
-          // SSC_Mode (Mandatory)
-          std::string default_ssc_mode =
-              it.value()["sscModes"]["defaultSscMode"];
-          Logger::smf_sbi().debug(
-              "Default SSC Mode %s", default_ssc_mode.c_str());
-          ssc_mode_t ssc_mode(default_ssc_mode);
-          dnn_configuration->ssc_modes.default_ssc_mode = ssc_mode;
-
-          // 5gQosProfile (Optional)
-          if (it.value().find("5gQosProfile") != it.value().end()) {
-            dnn_configuration->_5g_qos_profile._5qi =
-                it.value()["5gQosProfile"]["5qi"];
-            dnn_configuration->_5g_qos_profile.arp.priority_level =
-                it.value()["5gQosProfile"]["arp"]["priorityLevel"];
-            dnn_configuration->_5g_qos_profile.arp.preempt_cap =
-                it.value()["5gQosProfile"]["arp"]["preemptCap"];
-            dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
-                it.value()["5gQosProfile"]["arp"]["preemptVuln"];
-            // Optional
-            if (it.value()["5gQosProfile"].find("priorityLevel") !=
-                it.value()["5gQosProfile"].end()) {
-              dnn_configuration->_5g_qos_profile.priority_level =
-                  it.value()["5gQosProfile"]["priorityLevel"];
-            }
-          }
-
-          // session_ambr (Optional)
-          if (it.value().find("sessionAmbr") != it.value().end()) {
-            dnn_configuration->session_ambr.uplink =
-                it.value()["sessionAmbr"]["uplink"];
-            dnn_configuration->session_ambr.downlink =
-                it.value()["sessionAmbr"]["downlink"];
-            Logger::smf_sbi().debug(
-                "Session AMBR Uplink %s, Downlink %s",
-                dnn_configuration->session_ambr.uplink.c_str(),
-                dnn_configuration->session_ambr.downlink.c_str());
-          }
-
-          // Static IP Addresses (Optional)
-          if (it.value().find("staticIpAddress") != it.value().end()) {
-            for (const auto& ip_addr : it.value()["staticIpAddress"]) {
-              if (ip_addr.find("ipv4Addr") != ip_addr.end()) {
-                std::string ue_ip_str = ip_addr["ipv4Addr"].get<std::string>();
-                in_addr ue_ipv4_addr =
-                    oai::utils::conv::fromString(oai::utils::trim(ue_ip_str));
-                ip_address_t ue_ip = {};
-                ue_ip              = ue_ipv4_addr;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              } else if (ip_addr.find("ipv6Addr") != ip_addr.end()) {
-                std::string ue_ip_str = ip_addr["ipv6Addr"].get<std::string>();
-                in6_addr ue_ipv6_addr =
-                    oai::utils::conv::fromStringV6(oai::utils::trim(ue_ip_str));
-
-                ip_address_t ue_ip = {};
-                ue_ip              = ue_ipv6_addr;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              } else if (ip_addr.find("ipv6Prefix") != ip_addr.end()) {
-                in6_addr ipv6_prefix;
-                std::string prefix_str =
-                    ip_addr["ipv6Prefix"].get<std::string>();
-                std::vector<std::string> words = {};
-                boost::split(
-                    words, prefix_str, boost::is_any_of("/"),
-                    boost::token_compress_on);
-                if (words.size() != 2) {
-                  Logger::smf_app().error(
-                      "Bad value for UE IPv6 Prefix %s", prefix_str.c_str());
-                  return RETURNerror;
-                }
-                ipv6_prefix = oai::utils::conv::fromStringV6(
-                    oai::utils::trim(words.at(0)));
-
-                ip_address_t ue_ip           = {};
-                ipv6_prefix_t ue_ipv6_prefix = {};
-                ue_ipv6_prefix.prefix_len =
-                    std::stoi(oai::utils::trim(words.at(1)));
-                ue_ipv6_prefix.prefix = ipv6_prefix;
-                ue_ip                 = ue_ipv6_prefix;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              }
-            }
-          }
-
-          // Static Framed-Route (Optional)
-          if (it.value().find("ipv4FrameRouteList") != it.value().end()) {
-            for (const auto& framed_route : it.value()["ipv4FrameRouteList"]) {
-              dnn_configuration->ipv4_frame_routes.push_back(
-                  framed_route["ipv4Mask"].get<std::string>());
-            }
-          }
-
-          subscription->insert_dnn_configuration(it.key(), dnn_configuration);
-          return true;
-        } catch (nlohmann::json::exception& e) {
-          Logger::smf_sbi().warn(
-              "Exception message %s, exception id %d ", e.what(), e.id);
-          return false;
-        } catch (std::exception& e) {
-          Logger::smf_sbi().warn("Exception message %s", e.what());
-          return false;
-        }
-      }
-    }
     return true;
   } else {
     return false;
@@ -816,13 +682,11 @@ void smf_sbi::subscribe_sm_data() {
 }
 
 //------------------------------------------------------------------------------
-bool smf_sbi::register_smf_with_udm(
-    const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
-    const oai::model::udm::SmfRegistration& smf_registration) {
+void smf_sbi::register_with_udm(
+    const std::shared_ptr<itti_sbi_register_with_udm>& msg) {
   Logger::smf_sbi().debug(
-      "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
-
-  nlohmann::json json_data = {};
+      "Register with the UDM for this PDU Session (ID %d)",
+      msg->pdu_session_id);
 
   // TODO: Create new wrapper for SBI Helper to handle this
   std::string fmr_format_str = {};
@@ -838,13 +702,12 @@ bool smf_sbi::register_smf_with_udm(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(fmr_format_str, smf_supi64_to_string(supi), pdu_session_id);
+      fmt::format(
+          fmr_format_str, smf_supi64_to_string(msg->supi), msg->pdu_session_id);
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
-  nlohmann::json json_body = {};
-  to_json(json_body, smf_registration);
-  std::string req_body = json_data.dump();
+  std::string req_body = msg->smf_registration.dump();
   request req = http_client_inst->prepare_json_request(udm_url, req_body);
   // TODO: add retry mechanism, probably directly inside HTTP Client lib
   response resp = http_client_inst->send_http_request(method_e::GET, req);
@@ -854,6 +717,7 @@ bool smf_sbi::register_smf_with_udm(
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
 
+  nlohmann::json json_data = {};
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::CREATED) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -865,12 +729,16 @@ bool smf_sbi::register_smf_with_udm(
   } else {
     Logger::smf_sbi().warn(
         "Could not get response from UDM, URL %s, retry ...", udm_url);
-    // TODO: retry
-    return false;
   }
 
-  // TODO: Process the response
-  return true;
+  // Notify to the result
+  nlohmann::json response_data                = {};
+  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[kSbiResponseJsonData]         = json_data;
+
+  if (msg->promise_id > 0) {
+    smf_app_inst->make_future_ready(response_data, msg->promise_id);
+  }
 }
 
 //------------------------------------------------------------------------------

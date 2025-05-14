@@ -62,6 +62,7 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "utils.hpp"
 
 using namespace smf;
 using namespace oai::config::smf;
@@ -339,7 +340,7 @@ smf_app::smf_app(const std::string& config_file)
     : m_seid2smf_context(),
       m_supi2smf_context(),
       m_scid2smf_context(),
-      m_sbi_server_promises() {
+      m_promises() {
   Logger::smf_app().startup("Starting...");
 
   supi2smf_context = {};
@@ -709,7 +710,7 @@ void smf_app::handle_itti_msg(itti_sbi_create_sm_context_response& m) {
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
 
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -718,7 +719,7 @@ void smf_app::handle_itti_msg(itti_sbi_update_sm_context_response& m) {
       "PDU Session Update SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -727,7 +728,7 @@ void smf_app::handle_itti_msg(itti_sbi_release_sm_context_response& m) {
       "PDU Session Release SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
   m.res.to_json(response_message_json);
-  trigger_http_response(response_message_json, m.pid);
+  make_future_ready(response_message_json, m.pid);
 }
 
 //------------------------------------------------------------------------------
@@ -997,7 +998,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           "Retrieve Session Management Subscription data from the UDM");
       plmn_t plmn = {};
       sc->get_plmn(plmn);
-      if (smf_sbi_inst->get_sm_data(supi64, dnn, snssai, subscription, plmn)) {
+      if (get_sm_data(supi64, dnn, snssai, subscription, plmn)) {
         // Update dnn_context with subscription info
         sc->insert_dnn_subscription(snssai, dnn, subscription);
       } else {
@@ -1016,6 +1017,10 @@ void smf_app::handle_pdu_session_create_sm_context_request(
             PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
         return;
       }
+
+      // TODO: Subscribe to be notified when this subscription data is modified
+      // using Nudm_SDM_Subscribe
+
     } else {
       // Use local configuration
       Logger::smf_app().debug(
@@ -1440,7 +1445,7 @@ void smf_app::handle_sbi_get_configuration(
 
   // Notify to the result
   if (itti_msg->promise_id > 0) {
-    trigger_http_response(response_data, itti_msg->promise_id);
+    make_future_ready(response_data, itti_msg->promise_id);
     return;
   }
 }
@@ -1479,7 +1484,7 @@ void smf_app::handle_sbi_update_configuration(
 
   // Notify to the result
   if (itti_msg->promise_id > 0) {
-    trigger_http_response(response_data, itti_msg->promise_id);
+    make_future_ready(response_data, itti_msg->promise_id);
     return;
   }
 }
@@ -1983,8 +1988,8 @@ void smf_app::set_default_qos_parameters(
 //---------------------------------------------------------------------------------------------
 void smf_app::add_promise(
     uint32_t id, boost::shared_ptr<boost::promise<nlohmann::json>>& p) {
-  std::unique_lock lock(m_sbi_server_promises);
-  sbi_server_promises.emplace(id, p);
+  std::unique_lock lock(m_promises);
+  promises.emplace(id, p);
 }
 
 //---------------------------------------------------------------------------------------------
@@ -2056,15 +2061,15 @@ void smf_app::trigger_update_context_error_response(
 }
 
 //------------------------------------------------------------------------------
-void smf_app::trigger_http_response(
+void smf_app::make_future_ready(
     const nlohmann::json& response_message_json, uint32_t& pid) {
   Logger::smf_app().debug(
       "Trigger the response from SMF: Set promise with ID %ld to ready", pid);
-  std::unique_lock lock(m_sbi_server_promises);
-  if (sbi_server_promises.count(pid) > 0) {
-    sbi_server_promises[pid]->set_value(response_message_json);
+  std::unique_lock lock(m_promises);
+  if (promises.count(pid) > 0) {
+    promises[pid]->set_value(response_message_json);
     // Remove this promise from list
-    sbi_server_promises.erase(pid);
+    promises.erase(pid);
   }
 }
 
@@ -2077,7 +2082,7 @@ void smf_app::trigger_http_response(
   nlohmann::json response_message_json = {};
   response_message_json["http_code"]   = http_code;
 
-  trigger_http_response(response_message_json, promise_id);
+  make_future_ready(response_message_json, promise_id);
   return;
 }
 
@@ -2093,7 +2098,7 @@ void smf_app::trigger_session_create_sm_context_response(
 
   nlohmann::json response_message_json = {};
   sm_context_response.to_json(response_message_json);
-  trigger_http_response(response_message_json, pid);
+  make_future_ready(response_message_json, pid);
   return;
 }
 
@@ -2108,7 +2113,7 @@ void smf_app::trigger_session_update_sm_context_response(
       pid);
   nlohmann::json response_message_json = {};
   sm_context_response.to_json(response_message_json);
-  trigger_http_response(response_message_json, pid);
+  make_future_ready(response_message_json, pid);
   return;
 }
 
@@ -2352,5 +2357,220 @@ void smf_app::reply_with_pdu_session_establishment_reject(
     trigger_http_response(
         http_status_code::INTERNAL_SERVER_ERROR, promise_id,
         N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+  }
+}
+
+//------------------------------------------------------------------------------
+bool smf_app::get_sm_data(
+    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+    std::shared_ptr<session_management_subscription>& subscription,
+    plmn_t plmn) {
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = generate_promise_id();
+  Logger::smf_app().debug("Promise ID generated %d", promise_id);
+  add_promise(promise_id, p);
+
+  std::shared_ptr<itti_sbi_retrieve_sm_data> itti_msg =
+      std::make_shared<itti_sbi_retrieve_sm_data>(
+          TASK_SMF_APP, TASK_SMF_SBI, promise_id);
+
+  itti_msg->supi   = supi;
+  itti_msg->dnn    = dnn;
+  itti_msg->snssai = snssai;
+  itti_msg->plmn   = plmn;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+
+  // Wait for the result available and process accordingly
+  std::optional<nlohmann::json> result_opt = std::nullopt;
+  oai::utils::utils::wait_for_result(f, result_opt);
+
+  // process data
+  uint32_t http_response_code = 0;
+  nlohmann::json json_data    = {};
+
+  if (result_opt.has_value()) {
+    Logger::smf_app().debug("Got result for promise ID %d", promise_id);
+    nlohmann::json result = result_opt.value();
+
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    }
+
+    if (result.find(kSbiResponseJsonData) != result.end()) {
+      json_data = result[kSbiResponseJsonData];
+    }
+
+  } else {
+    return false;
+  }
+
+  // Process the response
+  if (!json_data.empty()) {
+    if (json_data.type() == nlohmann::json::value_t::array) {
+      if (!json_data[0].empty())
+        json_data = json_data[0];  // Array with only 1 member!
+    }
+
+    Logger::smf_app().debug("Response from UDM %s", json_data.dump().c_str());
+
+    // Verify SNSSAI
+    oai::model::common::Snssai snssai_model_requested =
+        snssai.to_model_snssai();
+    oai::model::common::Snssai snssai_model_from_udm = {};
+
+    if (json_data.find("singleNssai") == json_data.end()) return false;
+    if (json_data["singleNssai"].find("sst") !=
+        json_data["singleNssai"].end()) {
+      uint8_t sst = json_data["singleNssai"]["sst"].get<uint8_t>();
+      snssai_model_from_udm.setSst(sst);
+    }
+    if (json_data["singleNssai"].find("sd") != json_data["singleNssai"].end()) {
+      std::string sd_str = json_data["singleNssai"]["sd"];
+      snssai_model_from_udm.setSd(sd_str);
+    }
+
+    if (snssai_model_from_udm != snssai_model_requested) return false;
+
+    // Verify DNN configurations
+    if (json_data.find("dnnConfigurations") == json_data.end()) return false;
+    Logger::smf_app().debug(
+        "DNN Configurations %s", json_data["dnnConfigurations"].dump().c_str());
+
+    // Retrieve SessionManagementSubscription and store in the context
+    // TODO: use SessionManagementSubscriptionData model
+    for (nlohmann::json::iterator it = json_data["dnnConfigurations"].begin();
+         it != json_data["dnnConfigurations"].end(); ++it) {
+      Logger::smf_app().debug("DNN %s", it.key().c_str());
+      if (it.key().compare(dnn) == 0) {
+        // Get DNN configuration
+        try {
+          std::shared_ptr<dnn_configuration_t> dnn_configuration =
+              std::make_shared<dnn_configuration_t>();
+          // PDU Session Type (Mandatory)
+          std::string default_session_type =
+              it.value()["pduSessionTypes"]["defaultSessionType"];
+          Logger::smf_app().debug(
+              "Default session type %s", default_session_type.c_str());
+          pdu_session_type_t pdu_session_type(default_session_type);
+          dnn_configuration->pdu_session_types.default_session_type =
+              pdu_session_type;
+
+          // SSC_Mode (Mandatory)
+          std::string default_ssc_mode =
+              it.value()["sscModes"]["defaultSscMode"];
+          Logger::smf_app().debug(
+              "Default SSC Mode %s", default_ssc_mode.c_str());
+          ssc_mode_t ssc_mode(default_ssc_mode);
+          dnn_configuration->ssc_modes.default_ssc_mode = ssc_mode;
+
+          // 5gQosProfile (Optional)
+          if (it.value().find("5gQosProfile") != it.value().end()) {
+            dnn_configuration->_5g_qos_profile._5qi =
+                it.value()["5gQosProfile"]["5qi"];
+            dnn_configuration->_5g_qos_profile.arp.priority_level =
+                it.value()["5gQosProfile"]["arp"]["priorityLevel"];
+            dnn_configuration->_5g_qos_profile.arp.preempt_cap =
+                it.value()["5gQosProfile"]["arp"]["preemptCap"];
+            dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
+                it.value()["5gQosProfile"]["arp"]["preemptVuln"];
+            // Optional
+            if (it.value()["5gQosProfile"].find("priorityLevel") !=
+                it.value()["5gQosProfile"].end()) {
+              dnn_configuration->_5g_qos_profile.priority_level =
+                  it.value()["5gQosProfile"]["priorityLevel"];
+            }
+          }
+
+          // session_ambr (Optional)
+          if (it.value().find("sessionAmbr") != it.value().end()) {
+            dnn_configuration->session_ambr.uplink =
+                it.value()["sessionAmbr"]["uplink"];
+            dnn_configuration->session_ambr.downlink =
+                it.value()["sessionAmbr"]["downlink"];
+            Logger::smf_app().debug(
+                "Session AMBR Uplink %s, Downlink %s",
+                dnn_configuration->session_ambr.uplink.c_str(),
+                dnn_configuration->session_ambr.downlink.c_str());
+          }
+
+          // Static IP Addresses (Optional)
+          if (it.value().find("staticIpAddress") != it.value().end()) {
+            for (const auto& ip_addr : it.value()["staticIpAddress"]) {
+              if (ip_addr.find("ipv4Addr") != ip_addr.end()) {
+                std::string ue_ip_str = ip_addr["ipv4Addr"].get<std::string>();
+                in_addr ue_ipv4_addr =
+                    oai::utils::conv::fromString(oai::utils::trim(ue_ip_str));
+                ip_address_t ue_ip = {};
+                ue_ip              = ue_ipv4_addr;
+                dnn_configuration->static_ip_addresses.push_back(ue_ip);
+              } else if (ip_addr.find("ipv6Addr") != ip_addr.end()) {
+                std::string ue_ip_str = ip_addr["ipv6Addr"].get<std::string>();
+                in6_addr ue_ipv6_addr =
+                    oai::utils::conv::fromStringV6(oai::utils::trim(ue_ip_str));
+
+                ip_address_t ue_ip = {};
+                ue_ip              = ue_ipv6_addr;
+                dnn_configuration->static_ip_addresses.push_back(ue_ip);
+              } else if (ip_addr.find("ipv6Prefix") != ip_addr.end()) {
+                in6_addr ipv6_prefix;
+                std::string prefix_str =
+                    ip_addr["ipv6Prefix"].get<std::string>();
+                std::vector<std::string> words = {};
+                boost::split(
+                    words, prefix_str, boost::is_any_of("/"),
+                    boost::token_compress_on);
+                if (words.size() != 2) {
+                  Logger::smf_app().error(
+                      "Bad value for UE IPv6 Prefix %s", prefix_str.c_str());
+                  return RETURNerror;
+                }
+                ipv6_prefix = oai::utils::conv::fromStringV6(
+                    oai::utils::trim(words.at(0)));
+
+                ip_address_t ue_ip           = {};
+                ipv6_prefix_t ue_ipv6_prefix = {};
+                ue_ipv6_prefix.prefix_len =
+                    std::stoi(oai::utils::trim(words.at(1)));
+                ue_ipv6_prefix.prefix = ipv6_prefix;
+                ue_ip                 = ue_ipv6_prefix;
+                dnn_configuration->static_ip_addresses.push_back(ue_ip);
+              }
+            }
+          }
+
+          // Static Framed-Route (Optional)
+          if (it.value().find("ipv4FrameRouteList") != it.value().end()) {
+            for (const auto& framed_route : it.value()["ipv4FrameRouteList"]) {
+              dnn_configuration->ipv4_frame_routes.push_back(
+                  framed_route["ipv4Mask"].get<std::string>());
+            }
+          }
+
+          subscription->insert_dnn_configuration(it.key(), dnn_configuration);
+          return true;
+        } catch (nlohmann::json::exception& e) {
+          Logger::smf_app().warn(
+              "Exception message %s, exception id %d ", e.what(), e.id);
+          return false;
+        } catch (std::exception& e) {
+          Logger::smf_app().warn("Exception message %s", e.what());
+          return false;
+        }
+      }
+    }
+    return true;
+  } else {
+    return false;
   }
 }

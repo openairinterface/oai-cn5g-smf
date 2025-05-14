@@ -30,6 +30,7 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "SmfRegistration.h"
+#include "itti_msg_sbi.hpp"
 
 namespace smf {
 
@@ -134,17 +135,11 @@ class smf_sbi {
 
   /*
    * Get SM subscription data from UDM
-   * @param [const supi64_t &] supi
-   * @param [const std::string &] dnn
-   * @param [const snssai_t &] snssai
-   * @param [std::shared_ptr<session_management_subscription>] subscription
+   * @param [const std::shared_ptr<itti_sbi_retrieve_sm_data>&] msg
    * @return bool: True if successful, otherwise false
    *
    */
-  bool get_sm_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-      std::shared_ptr<session_management_subscription>& subscription,
-      plmn_t plmn = {});
+  bool retrieve_sm_data(const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg);
 
   /*
    * Subscribe to be notify from UDM
@@ -155,16 +150,13 @@ class smf_sbi {
   void subscribe_sm_data();
 
   /*
-   * Get SM subscription data from UDM
-   * @param [const supi64_t &] supi
-   * @param [const pdu_session_id_t &] PDU Session ID
-   * @param [const oai::model::udm::SmfRegistration &] SMF Registration Info
-   * @return bool: True if successful, otherwise false
+   * Register SMF with UDM
+   * @param [const std::shared_ptr<itti_sbi_register_with_udm>&] msg
+   * @return void
    *
    */
-  bool register_smf_with_udm(
-      const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
-      const oai::model::udm::SmfRegistration& smf_registration);
+  void register_with_udm(
+      const std::shared_ptr<itti_sbi_register_with_udm>& msg);
 
   /*
    * Generate an unique value for promise id
