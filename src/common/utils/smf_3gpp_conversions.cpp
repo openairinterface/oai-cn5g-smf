@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 
 #include <ctype.h>
 #include <inttypes.h>
@@ -525,8 +525,8 @@ void xgpp_conv::sm_context_request_from_nas(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::create_sm_context_response_from_ctx_request(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& ctx_request,
-    std::shared_ptr<itti_n11_create_sm_context_response>& ctx_response) {
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& ctx_request,
+    std::shared_ptr<itti_sbi_create_sm_context_response>& ctx_response) {
   ctx_response->http_version = ctx_request->http_version;
   ctx_response->res.set_http_code(oai::common::sbi::http_status_code::OK);
   ctx_response->res.set_supi(ctx_request->req.get_supi());
@@ -544,8 +544,8 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::update_sm_context_response_from_ctx_request(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& ct_response) {
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& ct_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& ct_response) {
   ct_response->res.set_http_code(
       oai::common::sbi::http_status_code::OK);  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());

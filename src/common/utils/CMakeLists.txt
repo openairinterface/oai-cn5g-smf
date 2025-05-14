@@ -41,6 +41,7 @@ include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
@@ -50,7 +51,7 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 
 set(CN_UTILS_SRC STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/3gpp_conversions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/smf_3gpp_conversions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/epc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mime_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fqdn.cpp

@@ -52,12 +52,12 @@ class smf_sbi {
 
   /*
    * Send N1N2 Message Transfer Request to AMF
-   * @param [std::shared_ptr<itti_n11_create_sm_context_response>]
+   * @param [std::shared_ptr<itti_sbi_create_sm_context_response>]
    * sm_context_res: Content of message to be sent
    * @return void
    */
   void send_n1n2_message_transfer_request(
-      std::shared_ptr<itti_n11_create_sm_context_response> sm_context_res);
+      std::shared_ptr<itti_sbi_create_sm_context_response> sm_context_res);
 
   /*
    * Send N1N2 Message Transfer Request to AMF
@@ -71,67 +71,67 @@ class smf_sbi {
 
   /*
    * Send N1N2 Message Transfer Request to AMF
-   * @param [std::shared_ptr<itti_n11_session_report_request>] n11_msg: Content
+   * @param [std::shared_ptr<itti_sbi_session_report_request>] n11_msg: Content
    * of message to be sent
    * @return void
    */
   void send_n1n2_message_transfer_request(
-      std::shared_ptr<itti_n11_session_report_request> report_msg);
+      std::shared_ptr<itti_sbi_session_report_request> report_msg);
 
   /*
    * Send SM Context Status Notification to AMF
-   * @param [std::shared_ptr<itti_n11_notify_sm_context_status>]
+   * @param [std::shared_ptr<itti_sbi_notify_sm_context_status>]
    * sm_context_status: Content of message to be sent
    * @return void
    */
   void send_sm_context_status_notification(
-      std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status);
+      std::shared_ptr<itti_sbi_notify_sm_context_status> sm_context_status);
 
   /*
    * Send Notification for the associated event to the subscribers
-   * @param [std::shared_ptr<itti_n11_notify_subscribed_event>] msg: Content of
+   * @param [std::shared_ptr<itti_sbi_notify_subscribed_event>] msg: Content of
    * message to be sent
    * @return void
    */
   void notify_subscribed_event(
-      std::shared_ptr<itti_n11_notify_subscribed_event> msg);
+      std::shared_ptr<itti_sbi_notify_subscribed_event> msg);
 
   /*
    * Send NF instance registration to NRF
-   * @param [std::shared_ptr<itti_n11_register_nf_instance_request>] msg:
+   * @param [std::shared_ptr<itti_sbi_register_nf_instance_request>] msg:
    * Content of message to be sent
    * @return void
    */
   void register_nf_instance(
-      std::shared_ptr<itti_n11_register_nf_instance_request> msg);
+      std::shared_ptr<itti_sbi_register_nf_instance_request> msg);
 
   /*
    * Send NF instance update to NRF
-   * @param [std::shared_ptr<itti_n11_update_nf_instance_request>] msg: Content
+   * @param [std::shared_ptr<itti_sbi_update_nf_instance_request>] msg: Content
    * of message to be sent
    * @return void
    */
   void update_nf_instance(
-      std::shared_ptr<itti_n11_update_nf_instance_request> msg);
+      std::shared_ptr<itti_sbi_update_nf_instance_request> msg);
 
   /*
    * Send NF deregister to NRF
-   * @param [std::shared_ptr<itti_n11_deregister_nf_instance>] msg: Content
+   * @param [std::shared_ptr<itti_sbi_deregister_nf_instance>] msg: Content
    * of message to be sent
    * @return void
    */
   void deregister_nf_instance(
-      std::shared_ptr<itti_n11_deregister_nf_instance> msg);
+      std::shared_ptr<itti_sbi_deregister_nf_instance> msg);
 
   /*
    * Send a NFStatusSubscribe to NRF (to be notified when a new UPF becomes
    * available)
-   * @param [std::shared_ptr<itti_n11_subscribe_upf_status_notify>] msg: Content
+   * @param [std::shared_ptr<itti_sbi_subscribe_upf_status_notify>] msg: Content
    * of message to be sent
    * @return void
    */
   void subscribe_upf_status_notify(
-      std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg);
+      std::shared_ptr<itti_sbi_subscribe_upf_status_notify> msg);
 
   /*
    * Get SM subscription data from UDM

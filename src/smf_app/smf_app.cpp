@@ -33,7 +33,7 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "Nas5gsmMessage.hpp"
 #include "PduSessionEstablishmentAccept.hpp"
 #include "PduSessionEstablishmentReject.hpp"
@@ -240,51 +240,51 @@ void smf_app_task(void*) {
         break;
 
       case N11_SESSION_N1N2_MESSAGE_TRANSFER_RESPONSE_STATUS:
-        if (itti_n11_n1n2_message_transfer_response_status* m =
-                dynamic_cast<itti_n11_n1n2_message_transfer_response_status*>(
+        if (itti_sbi_n1n2_message_transfer_response_status* m =
+                dynamic_cast<itti_sbi_n1n2_message_transfer_response_status*>(
                     msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_create_sm_context_response* m =
-                dynamic_cast<itti_n11_create_sm_context_response*>(msg)) {
+        if (itti_sbi_create_sm_context_response* m =
+                dynamic_cast<itti_sbi_create_sm_context_response*>(msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_update_sm_context_response* m =
-                dynamic_cast<itti_n11_update_sm_context_response*>(msg)) {
+        if (itti_sbi_update_sm_context_response* m =
+                dynamic_cast<itti_sbi_update_sm_context_response*>(msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE:
-        if (itti_n11_release_sm_context_response* m =
-                dynamic_cast<itti_n11_release_sm_context_response*>(msg)) {
+        if (itti_sbi_release_sm_context_response* m =
+                dynamic_cast<itti_sbi_release_sm_context_response*>(msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_REGISTER_NF_INSTANCE_RESPONSE:
-        if (itti_n11_register_nf_instance_response* m =
-                dynamic_cast<itti_n11_register_nf_instance_response*>(msg)) {
+        if (itti_sbi_register_nf_instance_response* m =
+                dynamic_cast<itti_sbi_register_nf_instance_response*>(msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_UPDATE_NF_INSTANCE_RESPONSE:
-        if (itti_n11_update_nf_instance_response* m =
-                dynamic_cast<itti_n11_update_nf_instance_response*>(msg)) {
+        if (itti_sbi_update_nf_instance_response* m =
+                dynamic_cast<itti_sbi_update_nf_instance_response*>(msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE:
-        if (itti_n11_subscribe_upf_status_notify_response* m =
-                dynamic_cast<itti_n11_subscribe_upf_status_notify_response*>(
+        if (itti_sbi_subscribe_upf_status_notify_response* m =
+                dynamic_cast<itti_sbi_subscribe_upf_status_notify_response*>(
                     msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
@@ -572,7 +572,7 @@ void smf_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(
-    itti_n11_n1n2_message_transfer_response_status& m) {
+    itti_sbi_n1n2_message_transfer_response_status& m) {
   Logger::smf_app().info("Process N1N2MessageTransfer Response");
 
   switch (m.procedure_type) {
@@ -703,7 +703,7 @@ void smf_app::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
+void smf_app::handle_itti_msg(itti_sbi_create_sm_context_response& m) {
   Logger::smf_app().debug(
       "PDU Session Create SM Context: Set promise with ID %d to ready", m.pid);
 
@@ -714,7 +714,7 @@ void smf_app::handle_itti_msg(itti_n11_create_sm_context_response& m) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_update_sm_context_response& m) {
+void smf_app::handle_itti_msg(itti_sbi_update_sm_context_response& m) {
   Logger::smf_app().debug(
       "PDU Session Update SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
@@ -723,7 +723,7 @@ void smf_app::handle_itti_msg(itti_n11_update_sm_context_response& m) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
+void smf_app::handle_itti_msg(itti_sbi_release_sm_context_response& m) {
   Logger::smf_app().debug(
       "PDU Session Release SM Context: Set promise with ID %d to ready", m.pid);
   nlohmann::json response_message_json = {};
@@ -732,7 +732,7 @@ void smf_app::handle_itti_msg(itti_n11_release_sm_context_response& m) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
+void smf_app::handle_itti_msg(itti_sbi_register_nf_instance_response& r) {
   Logger::smf_app().debug("Handle NF Instance Registration response");
 
   if (r.http_response_code == http_status_code::CREATED) {
@@ -760,7 +760,7 @@ void smf_app::handle_itti_msg(itti_n11_register_nf_instance_response& r) {
 }
 
 //------------------------------------------------------------------------------
-void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
+void smf_app::handle_itti_msg(itti_sbi_update_nf_instance_response& u) {
   Logger::smf_app().debug("NF Update NF response");
 
   if ((u.http_response_code == oai::common::sbi::http_status_code::OK) or
@@ -786,7 +786,7 @@ void smf_app::handle_itti_msg(itti_n11_update_nf_instance_response& u) {
 
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(
-    itti_n11_subscribe_upf_status_notify_response& r) {
+    itti_sbi_subscribe_upf_status_notify_response& r) {
   Logger::smf_app().debug("NFSubscribeNotify response");
 
   if (r.http_response_code != http_status_code::CREATED) {
@@ -799,7 +799,7 @@ void smf_app::handle_itti_msg(
 
 //------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_create_sm_context_request(
-    std::shared_ptr<itti_n11_create_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
       "Handle a PDU Session Create SM Context Request from an AMF (HTTP "
       "version %d)",
@@ -1067,7 +1067,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
 //------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_update_sm_context_request(
-    std::shared_ptr<itti_n11_update_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
   // Handle PDU Session Update SM Context Request (section 4.3.2@3GPP TS 23.502)
   Logger::smf_app().info(
       "Handle a PDU Session Update SM Context Request from an AMF (HTTP "
@@ -1140,7 +1140,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     return;
   }
 
-  // Step 4. Store SUPI, DNN, NSSAI in itti_n11_update_sm_context_request to be
+  // Step 4. Store SUPI, DNN, NSSAI in itti_sbi_update_sm_context_request to be
   // processed later on
   smreq->req.set_supi(scf.get()->supi);
   smreq->req.set_pdu_session_id(scf.get()->pdu_session_id);
@@ -1169,7 +1169,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
 }
 //------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_release_sm_context_request(
-    std::shared_ptr<itti_n11_release_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_release_sm_context_request> smreq) {
   Logger::smf_app().info(
       "Handle a PDU Session Release SM Context Request from an AMF");
 
@@ -1203,7 +1203,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
     return;
   }
 
-  // Step 2. store SUPI, PDU Session ID in itti_n11_update_sm_context_request to
+  // Step 2. store SUPI, PDU Session ID in itti_sbi_update_sm_context_request to
   // be processed later on
   supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
   smreq->req.set_supi(scf.get()->supi);
@@ -1745,15 +1745,15 @@ void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
     return;
   }
 
-  std::shared_ptr<itti_n11_msg> pending_n11_msg = {};
+  std::shared_ptr<itti_sbi_msg> pending_n11_msg = {};
   sp.get()->get_pending_n11_msg(pending_n11_msg);
 
   if (!pending_n11_msg) {
     Logger::smf_app().warn("Could not retrieve the pending message!");
     return;
   }
-  std::shared_ptr<itti_n11_update_sm_context_response> n11_msg =
-      std::static_pointer_cast<itti_n11_update_sm_context_response>(
+  std::shared_ptr<itti_sbi_update_sm_context_response> n11_msg =
+      std::static_pointer_cast<itti_sbi_update_sm_context_response>(
           pending_n11_msg);
 
   if (n11_msg) {
@@ -1798,7 +1798,7 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
     return;
   }
 
-  std::shared_ptr<itti_n11_msg> pending_n11_msg = {};
+  std::shared_ptr<itti_sbi_msg> pending_n11_msg = {};
   sp.get()->get_pending_n11_msg(pending_n11_msg);
 
   if (!pending_n11_msg) {
@@ -1806,8 +1806,8 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
     return;
   }
 
-  std::shared_ptr<itti_n11_update_sm_context_response> n11_msg =
-      std::static_pointer_cast<itti_n11_update_sm_context_response>(
+  std::shared_ptr<itti_sbi_update_sm_context_response> n11_msg =
+      std::static_pointer_cast<itti_sbi_update_sm_context_response>(
           pending_n11_msg);
 
   if (n11_msg) {
@@ -1844,8 +1844,8 @@ void smf_app::timer_nrf_heartbeat_timeout(
     timer_id_t timer_id, uint64_t arg2_user) {
   Logger::smf_app().debug("Send ITTI msg to N11 task to trigger NRF Heartbeat");
 
-  std::shared_ptr<itti_n11_update_nf_instance_request> itti_msg =
-      std::make_shared<itti_n11_update_nf_instance_request>(
+  std::shared_ptr<itti_sbi_update_nf_instance_request> itti_msg =
+      std::make_shared<itti_sbi_update_nf_instance_request>(
           TASK_SMF_APP, TASK_SMF_SBI);
 
   oai::model::common::PatchItem patch_item = {};
@@ -2260,8 +2260,8 @@ void smf_app::register_to_nrf() {
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to trigger the registration request to NRF");
 
-  std::shared_ptr<itti_n11_register_nf_instance_request> itti_msg =
-      std::make_shared<itti_n11_register_nf_instance_request>(
+  std::shared_ptr<itti_sbi_register_nf_instance_request> itti_msg =
+      std::make_shared<itti_sbi_register_nf_instance_request>(
           TASK_SMF_APP, TASK_SMF_SBI);
   itti_msg->profile      = nf_instance_profile;
   itti_msg->http_version = smf_cfg->http_version;
@@ -2281,8 +2281,8 @@ void smf_app::deregister_to_nrf() {
       "Send ITTI msg to SBI task to trigger the deregistration request to "
       "NRF");
 
-  std::shared_ptr<itti_n11_deregister_nf_instance> itti_msg =
-      std::make_shared<itti_n11_deregister_nf_instance>(
+  std::shared_ptr<itti_sbi_deregister_nf_instance> itti_msg =
+      std::make_shared<itti_sbi_deregister_nf_instance>(
           TASK_SMF_APP, TASK_SMF_SBI);
   itti_msg->smf_instance_id = smf_instance_id;
   itti_msg->http_version    = smf_cfg->http_version;
@@ -2300,8 +2300,8 @@ void smf_app::trigger_upf_status_notification_subscribe() {
       "Send ITTI msg to N11 task to subscribe to UPF status notification "
       "from NRF");
 
-  std::shared_ptr<itti_n11_subscribe_upf_status_notify> itti_msg =
-      std::make_shared<itti_n11_subscribe_upf_status_notify>(
+  std::shared_ptr<itti_sbi_subscribe_upf_status_notify> itti_msg =
+      std::make_shared<itti_sbi_subscribe_upf_status_notify>(
           TASK_SMF_APP, TASK_SMF_SBI);
 
   nlohmann::json json_data = {};

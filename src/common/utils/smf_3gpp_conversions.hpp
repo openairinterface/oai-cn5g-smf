@@ -31,7 +31,7 @@
 #include "SmContextReleaseMessage.h"
 #include "SmContextUpdateMessage.h"
 #include "endpoint.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "smf_msg.hpp"
 #include "Nas5gsmMessage.hpp"
 
@@ -123,12 +123,12 @@ void sm_context_request_from_nas(
     smf::pdu_session_create_sm_context_request& pcr);
 
 void create_sm_context_response_from_ctx_request(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_create_sm_context_response>& ct_response);
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& ct_request,
+    std::shared_ptr<itti_sbi_create_sm_context_response>& ct_response);
 
 void update_sm_context_response_from_ctx_request(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& ct_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& ct_response);
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& ct_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& ct_response);
 
 void plmn_from_model(const oai::model::common::PlmnId&, plmn_t& plmn);
 

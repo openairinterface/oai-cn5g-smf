@@ -35,11 +35,11 @@
 #include "SMContextsCollectionApiImpl.h"
 #include "logger.hpp"
 #include "smf_msg.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "3gpp_29.502.h"
 #include <nghttp2/asio_http2_server.h>
 #include "smf_config.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "mime_parser.hpp"
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
@@ -48,6 +48,7 @@
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include "http_client.hpp"
+#include "SmPolicyNotification.h"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -56,6 +57,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::smf;
+using namespace oai::model::pcf;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
@@ -96,8 +98,8 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_request>(
+  std::shared_ptr<itti_sbi_create_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 1;

@@ -31,7 +31,7 @@
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -61,7 +61,7 @@ void smf_sbi_task(void* args_p) {
     switch (msg->msg_type) {
       case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
         smf_sbi_inst->send_n1n2_message_transfer_request(
-            std::static_pointer_cast<itti_n11_create_sm_context_response>(
+            std::static_pointer_cast<itti_sbi_create_sm_context_response>(
                 shared_msg));
         break;
 
@@ -73,43 +73,43 @@ void smf_sbi_task(void* args_p) {
 
       case N11_SESSION_REPORT_RESPONSE:
         smf_sbi_inst->send_n1n2_message_transfer_request(
-            std::static_pointer_cast<itti_n11_session_report_request>(
+            std::static_pointer_cast<itti_sbi_session_report_request>(
                 shared_msg));
         break;
 
       case N11_SESSION_NOTIFY_SM_CONTEXT_STATUS:
         smf_sbi_inst->send_sm_context_status_notification(
-            std::static_pointer_cast<itti_n11_notify_sm_context_status>(
+            std::static_pointer_cast<itti_sbi_notify_sm_context_status>(
                 shared_msg));
         break;
 
       case N11_NOTIFY_SUBSCRIBED_EVENT:
         smf_sbi_inst->notify_subscribed_event(
-            std::static_pointer_cast<itti_n11_notify_subscribed_event>(
+            std::static_pointer_cast<itti_sbi_notify_subscribed_event>(
                 shared_msg));
         break;
 
       case N11_REGISTER_NF_INSTANCE_REQUEST:
         smf_sbi_inst->register_nf_instance(
-            std::static_pointer_cast<itti_n11_register_nf_instance_request>(
+            std::static_pointer_cast<itti_sbi_register_nf_instance_request>(
                 shared_msg));
         break;
 
       case N11_UPDATE_NF_INSTANCE_REQUEST:
         smf_sbi_inst->update_nf_instance(
-            std::static_pointer_cast<itti_n11_update_nf_instance_request>(
+            std::static_pointer_cast<itti_sbi_update_nf_instance_request>(
                 shared_msg));
         break;
 
       case N11_DEREGISTER_NF_INSTANCE:
         smf_sbi_inst->deregister_nf_instance(
-            std::static_pointer_cast<itti_n11_deregister_nf_instance>(
+            std::static_pointer_cast<itti_sbi_deregister_nf_instance>(
                 shared_msg));
         break;
 
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY:
         smf_sbi_inst->subscribe_upf_status_notify(
-            std::static_pointer_cast<itti_n11_subscribe_upf_status_notify>(
+            std::static_pointer_cast<itti_sbi_subscribe_upf_status_notify>(
                 shared_msg));
         break;
 
@@ -148,7 +148,7 @@ smf_sbi::smf_sbi() {
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_n1n2_message_transfer_request(
-    std::shared_ptr<itti_n11_create_sm_context_response> sm_context_res) {
+    std::shared_ptr<itti_sbi_create_sm_context_response> sm_context_res) {
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF (HTTP version %d)",
       sm_context_res->http_version);
@@ -195,8 +195,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
-  std::shared_ptr<itti_n11_n1n2_message_transfer_response_status> itti_msg =
-      std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
+  std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
+      std::make_shared<itti_sbi_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
@@ -262,7 +262,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_n1n2_message_transfer_request(
-    std::shared_ptr<itti_n11_session_report_request> report_msg) {
+    std::shared_ptr<itti_sbi_session_report_request> report_msg) {
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF (Network-initiated "
       "Service Request)");
@@ -305,8 +305,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
-  std::shared_ptr<itti_n11_n1n2_message_transfer_response_status> itti_msg =
-      std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
+  std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
+      std::make_shared<itti_sbi_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
@@ -326,7 +326,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_sm_context_status_notification(
-    std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status) {
+    std::shared_ptr<itti_sbi_notify_sm_context_status> sm_context_status) {
   Logger::smf_sbi().debug("Send SM Context Status Notification to AMF");
   Logger::smf_sbi().debug(
       "AMF URI: %s", sm_context_status->amf_status_uri.c_str());
@@ -347,7 +347,7 @@ void smf_sbi::send_sm_context_status_notification(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::notify_subscribed_event(
-    std::shared_ptr<itti_n11_notify_subscribed_event> msg) {
+    std::shared_ptr<itti_sbi_notify_subscribed_event> msg) {
   Logger::smf_sbi().debug(
       "Send notification for the subscribed event to the subscription");
 
@@ -416,7 +416,7 @@ void smf_sbi::notify_subscribed_event(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::register_nf_instance(
-    std::shared_ptr<itti_n11_register_nf_instance_request> msg) {
+    std::shared_ptr<itti_sbi_register_nf_instance_request> msg) {
   Logger::smf_sbi().debug(
       "Send NF Instance Registration to NRF (HTTP version %d)",
       msg->http_version);
@@ -441,8 +441,8 @@ void smf_sbi::register_nf_instance(
       "NF Instance Registration, response from NRF, HTTP Code: %d",
       resp.status_code);
 
-  std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
-      std::make_shared<itti_n11_register_nf_instance_response>(
+  std::shared_ptr<itti_sbi_register_nf_instance_response> itti_msg_response =
+      std::make_shared<itti_sbi_register_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code =
       static_cast<int16_t>(resp.status_code);
@@ -479,7 +479,7 @@ void smf_sbi::register_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::update_nf_instance(
-    std::shared_ptr<itti_n11_update_nf_instance_request> msg) {
+    std::shared_ptr<itti_sbi_update_nf_instance_request> msg) {
   Logger::smf_sbi().debug(
       "Send NF Update to NRF (HTTP version %d)", msg->http_version);
 
@@ -512,8 +512,8 @@ void smf_sbi::update_nf_instance(
 
   // TODO: In case of response containing NF profile
   // Send response to APP to process
-  std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
-      std::make_shared<itti_n11_update_nf_instance_response>(
+  std::shared_ptr<itti_sbi_update_nf_instance_response> itti_msg =
+      std::make_shared<itti_sbi_update_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg->http_response_code = resp.status_code;
   itti_msg->http_version       = msg->http_version;
@@ -529,7 +529,7 @@ void smf_sbi::update_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::deregister_nf_instance(
-    std::shared_ptr<itti_n11_deregister_nf_instance> msg) {
+    std::shared_ptr<itti_sbi_deregister_nf_instance> msg) {
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (HTTP version %d)", msg->http_version);
 
@@ -556,7 +556,7 @@ void smf_sbi::deregister_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::subscribe_upf_status_notify(
-    std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg) {
+    std::shared_ptr<itti_sbi_subscribe_upf_status_notify> msg) {
   Logger::smf_sbi().debug(
       "Send NFSubscribeNotify to NRF to be notified when a new UPF becomes "
       "available (HTTP version %d)",
@@ -574,9 +574,9 @@ void smf_sbi::subscribe_upf_status_notify(
   Logger::smf_sbi().debug(
       "NFSubscribeNotify, response from NRF, HTTP Code: %d", resp.status_code);
 
-  std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
+  std::shared_ptr<itti_sbi_subscribe_upf_status_notify_response>
       itti_msg_response =
-          std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
+          std::make_shared<itti_sbi_subscribe_upf_status_notify_response>(
               TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code =
       static_cast<int16_t>(resp.status_code);
