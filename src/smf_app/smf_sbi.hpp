@@ -150,16 +150,13 @@ class smf_sbi {
   void subscribe_sm_data();
 
   /*
-   * Get SM subscription data from UDM
-   * @param [const supi64_t &] supi
-   * @param [const pdu_session_id_t &] PDU Session ID
-   * @param [const oai::model::udm::SmfRegistration &] SMF Registration Info
-   * @return bool: True if successful, otherwise false
+   * Register SMF with UDM
+   * @param [const std::shared_ptr<itti_sbi_register_with_udm>&] msg
+   * @return void
    *
    */
-  bool register_smf_with_udm(
-      const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
-      const oai::model::udm::SmfRegistration& smf_registration);
+  void register_with_udm(
+      const std::shared_ptr<itti_sbi_register_with_udm>& msg);
 
   /*
    * Generate an unique value for promise id

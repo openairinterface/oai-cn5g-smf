@@ -44,6 +44,7 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
+#include "SmfRegistration.h"
 
 using namespace boost::placeholders;
 
@@ -1149,6 +1150,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::shared_ptr<itti_sbi_release_sm_context_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
       const std::shared_ptr<smf_pdu_session>& sps);
+
+  bool register_with_udm(
+      const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
+      const oai::model::udm::SmfRegistration& smf_registration);
 
  private:
   std::vector<std::shared_ptr<smf_procedure>> pending_procedures;

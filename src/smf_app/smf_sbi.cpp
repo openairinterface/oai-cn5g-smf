@@ -118,6 +118,11 @@ void smf_sbi_task(void* args_p) {
             std::static_pointer_cast<itti_sbi_retrieve_sm_data>(shared_msg));
         break;
 
+      case SBI_REGISTER_WITH_UDM:
+        smf_sbi_inst->register_with_udm(
+            std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
+        break;
+
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
         break;
 
@@ -655,13 +660,7 @@ bool smf_sbi::retrieve_sm_data(
 
   // Process the response
   if (!json_data.empty()) {
-    if (json_data.type() == json::value_t::array) {
-      if (!json_data[0].empty())
-        json_data = json_data[0];  // Array with only 1 member!
-    }
-
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
-
     // Notify to the result
     nlohmann::json response_data                = {};
     response_data[kSbiResponseHttpResponseCode] = resp.status_code;
@@ -683,13 +682,11 @@ void smf_sbi::subscribe_sm_data() {
 }
 
 //------------------------------------------------------------------------------
-bool smf_sbi::register_smf_with_udm(
-    const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
-    const oai::model::udm::SmfRegistration& smf_registration) {
+void smf_sbi::register_with_udm(
+    const std::shared_ptr<itti_sbi_register_with_udm>& msg) {
   Logger::smf_sbi().debug(
-      "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
-
-  nlohmann::json json_data = {};
+      "Register with the UDM for this PDU Session (ID %d)",
+      msg->pdu_session_id);
 
   // TODO: Create new wrapper for SBI Helper to handle this
   std::string fmr_format_str = {};
@@ -705,13 +702,12 @@ bool smf_sbi::register_smf_with_udm(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(fmr_format_str, smf_supi64_to_string(supi), pdu_session_id);
+      fmt::format(
+          fmr_format_str, smf_supi64_to_string(msg->supi), msg->pdu_session_id);
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
-  nlohmann::json json_body = {};
-  to_json(json_body, smf_registration);
-  std::string req_body = json_data.dump();
+  std::string req_body = msg->smf_registration.dump();
   request req = http_client_inst->prepare_json_request(udm_url, req_body);
   // TODO: add retry mechanism, probably directly inside HTTP Client lib
   response resp = http_client_inst->send_http_request(method_e::GET, req);
@@ -721,6 +717,7 @@ bool smf_sbi::register_smf_with_udm(
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
 
+  nlohmann::json json_data = {};
   if ((resp.status_code == http_status_code::OK) or
       (resp.status_code == http_status_code::CREATED) or
       (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -732,12 +729,16 @@ bool smf_sbi::register_smf_with_udm(
   } else {
     Logger::smf_sbi().warn(
         "Could not get response from UDM, URL %s, retry ...", udm_url);
-    // TODO: retry
-    return false;
   }
 
-  // TODO: Process the response
-  return true;
+  // Notify to the result
+  nlohmann::json response_data                = {};
+  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[kSbiResponseJsonData]         = json_data;
+
+  if (msg->promise_id > 0) {
+    smf_app_inst->make_future_ready(response_data, msg->promise_id);
+  }
 }
 
 //------------------------------------------------------------------------------

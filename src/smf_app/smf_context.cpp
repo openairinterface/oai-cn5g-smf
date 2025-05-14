@@ -63,6 +63,7 @@
 #include "smf_procedure.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "utils.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -4508,7 +4509,7 @@ void smf_context::send_pdu_session_update_response(
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
   // Register with the UDM
-  smf_sbi_inst->register_smf_with_udm(supi64, pdu_session_id, smf_registration);
+  register_with_udm(supi64, pdu_session_id, smf_registration);
 
   // Process the response
   if (resp->res.get_cause() ==
@@ -4820,4 +4821,64 @@ void smf_context::send_pdu_session_release_response(
         "Could not send ITTI message %s to task TASK_SMF_APP",
         resp->get_msg_name());
   }
+}
+
+//------------------------------------------------------------------------------
+bool smf_context::register_with_udm(
+    const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
+    const oai::model::udm::SmfRegistration& smf_registration) {
+  Logger::smf_sbi().debug(
+      "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
+
+  nlohmann::json smf_registration_json = {};
+  to_json(smf_registration_json, smf_registration);
+
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = smf_app_inst->generate_promise_id();
+  Logger::smf_app().debug("Promise ID generated %d", promise_id);
+  smf_app_inst->add_promise(promise_id, p);
+
+  std::shared_ptr<itti_sbi_register_with_udm> itti_msg =
+      std::make_shared<itti_sbi_register_with_udm>(
+          TASK_SMF_APP, TASK_SMF_SBI, promise_id);
+
+  itti_msg->supi             = supi;
+  itti_msg->pdu_session_id   = pdu_session_id;
+  itti_msg->smf_registration = smf_registration_json;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+
+  // Wait for the result available and process accordingly
+  std::optional<nlohmann::json> result_opt = std::nullopt;
+  oai::utils::utils::wait_for_result(f, result_opt);
+
+  // process data
+  uint32_t http_response_code = 0;
+  nlohmann::json json_data    = {};
+
+  if (result_opt.has_value()) {
+    Logger::smf_app().debug("Got result for promise ID %d", promise_id);
+    nlohmann::json result = result_opt.value();
+
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    }
+
+    if (result.find(kSbiResponseJsonData) != result.end()) {
+      json_data = result[kSbiResponseJsonData];
+    }
+
+    return true;
+  }
+  return false;
 }

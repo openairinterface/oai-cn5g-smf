@@ -575,4 +575,31 @@ class itti_sbi_retrieve_sm_data : public itti_sbi_msg {
   plmn_t plmn;
 };
 
+//-----------------------------------------------------------------------------
+class itti_sbi_register_with_udm : public itti_sbi_msg {
+ public:
+  itti_sbi_register_with_udm(
+      const task_id_t orig, const task_id_t dest, uint32_t pid)
+      : itti_sbi_msg(SBI_REGISTER_WITH_UDM, orig, dest),
+        promise_id(pid),
+        supi(),
+        pdu_session_id(),
+        smf_registration() {}
+
+  itti_sbi_register_with_udm(const itti_sbi_register_with_udm& i)
+      : itti_sbi_msg(i) {
+    promise_id       = i.promise_id;
+    supi             = i.supi;
+    pdu_session_id   = i.pdu_session_id;
+    smf_registration = i.smf_registration;
+  }
+  virtual ~itti_sbi_register_with_udm(){};
+  const char* get_msg_name() { return "SBI_REGISTER_WITH_UDM"; };
+
+  uint32_t promise_id;
+  supi64_t supi;
+  pdu_session_id_t pdu_session_id;
+  nlohmann::json smf_registration;
+};
+
 #endif /* ITTI_MSG_SBI_HPP_INCLUDED_ */
