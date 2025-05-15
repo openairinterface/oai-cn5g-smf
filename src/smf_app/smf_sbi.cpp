@@ -579,7 +579,6 @@ void smf_sbi::subscribe_upf_status_notify(
       (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
-    return;
   } else {
     Logger::smf_sbi().warn(
         "NFSubscribeNotify, could not get response from NRF");
@@ -616,10 +615,7 @@ bool smf_sbi::get_sm_data(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_url(smf_cfg->enable_tls()) +
-      oai::common::sbi::sbi_helper::UdmSdmBase +
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_api_version() +
+      oai::common::sbi::sbi_helper::UdmSdmBase + "v2" +
       fmt::format(fmr_format_str, smf_supi64_to_string(supi)) + query_str;
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());

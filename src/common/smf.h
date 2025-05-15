@@ -89,8 +89,8 @@ static uint64_t smf_supi_to_u64(supi_t supi) {
 static std::string smf_supi64_to_string(const supi64_t& supi) {
   std::string supi_str = std::to_string(supi);
   uint8_t padded_len   = SUPI_DIGITS_MAX - supi_str.length();
-  for (int i = 0; i < padded_len; i++) supi_str = "0" + supi_str;
-  return supi_str;
+  // for (int i = 0; i < padded_len; i++) supi_str = "0" + supi_str;
+  return "imsi-" + supi_str;
 }
 
 // From 23.502

@@ -923,6 +923,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // If no DNN information from UE, set to the default value
   std::string dnn = smreq->req.get_dnn();
+  Logger::smf_app().warn("DNN %s!", dnn.c_str());
+
   if (dnn.length() == 0) {
     dnn = smf_cfg->get_default_dnn();
   }

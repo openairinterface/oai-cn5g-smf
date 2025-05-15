@@ -1171,7 +1171,10 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // according to the structure:
   // {apiRoot}/nsmf-pdusession/{apiVersion}/sm-contexts/{smContextRef}
   std::string smf_context_uri =
-      smreq->req.get_api_root() + "/" + sm_context_ref;
+      "http://20.100.1.250:8080/nsmf-pdusession/v1/sm-contexts/1";
+
+  // smreq->req.get_api_root() + "/" + sm_context_ref;
+
   sm_context_response.set_smf_context_uri(smf_context_uri);
   sm_context_response.set_cause(static_cast<uint8_t>(
       cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));  // TODO

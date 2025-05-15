@@ -29,7 +29,7 @@ bool mime_parser::parse(const std::string& str) {
   Logger::smf_app().debug("Parsing the message with Simple Parser");
 
   // find boundary
-  std::size_t content_type_pos = str.find("Content-Type");  // first part
+  std::size_t content_type_pos = str.find("content-type");  // first part
 
   // For normal message -> don't need to parse (number of parts = 0)
   if ((content_type_pos <= 4) or (content_type_pos == std::string::npos))
@@ -39,7 +39,7 @@ bool mime_parser::parse(const std::string& str) {
       str.substr(2, content_type_pos - 4);  // 2 for -- and 2 for CRLF
   Logger::smf_app().debug("Boundary: %s", boundary_str.c_str());
   std::string boundary_full = "--" + boundary_str + CRLF;
-  std::string last_boundary = "--" + boundary_str + "--" + CRLF;
+  std::string last_boundary = "--" + boundary_str + "--";
 
   std::size_t crlf_pos           = str.find(CRLF, content_type_pos);
   std::size_t boundary_pos       = str.find(boundary_full);
@@ -47,7 +47,7 @@ bool mime_parser::parse(const std::string& str) {
 
   while (boundary_pos < boundary_last_post) {
     mime_part p      = {};
-    content_type_pos = str.find("Content-Type", boundary_pos);
+    content_type_pos = str.find("content-type", boundary_pos);
     crlf_pos         = str.find(CRLF, content_type_pos);
     if ((content_type_pos == std::string::npos) or
         (crlf_pos == std::string::npos))
