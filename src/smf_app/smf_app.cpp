@@ -2307,14 +2307,14 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   nlohmann::json json_data = {};
   unsigned int port        = smf_cfg->sbi.port;
   if (smf_cfg->http_version == 2) port = smf_cfg->sbi_http2_port;
-  // TODO: remove hardcoded values
+  // TODO: remove hardcoded values by using model SubscriptionData
   json_data["nfStatusNotificationUri"] =
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg->sbi.addr4))) + ":" +
       std::to_string(port) + "/nsmf-nfstatus-notify/" +
       smf_cfg->sbi_api_version + "/subscriptions";
 
-  json_data["subscrCond"]["NfTypeCond"]["nfType"] = "UPF";
-  json_data["reqNotifEvents"]                     = nlohmann::json::array();
+  json_data["subscrCond"]["nfType"] = "UPF";
+  json_data["reqNotifEvents"]       = nlohmann::json::array();
   json_data["reqNotifEvents"].push_back("NF_REGISTERED");
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
   json_data["validityTime"] = "20390531T235959";
