@@ -20,20 +20,30 @@
  */
 
 #include "mime_parser.hpp"
-#include "logger.hpp"
+
+#include <boost/algorithm/string/find.hpp>
+
 #include "conversions.hpp"
+#include "logger.hpp"
 #include "utils.hpp"
 
 bool mime_parser::parse(const std::string& str) {
   std::string CRLF = "\r\n";
   Logger::smf_app().debug("Parsing the message with Simple Parser");
 
+  boost::iterator_range<std::string::const_iterator> str_iterator =
+      boost::algorithm::ifind_first(str, "content-type");
+
+  int content_type_pos = -1;
+  if (str_iterator) {
+    content_type_pos = std::distance(str.begin(), str_iterator.begin());
+  }
+
   // find boundary
-  std::size_t content_type_pos = str.find("content-type");  // first part
+  // std::size_t content_type_pos = str.find("content-type");  // first part
 
   // For normal message -> don't need to parse (number of parts = 0)
-  if ((content_type_pos <= 4) or (content_type_pos == std::string::npos))
-    return true;
+  if ((content_type_pos <= 4) or (content_type_pos == -1)) return true;
 
   std::string boundary_str =
       str.substr(2, content_type_pos - 4);  // 2 for -- and 2 for CRLF

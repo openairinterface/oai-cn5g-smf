@@ -21,22 +21,21 @@
 
 #include "smf_sbi.hpp"
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 
-#include <nlohmann/json.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
 #include "common_defs.h"
+#include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "smf_3gpp_conversions.hpp"
+#include "sbi_helper.hpp"
 #include "smf.h"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
-#include "http_client.hpp"
-#include "sbi_helper.hpp"
 
 using namespace smf;
 using namespace oai::common::sbi;

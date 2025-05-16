@@ -29,7 +29,6 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_commons.h"
-#include "smf_3gpp_conversions.hpp"
 #include "Cause.hpp"
 #include "EventNotification.h"
 #include "PduSessionModificationCommandReject.hpp"
@@ -52,6 +51,8 @@
 #include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
+#include "sbi_helper.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
 #include "smf_event.hpp"
@@ -64,7 +65,6 @@
 #include "smf_sbi.hpp"
 #include "string.hpp"
 #include "utils.hpp"
-#include "sbi_helper.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -1188,11 +1188,6 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       smf_sbi.get_url(smf_cfg->enable_tls()) +
       oai::common::sbi::sbi_helper::SmfPduSessionBase +
       smf_cfg->sbi_api_version + fmt::format(fmr_format_str, sm_context_ref);
-
-  // std::string smf_context_uri =
-  //     "http://20.100.1.250:8080/nsmf-pdusession/v1/sm-contexts/1";
-
-  // smreq->req.get_api_root() + "/" + sm_context_ref;
 
   sm_context_response.set_smf_context_uri(smf_context_uri);
   sm_context_response.set_cause(static_cast<uint8_t>(

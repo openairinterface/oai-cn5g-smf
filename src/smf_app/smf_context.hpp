@@ -35,6 +35,7 @@
 #include "Nas5gsmMessage.hpp"
 #include "QosRule.hpp"
 #include "SessionAmbr.hpp"
+#include "SmfRegistration.h"
 #include "common_root_types.h"
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
@@ -44,7 +45,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
-#include "SmfRegistration.h"
 
 using namespace boost::placeholders;
 

@@ -23,11 +23,12 @@
 #define ITTI_MSG_SBI_HPP_INCLUDED_
 
 #include <nlohmann/json.hpp>
+
 #include "NotificationData.h"
+#include "PatchItem.h"
 #include "itti_msg.hpp"
 #include "pistache/http.h"
 #include "smf_msg.hpp"
-#include "PatchItem.h"
 #include "smf_profile.hpp"
 
 using namespace oai::model::smf;

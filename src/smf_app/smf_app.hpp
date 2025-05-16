@@ -34,7 +34,6 @@
 #include "3gpp_29.502.h"
 #include "ProblemDetails.h"
 #include "UpfInfo.h"
-#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf.h"
@@ -60,12 +59,6 @@ namespace smf {
 #define T3591_TIMER_MAX_RETRIES 4
 #define T3592_TIMER_VALUE_SEC 16
 #define T3592_TIMER_MAX_RETRIES 4
-
-typedef enum {
-  PDU_SESSION_ESTABLISHMENT = 1,
-  PDU_SESSION_MODIFICATION  = 2,
-  PDU_SESSION_RELEASE       = 3
-} pdu_session_procedure_t;
 
 class smf_context_ref {
  public:
