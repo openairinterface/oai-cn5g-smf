@@ -29,9 +29,9 @@
 
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
 #include "smf.h"
@@ -42,6 +42,7 @@ using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
 using namespace oai::model::common;
+using namespace oai::model::pcf;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -395,6 +396,87 @@ void smf_http2_server::start() {
         });
       });
 
+  // SMF Callback (including SM Policy Notification)
+  server.handle(
+      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version,
+      [&](const request& request, const response& response) {
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          if (len > 0) {
+            Logger::smf_api_server().debug("Received a callback");
+            std::string msg((char*) data, len);
+            Logger::smf_api_server().debug(
+                "Message content \n %s", msg.c_str());
+
+            // Verify request's method
+            if (!boost::iequals(request.method(), "POST")) {
+              response.write_head(http_status_code::BAD_REQUEST);
+              response.end();
+              return;
+            }
+
+            std::vector<std::string> split_result;
+            boost::split(
+                split_result, request.uri().path, boost::is_any_of("/"));
+
+            if (split_result.size() < 6) {
+              Logger::smf_api_server().warn("Requested URL is not implemented");
+              response.write_head(
+                  oai::common::sbi::http_status_code::NOT_IMPLEMENTED);
+              response.end();
+              return;
+            }
+
+            std::string scid         = split_result[split_result.size() - 3];
+            std::string callback_api = split_result[split_result.size() - 2];
+            std::string action       = split_result[split_result.size() - 1];
+            Logger::smf_api_server().info(
+                "smf_ref %s, method %s", scid.c_str(), action.c_str());
+
+            // SM Policy Notification: Example of URI:
+            // https://oai-smf::8080/nsmf-callback/1/sm-policy-control-notify/update
+            if (boost::iequals(callback_api, "sm-policy-control-notify")) {
+              try {
+                if (boost::iequals(action, "update")) {
+                  oai::model::pcf::SmPolicyNotification policyNotification = {};
+                  nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
+                  this->modify_sm_context_handler(
+                      scid, policyNotification, response);
+
+                } else if (boost::iequals(action, "terminate")) {
+                  oai::model::pcf::TerminationNotification
+                      terminationNotification = {};
+                  nlohmann::json::parse(msg.c_str())
+                      .get_to(terminationNotification);
+                  this->terminate_policy_notification_handler(
+                      scid, terminationNotification, response);
+                } else {
+                  response.write_head(http_status_code::BAD_REQUEST);
+                  response.end();
+                  return;
+                }
+
+              } catch (nlohmann::detail::exception& e) {
+                Logger::smf_sbi().warn(
+                    "Can not parse the JSON data (error: %s)!", e.what());
+                response.write_head(http_status_code::BAD_REQUEST);
+                response.end();
+                return;
+              } catch (std::exception& e) {
+                Logger::smf_api_server().warn("Error: %s!", e.what());
+                response.write_head(http_status_code::INTERNAL_SERVER_ERROR);
+                response.end();
+                return;
+              }
+            }
+
+            // TODO:
+            response.write_head(http_status_code::BAD_REQUEST);
+            response.end();
+            return;
+          }
+        });
+      });
+
   running_server = true;
 
   if (enable_tls) {
@@ -448,8 +530,8 @@ void smf_http2_server::create_sm_contexts_handler(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_request>(
+  std::shared_ptr<itti_sbi_create_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -590,9 +672,9 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_update_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
+  // Handle the itti_sbi_update_sm_context_request message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -712,8 +794,8 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_ReleaseSMContext Request: PDU Session Release "
       "request from AMF.");
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->scid         = smf_ref;
@@ -951,6 +1033,119 @@ void smf_http2_server::create_event_subscription_handler(
   h.emplace("content-type", header_value{"application/json"});
   response.write_head(http_status_code::CREATED, h);
   response.end(json_data.dump().c_str());
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::modify_sm_context_handler(
+    const std::string& scid_str,
+    const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+    const response& response) {
+  Logger::smf_api_server().info(
+      "Received a PCF-initiated SM Policy Association Modification "
+      "(SmPolicyNotification Request)");
+
+  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  nlohmann::json sm_policy_notification                         = {};
+
+  to_json(sm_policy_notification, smPolicyNotification);
+  sm_context_req_msg.set_json_data(sm_policy_notification);
+
+  // Handle the message in smf_app
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
+  m_smf_app->add_promise(promise_id, p);
+
+  // Handle the message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid_str);
+  itti_msg->req                    = sm_context_req_msg;
+  itti_msg->http_version           = 2;
+  itti_msg->session_procedure_type = session_management_procedures_type_e::
+      PDU_SESSION_MODIFICATION_PCF_INITIATED;
+  m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
+
+  // TODO: use wait_for_result from common src
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
+
+    // Wait for the result from UPF and send reply to PCF
+    nlohmann::json policy_notification_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+
+    uint32_t http_response_code = 0;
+    nlohmann::json json_data    = {};
+    header_map h                = {};
+
+    if (policy_notification_response.find(kSbiResponseHttpResponseCode) !=
+        policy_notification_response.end()) {
+      http_response_code =
+          policy_notification_response[kSbiResponseHttpResponseCode].get<int>();
+    }
+
+    if (http_response_code == 200) {
+      response.write_head(http_status_code::OK);
+      response.end();
+
+    } else {
+      // Problem details
+      if (policy_notification_response.find("ProblemDetails") !=
+          policy_notification_response.end()) {
+        json_data = policy_notification_response["ProblemDetails"];
+      }
+      h.emplace("content-type", header_value{"application/problem+json"});
+      response.end(json_data.dump().c_str());
+    }
+  } else {
+    uint16_t http_code = http_status_code::REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::terminate_policy_notification_handler(
+    const std::string& scid,
+    const oai::model::pcf::TerminationNotification& terminationNotification,
+    const response& response) {
+  Logger::smf_api_server().info(
+      "Received a PCF-initiated SM Policy Association Termination Request "
+      "(TerminationNotification Request)");
+
+  // Send response to the PCF
+  response.write_head(http_status_code::NO_CONTENT);
+  response.end();
+
+  // Process the request in APP
+  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  nlohmann::json termination_notification                        = {};
+
+  to_json(termination_notification, terminationNotification);
+  sm_context_req_msg.set_json_data(termination_notification);
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
+
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid);
+  itti_msg->req          = sm_context_req_msg;
+  itti_msg->http_version = 2;
+  itti_msg->session_procedure_type =
+      session_management_procedures_type_e::PDU_SESSION_RELEASE_PCF_INITIATED;
+  m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
 }
 
 //------------------------------------------------------------------------------

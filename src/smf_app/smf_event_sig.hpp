@@ -48,7 +48,7 @@ typedef bs2::signal_type<
 // Signal for Event exposure
 // UE Addr Change, SUPI, PDU SessionID, HTTP version
 typedef bs2::signal_type<
-    void(supi64_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
+    void(scid_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
     ee_ue_ip_change_sig_t;
 
 // TODO: Access Type Change

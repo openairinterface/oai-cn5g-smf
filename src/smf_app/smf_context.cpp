@@ -29,7 +29,7 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_commons.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "Cause.hpp"
 #include "EventNotification.h"
 #include "PduSessionModificationCommandReject.hpp"
@@ -63,6 +63,8 @@
 #include "smf_procedure.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
+#include "utils.hpp"
+#include "sbi_helper.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -295,13 +297,13 @@ void smf_pdu_session::set_snssai(const snssai_t s) {
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::set_pending_n11_msg(
-    const std::shared_ptr<itti_n11_msg>& msg) {
+    const std::shared_ptr<itti_sbi_msg>& msg) {
   pending_n11_msg = msg;
 }
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::get_pending_n11_msg(
-    std::shared_ptr<itti_n11_msg>& msg) const {
+    std::shared_ptr<itti_sbi_msg>& msg) const {
   msg = pending_n11_msg;
 }
 
@@ -537,21 +539,15 @@ void smf_context::handle_itti_msg(
             session_report_msg.set_dnn(sp->get_dnn());
             session_report_msg.set_pdu_session_type(
                 sp->get_pdu_session_type().pdu_session_type);
-            // get supi and put into URL
-            std::string supi_prefix = {};
-            get_supi_prefix(supi_prefix);
-            std::string supi_str =
-                smf_get_supi_with_prefix(supi_prefix, smf_supi_to_string(supi));
             // TODO: use sbi_helper
             std::string api_version =
                 smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                     ->get_sbi()
                     .get_api_version();
-            std::string url = get_amf_addr() + NAMF_COMMUNICATION_BASE +
-                              api_version +
-                              fmt::format(
-                                  NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL,
-                                  supi_str.c_str());
+            std::string url =
+                get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
+                fmt::format(
+                    NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
             session_report_msg.set_amf_url(url);
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
@@ -591,21 +587,21 @@ void smf_context::handle_itti_msg(
 
             session_report_msg.set_json_data(json_data);
 
-            std::shared_ptr<itti_n11_session_report_request> itti_n11_report =
-                std::make_shared<itti_n11_session_report_request>(
+            std::shared_ptr<itti_sbi_session_report_request> itti_sbi_report =
+                std::make_shared<itti_sbi_session_report_request>(
                     TASK_SMF_APP, TASK_SMF_SBI);
-            itti_n11_report->res = session_report_msg;
+            itti_sbi_report->res = session_report_msg;
             // send ITTI message to N11 interface to trigger N1N2MessageTransfer
             // towards AMFs
             Logger::smf_app().info(
                 "Sending ITTI message %s to task TASK_SMF_SBI",
-                itti_n11_report->get_msg_name());
+                itti_sbi_report->get_msg_name());
 
-            ret = itti_inst->send_msg(itti_n11_report);
+            ret = itti_inst->send_msg(itti_sbi_report);
             if (RETURNok != ret) {
               Logger::smf_app().error(
                   "Could not send ITTI message %s to task TASK_SMF_SBI",
-                  itti_n11_report->get_msg_name());
+                  itti_sbi_report->get_msg_name());
             }
           }
         }
@@ -721,9 +717,7 @@ std::string smf_context::toString() const {
   std::string s = {};
   s.append("\n");
   s.append("SMF CONTEXT:\n");
-  s.append("SUPI:\t\t\t\t")
-      .append(smf_supi_to_string(supi).c_str())
-      .append("\n");
+  s.append("SUPI:\t\t\t\t").append(supi.c_str()).append("\n");
   s.append("PDU SESSION:\t\t\t\t").append("\n");
   for (auto it : pdu_sessions) {
     s.append(it.second->toString());
@@ -811,7 +805,7 @@ void smf_context::get_session_ambr(
 
 //------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_create_sm_context_request(
-    std::shared_ptr<itti_n11_create_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
       "Handle a PDU Session Create SM Context Request message from AMF (HTTP "
       "version %d)",
@@ -824,7 +818,6 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Step 1. Get necessary information
   std::string dnn         = smreq->req.get_dnn();
   snssai_t snssai         = smreq->req.get_snssai();
-  supi64_t supi64         = smf_supi_to_u64(smreq->req.get_supi());
   uint32_t pdu_session_id = smreq->req.get_pdu_session_id();
 
   // Step 2. Check the validity of the UE request, if valid send PDU Session
@@ -849,7 +842,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Store HttpResponse and session-related information to be used when
   // receiving the response from UPF
   auto sm_context_resp_pending =
-      std::make_shared<itti_n11_create_sm_context_response>(
+      std::make_shared<itti_sbi_create_sm_context_response>(
           TASK_SMF_APP, TASK_SMF_SBI, smreq->pid);
 
   // Assign necessary information for the response
@@ -883,12 +876,27 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   sp->policy_ptr             = std::make_shared<n7::policy_association>();
   bool use_pcf_policy        = false;
   sp->policy_ptr->set_context(
-      smf_supi_to_string_without_nulls(smreq->req.get_supi()),
-      smreq->req.get_supi_prefix(), smreq->req.get_dnn(), snssai, plmn,
+      smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
 
   sp->policy_ptr->id = smreq->scid;
+  // [Policy Control] The SMF shall set the notification URI for the PCF to use
+  // to notify the SMF of policy decisions. The SMF shall set the notification
+  // The URI value will have the base uri of the SMF
+  std::string notification_uri =
+      smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
+      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
+      fmt::format(
+          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
+          std::to_string(sp->policy_ptr->id).c_str());
+  // Add association id to url
+  Logger::smf_app().debug(fmt::format(
+      "Set the notification URI {} for the PCF to use to notify the SMF of ",
+      notification_uri.c_str()));
+  sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
 
+  // NOTE: The decision in association (sp->policy_ptr) is updated from the
+  // response from PCF
   n7::sm_policy_status_code status =
       n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
   if (status != n7::sm_policy_status_code::CREATED) {
@@ -1170,8 +1178,19 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // headers: Location: contains the URI of the newly created resource,
   // according to the structure:
   // {apiRoot}/nsmf-pdusession/{apiVersion}/sm-contexts/{smContextRef}
+
+  auto smf_sbi = smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi();
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::SmfPduSessionPathSmContextsCreate,
+      fmr_format_str);
   std::string smf_context_uri =
-      "http://20.100.1.250:8080/nsmf-pdusession/v1/sm-contexts/1";
+      smf_sbi.get_url(smf_cfg->enable_tls()) +
+      oai::common::sbi::sbi_helper::SmfPduSessionBase +
+      smf_cfg->sbi_api_version + fmt::format(fmr_format_str, sm_context_ref);
+
+  // std::string smf_context_uri =
+  //     "http://20.100.1.250:8080/nsmf-pdusession/v1/sm-contexts/1";
 
   // smreq->req.get_api_root() + "/" + sm_context_ref;
 
@@ -1246,19 +1265,14 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     sm_context_resp_pending->res.set_n1_sm_message(n1_sm_msg_hex);
 
     // Get SUPI and put into URL
-    std::string supi_str = {};
-    supi_t supi          = sm_context_resp_pending->res.get_supi();
-    supi_str             = smf_get_supi_with_prefix(
-        sm_context_resp_pending->res.get_supi_prefix(),
-        smf_supi_to_string(supi));
+    std::string supi = sm_context_resp_pending->res.get_supi();
     // TODO: use sbi_helper
     std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                   ->get_sbi()
                                   .get_api_version();
     std::string url =
         get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-        fmt::format(
-            NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
+        fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
     sm_context_resp_pending->res.set_amf_url(url);
 
     // Fill the json part
@@ -1286,8 +1300,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_request(
     std::shared_ptr<Nas5gsmMessage>& nas_message,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   Logger::smf_app().debug("PDU_SESSION_MODIFICATION_REQUEST");
 
@@ -1406,7 +1420,7 @@ bool smf_context::handle_pdu_session_modification_request(
 
   // Store the context for the timer handling
   sp.get()->set_pending_n11_msg(
-      std::dynamic_pointer_cast<itti_n11_msg>(sm_context_resp));
+      std::dynamic_pointer_cast<itti_sbi_msg>(sm_context_resp));
   // start timer T3591
   // get smf_pdu_session and set the corresponding timer
   sp.get()->timer_T3591 = itti_inst->timer_setup(
@@ -1418,8 +1432,8 @@ bool smf_context::handle_pdu_session_modification_request(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_complete(
     std::shared_ptr<Nas5gsmMessage>& nas_message,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   /* see section 6.3.2.3@3GPP TS 24.501 V16.1.0
    Upon receipt of a PDU SESSION MODIFICATION COMPLETE message, the SMF
@@ -1445,8 +1459,8 @@ bool smf_context::handle_pdu_session_modification_complete(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_modification_command_reject(
     std::shared_ptr<Nas5gsmMessage>& nas_message,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::
@@ -1503,8 +1517,8 @@ bool smf_context::handle_pdu_session_modification_command_reject(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_release_request(
     std::shared_ptr<Nas5gsmMessage>& nas_message,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n1_sm_msg, n1_sm_msg_hex;
   std::string n2_sm_info, n2_sm_info_hex;
@@ -1585,8 +1599,8 @@ bool smf_context::handle_pdu_session_release_request(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_release_complete(
     std::shared_ptr<Nas5gsmMessage>& nas_message,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::
@@ -1670,7 +1684,7 @@ bool smf_context::handle_pdu_session_release_complete(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_response_transfer(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
   // PDUSessionResourceSetupResponseTransfer
@@ -1758,7 +1772,7 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
   // Ngap_PDUSessionResourceSetupUnsuccessfulTransfer
@@ -1802,7 +1816,7 @@ bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_modify_response_transfer(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request) {
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
   // PDUSessionResourceModifyResponseTransfer
@@ -1876,7 +1890,7 @@ bool smf_context::handle_pdu_session_resource_modify_response_transfer(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_resource_release_response_transfer(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n1_sm_msg, n1_sm_msg_hex;
 
@@ -1924,8 +1938,8 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_service_request(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n2_sm_info, n2_sm_info_hex;
 
@@ -1991,8 +2005,8 @@ bool smf_context::handle_service_request(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_an_release(
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   // Get QFIs associated with PDU session ID
   auto qfus = sp->get_session_handler()->get_qos_flows_context_updated();
@@ -2011,7 +2025,7 @@ bool smf_context::handle_an_release(
 
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_update_sm_context_request(
-    std::shared_ptr<itti_n11_update_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
   Logger::smf_app().info(
       "Handle a PDU Session Update SM Context Request message from an AMF "
       "(HTTP version %d)",
@@ -2054,8 +2068,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
   // we need to store HttpResponse and session-related information to be used
   // when receiving the response from UPF
-  std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp_pending =
-      std::make_shared<itti_n11_update_sm_context_response>(
+  std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp_pending =
+      std::make_shared<itti_sbi_update_sm_context_response>(
           TASK_SMF_SBI, TASK_SMF_APP, smreq->pid);
 
   sm_context_resp_pending->res.set_pdu_session_type(
@@ -2504,6 +2518,17 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     }
   }
 
+  // For PCF-initiated SM Policy Association Modification
+  if (smreq->session_procedure_type ==
+      session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    // Process the request -> update UPF if necesssary
+    // TODO:
+    // example:
+    pdu_session_release_procedure = false;
+    update_upf                    = false;
+  }
+
   // Step 5. Create a procedure for update SM context and let the procedure
   // handle the request if necessary
   if (update_upf) {
@@ -2535,7 +2560,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                         sm_context_req_msg, n1_sm_msg,
                         cause_value_5gsm_e::CAUSE_38_NETWORK_FAILURE)) {
               conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
-              // trigger to send reply to AMF
+              // trigger to send reply to the NF consumer (AMF)
               smf_app_inst->trigger_update_context_error_response(
                   http_status_code::FORBIDDEN,
                   PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING,
@@ -2554,15 +2579,17 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           case session_management_procedures_type_e::
               PDU_SESSION_MODIFICATION_AN_REQUESTED:
           case session_management_procedures_type_e::
+              PDU_SESSION_MODIFICATION_PCF_INITIATED:
+          case session_management_procedures_type_e::
               PDU_SESSION_MODIFICATION_UE_INITIATED_STEP2: {
-            // trigger the reply to AMF
+            // trigger the reply to the NF consumer (AMF/PCF,..)
             smf_app_inst->trigger_update_context_error_response(
                 http_status_code::FORBIDDEN,
                 PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING, smreq->pid);
           } break;
 
           default: {
-            // trigger the reply to AMF
+            // trigger the reply to the NF consumer
             smf_app_inst->trigger_update_context_error_response(
                 http_status_code::FORBIDDEN,
                 PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING, smreq->pid);
@@ -2575,8 +2602,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       pdu_session_release_sm_context_request sm_context_rel_req_msg = {};
 
       sm_context_rel_req_msg.set_supi(sm_context_req_msg.get_supi());
-      sm_context_rel_req_msg.set_supi_prefix(
-          sm_context_req_msg.get_supi_prefix());
       sm_context_rel_req_msg.set_pdu_session_id(
           sm_context_req_msg.get_pdu_session_id());
       sm_context_rel_req_msg.set_snssai(sm_context_req_msg.get_snssai());
@@ -2598,23 +2623,21 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             smreq->req.get_n1_sm_message());
       }
 
-      // Create an itti_n11_release_sm_context_request message and handling it
+      // Create an itti_sbi_release_sm_context_request message and handling it
       // accordingly
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq_release =
-          std::make_shared<itti_n11_release_sm_context_request>(
+      std::shared_ptr<itti_sbi_release_sm_context_request> smreq_release =
+          std::make_shared<itti_sbi_release_sm_context_request>(
               TASK_SMF_APP, TASK_SMF_APP, smreq->pid, smreq->scid);
       smreq_release->req = sm_context_rel_req_msg;
 
-      std::shared_ptr<itti_n11_release_sm_context_response>
+      std::shared_ptr<itti_sbi_release_sm_context_response>
           sm_context_rel_resp_pending =
-              std::make_shared<itti_n11_release_sm_context_response>(
+              std::make_shared<itti_sbi_release_sm_context_response>(
                   TASK_SMF_APP, TASK_SMF_APP, smreq_release->pid);
 
       sm_context_rel_resp_pending->res.set_http_code(http_status_code::OK);
       sm_context_rel_resp_pending->res.set_supi(
           sm_context_rel_req_msg.get_supi());
-      sm_context_rel_resp_pending->res.set_supi_prefix(
-          sm_context_rel_req_msg.get_supi_prefix());
       sm_context_rel_resp_pending->res.set_cause(
           static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
       sm_context_rel_resp_pending->res.set_pdu_session_id(
@@ -2675,7 +2698,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
 //-------------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_release_sm_context_request(
-    std::shared_ptr<itti_n11_release_sm_context_request> smreq) {
+    std::shared_ptr<itti_sbi_release_sm_context_request> smreq) {
   Logger::smf_app().info("Handle a PDU Session Release SM Context Request");
 
   // Step 1. get SMF PDU session context. At this stage, pdu_session must be
@@ -2703,14 +2726,13 @@ void smf_context::handle_pdu_session_release_sm_context_request(
     return;
   }
 
-  std::shared_ptr<itti_n11_release_sm_context_response>
+  std::shared_ptr<itti_sbi_release_sm_context_response>
       sm_context_resp_pending =
-          std::make_shared<itti_n11_release_sm_context_response>(
+          std::make_shared<itti_sbi_release_sm_context_response>(
               TASK_SMF_SBI, TASK_SMF_APP, smreq->pid);
 
   sm_context_resp_pending->res.set_http_code(http_status_code::OK);
   sm_context_resp_pending->res.set_supi(smreq->req.get_supi());
-  sm_context_resp_pending->res.set_supi_prefix(smreq->req.get_supi_prefix());
   sm_context_resp_pending->res.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
   sm_context_resp_pending->res.set_pdu_session_id(
@@ -2788,9 +2810,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
 
   // Fill N1N2MesasgeTransferRequestData
   // get supi and put into URL
-  supi_t msg_supi      = itti_msg->msg.get_supi();
-  std::string supi_str = smf_get_supi_with_prefix(
-      itti_msg->msg.get_supi_prefix(), smf_supi_to_string(msg_supi));
+  std::string supi_str    = itti_msg->msg.get_supi();
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
@@ -2840,8 +2860,8 @@ void smf_context::handle_pdu_session_modification_network_requested(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_path_switch_req(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n1_sm_msg     = {};
   std::string n1_sm_msg_hex = {};
@@ -2934,8 +2954,8 @@ bool smf_context::handle_ho_path_switch_req(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_preparation_request(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
@@ -3024,8 +3044,8 @@ bool smf_context::handle_ho_preparation_request(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_preparation_request_ack(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
@@ -3098,8 +3118,8 @@ bool smf_context::handle_ho_preparation_request_ack(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_preparation_request_fail(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
@@ -3161,8 +3181,8 @@ bool smf_context::handle_ho_preparation_request_fail(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_execution(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
@@ -3204,8 +3224,8 @@ bool smf_context::handle_ho_execution(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_ho_cancellation(
     std::string& n2_sm_information,
-    std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_request,
-    std::shared_ptr<itti_n11_update_sm_context_response>& sm_context_resp,
+    std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_request,
+    std::shared_ptr<itti_sbi_update_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf_pdu_session>& sp) {
   sm_context_resp.get()->session_procedure_type =
       session_management_procedures_type_e::N2_HO_CANCELLATION_PHASE;
@@ -3309,31 +3329,21 @@ bool smf_context::find_dnn_subscription(
 
 //------------------------------------------------------------------------------
 bool smf_context::verify_sm_context_request(
-    std::shared_ptr<itti_n11_create_sm_context_request> smreq) {
-  // check the validity of the UE request according to the user subscription
-  // or local policies
+    std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
+  // check the validity of the UE request according to the user subscription or
+  // local policies
   // TODO: need to be implemented
   return true;
 }
 
 //-----------------------------------------------------------------------------
-supi_t smf_context::get_supi() const {
+std::string smf_context::get_supi() const {
   return supi;
 }
 
 //-----------------------------------------------------------------------------
-void smf_context::set_supi(const supi_t& s) {
+void smf_context::set_supi(const std::string& s) {
   supi = s;
-}
-
-//-----------------------------------------------------------------------------
-void smf_context::get_supi_prefix(std::string& prefix) const {
-  prefix = supi_prefix;
-}
-
-//-----------------------------------------------------------------------------
-void smf_context::set_supi_prefix(std::string const& prefix) {
-  supi_prefix = prefix;
 }
 
 //------------------------------------------------------------------------------
@@ -3420,7 +3430,7 @@ void smf_context::get_pdu_sessions(
 
 //------------------------------------------------------------------------------
 bool smf_context::get_pdu_session_info(
-    const scid_t& scid, supi64_t& supi,
+    const scid_t& scid, std::string& supi,
     pdu_session_id_t& pdu_session_id) const {
   Logger::smf_app().debug(
       "Get PDU Session information related to SMF Context ID " SCID_FMT " ",
@@ -3443,29 +3453,25 @@ bool smf_context::get_pdu_session_info(
     }
   }
 
-  supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
-
   // Verify if SMF context exist
   std::shared_ptr<smf_context> sc = {};
 
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(scf.get()->supi)) {
+    sc = smf_app_inst->supi_2_smf_context(scf.get()->supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
     return false;
   }
 
-  supi           = supi64;
+  supi           = scf.get()->supi;
   pdu_session_id = scf.get()->pdu_session_id;
   return true;
 }
 
 //------------------------------------------------------------------------------
 bool smf_context::get_pdu_session_info(
-    const scid_t& scid, supi64_t& supi,
+    const scid_t& scid, std::string& supi,
     std::shared_ptr<smf_pdu_session>& sp) const {
   Logger::smf_app().debug(
       "Get PDU Session information related to SMF Context ID " SCID_FMT " ",
@@ -3514,8 +3520,8 @@ void smf_context::handle_sm_context_status_change(
   // Send request to N11 to trigger the notification
   Logger::smf_app().debug(
       "Send ITTI msg to SMF N11 to trigger the status notification");
-  std::shared_ptr<itti_n11_notify_sm_context_status> itti_msg =
-      std::make_shared<itti_n11_notify_sm_context_status>(
+  std::shared_ptr<itti_sbi_notify_sm_context_status> itti_msg =
+      std::make_shared<itti_sbi_notify_sm_context_status>(
           TASK_SMF_APP, TASK_SMF_SBI);
   itti_msg->scid              = scid;
   itti_msg->sm_context_status = status;
@@ -3543,9 +3549,9 @@ void smf_context::handle_ee_pdu_session_release(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64                 = {};
+  std::string supi                = {};
   pdu_session_id_t pdu_session_id = {};
-  if (!get_pdu_session_info(scid, supi64, pdu_session_id)) {
+  if (!get_pdu_session_info(scid, supi, pdu_session_id)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -3561,13 +3567,13 @@ void smf_context::handle_ee_pdu_session_release(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);
+      ev_notif.set_supi(supi);
       ev_notif.set_pdu_session_id(pdu_session_id);
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PDU_SES_REL);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -3606,9 +3612,9 @@ void smf_context::handle_ddds(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64                 = {};
+  std::string supi                = {};
   pdu_session_id_t pdu_session_id = {};
-  if (!get_pdu_session_info(scid, supi64, pdu_session_id)) {
+  if (!get_pdu_session_info(scid, supi, pdu_session_id)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -3624,13 +3630,13 @@ void smf_context::handle_ddds(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);  // SUPI
+      ev_notif.set_supi(supi);  // SUPI
       // ev_notif.set_pdu_session_id(pdu_session_id);  // PDU session ID
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_DDDS);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -3668,10 +3674,10 @@ void smf_context::handle_ue_ip_change(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64 = {};
+  std::string supi = {};
   // get smf_pdu_session
   std::shared_ptr<smf_pdu_session> sp = {};
-  if (!get_pdu_session_info(scid, supi64, sp)) {
+  if (!get_pdu_session_info(scid, supi, sp)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -3681,8 +3687,8 @@ void smf_context::handle_ue_ip_change(
 
   Logger::smf_app().debug(
       "Send request to N11 to triger FlexCN (Event "
-      "Exposure), SUPI " SUPI_64_FMT " , PDU Session ID %u, HTTP version %u",
-      supi64, sp->get_pdu_session_id(), http_version);
+      "Exposure), SUPI %s , PDU Session ID %u, HTTP version %u",
+      supi, sp->get_pdu_session_id(), http_version);
 
   std::vector<std::shared_ptr<smf_subscription>> subscriptions = {};
   smf_app_inst->get_ee_subscriptions(
@@ -3692,13 +3698,13 @@ void smf_context::handle_ue_ip_change(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);                              // SUPI
+      ev_notif.set_supi(supi);                                // SUPI
       ev_notif.set_pdu_session_id(sp->get_pdu_session_id());  // PDU session ID
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_UE_IP_CH);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -3764,9 +3770,7 @@ void smf_context::handle_qos_monitoring(
     return;
   }
 
-  supi_t supi     = pc.get()->supi;
-  supi64_t supi64 = smf_supi_to_u64(supi);
-
+  std::string supi                                             = pc.get()->supi;
   std::vector<std::shared_ptr<smf_subscription>> subscriptions = {};
   smf_app_inst->get_ee_subscriptions(
       smf_event_t::SMF_EVENT_QOS_MON, subscriptions);
@@ -3775,13 +3779,13 @@ void smf_context::handle_qos_monitoring(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);
+      ev_notif.set_supi(supi);
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_QOS_MON);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
@@ -3827,10 +3831,10 @@ void smf_context::handle_flexcn_event(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64 = {};
+  std::string supi = {};
   // get smf_pdu_session
   std::shared_ptr<smf_pdu_session> sp = {};
-  if (!get_pdu_session_info(scid, supi64, sp)) {
+  if (!get_pdu_session_info(scid, supi, sp)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -3840,20 +3844,18 @@ void smf_context::handle_flexcn_event(
 
   // Get SMF Context
   std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    sc = smf_app_inst->supi_2_smf_context(supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
     return;
   }
 
   Logger::smf_app().debug(
       "Send request to N11 to triger FlexCN (Event "
-      "Exposure), SUPI " SUPI_64_FMT " , PDU Session ID %u, HTTP version  %u",
-      supi64, sp->get_pdu_session_id(), http_version);
+      "Exposure), SUPI %s, PDU Session ID %u, HTTP version  %u",
+      supi, sp->get_pdu_session_id(), http_version);
 
   std::vector<std::shared_ptr<smf_subscription>> subscriptions = {};
   smf_app_inst->get_ee_subscriptions(
@@ -3863,13 +3865,13 @@ void smf_context::handle_flexcn_event(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);                              // SUPI
+      ev_notif.set_supi(supi);                                // SUPI
       ev_notif.set_pdu_session_id(sp->get_pdu_session_id());  // PDU session ID
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_FLEXCN);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -3939,10 +3941,10 @@ void smf_context::handle_pdusesest(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64 = {};
+  std::string supi = {};
   // get smf_pdu_session
   std::shared_ptr<smf_pdu_session> sp = {};
-  if (!get_pdu_session_info(scid, supi64, sp)) {
+  if (!get_pdu_session_info(scid, supi, sp)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -3952,8 +3954,8 @@ void smf_context::handle_pdusesest(
 
   Logger::smf_app().debug(
       "Send request to N11 to triger PDU_SES_EST (Event "
-      "Exposure), SUPI " SUPI_64_FMT " , PDU Session ID %u, HTTP version %u",
-      supi64, sp->get_pdu_session_id(), http_version);
+      "Exposure), SUPI %s, PDU Session ID %u, HTTP version %u",
+      supi, sp->get_pdu_session_id(), http_version);
 
   std::vector<std::shared_ptr<smf_subscription>> subscriptions = {};
   smf_app_inst->get_ee_subscriptions(
@@ -3963,13 +3965,13 @@ void smf_context::handle_pdusesest(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);                              // SUPI
+      ev_notif.set_supi(supi);                                // SUPI
       ev_notif.set_pdu_session_id(sp->get_pdu_session_id());  // PDU session ID
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PDUSESEST);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -4034,9 +4036,9 @@ void smf_context::handle_plmn_change(
       "SMF Context ID " SCID_FMT " ",
       scid);
 
-  supi64_t supi64                 = {};
+  std::string supi                = {};
   pdu_session_id_t pdu_session_id = {};
-  if (!get_pdu_session_info(scid, supi64, pdu_session_id)) {
+  if (!get_pdu_session_info(scid, supi, pdu_session_id)) {
     Logger::smf_app().debug(
         "Could not retrieve info with "
         "SMF Context ID " SCID_FMT " ",
@@ -4046,13 +4048,11 @@ void smf_context::handle_plmn_change(
 
   // Get SMF Context
   std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    sc = smf_app_inst->supi_2_smf_context(supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
     return;
   }
 
@@ -4064,13 +4064,13 @@ void smf_context::handle_plmn_change(
     // Send request to N11 to trigger the notification to the subscribed event
     Logger::smf_app().debug(
         "Send ITTI msg to SMF N11 to trigger the event notification");
-    std::shared_ptr<itti_n11_notify_subscribed_event> itti_msg =
-        std::make_shared<itti_n11_notify_subscribed_event>(
+    std::shared_ptr<itti_sbi_notify_subscribed_event> itti_msg =
+        std::make_shared<itti_sbi_notify_subscribed_event>(
             TASK_SMF_APP, TASK_SMF_SBI);
 
     for (auto i : subscriptions) {
       event_notification ev_notif = {};
-      ev_notif.set_supi(supi64);  // SUPI
+      ev_notif.set_supi(supi);  // SUPI
       // ev_notif.set_pdu_session_id(pdu_session_id);  // PDU session ID
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PLMN_CH);
       ev_notif.set_notif_uri(i.get()->notif_uri);
@@ -4300,7 +4300,7 @@ bool smf_context::check_handover_possibility(
 
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_establishment_response_reject(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& smreq,
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
     cause_value_5gsm_e cause, pdu_session_application_error_e application_error,
     uint16_t http_status) {
   std::string n1_sm_message = {};
@@ -4323,7 +4323,7 @@ void smf_context::send_pdu_session_establishment_response_reject(
 
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_create_response(
-    const std::shared_ptr<itti_n11_create_sm_context_response>& resp) {
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& resp) {
   // fill content for N1N2MessageTransfer (including N1, N2 SM)
   // Create N1 SM container & N2 SM Information
   std::string n1_sm_msg       = {};
@@ -4377,16 +4377,13 @@ void smf_context::send_pdu_session_create_response(
 
   // Fill N1N2MesasgeTransferRequestData
   // get SUPI and put into URL
-  supi_t supi          = resp->res.get_supi();
-  std::string supi_str = smf_get_supi_with_prefix(
-      resp->res.get_supi_prefix(), smf_supi_to_string(supi));
+  std::string supi        = resp->res.get_supi();
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
   std::string url =
       get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-      fmt::format(
-          NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
+      fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
   resp->res.set_amf_url(url);
   Logger::smf_app().debug(
       "N1N2MessageTransfer will be sent to AMF with URL: %s", url.c_str());
@@ -4419,8 +4416,7 @@ void smf_context::send_pdu_session_create_response(
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
         NSMF_PDU_SESSION_BASE + smf_cfg->local().get_sbi().get_api_version() +
-        fmt::format(
-            NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi_str.c_str());
+        fmt::format(NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }
   // Others information
@@ -4446,8 +4442,8 @@ void smf_context::send_pdu_session_create_response(
 // TODO refactor: Break down this function and split logic (e.g. setting PDU
 // session values) from actual response, we should only need resp here
 void smf_context::send_pdu_session_update_response(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& req,
-    const std::shared_ptr<itti_n11_update_sm_context_response>& resp,
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
+    const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
     const session_management_procedures_type_e& session_procedure_type,
     const std::shared_ptr<smf_pdu_session>& sps) {
   std::string n1_sm_msg      = {};
@@ -4462,8 +4458,7 @@ void smf_context::send_pdu_session_update_response(
   // see TS29503_Nudm_UECM.yaml, Nudm_UECM_Registration:
   // nudm-uecm/v1/{ueId}/registrations/smf-registrations/{pduSessionId}:
 
-  // TODO: use ITTI message to N10 to trigger UDM registration
-  supi64_t supi64 = smf_supi_to_u64(req->req.get_supi());
+  std::string supi = req->req.get_supi();
   pdu_session_id_t pdu_session_id =
       (pdu_session_id_t) req->req.get_pdu_session_id();
 
@@ -4482,7 +4477,7 @@ void smf_context::send_pdu_session_update_response(
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
   // Register with the UDM
-  smf_sbi_inst->register_smf_with_udm(supi64, pdu_session_id, smf_registration);
+  register_with_udm(supi, pdu_session_id, smf_registration);
 
   // Process the response
   if (resp->res.get_cause() ==
@@ -4650,8 +4645,8 @@ void smf_context::send_pdu_session_update_response(
 
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_release_response(
-    const std::shared_ptr<itti_n11_release_sm_context_request>& req,
-    const std::shared_ptr<itti_n11_release_sm_context_response>& resp,
+    const std::shared_ptr<itti_sbi_release_sm_context_request>& req,
+    const std::shared_ptr<itti_sbi_release_sm_context_response>& resp,
     const session_management_procedures_type_e& session_procedure_type,
     const std::shared_ptr<smf_pdu_session>& sps) {
   if (resp->res.get_cause() ==
@@ -4737,7 +4732,7 @@ void smf_context::send_pdu_session_release_response(
 
         // Store the context for the timer handling
         sps.get()->set_pending_n11_msg(
-            std::dynamic_pointer_cast<itti_n11_msg>(resp));
+            std::dynamic_pointer_cast<itti_sbi_msg>(resp));
 
         sps->timer_T3592 = itti_inst->timer_setup(
             T3592_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3592,
@@ -4765,6 +4760,12 @@ void smf_context::send_pdu_session_release_response(
         // TODO: To be completed
       } break;
 
+      case session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+        Logger::smf_app().info("PDU Session Release PCF-initiated");
+        // TODO: To be completed
+      } break;
+
       default: {
         resp->res.set_http_code(http_status_code::NO_CONTENT);
       }
@@ -4788,4 +4789,64 @@ void smf_context::send_pdu_session_release_response(
         "Could not send ITTI message %s to task TASK_SMF_APP",
         resp->get_msg_name());
   }
+}
+
+//------------------------------------------------------------------------------
+bool smf_context::register_with_udm(
+    const std::string& supi, const pdu_session_id_t& pdu_session_id,
+    const oai::model::udm::SmfRegistration& smf_registration) {
+  Logger::smf_sbi().debug(
+      "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
+
+  nlohmann::json smf_registration_json = {};
+  to_json(smf_registration_json, smf_registration);
+
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = smf_app_inst->generate_promise_id();
+  Logger::smf_app().debug("Promise ID generated %d", promise_id);
+  smf_app_inst->add_promise(promise_id, p);
+
+  std::shared_ptr<itti_sbi_register_with_udm> itti_msg =
+      std::make_shared<itti_sbi_register_with_udm>(
+          TASK_SMF_APP, TASK_SMF_SBI, promise_id);
+
+  itti_msg->supi             = supi;
+  itti_msg->pdu_session_id   = pdu_session_id;
+  itti_msg->smf_registration = smf_registration_json;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+
+  // Wait for the result available and process accordingly
+  std::optional<nlohmann::json> result_opt = std::nullopt;
+  oai::utils::utils::wait_for_result(f, result_opt);
+
+  // process data
+  uint32_t http_response_code = 0;
+  nlohmann::json json_data    = {};
+
+  if (result_opt.has_value()) {
+    Logger::smf_app().debug("Got result for promise ID %d", promise_id);
+    nlohmann::json result = result_opt.value();
+
+    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    }
+
+    if (result.find(kSbiResponseJsonData) != result.end()) {
+      json_data = result[kSbiResponseJsonData];
+    }
+
+    return true;
+  }
+  return false;
 }

@@ -100,6 +100,12 @@ typedef struct interface_cfg_s {
     }
     // TODO: thread_rd_sched_params
   }
+
+  std::string get_ipv4_root() const {
+    return std::string(inet_ntoa(this->addr4)) + ":" +
+           std::to_string(this->port);
+  }
+
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {

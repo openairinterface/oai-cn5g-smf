@@ -233,6 +233,8 @@ list(APPEND USED_PCF_MODEL_SRC_FILES
         ${PCF_MODEL_DIR}/SmPolicyDeleteData.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause.cpp
         ${PCF_MODEL_DIR}/PduSessionRelCause_anyOf.cpp
+        ${PCF_MODEL_DIR}/SmPolicyNotification.cpp
+        ${PCF_MODEL_DIR}/TerminationNotification.cpp
 )
 
 list(APPEND USED_UDM_MODEL_SRC_FILES

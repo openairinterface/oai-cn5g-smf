@@ -81,12 +81,11 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
 
   // PDUSessionAggregateMaximumBitRate
   PduSessionAggregateMaximumBitRate pdu_session_aggregate_maximum_bit_rate = {};
-  supi_t supi                     = sm_context_res->get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::string supi                = sm_context_res->get_supi();
   std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_n2().debug("Get SMF context with SUPI %s", supi);
+    sc                                 = smf_app_inst->supi_2_smf_context(supi);
     oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
         session_ambr, sm_context_res->get_snssai(), sm_context_res->get_dnn());
@@ -99,8 +98,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
 
   } else {
-    Logger::smf_n2().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    Logger::smf_n2().warn("SMF context with SUPI %s does not exist!", supi);
     return false;
   }
   pdu_session_resource_setup_request_transfer
@@ -331,12 +329,12 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
 
   // PDUSessionAggregateMaximumBitRate
   PduSessionAggregateMaximumBitRate pdu_session_aggregate_maximum_bit_rate = {};
-  supi_t supi                     = sm_context_res->get_supi();
-  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::string supi = sm_context_res->get_supi();
+
   std::shared_ptr<smf_context> sc = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n2().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_n2().debug("Get SMF context with SUPI %s", supi);
+    sc                                 = smf_app_inst->supi_2_smf_context(supi);
     oai::nas::SessionAmbr session_ambr = {};
     sc.get()->get_session_ambr(
         session_ambr, sm_context_res->get_snssai(), sm_context_res->get_dnn());
@@ -348,8 +346,7 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
         session_ambr.GetUnitForUplink());
     pdu_session_aggregate_maximum_bit_rate.set(bit_rate_dl, bit_rate_ul);
   } else {
-    Logger::smf_n2().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    Logger::smf_n2().warn("SMF context with SUPI %s does not exist!", supi);
     return false;
   }
   pdu_session_resource_modify_request_transfer
