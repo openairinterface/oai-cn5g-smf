@@ -68,7 +68,8 @@ struct policy_association {
   void set_context(
       const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       const plmn_t& plmn, const uint8_t pdu_session_id,
-      const pdu_session_type_t& pdu_session_type) {
+      const pdu_session_type_t& pdu_session_type,
+      const std::optional<paa_t> paa = std::nullopt) {
     oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
     plmn_id_model.setMcc(plmn.mcc);
@@ -84,6 +85,39 @@ struct policy_association {
     context.setDnn(dnn);
     context.setSliceInfo(snssai_model);
     context.setServingNetwork(plmn_id_model);
+    // Set UE IP addresses if available
+    if (paa.has_value()) {
+      switch (paa.value().pdu_session_type.pdu_session_type) {
+        case PDU_SESSION_TYPE_E_IPV4V6: {
+          std::string ue_ipv4_addr_str = std::string(
+              inet_ntoa(*((struct in_addr*) &paa.value().ipv4_address)));
+          context.setIpv4Address(ue_ipv4_addr_str);
+
+          char str_addr6[INET6_ADDRSTRLEN];
+          if (inet_ntop(
+                  AF_INET6, &paa.value().ipv6_address, str_addr6,
+                  sizeof(str_addr6))) {
+            std::string ue_ipv6_prefix_str             = std::string(str_addr6);
+            oai::model::common::Ipv6Prefix ipv6_prefix = {};
+            ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
+            context.setIpv6AddressPrefix(ipv6_prefix);
+          }
+
+        }; break;
+        case PDU_SESSION_TYPE_E_IPV4: {
+          std::string ue_ipv4_addr_str = std::string(
+              inet_ntoa(*((struct in_addr*) &paa.value().ipv4_address)));
+          context.setIpv4Address(ue_ipv4_addr_str);
+        } break;
+
+        case PDU_SESSION_TYPE_E_IPV6: {
+          // TODO:
+        } break;
+        default: {
+          // TODO:
+        }
+      }
+    }
   }
 
   std::string toString() const {
