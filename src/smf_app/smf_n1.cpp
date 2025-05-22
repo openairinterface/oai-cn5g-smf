@@ -25,8 +25,8 @@
 
 #include <stdexcept>
 
-#include "smf_3gpp_conversions.hpp"
 #include "AllowedSscMode.hpp"
+#include "AlwaysOnPduSessionIndication.hpp"
 #include "PduSessionAuthenticationCommand.hpp"
 #include "PduSessionAuthenticationComplete.hpp"
 #include "PduSessionAuthenticationResult.hpp"
@@ -43,13 +43,13 @@
 #include "PduSessionReleaseReject.hpp"
 #include "PduSessionReleaseRequest.hpp"
 #include "_5gsmStatus.hpp"
+#include "common_defs.hpp"
 #include "epc.h"
 #include "output_wrapper.hpp"
 #include "smf.h"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "string.hpp"
-#include "AlwaysOnPduSessionIndication.hpp"
-#include "common_defs.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -121,18 +121,16 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // SessionAMBR
   Logger::smf_n1().debug("Get default values for Session-AMBR");
-  supi_t supi                        = sm_context_res.get_supi();
-  supi64_t supi64                    = smf_supi_to_u64(supi);
+  std::string supi                   = sm_context_res.get_supi();
   std::shared_ptr<smf_context> sc    = {};
   oai::nas::SessionAmbr session_ambr = {};
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_n1().debug("Get SMF context with SUPI %s", supi);
+    sc = smf_app_inst->supi_2_smf_context(supi);
     sc.get()->get_session_ambr(
         session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
   } else {
-    Logger::smf_n1().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    Logger::smf_n1().warn("SMF context with SUPI %s does not exist!", supi);
     return false;
   }
   pdu_session_estb_accept->SetSessionAmbr(session_ambr);
@@ -191,9 +189,9 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // Authorized QoS flow descriptions
   // TODO: we may not need this IE (see section 6.4.1.3 @3GPP TS 24.501)
-  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
+    Logger::smf_n1().debug("Get SMF context with SUPI %s", supi);
+    sc = smf_app_inst->supi_2_smf_context(supi);
     oai::nas::QosFlowDescriptions qos_flow_descriptions(
         kIeiAuthorizedQosFlowDescriptions);
     std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
@@ -356,15 +354,13 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // Get the SMF_PDU_Session
   std::shared_ptr<smf_context> sc     = {};
   std::shared_ptr<smf_pdu_session> sp = {};
-  supi_t supi                         = sm_context_res.get_supi();
-  supi64_t supi64                     = smf_supi_to_u64(supi);
+  std::string supi                    = sm_context_res.get_supi();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_n1().debug("Get SMF context with SUPI %s", supi);
+    sc = smf_app_inst->supi_2_smf_context(supi);
   } else {
-    Logger::smf_n1().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    Logger::smf_n1().warn("SMF context with SUPI %s does not exist!", supi);
     return false;
   }
 
@@ -414,7 +410,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   std::vector<::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
+  if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
     oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
     std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {
@@ -486,15 +482,13 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // Get the SMF_PDU_Session
   std::shared_ptr<smf_context> sc     = {};
   std::shared_ptr<smf_pdu_session> sp = {};
-  supi_t supi                         = msg.get_supi();
-  supi64_t supi64                     = smf_supi_to_u64(supi);
+  std::string supi                    = msg.get_supi();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi64)) {
-    Logger::smf_n1().debug("Get SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = smf_app_inst->supi_2_smf_context(supi64);
+  if (smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_n1().debug("Get SMF context with SUPI %s", supi);
+    sc = smf_app_inst->supi_2_smf_context(supi);
   } else {
-    Logger::smf_n1().warn(
-        "SMF context with SUPI " SUPI_64_FMT " does not exist!", supi64);
+    Logger::smf_n1().warn("SMF context with SUPI %s does not exist!", supi);
     return false;
   }
 
@@ -545,7 +539,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   std::vector<::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi64) and !qos_flows.empty()) {
+  if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
     oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
     std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {

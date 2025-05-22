@@ -21,22 +21,21 @@
 
 #include "smf_sbi.hpp"
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 
-#include <nlohmann/json.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
 #include "common_defs.h"
+#include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "smf_3gpp_conversions.hpp"
+#include "sbi_helper.hpp"
 #include "smf.h"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
-#include "http_client.hpp"
-#include "sbi_helper.hpp"
 
 using namespace smf;
 using namespace oai::common::sbi;
@@ -365,7 +364,7 @@ void smf_sbi::notify_subscribed_event(
     nlohmann::json event_notif = {};
     event_notif["event"]       = smf_event_from_enum(i.get_smf_event());
     event_notif["pduSeId"]     = i.get_pdu_session_id();
-    event_notif["supi"]        = std::to_string(i.get_supi());
+    event_notif["supi"]        = i.get_supi();
 
     if (i.is_ad_ipv4_addr_is_set()) {
       event_notif["adIpv4Addr"] = i.get_ad_ipv4_addr();
@@ -590,7 +589,6 @@ void smf_sbi::subscribe_upf_status_notify(
       (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
-    return;
   } else {
     Logger::smf_sbi().warn(
         "NFSubscribeNotify, could not get response from NRF");
@@ -620,15 +618,16 @@ bool smf_sbi::retrieve_sm_data(
   oai::common::sbi::sbi_helper::get_fmt_format_form(
       oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
 
-  std::string udm_url =
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_url(smf_cfg->enable_tls()) +
-      oai::common::sbi::sbi_helper::UdmSdmBase +
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_api_version() +
-      fmt::format(fmr_format_str, smf_supi64_to_string(msg->supi)) + query_str;
+  // TODO: TOBE UPDATED
+  std::string udm_url = smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+                            ->get_sbi()
+                            .get_url(smf_cfg->enable_tls()) +
+
+                        oai::common::sbi::sbi_helper::UdmSdmBase +
+                        smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+                            ->get_sbi()
+                            .get_api_version() +
+                        fmt::format(fmr_format_str, msg->supi) + query_str;
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
@@ -702,8 +701,7 @@ void smf_sbi::register_with_udm(
       smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
           ->get_sbi()
           .get_api_version() +
-      fmt::format(
-          fmr_format_str, smf_supi64_to_string(msg->supi), msg->pdu_session_id);
+      fmt::format(fmr_format_str, msg->supi, msg->pdu_session_id);
 
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 

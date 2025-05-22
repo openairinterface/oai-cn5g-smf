@@ -22,20 +22,20 @@
 #ifndef FILE_SMF_N7_HPP_SEEN
 #define FILE_SMF_N7_HPP_SEEN
 
-#include <string>
 #include <memory>
-#include <unordered_map>
 #include <shared_mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Snssai.h"
-#include "PlmnId.h"
-#include "SmPolicyDecision.h"
-#include "SmPolicyContextData.h"
-#include "SmPolicyUpdateContextData.h"
-#include "SmPolicyDeleteData.h"
-#include "smf.h"
-#include "3gpp_29.500.h"
 #include "3gpp_24.501.hpp"
+#include "3gpp_29.500.h"
+#include "PlmnId.h"
+#include "SmPolicyContextData.h"
+#include "SmPolicyDecision.h"
+#include "SmPolicyDeleteData.h"
+#include "SmPolicyUpdateContextData.h"
+#include "Snssai.h"
+#include "smf.h"
 
 namespace smf::n7 {
 
@@ -66,9 +66,8 @@ struct policy_association {
   std::string pcf_location;
 
   void set_context(
-      const std::string& supi, const std::string& supi_prefix,
-      const std::string& dnn, const snssai_t& snssai, const plmn_t& plmn,
-      const uint8_t pdu_session_id,
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+      const plmn_t& plmn, const uint8_t pdu_session_id,
       const pdu_session_type_t& pdu_session_type) {
     oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
@@ -77,7 +76,7 @@ struct policy_association {
     context = {};
 
     context.setPduSessionId(pdu_session_id);
-    context.setSupi(smf_get_supi_with_prefix(supi_prefix, supi));
+    context.setSupi(supi);
     oai::model::common::PduSessionType pdu_session_type_model;
     // hacky
     from_json(pdu_session_type.to_string(), pdu_session_type_model);

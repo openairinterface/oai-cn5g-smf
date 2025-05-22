@@ -23,11 +23,12 @@
 #define ITTI_MSG_SBI_HPP_INCLUDED_
 
 #include <nlohmann/json.hpp>
+
 #include "NotificationData.h"
+#include "PatchItem.h"
 #include "itti_msg.hpp"
 #include "pistache/http.h"
 #include "smf_msg.hpp"
-#include "PatchItem.h"
 #include "smf_profile.hpp"
 
 using namespace oai::model::smf;
@@ -569,7 +570,7 @@ class itti_sbi_retrieve_sm_data : public itti_sbi_msg {
   const char* get_msg_name() { return "SBI_RETRIEVE_SM_DATA"; };
 
   uint32_t promise_id;
-  supi64_t supi;
+  std::string supi;
   std::string dnn;
   snssai_t snssai;
   plmn_t plmn;
@@ -597,7 +598,7 @@ class itti_sbi_register_with_udm : public itti_sbi_msg {
   const char* get_msg_name() { return "SBI_REGISTER_WITH_UDM"; };
 
   uint32_t promise_id;
-  supi64_t supi;
+  std::string supi;
   pdu_session_id_t pdu_session_id;
   nlohmann::json smf_registration;
 };

@@ -33,66 +33,6 @@
 #include "3gpp_29.571.h"
 #include "Snssai.h"
 
-typedef uint64_t supi64_t;
-#define SUPI_64_FMT "%" SCNu64
-
-#define SUPI_DIGITS_MAX 15
-
-typedef struct {
-  uint32_t length;
-  char data[SUPI_DIGITS_MAX + 1];
-} supi_t;
-
-// TODO: Move to conversions
-static void smf_string_to_supi(supi_t* const supi, char const* const supi_str) {
-  // strncpy(supi->data, supi_str, SUPI_DIGITS_MAX + 1);
-  memcpy((void*) supi->data, (void*) supi_str, SUPI_DIGITS_MAX + 1);
-  supi->length = strlen(supi->data);
-  return;
-}
-
-static std::string smf_supi_to_string(supi_t const supi) {
-  std::string supi_str;
-  supi_str.assign(supi.data, SUPI_DIGITS_MAX + 1);
-  return supi_str;
-}
-
-static std::string smf_get_supi_with_prefix(
-    const std::string& prefix, const std::string& supi) {
-  std::string supi_str = {};
-  if (!prefix.empty()) {
-    supi_str = prefix + "-" + supi;
-  } else {
-    supi_str = supi;
-  }
-  return supi_str;
-}
-
-// TODO should we just replace the other function? Because this null chars are
-// annoying
-static std::string smf_supi_to_string_without_nulls(supi_t const supi) {
-  std::string supi_str;
-  for (char c : supi.data) {
-    if (c != '\u0000') {
-      supi_str += c;
-    }
-  }
-  return supi_str;
-}
-
-static uint64_t smf_supi_to_u64(supi_t supi) {
-  uint64_t uint_supi;
-  sscanf(supi.data, "%" SCNu64, &uint_supi);
-  return uint_supi;
-}
-
-static std::string smf_supi64_to_string(const supi64_t& supi) {
-  std::string supi_str = std::to_string(supi);
-  uint8_t padded_len   = SUPI_DIGITS_MAX - supi_str.length();
-  for (int i = 0; i < padded_len; i++) supi_str = "0" + supi_str;
-  return supi_str;
-}
-
 // From 23.502
 enum class session_management_procedures_type_e {
   PROCEDURE_TYPE_UNKNOWN                      = 0,

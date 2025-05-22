@@ -32,14 +32,14 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "EventSubscription.h"
+#include "ExtendedProtocolConfigurationOptions.hpp"
 #include "NgRanTargetId.h"
+#include "PduSessionEstablishmentRequest.hpp"
+#include "PduSessionType.hpp"
 #include "SmContextCreateData.h"
 #include "SmContextReleaseData.h"
 #include "SmContextUpdateData.h"
 #include "conversions.hpp"
-#include "PduSessionType.hpp"
-#include "PduSessionEstablishmentRequest.hpp"
-#include "ExtendedProtocolConfigurationOptions.hpp"
 using namespace oai::nas;
 
 //------------------------------------------------------------------------------
@@ -119,24 +119,8 @@ void xgpp_conv::sm_context_create_from_openapi(
   }
 
   if (context_data.supiIsSet()) {
-    // supi
-    supi_t supi             = {.length = 0};
-    std::string supi_str    = {};
-    std::string supi_prefix = {};
-    std::size_t pos         = context_data.getSupi().find("-");
-    if (pos != std::string::npos) {
-      supi_str    = context_data.getSupi().substr(pos + 1);
-      supi_prefix = context_data.getSupi().substr(0, pos);
-    } else {
-      supi_str = context_data.getSupi();
-    }
-
-    smf_string_to_supi(&supi, supi_str.c_str());
-    pcr.set_supi(supi);
-    pcr.set_supi_prefix(supi_prefix);
-    Logger::smf_app().debug(
-        "SUPI %s, SUPI Prefix %s, IMSI %s", context_data.getSupi().c_str(),
-        supi_prefix.c_str(), supi_str.c_str());
+    pcr.set_supi(context_data.getSupi());
+    Logger::smf_app().debug("SUPI %s", context_data.getSupi().c_str());
   } else {
     Logger::smf_app().warn("No SUPI available");
   }
@@ -401,17 +385,8 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
 
   // Supi
   if (nee.supiIsSet()) {
-    supi_t supi             = {.length = 0};
-    std::size_t pos         = nee.getSupi().find("-");
-    std::string supi_str    = nee.getSupi().substr(pos + 1);
-    std::string supi_prefix = nee.getSupi().substr(0, pos);
-    smf_string_to_supi(&supi, supi_str.c_str());
-
-    eem.set_supi(supi);
-    eem.set_supi_prefix(supi_prefix);
-    Logger::smf_api_server().debug(
-        "SUPI %s, SUPI Prefix %s, IMSI %s", nee.getSupi().c_str(),
-        supi_prefix.c_str(), supi_str.c_str());
+    eem.set_supi(nee.getSupi());
+    Logger::smf_api_server().debug("SUPI %s", nee.getSupi().c_str());
   }
 
   // PDU session ID
@@ -530,7 +505,6 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
   ctx_response->http_version = ctx_request->http_version;
   ctx_response->res.set_http_code(oai::common::sbi::http_status_code::OK);
   ctx_response->res.set_supi(ctx_request->req.get_supi());
-  ctx_response->res.set_supi_prefix(ctx_request->req.get_supi_prefix());
   ctx_response->res.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
   ctx_response->res.set_pdu_session_id(ctx_request->req.get_pdu_session_id());
@@ -549,7 +523,6 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
   ct_response->res.set_http_code(
       oai::common::sbi::http_status_code::OK);  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());
-  ct_response->res.set_supi_prefix(ct_request->req.get_supi_prefix());
   ct_response->res.set_cause(
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
   ct_response->res.set_pdu_session_id(ct_request->req.get_pdu_session_id());

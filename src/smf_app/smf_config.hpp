@@ -24,19 +24,20 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
 #include <mutex>
 #include <vector>
-#include "thread_sched.hpp"
 
 #include "3gpp_29.244.h"
+#include "Snssai.h"
+#include "config.hpp"
+#include "if.hpp"
+#include "logger_base.hpp"
 #include "pfcp.hpp"
 #include "smf.h"
-#include "smf_profile.hpp"
-#include "config.hpp"
-#include "logger_base.hpp"
 #include "smf_config_types.hpp"
-#include "if.hpp"
-#include "Snssai.h"
+#include "smf_profile.hpp"
+#include "thread_sched.hpp"
 
 namespace oai::config::smf {
 
@@ -100,6 +101,12 @@ typedef struct interface_cfg_s {
     }
     // TODO: thread_rd_sched_params
   }
+
+  std::string get_ipv4_root() const {
+    return std::string(inet_ntoa(this->addr4)) + ":" +
+           std::to_string(this->port);
+  }
+
 } interface_cfg_t;
 
 typedef struct itti_cfg_s {

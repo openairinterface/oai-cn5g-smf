@@ -34,7 +34,6 @@
 #include "3gpp_29.502.h"
 #include "ProblemDetails.h"
 #include "UpfInfo.h"
-#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf.h"
@@ -61,12 +60,6 @@ namespace smf {
 #define T3592_TIMER_VALUE_SEC 16
 #define T3592_TIMER_MAX_RETRIES 4
 
-typedef enum {
-  PDU_SESSION_ESTABLISHMENT = 1,
-  PDU_SESSION_MODIFICATION  = 2,
-  PDU_SESSION_RELEASE       = 3
-} pdu_session_procedure_t;
-
 class smf_context_ref {
  public:
   smf_context_ref() { clear(); }
@@ -76,7 +69,7 @@ class smf_context_ref {
     pdu_session_id = 0;
   }
 
-  supi_t supi;
+  std::string supi;
   pdu_session_id_t pdu_session_id;
 };
 
@@ -88,7 +81,7 @@ class smf_app {
   std::map<seid_t, std::shared_ptr<smf_context>> seid2smf_context;
   mutable std::shared_mutex m_seid2smf_context;
 
-  std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
+  std::map<std::string, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
   oai::utils::uint_generator<uint32_t> sm_context_ref_generator;
@@ -492,13 +485,13 @@ class smf_app {
 
   /*
    * Verify whether a SMF Context Reference exist
-   * @param [const supi64_t &] supi64: Supi64
+   * @param [const std::string &] supi: SUPI
    * @param [const pdu_session_id_t &] pid: PDU Session ID
    * @return bool: True if SMF Context Reference found, otherwise return false
    */
 
   bool is_scid_2_smf_context(
-      const supi64_t& supi, const pdu_session_id_t& pid) const;
+      const std::string& supi, const pdu_session_id_t& pid) const;
 
   /*
    * Find SMF Context Reference by its ID
@@ -512,27 +505,28 @@ class smf_app {
 
   /*
    * Verify if SM Context is existed for this Supi
-   * @param [supi_t] supi
+   * @param [std::string] supi
    * @return True if existed, otherwise false
    */
-  bool is_supi_2_smf_context(const supi64_t& supi) const;
+  bool is_supi_2_smf_context(const std::string& supi) const;
 
   /*
    * Create/Update SMF context with the corresponding supi
-   * @param [const supi_t&] supi
+   * @param [const std::string&] supi
    * @param [std::shared_ptr<smf_context>] sc Shared_ptr Pointer to an SMF
    * context
    * @return True if existed, otherwise false
    */
   void set_supi_2_smf_context(
-      const supi64_t& supi, std::shared_ptr<smf_context> sc);
+      const std::string& supi, std::shared_ptr<smf_context> sc);
 
   /*
    * Get SM Context
-   * @param [supi_t] Supi
+   * @param [std::string] Supi
    * @return Shared pointer to SM context
    */
-  std::shared_ptr<smf_context> supi_2_smf_context(const supi64_t& supi) const;
+  std::shared_ptr<smf_context> supi_2_smf_context(
+      const std::string& supi) const;
 
   /*
    * Get number of current SM Contexts
@@ -627,7 +621,7 @@ class smf_app {
 
   /*
    * Trigger pdu session modification
-   * @param [const supi_t &] supi
+   * @param [const std::string &] supi
    * @param [const std::string &] dnn
    * @param [const pdu_session_id_t] pdu_session_id
    * @param [const snssai_t &] snssai
@@ -635,7 +629,7 @@ class smf_app {
    * @return void
    */
   void trigger_pdu_session_modification(
-      const supi_t& supi, const std::string& dnn,
+      const std::string& supi, const std::string& dnn,
       const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
       const pfcp::qfi_t& qfi, const uint8_t& http_version);
 
@@ -651,18 +645,19 @@ class smf_app {
 
   /*
    * Verify whether the Session Management Data is existed
-   * @param [const supi_t&] SUPI
+   * @param [const std::string&] SUPI
    * @param [const std::string&] DNN
    * @param [const snssai_t&] S-NSSAI
    * @return True if SMF uses the local configuration to check the validity of
    * the UE request, False otherwise
    */
   bool is_supi_dnn_snssai_subscription_data(
-      const supi_t& supi, const std::string& dnn, const snssai_t& snssai) const;
+      const std::string& supi, const std::string& dnn,
+      const snssai_t& snssai) const;
 
   /*
    * Get the Session Management Subscription data from local configuration
-   * @param [const supi_t &] SUPI
+   * @param [const std::string &] SUPI
    * @param [const std::string &] DNN
    * @param [const snssai_t &] S-NSSAI
    * @param [std::shared_ptr<session_management_subscription>] subscription:
@@ -671,7 +666,7 @@ class smf_app {
    * subscription exists, False otherwise
    */
   bool get_session_management_subscription_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       std::shared_ptr<session_management_subscription> subscription);
 
   /*
@@ -922,14 +917,14 @@ class smf_app {
   /*
    * Get a list of subscription associated with a particular event
    * @param [smf_event_t] ev: Event type
-   * @param [supi64_t] supi: SUPI
+   * @param [std::string] supi: SUPI
    * @param [pdu_session_id_t] pdu_session_id: PDU Session ID
    * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:
    * store the list of the subscription associated with this event type
    * @return void
    */
   void get_ee_subscriptions(
-      smf_event_t ev, supi64_t supi, pdu_session_id_t pdu_session_id,
+      smf_event_t ev, std::string supi, pdu_session_id_t pdu_session_id,
       std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
 
   /*
@@ -975,7 +970,7 @@ class smf_app {
   std::string get_smf_instance_id() const;
 
   bool get_sm_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       std::shared_ptr<session_management_subscription>& subscription,
       plmn_t plmn);
 };

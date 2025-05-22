@@ -33,7 +33,6 @@
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "smf_3gpp_conversions.hpp"
 #include "Nas5gsmMessage.hpp"
 #include "PduSessionEstablishmentAccept.hpp"
 #include "PduSessionEstablishmentReject.hpp"
@@ -54,6 +53,7 @@
 #include "logger.hpp"
 #include "pfcp.hpp"
 #include "smf.h"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_config.hpp"
 #include "smf_event.hpp"
 #include "smf_n1.hpp"
@@ -182,9 +182,8 @@ bool smf_app::seid_2_smf_context(
 
 //------------------------------------------------------------------------------
 void smf_app::delete_smf_context(std::shared_ptr<smf_context> spc) {
-  supi64_t supi64 = smf_supi_to_u64(spc.get()->get_supi());
   std::unique_lock lock(m_supi2smf_context);
-  supi2smf_context.erase(supi64);
+  supi2smf_context.erase(spc.get()->get_supi());
 }
 
 //------------------------------------------------------------------------------
@@ -541,9 +540,8 @@ void smf_app::handle_itti_msg(std::shared_ptr<itti_n4_node_failure> snf) {
 
   for (auto it : scid2smf_context) {
     std::shared_ptr<smf_context> sc = {};
-    supi64_t supi64                 = smf_supi_to_u64(it.second->supi);
-    if (is_supi_2_smf_context(supi64)) {
-      sc = supi_2_smf_context(supi64);
+    if (is_supi_2_smf_context(it.second->supi)) {
+      sc = supi_2_smf_context(it.second->supi);
     }
     if (sc.get() == nullptr) {
       Logger::smf_app().debug("No SMF Context found");
@@ -629,11 +627,10 @@ void smf_app::handle_itti_msg(
         }
 
         std::shared_ptr<smf_context> sc = {};
-        supi64_t supi64                 = smf_supi_to_u64(scf.get()->supi);
-        if (is_supi_2_smf_context(supi64)) {
+        if (is_supi_2_smf_context(scf.get()->supi)) {
           Logger::smf_app().debug(
-              "Update SMF context with SUPI " SUPI_64_FMT "", supi64);
-          sc = supi_2_smf_context(supi64);
+              "Update SMF context with SUPI %s", scf.get()->supi);
+          sc = supi_2_smf_context(scf.get()->supi);
         }
 
         if (sc.get() == nullptr) {
@@ -847,14 +844,12 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   }
 
   // Get SUPI, SNSSAI
-  supi_t supi             = smreq->req.get_supi();
-  std::string supi_prefix = smreq->req.get_supi_prefix();
-  supi64_t supi64         = smf_supi_to_u64(supi);
-  snssai_t snssai         = smreq->req.get_snssai();
+  std::string supi = smreq->req.get_supi();
+  snssai_t snssai  = smreq->req.get_snssai();
   Logger::smf_app().info(
       "Handle a PDU Session Create SM Context Request message from AMF, "
-      "SUPI " SUPI_64_FMT ", %s",
-      supi64, snssai.to_model_snssai().to_string(0));
+      "SUPI %s, SNSSAI %s",
+      supi, snssai.to_model_snssai().to_string(0));
 
   // Step 2. Verify Procedure transaction id, pdu session id, message type,
   // request type, etc.
@@ -954,18 +949,15 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Step 4. Create a context for this supi if not existed, otherwise update
   std::shared_ptr<smf_context> sc = {};
-  if (is_supi_2_smf_context(supi64)) {
-    Logger::smf_app().debug(
-        "Update SMF context with SUPI " SUPI_64_FMT "", supi64);
-    sc = supi_2_smf_context(supi64);
+  if (is_supi_2_smf_context(supi)) {
+    Logger::smf_app().debug("Update SMF context with SUPI %s", supi);
+    sc = supi_2_smf_context(supi);
     sc->set_supi(supi);
   } else {
-    Logger::smf_app().debug(
-        "Create a new SMF context with SUPI " SUPI_64_FMT "", supi64);
+    Logger::smf_app().debug("Create a new SMF context with SUPI %s", supi);
     sc = std::make_shared<smf_context>();
     sc->set_supi(supi);
-    sc->set_supi_prefix(supi_prefix);
-    set_supi_2_smf_context(supi64, sc);
+    set_supi_2_smf_context(supi, sc);
     sc->set_plmn(smreq->req.get_plmn());  // PLMN
   }
 
@@ -973,13 +965,13 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // existed and request type is INITIAL_REQUEST). Delete the local context
   // (including and any associated resources in the UPF and PCF) and create a
   // new one
-  if (is_scid_2_smf_context(supi64, pdu_session_id) &&
+  if (is_scid_2_smf_context(supi, pdu_session_id) &&
       (request_type.compare("INITIAL_REQUEST") == 0)) {
     // Remove smf_pdu_session (including all flows associated to this session)
     sc->remove_pdu_session(pdu_session_id);
     Logger::smf_app().warn(
-        "PDU Session already existed (SUPI " SUPI_64_FMT ", PDU Session ID %d)",
-        supi64, pdu_session_id);
+        "PDU Session already existed (SUPI %s, PDU Session ID %d)", supi,
+        pdu_session_id);
   }
 
   // Step 6. Retrieve Session Management Subscription data from UDM if not
@@ -998,7 +990,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           "Retrieve Session Management Subscription data from the UDM");
       plmn_t plmn = {};
       sc->get_plmn(plmn);
-      if (get_sm_data(supi64, dnn, snssai, subscription, plmn)) {
+      if (get_sm_data(supi, dnn, snssai, subscription, plmn)) {
         // Update dnn_context with subscription info
         sc->insert_dnn_subscription(snssai, dnn, subscription);
       } else {
@@ -1027,7 +1019,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
           "Retrieve Session Management Subscription data from local "
           "configuration");
       if (get_session_management_subscription_data(
-              supi64, dnn, snssai, subscription)) {
+              supi, dnn, snssai, subscription)) {
         // update dnn_context with subscription info
         sc->insert_dnn_subscription(snssai, dnn, subscription);
       } else {
@@ -1105,20 +1097,18 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     return;
   }
 
-  supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
-
   // Step 3. Find the smf context
   std::shared_ptr<smf_context> sc = {};
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
+  if (is_supi_2_smf_context(scf.get()->supi)) {
+    sc = supi_2_smf_context(scf.get()->supi);
     Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+        "Retrieve SMF context with SUPI %s", scf.get()->supi);
   } else {
     // Send PDUSession_SMUpdateContext Response to AMF
     Logger::smf_app().warn(
-        "Received PDU Session Update SM Context Request with Supi " SUPI_64_FMT
-        "couldn't retrieve the corresponding SMF context, ignore message!",
-        supi64);
+        "Received PDU Session Update SM Context Request with SUPI %s, couldn't "
+        "retrieve the corresponding SMF context, ignore message!",
+        scf.get()->supi);
     // Trigger to send reply to AMF
     trigger_update_context_error_response(
         http_status_code::NOT_FOUND,
@@ -1205,22 +1195,21 @@ void smf_app::handle_pdu_session_release_sm_context_request(
 
   // Step 2. store SUPI, PDU Session ID in itti_sbi_update_sm_context_request to
   // be processed later on
-  supi64_t supi64 = smf_supi_to_u64(scf.get()->supi);
   smreq->req.set_supi(scf.get()->supi);
   smreq->req.set_pdu_session_id(scf.get()->pdu_session_id);
 
   // Step 2. find the smf context
   std::shared_ptr<smf_context> sc = {};
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
+  if (is_supi_2_smf_context(scf.get()->supi)) {
+    sc = supi_2_smf_context(scf.get()->supi);
     Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+        "Retrieve SMF context with SUPI %s", scf.get()->supi);
   } else {
     // send PDUSession_SMReleaseContext Response to AMF
     Logger::smf_app().warn(
-        "Received PDU Session Release SM Context Request with Supi " SUPI_64_FMT
+        "Received PDU Session Release SM Context Request with SUPI %s, "
         "couldn't retrieve the corresponding SMF context, ignore message!",
-        supi64);
+        scf.get()->supi);
     // trigger to send reply to AMF
     trigger_http_response(
         http_status_code::NOT_FOUND, smreq->pid,
@@ -1251,7 +1240,7 @@ void smf_app::handle_pdu_session_release_sm_context_request(
 
 //------------------------------------------------------------------------------
 void smf_app::trigger_pdu_session_modification(
-    const supi_t& supi, const std::string& dnn,
+    const std::string& supi, const std::string& dnn,
     const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
     const pfcp::qfi_t& qfi, const uint8_t& http_version) {
   // SMF-requested session modification, see section 4.3.3.2@3GPP TS 23.502
@@ -1273,18 +1262,15 @@ void smf_app::trigger_pdu_session_modification(
   itti_msg->msg.set_pdu_session_id(pdu_session_id);
   itti_msg->msg.set_snssai(snssai);
   itti_msg->msg.add_qfi(qfi);
-  supi64_t supi64 = smf_supi_to_u64(supi);
 
   // Step 2. find the SMF Context
   std::shared_ptr<smf_context> sc = {};
 
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+  if (is_supi_2_smf_context(supi)) {
+    sc = supi_2_smf_context(supi);
+    Logger::smf_app().debug("Retrieve SMF context with SUPI %s", supi);
   } else {
-    Logger::smf_app().debug(
-        "SMF context with SUPI " SUPI_64_FMT "does not exist", supi64);
+    Logger::smf_app().debug("SMF context with SUPI %s does not exist", supi);
     return;
   }
 
@@ -1308,8 +1294,7 @@ evsub_id_t smf_app::handle_event_exposure_subscription(
       std::shared_ptr<smf_subscription>(new smf_subscription());
   ss.get()->sub_id = evsub_id;
   if (msg->event_exposure.is_supi_is_set()) {
-    supi64_t supi64 = smf_supi_to_u64(msg->event_exposure.get_supi());
-    ss.get()->supi  = supi64;
+    ss.get()->supi = msg->event_exposure.get_supi();
   }
   ss.get()->notif_id  = msg->event_exposure.get_notif_id();
   ss.get()->notif_uri = msg->event_exposure.get_notif_uri();
@@ -1508,7 +1493,7 @@ bool smf_app::update_smf_configuration(nlohmann::json& json_data) {
 }
 
 //------------------------------------------------------------------------------
-bool smf_app::is_supi_2_smf_context(const supi64_t& supi) const {
+bool smf_app::is_supi_2_smf_context(const std::string& supi) const {
   std::shared_lock lock(m_supi2smf_context);
   if (supi2smf_context.count(supi) > 0) {
     if (supi2smf_context.at(supi) != nullptr) return true;
@@ -1518,14 +1503,14 @@ bool smf_app::is_supi_2_smf_context(const supi64_t& supi) const {
 
 //------------------------------------------------------------------------------
 std::shared_ptr<smf_context> smf_app::supi_2_smf_context(
-    const supi64_t& supi) const {
+    const std::string& supi) const {
   std::shared_lock lock(m_supi2smf_context);
   return supi2smf_context.at(supi);
 }
 
 //------------------------------------------------------------------------------
 void smf_app::set_supi_2_smf_context(
-    const supi64_t& supi, std::shared_ptr<smf_context> sc) {
+    const std::string& supi, std::shared_ptr<smf_context> sc) {
   std::unique_lock lock(m_supi2smf_context);
   supi2smf_context[supi] = sc;
 }
@@ -1552,11 +1537,11 @@ bool smf_app::is_scid_2_smf_context(const scid_t& scid) const {
 
 //------------------------------------------------------------------------------
 bool smf_app::is_scid_2_smf_context(
-    const supi64_t& supi, const pdu_session_id_t& pid) const {
+    const std::string& supi, const pdu_session_id_t& pid) const {
   std::shared_lock lock(m_scid2smf_context);
   for (auto it : scid2smf_context) {
-    supi64_t supi64 = smf_supi_to_u64(it.second->supi);
-    if ((supi64 == supi) and (it.second->pdu_session_id == pid)) return true;
+    if ((it.second->supi == supi) and (it.second->pdu_session_id == pid))
+      return true;
   }
   return false;
 }
@@ -1592,21 +1577,17 @@ bool smf_app::find_pdu_session(
     return false;
   }
 
-  supi_t supi                     = scf.get()->supi;
-  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::string supi                = scf.get()->supi;
   pdu_session_id_t pdu_session_id = scf.get()->pdu_session_id;
 
   std::shared_ptr<smf_context> sc = {};
 
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+  if (is_supi_2_smf_context(supi)) {
+    sc = supi_2_smf_context(supi);
+    Logger::smf_app().debug("Retrieve SMF context with SUPI %s", supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
     return false;
   }
 
@@ -1629,7 +1610,8 @@ bool smf_app::use_local_configuration_subscription_data(
 
 //------------------------------------------------------------------------------
 bool smf_app::is_supi_dnn_snssai_subscription_data(
-    const supi_t& supi, const std::string& dnn, const snssai_t& snssai) const {
+    const std::string& supi, const std::string& dnn,
+    const snssai_t& snssai) const {
   // TODO: should be implemented
   return false;  // Session Management Subscription from UDM isn't available
 }
@@ -1655,21 +1637,17 @@ void smf_app::update_pdu_session_status(
         "Context associated with this id " SCID_FMT " does not exit!", scid);
   }
 
-  supi_t supi                     = scf.get()->supi;
-  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::string supi                = scf.get()->supi;
   pdu_session_id_t pdu_session_id = scf.get()->pdu_session_id;
 
   std::shared_ptr<smf_context> sc = {};
 
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+  if (is_supi_2_smf_context(supi)) {
+    sc = supi_2_smf_context(supi);
+    Logger::smf_app().debug("Retrieve SMF context with SUPI %s", supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
   }
 
   // Get PDU Session
@@ -1702,21 +1680,17 @@ void smf_app::update_pdu_session_upCnx_state(
         "Context associated with this id " SCID_FMT " does not exit!", scid);
   }
 
-  supi_t supi                     = scf.get()->supi;
-  supi64_t supi64                 = smf_supi_to_u64(supi);
+  std::string supi                = scf.get()->supi;
   pdu_session_id_t pdu_session_id = scf.get()->pdu_session_id;
 
   std::shared_ptr<smf_context> sc = {};
 
-  if (is_supi_2_smf_context(supi64)) {
-    sc = supi_2_smf_context(supi64);
-    Logger::smf_app().debug(
-        "Retrieve SMF context with SUPI " SUPI_64_FMT "", supi64);
+  if (is_supi_2_smf_context(supi)) {
+    sc = supi_2_smf_context(supi);
+    Logger::smf_app().debug("Retrieve SMF context with SUPI %s", supi);
   } else {
     Logger::smf_app().warn(
-        "Could not retrieve the corresponding SMF context with "
-        "Supi " SUPI_64_FMT "!",
-        supi64);
+        "Could not retrieve the corresponding SMF context with SUPI %s!", supi);
   }
 
   // get PDU Session
@@ -1902,7 +1876,7 @@ n2_sm_info_type_e smf_app::n2_sm_info_type_str2e(
 
 //---------------------------------------------------------------------------------------------
 bool smf_app::get_session_management_subscription_data(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+    const std::string& supi, const std::string& dnn, const snssai_t& snssai,
     std::shared_ptr<session_management_subscription> subscription) {
   Logger::smf_app().debug(
       "Get Session Management Subscription from the configuration file");
@@ -2153,7 +2127,7 @@ void smf_app::get_ee_subscriptions(
 
 //---------------------------------------------------------------------------------------------
 void smf_app::get_ee_subscriptions(
-    smf_event_t ev, supi64_t supi, pdu_session_id_t pdu_session_id,
+    smf_event_t ev, std::string supi, pdu_session_id_t pdu_session_id,
     std::vector<std::shared_ptr<smf_subscription>>& subscriptions) {
   for (auto const& i : smf_event_subscriptions) {
     if ((i.first.second == ev) && (i.second->supi == supi) &&
@@ -2362,7 +2336,7 @@ void smf_app::reply_with_pdu_session_establishment_reject(
 
 //------------------------------------------------------------------------------
 bool smf_app::get_sm_data(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+    const std::string& supi, const std::string& dnn, const snssai_t& snssai,
     std::shared_ptr<session_management_subscription>& subscription,
     plmn_t plmn) {
   boost::shared_ptr<boost::promise<nlohmann::json>> p =

@@ -97,23 +97,13 @@ void pdu_session_msg::set_msg_type(const pdu_session_msg_type_t& msg_type) {
 }
 
 //-----------------------------------------------------------------------------
-supi_t pdu_session_msg::get_supi() const {
+std::string pdu_session_msg::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_msg::set_supi(const supi_t& supi) {
+void pdu_session_msg::set_supi(const std::string& supi) {
   m_supi = supi;
-}
-
-//-----------------------------------------------------------------------------
-std::string pdu_session_msg::get_supi_prefix() const {
-  return m_supi_prefix;
-}
-
-//-----------------------------------------------------------------------------
-void pdu_session_msg::set_supi_prefix(const std::string& prefix) {
-  m_supi_prefix = prefix;
 }
 
 //-----------------------------------------------------------------------------
@@ -228,9 +218,7 @@ bool pdu_session_msg::n2_sm_info_type_is_set() const {
 void pdu_session_msg::to_json(nlohmann::json& data) const {
   data["msg_type"]                 = m_msg_type;
   data["api_root"]                 = m_api_root;
-  std::string supi_str             = smf_supi_to_string(m_supi);
-  data["supi"]                     = supi_str;
-  data["supi_prefix"]              = m_supi_prefix;
+  data["supi"]                     = m_supi;
   data["pdu_session_id"]           = m_pdu_session_id;
   data["dnn"]                      = m_dnn;
   data["snssai"]["sst"]            = m_snssai.sst;
@@ -254,11 +242,7 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
   }
 
   if (data.find("supi") != data.end()) {
-    smf_string_to_supi(&m_supi, data["supi"].get<std::string>().c_str());
-  }
-
-  if (data.find("supi_prefix") != data.end()) {
-    m_supi_prefix = data["supi_prefix"].get<std::string>();
+    m_supi = data["supi"].get<std::string>();
   }
 
   if (data.find("pdu_session_id") != data.end()) {
@@ -1058,12 +1042,12 @@ uint64_t pdu_session_report_response::get_trxn_id() const {
  * class: Event Exposure
  */
 //-----------------------------------------------------------------------------
-supi_t event_exposure_msg::get_supi() const {
+std::string event_exposure_msg::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void event_exposure_msg::set_supi(const supi_t& value) {
+void event_exposure_msg::set_supi(const std::string& value) {
   m_supi        = value;
   m_supi_is_set = true;
 }
@@ -1073,15 +1057,6 @@ bool event_exposure_msg::is_supi_is_set() const {
   return m_supi_is_set;
 }
 
-//-----------------------------------------------------------------------------
-std::string event_exposure_msg::get_supi_prefix() const {
-  return m_supi_prefix;
-}
-
-//-----------------------------------------------------------------------------
-void event_exposure_msg::set_supi_prefix(const std::string& prefix) {
-  m_supi_prefix = prefix;
-}
 //-----------------------------------------------------------------------------
 pdu_session_id_t event_exposure_msg::get_pdu_session_id() const {
   return m_pdu_session_id;
@@ -1192,12 +1167,12 @@ std::string event_notification::get_timestamp() const {
 }
 
 //-----------------------------------------------------------------------------
-supi64_t event_notification::get_supi() const {
+std::string event_notification::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void event_notification::set_supi(const supi64_t& value) {
+void event_notification::set_supi(const std::string& value) {
   m_supi        = value;
   m_supi_is_set = true;
 }

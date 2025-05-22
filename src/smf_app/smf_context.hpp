@@ -35,6 +35,7 @@
 #include "Nas5gsmMessage.hpp"
 #include "QosRule.hpp"
 #include "SessionAmbr.hpp"
+#include "SmfRegistration.h"
 #include "common_root_types.h"
 #include "itti.hpp"
 #include "msg_pfcp.hpp"
@@ -44,7 +45,6 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
-#include "SmfRegistration.h"
 
 using namespace boost::placeholders;
 
@@ -349,7 +349,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
     amf_addr       = {};
     amf_status_uri = {};
     target_amf     = {};
-    supi_prefix    = {};
     // Subscribe to SM Context Status Change
     sm_context_status_connection =
         event_sub.subscribe_sm_context_status(boost::bind(
@@ -821,31 +820,17 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   /*
    * Set the value for Supi
-   * @param [const supi_t&] s
+   * @param [const std::string&] s
    * @return void
    */
-  void set_supi(const supi_t& s);
+  void set_supi(const std::string& s);
 
   /*
    * Get Supi member
    * @param
-   * @return supi_t
+   * @return std::string
    */
-  supi_t get_supi() const;
-
-  /*
-   * Get Supi prefix
-   * @param [const std::string &]  prefix: Supi prefix (e.g., imsi)
-   * @return void
-   */
-  void get_supi_prefix(std::string& prefix) const;
-
-  /*
-   * Get Supi prefix
-   * @param [const std::string &]  prefix: Supi prefix (e.g., imsi)
-   * @return void
-   */
-  void set_supi_prefix(std::string const& value);
+  std::string get_supi() const;
 
   /*
    * Get the default QoS Rule for all QFIs
@@ -927,26 +912,26 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   /*
    * Get PDU related information
    * @param [const scid_t&] scid: SMF Context ID
-   * @param [supi64_t&] supi: SUPI
+   * @param [std::string&] supi: SUPI
    * @param [pdu_session_id_t&] pdu_session_id: PDU Session ID
    * @return true if this Context ID exist and can get related info, otherwise,
    * return false
    */
   bool get_pdu_session_info(
-      const scid_t& scid, supi64_t& supi,
+      const scid_t& scid, std::string& supi,
       pdu_session_id_t& pdu_session_id) const;
 
   /*
    * Get PDU related information
    * @param [const scid_t&] scid: SMF Context ID
-   * @param [supi64_t&] supi: SUPI
+   * @param [std::string&] supi: SUPI
    * @param [std::shared_ptr<smf_pdu_session>&] sp: Pointer to the PDU Session
    * Info
    * @return true if this Context ID exist and can get related info, otherwise,
    * return false
    */
   bool get_pdu_session_info(
-      const scid_t& scid, supi64_t& supi,
+      const scid_t& scid, std::string& supi,
       std::shared_ptr<smf_pdu_session>& sp) const;
 
   /*
@@ -1152,7 +1137,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::shared_ptr<smf_pdu_session>& sps);
 
   bool register_with_udm(
-      const supi64_t& supi, const pdu_session_id_t& pdu_session_id,
+      const std::string& supi, const pdu_session_id_t& pdu_session_id,
       const oai::model::udm::SmfRegistration& smf_registration);
 
  private:
@@ -1164,8 +1149,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       pdu_sessions;  // Store all PDU Sessions associated with this UE
   mutable std::shared_mutex m_pdu_sessions_mutex;
 
-  supi_t supi;
-  std::string supi_prefix;
+  std::string supi;
   plmn_t plmn;
 
   std::string amf_id;

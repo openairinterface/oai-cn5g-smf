@@ -45,7 +45,7 @@ class smf_subscription {
  public:
   evsub_id_t sub_id;
   smf_event_t ev_type;
-  supi64_t supi;
+  std::string supi;
   std::string notif_id;
   std::string notif_uri;
   pdu_session_id_t pdu_session_id;

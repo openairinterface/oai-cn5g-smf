@@ -25,6 +25,7 @@
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.h"
 #include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.244.h"
 #include "3gpp_29.508.h"
 #include "3gpp_29.518.h"
@@ -33,13 +34,12 @@
 #include "NgRanTargetId.h"
 #include "PlmnId.h"
 #include "QosData.h"
+#include "QosFlowDescription.hpp"
+#include "QosRule.hpp"
+#include "SmPolicyDecision.h"
 #include "pistache/http.h"
 #include "smf.h"
 #include "smf_profile.hpp"
-#include "3gpp_24.501.hpp"
-#include "SmPolicyDecision.h"
-#include "QosRule.hpp"
-#include "QosFlowDescription.hpp"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -119,7 +119,7 @@ class pdu_session_msg {
     m_n2_sm_info_type_is_set = false;
   };
   pdu_session_msg(
-      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai)
       : m_msg_type(msg_type),
         m_supi(supi),
@@ -136,10 +136,8 @@ class pdu_session_msg {
 
   pdu_session_msg_type_t get_msg_type() const;
   void set_msg_type(const pdu_session_msg_type_t& value);
-  supi_t get_supi() const;
-  void set_supi(const supi_t& value);
-  std::string get_supi_prefix() const;
-  void set_supi_prefix(const std::string& value);
+  std::string get_supi() const;
+  void set_supi(const std::string& value);
   pdu_session_id_t get_pdu_session_id() const;
   void set_pdu_session_id(const pdu_session_id_t value);
   std::string get_dnn() const;
@@ -168,8 +166,7 @@ class pdu_session_msg {
  private:
   pdu_session_msg_type_t m_msg_type;
   std::string m_api_root;
-  supi_t m_supi;
-  std::string m_supi_prefix;
+  std::string m_supi;
   pdu_session_id_t m_pdu_session_id;
   std::string m_dnn;
   snssai_t m_snssai;
@@ -201,7 +198,7 @@ class pdu_session_sm_context_request : public pdu_session_msg {
     m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
   };
   pdu_session_sm_context_request(
-      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
     m_epd          = EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
@@ -228,7 +225,7 @@ class pdu_session_sm_context_response : public pdu_session_msg {
     m_json_format = "application/json";
   }
   pdu_session_sm_context_response(
-      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
     m_cause       = 0;
@@ -265,7 +262,7 @@ class pdu_session_create_sm_context_request
     m_epco = {};
   }
   pdu_session_create_sm_context_request(
-      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      std::string supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
       : pdu_session_sm_context_request(
             PDU_SESSION_CREATE_SM_CONTEXT_REQUEST, supi, pdi, dnn, snssai),
         m_unauthenticated_supi(true) {
@@ -316,7 +313,7 @@ class pdu_session_create_sm_context_response
     m_epco             = {};
   }
   pdu_session_create_sm_context_response(
-      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      std::string supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
       : pdu_session_sm_context_response(
             PDU_SESSION_CREATE_SM_CONTEXT_RESPONSE, supi, pdi, dnn, snssai) {
     m_paa              = {};
@@ -513,7 +510,7 @@ class pdu_session_modify_sm_context_request : public pdu_session_msg {
   pdu_session_modify_sm_context_request()
       : pdu_session_msg(PDU_SESSION_MODIFY_SM_CONTEXT_REQUEST) {}
   pdu_session_modify_sm_context_request(
-      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      std::string supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
       : pdu_session_msg(
             PDU_SESSION_MODIFY_SM_CONTEXT_REQUEST, supi, pdi, dnn, snssai) {}
 
@@ -535,7 +532,7 @@ class pdu_session_modify_sm_context_response
       : pdu_session_sm_context_response(
             PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE) {}
   pdu_session_modify_sm_context_response(
-      supi_t supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
+      std::string supi, pdu_session_id_t pdi, std::string dnn, snssai_t snssai)
       : pdu_session_sm_context_response(
             PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE, supi, pdi, dnn, snssai) {}
 
@@ -611,13 +608,13 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
     m_sm_policy_decision = {};
   }
   pdu_session_sm_policy_notificatiion(
-      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
     m_sm_policy_decision = {};
   }
   pdu_session_sm_policy_notificatiion(
-      pdu_session_msg_type_t msg_type, supi_t supi, pdu_session_id_t pdi,
+      pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai,
       oai::model::pcf::SmPolicyDecision sm_policy_decision)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai),
@@ -632,11 +629,9 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
 
 class event_exposure_msg {
  public:
-  supi_t get_supi() const;
-  void set_supi(const supi_t& value);
+  std::string get_supi() const;
+  void set_supi(const std::string& value);
   bool is_supi_is_set() const;
-  std::string get_supi_prefix() const;
-  void set_supi_prefix(const std::string& value);
   void set_pdu_session_id(const pdu_session_id_t value);
   pdu_session_id_t get_pdu_session_id() const;
   bool is_psi_is_set() const;
@@ -651,9 +646,8 @@ class event_exposure_msg {
   void set_event_subs(std::vector<event_subscription_t> const& value);
 
  private:
-  supi_t m_supi;
+  std::string m_supi;
   bool m_supi_is_set;
-  std::string m_supi_prefix;
   pdu_session_id_t m_pdu_session_id;  // m_PduSeId;
   bool m_psi_is_set;
 
@@ -700,8 +694,8 @@ class event_notification {
   void get_timestamp(std::string& ss) const;
   std::string get_timestamp() const;
 
-  void set_supi(const supi64_t& supi);
-  supi64_t get_supi() const;
+  void set_supi(const std::string& supi);
+  std::string get_supi() const;
   bool is_supi_is_set() const;
   // m_AdIpv4Addr
   void set_ad_ipv4_addr(std::string const& value);
@@ -757,7 +751,7 @@ class event_notification {
   smf_event_t m_event;  // SmfEvent
   std::string m_timestamp;
 
-  supi64_t m_supi;
+  std::string m_supi;
   bool m_supi_is_set;
 
   // for a UE IP address change
