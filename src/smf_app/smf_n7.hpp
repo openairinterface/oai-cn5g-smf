@@ -26,6 +26,7 @@
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
+#include <optional>
 
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
