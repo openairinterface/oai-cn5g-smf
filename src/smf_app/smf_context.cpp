@@ -815,12 +815,12 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::string n1_sm_msg_hex = {};
   bool request_accepted     = true;
 
-  // Step 1. Get necessary information
+  // Get necessary information
   std::string dnn         = smreq->req.get_dnn();
   snssai_t snssai         = smreq->req.get_snssai();
   uint32_t pdu_session_id = smreq->req.get_pdu_session_id();
 
-  // Step 2. Check the validity of the UE request, if valid send PDU Session
+  // Check the validity of the UE request, if valid send PDU Session
   // Accept, otherwise send PDU Session Reject to AMF
   if (!verify_sm_context_request(smreq)) {
     Logger::smf_app().warn(
@@ -849,7 +849,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   xgpp_conv::create_sm_context_response_from_ctx_request(
       smreq, sm_context_resp_pending);
 
-  // Step 3.2. Create PDU session if not exist
+  // Create PDU session if not exist
   auto sp       = std::make_shared<smf_pdu_session>();
   bool find_pdu = find_pdu_session(pdu_session_id, sp);
 
@@ -870,52 +870,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Maximum Data Rate
   // TODO: (Optional) Secondary authentication/authorization
 
-  // Step 5. Create SM Policy Association with PCF or local PCC rules
-
-  std::string sm_context_ref = std::to_string(smreq->scid);
-  sp->policy_ptr             = std::make_shared<n7::policy_association>();
-  bool use_pcf_policy        = false;
-  sp->policy_ptr->set_context(
-      smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
-      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type());
-
-  sp->policy_ptr->id = smreq->scid;
-  // [Policy Control] The SMF shall set the notification URI for the PCF to use
-  // to notify the SMF of policy decisions. The SMF shall set the notification
-  // The URI value will have the base uri of the SMF
-  std::string notification_uri =
-      smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
-      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
-      fmt::format(
-          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
-          std::to_string(sp->policy_ptr->id).c_str());
-  // Add association id to url
-  Logger::smf_app().debug(fmt::format(
-      "Set the notification URI {} for the PCF to use to notify the SMF of ",
-      notification_uri.c_str()));
-  sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
-
-  // NOTE: The decision in association (sp->policy_ptr) is updated from the
-  // response from PCF
-  n7::sm_policy_status_code status =
-      n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
-  if (status != n7::sm_policy_status_code::CREATED) {
-    Logger::smf_n7().info(
-        "PCF SM Policy Association Creation was not successful. Continue "
-        "using default rules");
-    use_pcf_policy = false;
-    sp->policy_ptr.reset();
-    // Here, the standard says that we could reject the PDU session or allow
-    // the PDU session applying local policies 29.512 Chapter 4.2.2.2
-    // TODO I propose to have this behavior configurable, for now we
-    // continue
-  } else {
-    use_pcf_policy = true;
-  }
-  // TODO use the PCC rules also for QoS and other policy information
-
-  // Step 6. PCO
-  // section 6.2.4.2, TS 24.501
+  // PCO, section 6.2.4.2, TS 24.501
   // If the UE wants to use DHCPv4 for IPv4 address assignment, it shall
   // indicate that to the network within the Extended  protocol configuration
   // options IE in the PDU SESSION ESTABLISHMENT REQUEST  Extended protocol
@@ -938,7 +893,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   smf_app_inst->process_pco_request(pco_req, dnn, pco_resp, pco_ids);
   sm_context_resp_pending->res.set_epco(pco_resp);
 
-  // Step 7. Address allocation based on PDN type, IP Address pool is controlled
+  // Address allocation based on PDN type, IP Address pool is controlled
   // by SMF
   bool set_paa = false;
   paa_t paa    = {};
@@ -1106,63 +1061,129 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::string amf_addr_str = get_amf_addr_from_amf_status_uri(amf_status_uri);
   set_amf_addr(amf_addr_str);
 
-  // Step 8. SMF-initiated SM Policy Modification (with PCF) to report UE
+  // Create SM Policy Association with PCF or local PCC rules
+  // According to 3GPP TS 23.502 (Section 4.3.2.2.1), The purpose of this step
+  // is to receive PCC rules before selecting UPF, If PCC rules are not needed
+  // as input for UPF selection, this step can be performed after step 8 (UPF
+  // selection, UE IP address allocation)
+
+  std::string sm_context_ref = std::to_string(smreq->scid);
+  sp->policy_ptr             = std::make_shared<n7::policy_association>();
+  bool use_pcf_policy        = false;
+  bool include_ue_ip_in_sm_association_estab = false;
+  // Set UE IP address if available
+  std::optional<paa_t> paa_opt = std::nullopt;
+  if (set_paa) {
+    paa_opt                               = std::make_optional<paa_t>(paa);
+    include_ue_ip_in_sm_association_estab = true;
+  }
+
+  sp->policy_ptr->set_context(
+      smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
+      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(),
+      paa_opt);
+
+  sp->policy_ptr->id = smreq->scid;
+  // [Policy Control] The SMF shall set the notification URI for the PCF to use
+  // to notify the SMF of policy decisions. The SMF shall set the notification
+  // The URI value will have the base uri of the SMF
+  std::string notification_uri =
+      smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
+      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
+      fmt::format(
+          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
+          std::to_string(sp->policy_ptr->id).c_str());
+  // Add association id to url
+  Logger::smf_app().debug(fmt::format(
+      "Set the notification URI {} for the PCF to use to notify the SMF of ",
+      notification_uri.c_str()));
+  sp->policy_ptr->context.setNotificationUri(notification_uri.c_str());
+
+  // NOTE: The decision in association (sp->policy_ptr) is updated from the
+  // response from PCF
+  n7::sm_policy_status_code status =
+      n7::smf_n7::get_instance().create_sm_policy_association(*sp->policy_ptr);
+  if (status != n7::sm_policy_status_code::CREATED) {
+    Logger::smf_n7().info(
+        "PCF SM Policy Association Creation was not successful. Continue "
+        "using default rules");
+    use_pcf_policy = false;
+    sp->policy_ptr.reset();
+    // Here, the standard says that we could reject the PDU session or allow
+    // the PDU session applying local policies 29.512 Chapter 4.2.2.2
+    // TODO I propose to have this behavior configurable, for now we
+    // continue
+  } else {
+    use_pcf_policy = true;
+  }
+  // TODO use the PCC rules also for QoS and other policy information
+
+  // SMF-initiated SM Policy Modification (with PCF) to report UE
   // IP address change (allocated)
-  bool is_sm_policy_modification = false;
-  oai::model::pcf::SmPolicyUpdateContextData sm_policy_update_context_data = {};
-  // Set allocated UE IP addr
-  switch (sp->pdu_session_type.pdu_session_type) {
-    case PDU_SESSION_TYPE_E_IPV4V6: {
-      Logger::smf_app().debug("PDU Session Type IPv4v6");
-      std::string ue_ipv4_addr_str =
-          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
-      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
-      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
+  // Note from 3GPP TS 23.502 (Section 4.3.2.2.1):
+  // If an IP address/prefix has been allocated before step 7 (e.g. subscribed
+  // static IP address/prefix in UDM/UDR) or the step 7 is performed after step
+  // 8, the IP address/prefix can be provided to PCF in step 7 and the IP
+  // address/prefix notification in this step can be skipped.
 
-      char str_addr6[INET6_ADDRSTRLEN];
-      if (inet_ntop(
-              AF_INET6, &paa.ipv6_address, str_addr6, sizeof(str_addr6))) {
-        Logger::smf_app().info("Allocated UE IPv6 prefix: %s", str_addr6);
-        std::string ue_ipv6_prefix_str             = std::string(str_addr6);
-        oai::model::common::Ipv6Prefix ipv6_prefix = {};
-        ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
-        sm_policy_update_context_data.setIpv6AddressPrefix(ipv6_prefix);
+  if (!include_ue_ip_in_sm_association_estab) {
+    bool is_sm_policy_modification = false;
+    oai::model::pcf::SmPolicyUpdateContextData sm_policy_update_context_data =
+        {};
+    // Set allocated UE IP addr
+    switch (sp->pdu_session_type.pdu_session_type) {
+      case PDU_SESSION_TYPE_E_IPV4V6: {
+        Logger::smf_app().debug("PDU Session Type IPv4v6");
+        std::string ue_ipv4_addr_str =
+            std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+        Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+        sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
+
+        char str_addr6[INET6_ADDRSTRLEN];
+        if (inet_ntop(
+                AF_INET6, &paa.ipv6_address, str_addr6, sizeof(str_addr6))) {
+          Logger::smf_app().info("Allocated UE IPv6 prefix: %s", str_addr6);
+          std::string ue_ipv6_prefix_str             = std::string(str_addr6);
+          oai::model::common::Ipv6Prefix ipv6_prefix = {};
+          ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
+          sm_policy_update_context_data.setIpv6AddressPrefix(ipv6_prefix);
+        }
+        is_sm_policy_modification = true;
+
+      }; break;
+      case PDU_SESSION_TYPE_E_IPV4: {
+        Logger::smf_app().debug("PDU Session Type IPv4");
+        std::string ue_ipv4_addr_str =
+            std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
+        Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
+        sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
+        is_sm_policy_modification = true;
+      } break;
+
+      case PDU_SESSION_TYPE_E_IPV6: {
+        // TODO:
+        Logger::smf_app().warn("IPv6 is not supported yet!");
+      } break;
+
+      default: {
+        Logger::smf_app().error(
+            "Unknown PDN type %d", sp->pdu_session_type.pdu_session_type);
       }
-      is_sm_policy_modification = true;
+    }
 
-    }; break;
-    case PDU_SESSION_TYPE_E_IPV4: {
-      Logger::smf_app().debug("PDU Session Type IPv4");
-      std::string ue_ipv4_addr_str =
-          std::string(inet_ntoa(*((struct in_addr*) &paa.ipv4_address)));
-      Logger::smf_app().info("Allocated UE IPv4 Addr: %s", ue_ipv4_addr_str);
-      sm_policy_update_context_data.setIpv4Address(ue_ipv4_addr_str);
-      is_sm_policy_modification = true;
-    } break;
-
-    case PDU_SESSION_TYPE_E_IPV6: {
-      // TODO:
-      Logger::smf_app().warn("IPv6 is not supported yet!");
-    } break;
-
-    default: {
-      Logger::smf_app().error(
-          "Unknown PDN type %d", sp->pdu_session_type.pdu_session_type);
+    // Use Npcf_SMPolicyControl_Update request to trigger SMF initiated SM
+    // Policy Association Modification and update SM Policy Association
+    if (is_sm_policy_modification and use_pcf_policy) {
+      status = n7::smf_n7::get_instance().update_sm_policy_association(
+          sm_policy_update_context_data, sp->policy_ptr);
+      if (status != n7::sm_policy_status_code::OK) {
+        Logger::smf_n7().info(
+            "SM Policy Association Modification was not successful");
+      }
     }
   }
 
-  // Use Npcf_SMPolicyControl_Update request to trigger SMF initiated SM Policy
-  // Association Modification and update SM Policy Association
-  if (is_sm_policy_modification and use_pcf_policy) {
-    status = n7::smf_n7::get_instance().update_sm_policy_association(
-        sm_policy_update_context_data, sp->policy_ptr);
-    if (status != n7::sm_policy_status_code::OK) {
-      Logger::smf_n7().info(
-          "SM Policy Association Modification was not successful");
-    }
-  }
-
-  // Step 9. Create session establishment procedure and run the procedure
+  // Create session establishment procedure and run the procedure
   // if request is accepted
   if (set_paa) {
     sm_context_resp_pending->res.set_paa(paa);
