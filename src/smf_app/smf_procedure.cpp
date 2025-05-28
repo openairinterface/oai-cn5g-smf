@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.cpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_procedure.hpp"
 
 #include <algorithm>  // std::search
@@ -35,7 +28,7 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
-#include "3gpp_conversions_smf.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
 #include "itti.hpp"
@@ -381,6 +374,21 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
     pdi.set(edge->qfi);  // QFI - QoS Flow ID
+  }
+
+  // Framed IPv4 Route
+  if (!sps->ipv4_frame_route.empty()) {
+    if (up_features.frrt) {
+      for (const auto& framed_route : sps->ipv4_frame_route) {
+        pdi.set(framed_route);
+        Logger::smf_app().debug(
+            "Framed Route %s is set", framed_route.framed_route);
+      }
+    } else {
+      Logger::smf_app().warn(
+          "Received framed routing information from UDM but UPF does not "
+          "support framed routing.");
+    }
   }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
@@ -1057,8 +1065,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_create_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& sm_context_req,
-    const std::shared_ptr<itti_n11_create_sm_context_response>& sm_context_resp,
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& sm_context_req,
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf::smf_context> sc) {
   Logger::smf_app().info("Perform a procedure - Create SM Context Request");
   // TODO check if compatible with ongoing procedures if any
@@ -1329,8 +1337,8 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_update_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp,
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp,
     const std::shared_ptr<smf::smf_context>& sc) {
   // Handle SM update sm context request
   // The SMF initiates an N4 Session Modification procedure with the UPF. The
@@ -1545,6 +1553,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
       send_n4 = true;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO:
+      send_n4 = false;
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1586,14 +1600,25 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
-    // TODO: Nsmf_PDUSession_SMContextStatusNotify
-    /*  If the PDU Session establishment is not successful, the SMF informs
-     the AMF by invoking Nsmf_PDUSession_SMContextStatusNotify (Release). The
-     SMF also releases any N4 session(s) created, any PDU Session address if
-     allocated (e.g. IP address) and releases the association with PCF, if
-     any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
-     */
-    // TODO: should we return here with smf_procedure_code::ERROR;
+    // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
+    // is not successful, the SMF informs the AMF by invoking
+    // Nsmf_PDUSession_SMContextStatusNotify (Release). The
+    // SMF also releases any N4 session(s) created, any PDU Session address if
+    // allocated (e.g. IP address) and releases the association with PCF, if
+    // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
+
+    scid_t scid = {};
+    try {
+      scid = std::stoi(n11_trigger->scid);
+    } catch (const std::exception& err) {
+      Logger::smf_app().warn(
+          "SM Context associated with this id %s does not exit!",
+          n11_trigger->scid.c_str());
+    }
+    sc->handle_sm_context_status_change(scid, "RELEASED");
+
+    return smf_procedure_code::ERROR;
+
   } else {
     n11_triggered_pending->res.set_cause(
         static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
@@ -1715,6 +1740,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       continue_n4 = false;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      continue_n4 = false;
+      // TODO:
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1794,8 +1825,8 @@ session_release_sm_context_procedure::send_n4_session_deletion_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_release_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_release_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_release_sm_context_response> sm_context_res,
+    const std::shared_ptr<itti_sbi_release_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_release_sm_context_response> sm_context_res,
     const std::shared_ptr<smf::smf_context>& sc) {
   Logger::smf_app().info("Release SM Context Request");
   // TODO check if compatible with ongoing procedures if any

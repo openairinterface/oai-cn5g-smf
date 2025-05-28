@@ -19,38 +19,23 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_sbi.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_sbi.hpp"
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 
-#include <nlohmann/json.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
 #include "common_defs.h"
+#include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
-#include "3gpp_conversions_smf.hpp"
+#include "sbi_helper.hpp"
 #include "smf.h"
+#include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
-#include "http_client.hpp"
-
-extern "C" {
-#include "dynamic_memory_check.h"
-}
-
-// using namespace Pistache::Http;
-// using namespace Pistache::Http::Mime;
 
 using namespace smf;
 using namespace oai::common::sbi;
@@ -59,17 +44,10 @@ using json = nlohmann::json;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
+extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern std::shared_ptr<oai::http::http_client> http_client_inst;
 void smf_sbi_task(void*);
-
-// To read content of the response from AMF
-static std::size_t callback(
-    const char* in, std::size_t size, std::size_t num, std::string* out) {
-  const std::size_t totalBytes(size * num);
-  out->append(in, totalBytes);
-  return totalBytes;
-}
 
 //------------------------------------------------------------------------------
 void smf_sbi_task(void* args_p) {
@@ -82,7 +60,7 @@ void smf_sbi_task(void* args_p) {
     switch (msg->msg_type) {
       case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
         smf_sbi_inst->send_n1n2_message_transfer_request(
-            std::static_pointer_cast<itti_n11_create_sm_context_response>(
+            std::static_pointer_cast<itti_sbi_create_sm_context_response>(
                 shared_msg));
         break;
 
@@ -94,44 +72,54 @@ void smf_sbi_task(void* args_p) {
 
       case N11_SESSION_REPORT_RESPONSE:
         smf_sbi_inst->send_n1n2_message_transfer_request(
-            std::static_pointer_cast<itti_n11_session_report_request>(
+            std::static_pointer_cast<itti_sbi_session_report_request>(
                 shared_msg));
         break;
 
       case N11_SESSION_NOTIFY_SM_CONTEXT_STATUS:
         smf_sbi_inst->send_sm_context_status_notification(
-            std::static_pointer_cast<itti_n11_notify_sm_context_status>(
+            std::static_pointer_cast<itti_sbi_notify_sm_context_status>(
                 shared_msg));
         break;
 
       case N11_NOTIFY_SUBSCRIBED_EVENT:
         smf_sbi_inst->notify_subscribed_event(
-            std::static_pointer_cast<itti_n11_notify_subscribed_event>(
+            std::static_pointer_cast<itti_sbi_notify_subscribed_event>(
                 shared_msg));
         break;
 
       case N11_REGISTER_NF_INSTANCE_REQUEST:
         smf_sbi_inst->register_nf_instance(
-            std::static_pointer_cast<itti_n11_register_nf_instance_request>(
+            std::static_pointer_cast<itti_sbi_register_nf_instance_request>(
                 shared_msg));
         break;
 
       case N11_UPDATE_NF_INSTANCE_REQUEST:
         smf_sbi_inst->update_nf_instance(
-            std::static_pointer_cast<itti_n11_update_nf_instance_request>(
+            std::static_pointer_cast<itti_sbi_update_nf_instance_request>(
                 shared_msg));
         break;
 
       case N11_DEREGISTER_NF_INSTANCE:
         smf_sbi_inst->deregister_nf_instance(
-            std::static_pointer_cast<itti_n11_deregister_nf_instance>(
+            std::static_pointer_cast<itti_sbi_deregister_nf_instance>(
                 shared_msg));
         break;
 
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY:
         smf_sbi_inst->subscribe_upf_status_notify(
-            std::static_pointer_cast<itti_n11_subscribe_upf_status_notify>(
+            std::static_pointer_cast<itti_sbi_subscribe_upf_status_notify>(
                 shared_msg));
+        break;
+
+      case SBI_RETRIEVE_SM_DATA:
+        smf_sbi_inst->retrieve_sm_data(
+            std::static_pointer_cast<itti_sbi_retrieve_sm_data>(shared_msg));
+        break;
+
+      case SBI_REGISTER_WITH_UDM:
+        smf_sbi_inst->register_with_udm(
+            std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
         break;
 
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
@@ -164,7 +152,7 @@ smf_sbi::smf_sbi() {
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_n1n2_message_transfer_request(
-    std::shared_ptr<itti_n11_create_sm_context_response> sm_context_res) {
+    std::shared_ptr<itti_sbi_create_sm_context_response> sm_context_res) {
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF (HTTP version %d)",
       sm_context_res->http_version);
@@ -178,12 +166,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         sm_context_res->res.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -211,8 +199,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
-  std::shared_ptr<itti_n11_n1n2_message_transfer_response_status> itti_msg =
-      std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
+  std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
+      std::make_shared<itti_sbi_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
@@ -251,12 +239,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         sm_session_modification->msg.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY,
+        body, json_part, oai::http::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -278,7 +266,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_n1n2_message_transfer_request(
-    std::shared_ptr<itti_n11_session_report_request> report_msg) {
+    std::shared_ptr<itti_sbi_session_report_request> report_msg) {
   Logger::smf_sbi().debug(
       "Send Communication_N1N2MessageTransfer to AMF (Network-initiated "
       "Service Request)");
@@ -295,10 +283,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     std::string n1_message = report_msg->res.get_n1_sm_message();
     // prepare the body content for Curl
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n1_message, n2_message);
+        body, json_part, oai::http::MIME_BOUNDARY, n1_message, n2_message);
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, CURL_MIME_BOUNDARY, n2_message,
+        body, json_part, oai::http::MIME_BOUNDARY, n2_message,
         multipart_related_content_part_e::NGAP);
   }
 
@@ -321,8 +309,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
-  std::shared_ptr<itti_n11_n1n2_message_transfer_response_status> itti_msg =
-      std::make_shared<itti_n11_n1n2_message_transfer_response_status>(
+  std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
+      std::make_shared<itti_sbi_n1n2_message_transfer_response_status>(
           TASK_SMF_SBI, TASK_SMF_APP);
 
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
@@ -342,10 +330,8 @@ void smf_sbi::send_n1n2_message_transfer_request(
 
 //------------------------------------------------------------------------------
 void smf_sbi::send_sm_context_status_notification(
-    std::shared_ptr<itti_n11_notify_sm_context_status> sm_context_status) {
-  Logger::smf_sbi().debug(
-      "Send SM Context Status Notification to AMF(HTTP version %d)",
-      sm_context_status->http_version);
+    std::shared_ptr<itti_sbi_notify_sm_context_status> sm_context_status) {
+  Logger::smf_sbi().debug("Send SM Context Status Notification to AMF");
   Logger::smf_sbi().debug(
       "AMF URI: %s", sm_context_status->amf_status_uri.c_str());
 
@@ -365,7 +351,7 @@ void smf_sbi::send_sm_context_status_notification(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::notify_subscribed_event(
-    std::shared_ptr<itti_n11_notify_subscribed_event> msg) {
+    std::shared_ptr<itti_sbi_notify_subscribed_event> msg) {
   Logger::smf_sbi().debug(
       "Send notification for the subscribed event to the subscription");
 
@@ -378,7 +364,7 @@ void smf_sbi::notify_subscribed_event(
     nlohmann::json event_notif = {};
     event_notif["event"]       = smf_event_from_enum(i.get_smf_event());
     event_notif["pduSeId"]     = i.get_pdu_session_id();
-    event_notif["supi"]        = std::to_string(i.get_supi());
+    event_notif["supi"]        = i.get_supi();
 
     if (i.is_ad_ipv4_addr_is_set()) {
       event_notif["adIpv4Addr"] = i.get_ad_ipv4_addr();
@@ -434,7 +420,7 @@ void smf_sbi::notify_subscribed_event(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::register_nf_instance(
-    std::shared_ptr<itti_n11_register_nf_instance_request> msg) {
+    std::shared_ptr<itti_sbi_register_nf_instance_request> msg) {
   Logger::smf_sbi().debug(
       "Send NF Instance Registration to NRF (HTTP version %d)",
       msg->http_version);
@@ -459,8 +445,8 @@ void smf_sbi::register_nf_instance(
       "NF Instance Registration, response from NRF, HTTP Code: %d",
       resp.status_code);
 
-  std::shared_ptr<itti_n11_register_nf_instance_response> itti_msg_response =
-      std::make_shared<itti_n11_register_nf_instance_response>(
+  std::shared_ptr<itti_sbi_register_nf_instance_response> itti_msg_response =
+      std::make_shared<itti_sbi_register_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code =
       static_cast<int16_t>(resp.status_code);
@@ -497,7 +483,7 @@ void smf_sbi::register_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::update_nf_instance(
-    std::shared_ptr<itti_n11_update_nf_instance_request> msg) {
+    std::shared_ptr<itti_sbi_update_nf_instance_request> msg) {
   Logger::smf_sbi().debug(
       "Send NF Update to NRF (HTTP version %d)", msg->http_version);
 
@@ -519,8 +505,7 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %u",
-      resp.status_code);
+      "NF Instance Update, response from NRF, HTTP Code: %u", resp.status_code);
 
   // if ((resp.status_code == http_status_code::OK) or
   //    (resp.status_code == http_status_code::NO_CONTENT)) {
@@ -531,8 +516,8 @@ void smf_sbi::update_nf_instance(
 
   // TODO: In case of response containing NF profile
   // Send response to APP to process
-  std::shared_ptr<itti_n11_update_nf_instance_response> itti_msg =
-      std::make_shared<itti_n11_update_nf_instance_response>(
+  std::shared_ptr<itti_sbi_update_nf_instance_response> itti_msg =
+      std::make_shared<itti_sbi_update_nf_instance_response>(
           TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg->http_response_code = resp.status_code;
   itti_msg->http_version       = msg->http_version;
@@ -548,7 +533,7 @@ void smf_sbi::update_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::deregister_nf_instance(
-    std::shared_ptr<itti_n11_deregister_nf_instance> msg) {
+    std::shared_ptr<itti_sbi_deregister_nf_instance> msg) {
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (HTTP version %d)", msg->http_version);
 
@@ -575,7 +560,7 @@ void smf_sbi::deregister_nf_instance(
 
 //-----------------------------------------------------------------------------------------------------
 void smf_sbi::subscribe_upf_status_notify(
-    std::shared_ptr<itti_n11_subscribe_upf_status_notify> msg) {
+    std::shared_ptr<itti_sbi_subscribe_upf_status_notify> msg) {
   Logger::smf_sbi().debug(
       "Send NFSubscribeNotify to NRF to be notified when a new UPF becomes "
       "available (HTTP version %d)",
@@ -591,12 +576,11 @@ void smf_sbi::subscribe_upf_status_notify(
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
-      "NF Instance Registration, response from NRF, HTTP Code: %d",
-      resp.status_code);
+      "NFSubscribeNotify, response from NRF, HTTP Code: %d", resp.status_code);
 
-  std::shared_ptr<itti_n11_subscribe_upf_status_notify_response>
+  std::shared_ptr<itti_sbi_subscribe_upf_status_notify_response>
       itti_msg_response =
-          std::make_shared<itti_n11_subscribe_upf_status_notify_response>(
+          std::make_shared<itti_sbi_subscribe_upf_status_notify_response>(
               TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg_response->http_response_code =
       static_cast<int16_t>(resp.status_code);
@@ -605,7 +589,6 @@ void smf_sbi::subscribe_upf_status_notify(
       (resp.status_code == http_status_code::NO_CONTENT)) {
     Logger::smf_sbi().debug(
         "NFSubscribeNotify, got successful response from NRF");
-    return;
   } else {
     Logger::smf_sbi().warn(
         "NFSubscribeNotify, could not get response from NRF");
@@ -621,31 +604,36 @@ void smf_sbi::subscribe_upf_status_notify(
 }
 
 //------------------------------------------------------------------------------
-bool smf_sbi::get_sm_data(
-    const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
-    std::shared_ptr<session_management_subscription>& subscription,
-    plmn_t plmn) {
-  nlohmann::json jsonData = {};
-  std::string query_str   = {};
-  std::string mcc         = plmn.mcc;
-  std::string mnc         = plmn.mnc;
+bool smf_sbi::retrieve_sm_data(
+    const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg) {
+  nlohmann::json json_data = {};
+  std::string query_str    = {};
 
-  query_str = "?single-nssai={\"sst\":" + std::to_string(snssai.sst) +
-              ",\"sd\":\"" + snssai.sd + "\"}&dnn=" + dnn +
-              "&plmn-id={\"mcc\":\"" + mcc + "\",\"mnc\":\"" + mnc + "\"}";
-  std::string url =
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi().get_url() +
-      NUDM_SDM_BASE +
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_api_version() +
-      fmt::format(NUDM_SDM_GET_SM_DATA_URL, smf_supi64_to_string(supi)) +
-      query_str;
+  query_str = "?single-nssai={\"sst\":" + std::to_string(msg->snssai.sst) +
+              ",\"sd\":\"" + msg->snssai.sd + "\"}&dnn=" + msg->dnn +
+              "&plmn-id={\"mcc\":\"" + msg->plmn.mcc + "\",\"mnc\":\"" +
+              msg->plmn.mnc + "\"}";
 
-  Logger::smf_sbi().debug("UDM's URL: %s ", url.c_str());
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
+
+  // TODO: TOBE UPDATED
+  std::string udm_url = smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+                            ->get_sbi()
+                            .get_url(smf_cfg->enable_tls()) +
+
+                        oai::common::sbi::sbi_helper::UdmSdmBase +
+                        smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+                            ->get_sbi()
+                            .get_api_version() +
+                        fmt::format(fmr_format_str, msg->supi) + query_str;
+
+  Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
   request req;
-  req.uri       = url;
+  req.uri = udm_url;
+  // TODO: add retry mechanism, probably directly inside HTTP Client lib
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
@@ -655,160 +643,32 @@ bool smf_sbi::get_sm_data(
       resp.status_code);
 
   if (resp.status_code == http_status_code::OK) {
-    Logger::smf_sbi().debug("Got successful response from UDM, URL: %s ", url);
+    Logger::smf_sbi().debug(
+        "Got successful response from UDM, URL: %s ", udm_url);
     try {
-      jsonData = nlohmann::json::parse(resp.body);
+      json_data = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
-      Logger::smf_sbi().warn("Could not parse json data from UDM");
+      Logger::smf_sbi().warn("Could not parse JSON data from UDM");
     }
   } else {
     Logger::smf_sbi().warn(
-        "Could not get response from UDM, URL %s, retry ...", url);
+        "Could not get response from UDM, URL %s, retry ...", udm_url);
     // retry
     // TODO
   }
 
   // Process the response
-  if (!jsonData.empty()) {
-    if (jsonData.type() == json::value_t::array) {
-      if (!jsonData[0].empty())
-        jsonData = jsonData[0];  // Array with only 1 member!
+  if (!json_data.empty()) {
+    Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
+    // Notify to the result
+    nlohmann::json response_data                = {};
+    response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[kSbiResponseJsonData]         = json_data;
+    if (msg->promise_id > 0) {
+      smf_app_inst->make_future_ready(response_data, msg->promise_id);
+      return true;
     }
 
-    Logger::smf_sbi().debug("Response from UDM %s", jsonData.dump().c_str());
-    // Verify SNSSAI
-    if (jsonData.find("singleNssai") == jsonData.end()) return false;
-    if (jsonData["singleNssai"].find("sst") != jsonData["singleNssai"].end()) {
-      uint8_t sst = jsonData["singleNssai"]["sst"].get<uint8_t>();
-      if (sst != snssai.sst) {
-        return false;
-      }
-    }
-    if (jsonData["singleNssai"].find("sd") != jsonData["singleNssai"].end()) {
-      std::string sd_str = jsonData["singleNssai"]["sd"];
-      if (sd_str != snssai.sd) {
-        return false;
-      }
-    }
-
-    // Verify DNN configurations
-    if (jsonData.find("dnnConfigurations") == jsonData.end()) return false;
-    Logger::smf_sbi().debug(
-        "DNN Configurations %s", jsonData["dnnConfigurations"].dump().c_str());
-
-    // Retrieve SessionManagementSubscription and store in the context
-    for (nlohmann::json::iterator it = jsonData["dnnConfigurations"].begin();
-         it != jsonData["dnnConfigurations"].end(); ++it) {
-      Logger::smf_sbi().debug("DNN %s", it.key().c_str());
-      if (it.key().compare(dnn) == 0) {
-        // Get DNN configuration
-        try {
-          std::shared_ptr<dnn_configuration_t> dnn_configuration =
-              std::make_shared<dnn_configuration_t>();
-          // PDU Session Type (Mandatory)
-          std::string default_session_type =
-              it.value()["pduSessionTypes"]["defaultSessionType"];
-          Logger::smf_sbi().debug(
-              "Default session type %s", default_session_type.c_str());
-          pdu_session_type_t pdu_session_type(default_session_type);
-          dnn_configuration->pdu_session_types.default_session_type =
-              pdu_session_type;
-
-          // SSC_Mode (Mandatory)
-          std::string default_ssc_mode =
-              it.value()["sscModes"]["defaultSscMode"];
-          Logger::smf_sbi().debug(
-              "Default SSC Mode %s", default_ssc_mode.c_str());
-          ssc_mode_t ssc_mode(default_ssc_mode);
-          dnn_configuration->ssc_modes.default_ssc_mode = ssc_mode;
-
-          // 5gQosProfile (Optional)
-          if (it.value().find("5gQosProfile") != it.value().end()) {
-            dnn_configuration->_5g_qos_profile._5qi =
-                it.value()["5gQosProfile"]["5qi"];
-            dnn_configuration->_5g_qos_profile.arp.priority_level =
-                it.value()["5gQosProfile"]["arp"]["priorityLevel"];
-            dnn_configuration->_5g_qos_profile.arp.preempt_cap =
-                it.value()["5gQosProfile"]["arp"]["preemptCap"];
-            dnn_configuration->_5g_qos_profile.arp.preempt_vuln =
-                it.value()["5gQosProfile"]["arp"]["preemptVuln"];
-            // Optional
-            if (it.value()["5gQosProfile"].find("priorityLevel") !=
-                it.value()["5gQosProfile"].end()) {
-              dnn_configuration->_5g_qos_profile.priority_level =
-                  it.value()["5gQosProfile"]["priorityLevel"];
-            }
-          }
-
-          // session_ambr (Optional)
-          if (it.value().find("sessionAmbr") != it.value().end()) {
-            dnn_configuration->session_ambr.uplink =
-                it.value()["sessionAmbr"]["uplink"];
-            dnn_configuration->session_ambr.downlink =
-                it.value()["sessionAmbr"]["downlink"];
-            Logger::smf_sbi().debug(
-                "Session AMBR Uplink %s, Downlink %s",
-                dnn_configuration->session_ambr.uplink.c_str(),
-                dnn_configuration->session_ambr.downlink.c_str());
-          }
-
-          // Static IP Addresses (Optional)
-          if (it.value().find("staticIpAddress") != it.value().end()) {
-            for (const auto& ip_addr : it.value()["staticIpAddress"]) {
-              if (ip_addr.find("ipv4Addr") != ip_addr.end()) {
-                std::string ue_ip_str = ip_addr["ipv4Addr"].get<std::string>();
-                in_addr ue_ipv4_addr =
-                    oai::utils::conv::fromString(oai::utils::trim(ue_ip_str));
-                ip_address_t ue_ip = {};
-                ue_ip              = ue_ipv4_addr;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              } else if (ip_addr.find("ipv6Addr") != ip_addr.end()) {
-                std::string ue_ip_str = ip_addr["ipv6Addr"].get<std::string>();
-                in6_addr ue_ipv6_addr =
-                    oai::utils::conv::fromStringV6(oai::utils::trim(ue_ip_str));
-
-                ip_address_t ue_ip = {};
-                ue_ip              = ue_ipv6_addr;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              } else if (ip_addr.find("ipv6Prefix") != ip_addr.end()) {
-                in6_addr ipv6_prefix;
-                std::string prefix_str =
-                    ip_addr["ipv6Prefix"].get<std::string>();
-                std::vector<std::string> words = {};
-                boost::split(
-                    words, prefix_str, boost::is_any_of("/"),
-                    boost::token_compress_on);
-                if (words.size() != 2) {
-                  Logger::smf_app().error(
-                      "Bad value for UE IPv6 Prefix %s", prefix_str.c_str());
-                  return RETURNerror;
-                }
-                ipv6_prefix = oai::utils::conv::fromStringV6(
-                    oai::utils::trim(words.at(0)));
-
-                ip_address_t ue_ip           = {};
-                ipv6_prefix_t ue_ipv6_prefix = {};
-                ue_ipv6_prefix.prefix_len =
-                    std::stoi(oai::utils::trim(words.at(1)));
-                ue_ipv6_prefix.prefix = ipv6_prefix;
-                ue_ip                 = ue_ipv6_prefix;
-                dnn_configuration->static_ip_addresses.push_back(ue_ip);
-              }
-            }
-          }
-
-          subscription->insert_dnn_configuration(it.key(), dnn_configuration);
-          return true;
-        } catch (nlohmann::json::exception& e) {
-          Logger::smf_sbi().warn(
-              "Exception message %s, exception id %d ", e.what(), e.id);
-          return false;
-        } catch (std::exception& e) {
-          Logger::smf_sbi().warn("Exception message %s", e.what());
-          return false;
-        }
-      }
-    }
     return true;
   } else {
     return false;
@@ -821,8 +681,67 @@ void smf_sbi::subscribe_sm_data() {
 }
 
 //------------------------------------------------------------------------------
+void smf_sbi::register_with_udm(
+    const std::shared_ptr<itti_sbi_register_with_udm>& msg) {
+  Logger::smf_sbi().debug(
+      "Register with the UDM for this PDU Session (ID %d)",
+      msg->pdu_session_id);
+
+  // TODO: Create new wrapper for SBI Helper to handle this
+  std::string fmr_format_str = {};
+  oai::common::sbi::sbi_helper::get_fmt_format_form(
+      oai::common::sbi::sbi_helper::UdmUeCmPathSmfRegistrationPduSession,
+      fmr_format_str);
+
+  std::string udm_url =
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+          ->get_sbi()
+          .get_url(smf_cfg->enable_tls()) +
+      oai::common::sbi::sbi_helper::UdmUeCmBase +
+      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+          ->get_sbi()
+          .get_api_version() +
+      fmt::format(fmr_format_str, msg->supi, msg->pdu_session_id);
+
+  Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
+
+  std::string req_body = msg->smf_registration.dump();
+  request req = http_client_inst->prepare_json_request(udm_url, req_body);
+  // TODO: add retry mechanism, probably directly inside HTTP Client lib
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug(
+      "Register with UDM for this PDU Session, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  nlohmann::json json_data = {};
+  if ((resp.status_code == http_status_code::OK) or
+      (resp.status_code == http_status_code::CREATED) or
+      (resp.status_code == http_status_code::NO_CONTENT)) {
+    try {
+      json_data = nlohmann::json::parse(resp.body);
+    } catch (json::exception& e) {
+      Logger::smf_sbi().warn("Could not parse Json data from UDM");
+    }
+  } else {
+    Logger::smf_sbi().warn(
+        "Could not get response from UDM, URL %s, retry ...", udm_url);
+  }
+
+  // Notify to the result
+  nlohmann::json response_data                = {};
+  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[kSbiResponseJsonData]         = json_data;
+
+  if (msg->promise_id > 0) {
+    smf_app_inst->make_future_ready(response_data, msg->promise_id);
+  }
+}
+
+//------------------------------------------------------------------------------
 std::string smf_sbi::get_nrf_base_url() {
   auto nrf_sbi = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  return nrf_sbi.get_url() + NNRF_NFM_BASE + nrf_sbi.get_api_version() +
-         NNRF_NF_REGISTER_URL;
+  return nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
+         nrf_sbi.get_api_version() + NNRF_NF_REGISTER_URL;
 }

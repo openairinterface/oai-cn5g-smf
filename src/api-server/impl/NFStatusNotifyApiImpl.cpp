@@ -38,7 +38,7 @@
 #include "smf_msg.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf_config.hpp"
-#include "3gpp_conversions_smf.hpp"
+#include "smf_3gpp_conversions.hpp"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 

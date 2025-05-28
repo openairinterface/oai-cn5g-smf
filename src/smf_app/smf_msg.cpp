@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_msg.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
 #include "smf_msg.hpp"
 
 using namespace smf;
@@ -54,12 +47,12 @@ void qos_flow_context_updated::set_dl_fteid(const pfcp::fteid_t& teid) {
 }
 
 //-----------------------------------------------------------------------------
-void qos_flow_context_updated::add_qos_rule(const QOSRulesIE& rule) {
-  uint8_t rule_id = rule.qosruleidentifer;
+void qos_flow_context_updated::add_qos_rule(const oai::nas::QosRule& rule) {
+  uint8_t rule_id = rule.GetQosRuleId();
   if ((rule_id >= QOS_RULE_IDENTIFIER_FIRST) and
       (rule_id <= QOS_RULE_IDENTIFIER_LAST)) {
     qos_rules.erase(rule_id);
-    qos_rules.insert(std::pair<uint8_t, QOSRulesIE>(rule_id, rule));
+    qos_rules.insert(std::pair<uint8_t, oai::nas::QosRule>(rule_id, rule));
     Logger::smf_app().trace(
         "qos_flow_context_updated::add_qos_rule(%d) success", rule_id);
   }
@@ -73,10 +66,23 @@ void qos_flow_context_updated::set_qos_profile(
 
 //-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_qos_flow_descriptions(
-    const QOSFlowDescriptionsContents& flow_description_content) {
-  qos_flow_description_content = flow_description_content;
+    const oai::nas::QosFlowDescription& flow_description) {
+  qos_flow_description = flow_description;
 }
 
+//-----------------------------------------------------------------------------
+void qos_flow_context_updated::get_qos_flow_descriptions(
+    oai::nas::QosFlowDescription& flow_description) const {
+  flow_description = qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
+oai::nas::QosFlowDescription
+qos_flow_context_updated::get_qos_flow_descriptions() const {
+  return qos_flow_description;
+}
+
+//-----------------------------------------------------------------------------
 /*
  * class: PDU Session MSG
  */
@@ -91,23 +97,13 @@ void pdu_session_msg::set_msg_type(const pdu_session_msg_type_t& msg_type) {
 }
 
 //-----------------------------------------------------------------------------
-supi_t pdu_session_msg::get_supi() const {
+std::string pdu_session_msg::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_msg::set_supi(const supi_t& supi) {
+void pdu_session_msg::set_supi(const std::string& supi) {
   m_supi = supi;
-}
-
-//-----------------------------------------------------------------------------
-std::string pdu_session_msg::get_supi_prefix() const {
-  return m_supi_prefix;
-}
-
-//-----------------------------------------------------------------------------
-void pdu_session_msg::set_supi_prefix(const std::string& prefix) {
-  m_supi_prefix = prefix;
 }
 
 //-----------------------------------------------------------------------------
@@ -222,9 +218,7 @@ bool pdu_session_msg::n2_sm_info_type_is_set() const {
 void pdu_session_msg::to_json(nlohmann::json& data) const {
   data["msg_type"]                 = m_msg_type;
   data["api_root"]                 = m_api_root;
-  std::string supi_str             = smf_supi_to_string(m_supi);
-  data["supi"]                     = supi_str;
-  data["supi_prefix"]              = m_supi_prefix;
+  data["supi"]                     = m_supi;
   data["pdu_session_id"]           = m_pdu_session_id;
   data["dnn"]                      = m_dnn;
   data["snssai"]["sst"]            = m_snssai.sst;
@@ -248,11 +242,7 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
   }
 
   if (data.find("supi") != data.end()) {
-    smf_string_to_supi(&m_supi, data["supi"].get<std::string>().c_str());
-  }
-
-  if (data.find("supi_prefix") != data.end()) {
-    m_supi_prefix = data["supi_prefix"].get<std::string>();
+    m_supi = data["supi"].get<std::string>();
   }
 
   if (data.find("pdu_session_id") != data.end()) {
@@ -301,14 +291,12 @@ void pdu_session_msg::from_json(const nlohmann::json& data) {
  * class: PDU Session SM Context Request
  */
 //-----------------------------------------------------------------------------
-extended_protocol_discriminator_t pdu_session_sm_context_request::get_epd()
-    const {
+uint8_t pdu_session_sm_context_request::get_epd() const {
   return m_epd;
 }
 
 //-----------------------------------------------------------------------------
-void pdu_session_sm_context_request::set_epd(
-    const extended_protocol_discriminator_t& epd) {
+void pdu_session_sm_context_request::set_epd(const uint8_t& epd) {
   m_epd = epd;
 }
 
@@ -772,6 +760,18 @@ void pdu_session_update_sm_context_request::set_target_id(
   m_ng_ran_target_id = value;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_update_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
+}
+
 /*
  * class: PDU Session Update SM Context Response
  */
@@ -838,6 +838,23 @@ void pdu_session_update_sm_context_response::from_json(
     m_smf_context_uri = data["smf_context_uri"].get<std::string>();
   }
 }
+
+/*
+ * class: PDU Session Release SM Context Request
+ */
+
+//-----------------------------------------------------------------------------
+void pdu_session_release_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_release_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
+}
+
 /*
  * class: PDU Session Release SM Context Response
  */
@@ -853,6 +870,35 @@ void pdu_session_release_sm_context_response::from_json(
     const nlohmann::json& data) {
   pdu_session_sm_context_response::from_json(data);
 }
+
+/*
+ * class: PDU Session Modify SM Context Request
+ */
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::set_json_data(
+    const nlohmann::json& data) {
+  json_data = data;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::get_json_data(
+    nlohmann::json& data) const {
+  data = json_data;
+}
+
+/*
+//-----------------------------------------------------------------------------
+void
+pdu_session_modify_sm_context_request::set_procedure_type(session_management_procedures_type_e
+type) { procedure_type = type;
+};
+
+
+//-----------------------------------------------------------------------------
+void pdu_session_modify_sm_context_request::get_procedure_type
+(session_management_procedures_type_e& type) const { type= procedure_type;
+}
+*/
 
 /*
  * class: PDU Session Modification Network Requested
@@ -996,12 +1042,12 @@ uint64_t pdu_session_report_response::get_trxn_id() const {
  * class: Event Exposure
  */
 //-----------------------------------------------------------------------------
-supi_t event_exposure_msg::get_supi() const {
+std::string event_exposure_msg::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void event_exposure_msg::set_supi(const supi_t& value) {
+void event_exposure_msg::set_supi(const std::string& value) {
   m_supi        = value;
   m_supi_is_set = true;
 }
@@ -1011,15 +1057,6 @@ bool event_exposure_msg::is_supi_is_set() const {
   return m_supi_is_set;
 }
 
-//-----------------------------------------------------------------------------
-std::string event_exposure_msg::get_supi_prefix() const {
-  return m_supi_prefix;
-}
-
-//-----------------------------------------------------------------------------
-void event_exposure_msg::set_supi_prefix(const std::string& prefix) {
-  m_supi_prefix = prefix;
-}
 //-----------------------------------------------------------------------------
 pdu_session_id_t event_exposure_msg::get_pdu_session_id() const {
   return m_pdu_session_id;
@@ -1130,12 +1167,12 @@ std::string event_notification::get_timestamp() const {
 }
 
 //-----------------------------------------------------------------------------
-supi64_t event_notification::get_supi() const {
+std::string event_notification::get_supi() const {
   return m_supi;
 }
 
 //-----------------------------------------------------------------------------
-void event_notification::set_supi(const supi64_t& value) {
+void event_notification::set_supi(const std::string& value) {
   m_supi        = value;
   m_supi_is_set = true;
 }

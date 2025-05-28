@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file itti_async_shell_cmd.hpp
-  \brief
-  \author Lionel Gauthier
-  \company Eurecom
-  \email: lionel.gauthier@eurecom.fr
-*/
-
 #ifndef FILE_ITTI_ASYNC_SHELL_CMD_SEEN
 #define FILE_ITTI_ASYNC_SHELL_CMD_SEEN
 

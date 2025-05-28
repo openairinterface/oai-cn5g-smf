@@ -19,17 +19,9 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_profile.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: Tien-Thinh.Nguyen@eurecom.fr
- */
-
 #include "smf_profile.hpp"
 
-#include "3gpp_conversions_smf.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "logger.hpp"

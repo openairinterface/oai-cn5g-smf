@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_http2-server.h
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_HTTP2_SERVER_SEEN
 #define FILE_SMF_HTTP2_SERVER_SEEN
 
@@ -37,18 +29,27 @@
 #include "SmContextMessage.h"
 #include "SmContextReleaseMessage.h"
 #include "SmContextUpdateMessage.h"
+#include "SmPolicyNotification.h"
+#include "SmPolicyDecision.h"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "uint_generator.hpp"
+#include "TerminationNotification.h"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
+using namespace oai::model::pcf;
 
 class smf_http2_server {
  public:
   smf_http2_server(std::string addr, uint32_t port, smf::smf_app* smf_app_inst)
-      : m_address(addr), m_port(port), server(), m_smf_app(smf_app_inst) {}
+      : m_address(addr),
+        m_port(port),
+        server(),
+        m_smf_app(smf_app_inst),
+        running_server(false) {}
+  virtual ~smf_http2_server() = default;
   void start();
   void init(size_t thr) {}
   void create_sm_contexts_handler(
@@ -73,6 +74,16 @@ class smf_http2_server {
   void get_configuration_handler(const response& response);
   void update_configuration_handler(
       nlohmann::json& configuration_info, const response& response);
+
+  void modify_sm_context_handler(
+      const std::string& scid,
+      const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+      const response& response);
+
+  void terminate_policy_notification_handler(
+      const std::string& scid,
+      const oai::model::pcf::TerminationNotification& terminationNotification,
+      const response& response);
 
   void stop();
 

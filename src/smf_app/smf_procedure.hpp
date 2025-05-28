@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.hpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_PROCEDURE_HPP_SEEN
 #define FILE_SMF_PROCEDURE_HPP_SEEN
 
@@ -34,10 +27,11 @@
 #include <set>
 
 #include "3gpp_29.244.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
+#include "itti_msg_sbi.hpp"
 #include "msg_pfcp.hpp"
 #include "smf_msg.hpp"
 #include "uint_generator.hpp"
@@ -215,14 +209,14 @@ class session_create_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Create SM Context Request procedure
-   * @param [itti_n11_create_sm_context_request] req
-   * @param [itti_n11_create_sm_context_response] resp
+   * @param [itti_sbi_create_sm_context_request] req
+   * @param [itti_sbi_create_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_create_sm_context_request>& req,
-      const std::shared_ptr<itti_n11_create_sm_context_response>& resp,
+      const std::shared_ptr<itti_sbi_create_sm_context_request>& req,
+      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
       std::shared_ptr<smf::smf_context> sc);
 
   /*
@@ -237,8 +231,8 @@ class session_create_sm_context_procedure : public smf_session_procedure {
 
   std::shared_ptr<itti_n4_session_establishment_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_create_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_create_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_create_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_create_sm_context_response> n11_triggered_pending;
 
   /**
    * Sends a session establishment request, based on current UPF graph
@@ -260,14 +254,14 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Update SM Context Request procedure
-   * @param [itti_n11_update_sm_context_request] req
-   * @param [itti_n11_update_sm_context_response] resp
+   * @param [itti_sbi_update_sm_context_request] req
+   * @param [itti_sbi_update_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_update_sm_context_request>& req,
-      std::shared_ptr<itti_n11_update_sm_context_response> resp,
+      const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
+      std::shared_ptr<itti_sbi_update_sm_context_response> resp,
       const std::shared_ptr<smf::smf_context>& sc);
 
   /*
@@ -282,8 +276,8 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   std::shared_ptr<itti_n4_session_modification_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_update_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_update_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_update_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
  private:
@@ -312,14 +306,14 @@ class session_release_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Release SM Context Request procedure
-   * @param [itti_n11_release_sm_context_request] req
-   * @param [itti_n11_release_sm_context_response] resp
+   * @param [itti_sbi_release_sm_context_request] req
+   * @param [itti_sbi_release_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_release_sm_context_request>& req,
-      std::shared_ptr<itti_n11_release_sm_context_response> resp,
+      const std::shared_ptr<itti_sbi_release_sm_context_request>& req,
+      std::shared_ptr<itti_sbi_release_sm_context_response> resp,
       const std::shared_ptr<smf::smf_context>& sc);
 
   /*
@@ -334,8 +328,8 @@ class session_release_sm_context_procedure : public smf_session_procedure {
 
   std::shared_ptr<itti_n4_session_deletion_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_release_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_release_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_release_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_release_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
  private:

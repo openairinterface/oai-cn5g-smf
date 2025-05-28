@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_app.hpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_APP_HPP_SEEN
 #define FILE_SMF_APP_HPP_SEEN
 
@@ -42,7 +34,6 @@
 #include "3gpp_29.502.h"
 #include "ProblemDetails.h"
 #include "UpfInfo.h"
-#include "itti_msg_n11.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf.h"
@@ -69,12 +60,6 @@ namespace smf {
 #define T3592_TIMER_VALUE_SEC 16
 #define T3592_TIMER_MAX_RETRIES 4
 
-typedef enum {
-  PDU_SESSION_ESTABLISHMENT = 1,
-  PDU_SESSION_MODIFICATION  = 2,
-  PDU_SESSION_RELEASE       = 3
-} pdu_session_procedure_t;
-
 class smf_context_ref {
  public:
   smf_context_ref() { clear(); }
@@ -84,7 +69,7 @@ class smf_context_ref {
     pdu_session_id = 0;
   }
 
-  supi_t supi;
+  std::string supi;
   pdu_session_id_t pdu_session_id;
 };
 
@@ -96,7 +81,7 @@ class smf_app {
   std::map<seid_t, std::shared_ptr<smf_context>> seid2smf_context;
   mutable std::shared_mutex m_seid2smf_context;
 
-  std::map<supi64_t, std::shared_ptr<smf_context>> supi2smf_context;
+  std::map<std::string, std::shared_ptr<smf_context>> supi2smf_context;
   mutable std::shared_mutex m_supi2smf_context;
 
   oai::utils::uint_generator<uint32_t> sm_context_ref_generator;
@@ -113,11 +98,11 @@ class smf_app {
 
   mutable std::shared_mutex m_scid2smf_context;
   mutable std::shared_mutex m_smf_event_subscriptions;
-  // Store promise IDs for Create/Update session
-  mutable std::shared_mutex m_sbi_server_promises;
+  // Store promise IDs
+  mutable std::shared_mutex m_promises;
 
   std::map<uint32_t, boost::shared_ptr<boost::promise<nlohmann::json>>>
-      sbi_server_promises;
+      promises;
 
   smf_profile nf_instance_profile;  // SMF profile
   std::string smf_instance_id;      // SMF instance id
@@ -364,54 +349,54 @@ class smf_app {
   /*
    * Handle ITTI message N11 Create SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_create_sm_context_response&] snc
+   * @param [itti_sbi_create_sm_context_response&] snc
    * @return void
    */
-  void handle_itti_msg(itti_n11_create_sm_context_response& snc);
+  void handle_itti_msg(itti_sbi_create_sm_context_response& snc);
 
   /*
    * Handle ITTI message N11 Update SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_update_sm_context_response&] m
+   * @param [itti_sbi_update_sm_context_response&] m
    * @return void
    */
-  void handle_itti_msg(itti_n11_update_sm_context_response& m);
+  void handle_itti_msg(itti_sbi_update_sm_context_response& m);
 
   /*
    * Handle ITTI message N11 Release SM Context Response to trigger the response
    * to AMF
-   * @param [itti_n11_release_sm_context_response&] m
+   * @param [itti_sbi_release_sm_context_response&] m
    * @return void
    */
-  void handle_itti_msg(itti_n11_release_sm_context_response& m);
+  void handle_itti_msg(itti_sbi_release_sm_context_response& m);
 
   /*
    * Handle ITTI message from N11 (N1N2MessageTransfer Response)
-   * @param [itti_n11_n1n2_message_transfer_response_status&] snm
+   * @param [itti_sbi_n1n2_message_transfer_response_status&] snm
    * @return void
    */
-  void handle_itti_msg(itti_n11_n1n2_message_transfer_response_status& snm);
+  void handle_itti_msg(itti_sbi_n1n2_message_transfer_response_status& snm);
 
   /*
    * Handle ITTI message from N11 (NFRegiser Response)
-   * @param [itti_n11_register_nf_instance_response&] r
+   * @param [itti_sbi_register_nf_instance_response&] r
    * @return void
    */
-  void handle_itti_msg(itti_n11_register_nf_instance_response& r);
+  void handle_itti_msg(itti_sbi_register_nf_instance_response& r);
 
   /*
    * Handle ITTI message from N11 (NFUpdate Response)
-   * @param [itti_n11_update_nf_instance_response&] u
+   * @param [itti_sbi_update_nf_instance_response&] u
    * @return void
    */
-  void handle_itti_msg(itti_n11_update_nf_instance_response& u);
+  void handle_itti_msg(itti_sbi_update_nf_instance_response& u);
 
   /*
    * Handle ITTI message from N11 (NFSubscribeNotify Response)
-   * @param [itti_n11_subscribe_upf_status_notify_response&] u
+   * @param [itti_sbi_subscribe_upf_status_notify_response&] u
    * @return void
    */
-  void handle_itti_msg(itti_n11_subscribe_upf_status_notify_response& r);
+  void handle_itti_msg(itti_sbi_subscribe_upf_status_notify_response& r);
   /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored
@@ -500,13 +485,13 @@ class smf_app {
 
   /*
    * Verify whether a SMF Context Reference exist
-   * @param [const supi64_t &] supi64: Supi64
+   * @param [const std::string &] supi: SUPI
    * @param [const pdu_session_id_t &] pid: PDU Session ID
    * @return bool: True if SMF Context Reference found, otherwise return false
    */
 
   bool is_scid_2_smf_context(
-      const supi64_t& supi, const pdu_session_id_t& pid) const;
+      const std::string& supi, const pdu_session_id_t& pid) const;
 
   /*
    * Find SMF Context Reference by its ID
@@ -520,27 +505,28 @@ class smf_app {
 
   /*
    * Verify if SM Context is existed for this Supi
-   * @param [supi_t] supi
+   * @param [std::string] supi
    * @return True if existed, otherwise false
    */
-  bool is_supi_2_smf_context(const supi64_t& supi) const;
+  bool is_supi_2_smf_context(const std::string& supi) const;
 
   /*
    * Create/Update SMF context with the corresponding supi
-   * @param [const supi_t&] supi
+   * @param [const std::string&] supi
    * @param [std::shared_ptr<smf_context>] sc Shared_ptr Pointer to an SMF
    * context
    * @return True if existed, otherwise false
    */
   void set_supi_2_smf_context(
-      const supi64_t& supi, std::shared_ptr<smf_context> sc);
+      const std::string& supi, std::shared_ptr<smf_context> sc);
 
   /*
    * Get SM Context
-   * @param [supi_t] Supi
+   * @param [std::string] Supi
    * @return Shared pointer to SM context
    */
-  std::shared_ptr<smf_context> supi_2_smf_context(const supi64_t& supi) const;
+  std::shared_ptr<smf_context> supi_2_smf_context(
+      const std::string& supi) const;
 
   /*
    * Get number of current SM Contexts
@@ -560,29 +546,29 @@ class smf_app {
 
   /*
    * Handle PDUSession_CreateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_create_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_create_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_create_sm_context_request(
-      std::shared_ptr<itti_n11_create_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_create_sm_context_request> smreq);
 
   /*
    * Handle PDUSession_UpdateSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_update_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_update_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_update_sm_context_request(
-      std::shared_ptr<itti_n11_update_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_update_sm_context_request> smreq);
   /*
    * Handle PDUSession_ReleaseSMContextRequest from AMF
-   * @param [std::shared_ptr<itti_n11_release_sm_context_request>&] Request
+   * @param [std::shared_ptr<itti_sbi_release_sm_context_request>&] Request
    * message
    * @return void
    */
   void handle_pdu_session_release_sm_context_request(
-      std::shared_ptr<itti_n11_release_sm_context_request> smreq);
+      std::shared_ptr<itti_sbi_release_sm_context_request> smreq);
 
   /*
    * Handle Event Exposure Msg from AMF
@@ -635,7 +621,7 @@ class smf_app {
 
   /*
    * Trigger pdu session modification
-   * @param [const supi_t &] supi
+   * @param [const std::string &] supi
    * @param [const std::string &] dnn
    * @param [const pdu_session_id_t] pdu_session_id
    * @param [const snssai_t &] snssai
@@ -643,7 +629,7 @@ class smf_app {
    * @return void
    */
   void trigger_pdu_session_modification(
-      const supi_t& supi, const std::string& dnn,
+      const std::string& supi, const std::string& dnn,
       const pdu_session_id_t pdu_session_id, const snssai_t& snssai,
       const pfcp::qfi_t& qfi, const uint8_t& http_version);
 
@@ -659,18 +645,19 @@ class smf_app {
 
   /*
    * Verify whether the Session Management Data is existed
-   * @param [const supi_t&] SUPI
+   * @param [const std::string&] SUPI
    * @param [const std::string&] DNN
    * @param [const snssai_t&] S-NSSAI
    * @return True if SMF uses the local configuration to check the validity of
    * the UE request, False otherwise
    */
   bool is_supi_dnn_snssai_subscription_data(
-      const supi_t& supi, const std::string& dnn, const snssai_t& snssai) const;
+      const std::string& supi, const std::string& dnn,
+      const snssai_t& snssai) const;
 
   /*
    * Get the Session Management Subscription data from local configuration
-   * @param [const supi_t &] SUPI
+   * @param [const std::string &] SUPI
    * @param [const std::string &] DNN
    * @param [const snssai_t &] S-NSSAI
    * @param [std::shared_ptr<session_management_subscription>] subscription:
@@ -679,8 +666,18 @@ class smf_app {
    * subscription exists, False otherwise
    */
   bool get_session_management_subscription_data(
-      const supi64_t& supi, const std::string& dnn, const snssai_t& snssai,
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       std::shared_ptr<session_management_subscription> subscription);
+
+  /*
+   * Set the default QoS parameters for the Session Management Subscription in
+   * case there is no info from the local configuration file
+   * @param [std::shared_ptr<dnn_configuration_t>] dnn_configuration: DNN
+   * configuration
+   * @return void
+   */
+  void set_default_qos_parameters(
+      std::shared_ptr<dnn_configuration_t>& dnn_configuration);
 
   /*
    * Verify whether the UE request is valid according to the user subscription
@@ -779,20 +776,6 @@ class smf_app {
   void start_nf_discovery();
 
   /*
-   * To store a promise of a PDU Session Create SM Contex Response to be
-   * triggered when the result is ready
-   * @param [uint32_t] id: promise id
-   * @param [boost::shared_ptr<
-   * boost::promise<pdu_session_create_sm_context_response> >&] p: pointer to
-   * the promise
-   * @return void
-   */
-  void add_promise(
-      uint32_t id,
-      boost::shared_ptr<boost::promise<pdu_session_create_sm_context_response>>&
-          p);
-
-  /*
    * To store a promise of a SBI Server response message to be
    * triggered when the result is ready
    * @param [uint32_t] id: promise id
@@ -851,15 +834,13 @@ class smf_app {
       const std::string& n1_sm_msg, uint32_t& promise_id);
 
   /*
-   * To trigger the response to the HTTP server by set the value of the
-   * corresponding promise to ready
-   * @param [const nlohmann::json&] response_message_json: response message in
-   * JSON format
+   * Make the future ready by setting the value of the corresponding promise to
+   * ready
+   * @param [const nlohmann::json&] json_value: value in JSON format
    * @param [uint32_t &] promise_id: Promise Id
    * @return void
    */
-  void trigger_http_response(
-      const nlohmann::json& response_message_json, uint32_t& pid);
+  void make_future_ready(const nlohmann::json& json_value, uint32_t& pid);
 
   /*
    * To trigger the response to the HTTP server by set the value of the
@@ -896,6 +877,10 @@ class smf_app {
       pdu_session_update_sm_context_response& sm_context_response,
       uint32_t& pid);
 
+  void reply_with_pdu_session_establishment_reject(
+      pdu_session_msg& msg, std::string& n1_sm_message,
+      cause_value_5gsm_e sm_cause, const uint32_t& http_code,
+      const uint8_t& cause, uint32_t& promise_id);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID
@@ -932,14 +917,14 @@ class smf_app {
   /*
    * Get a list of subscription associated with a particular event
    * @param [smf_event_t] ev: Event type
-   * @param [supi64_t] supi: SUPI
+   * @param [std::string] supi: SUPI
    * @param [pdu_session_id_t] pdu_session_id: PDU Session ID
    * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:
    * store the list of the subscription associated with this event type
    * @return void
    */
   void get_ee_subscriptions(
-      smf_event_t ev, supi64_t supi, pdu_session_id_t pdu_session_id,
+      smf_event_t ev, std::string supi, pdu_session_id_t pdu_session_id,
       std::vector<std::shared_ptr<smf_subscription>>& subscriptions);
 
   /*
@@ -983,6 +968,11 @@ class smf_app {
    * @return SMF instance ID
    */
   std::string get_smf_instance_id() const;
+
+  bool get_sm_data(
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+      std::shared_ptr<session_management_subscription>& subscription,
+      plmn_t plmn);
 };
 }  // namespace smf
 #include "smf_config.hpp"

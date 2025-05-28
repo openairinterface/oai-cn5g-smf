@@ -19,30 +19,24 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n7.hpp
- \author  Stefan Spettel
- \company Openairinterface Software Alliance
- \date 2022
- \email: stefan.spettel@eurecom.fr
- */
-
 #ifndef FILE_SMF_N7_HPP_SEEN
 #define FILE_SMF_N7_HPP_SEEN
 
-#include <string>
 #include <memory>
-#include <unordered_map>
 #include <shared_mutex>
+#include <string>
+#include <unordered_map>
+#include <optional>
 
-#include "Snssai.h"
-#include "PlmnId.h"
-#include "SmPolicyDecision.h"
-#include "SmPolicyContextData.h"
-#include "SmPolicyUpdateContextData.h"
-#include "SmPolicyDeleteData.h"
-#include "smf.h"
-#include "3gpp_29.500.h"
 #include "3gpp_24.501.hpp"
+#include "3gpp_29.500.h"
+#include "PlmnId.h"
+#include "SmPolicyContextData.h"
+#include "SmPolicyDecision.h"
+#include "SmPolicyDeleteData.h"
+#include "SmPolicyUpdateContextData.h"
+#include "Snssai.h"
+#include "smf.h"
 
 namespace smf::n7 {
 
@@ -73,10 +67,10 @@ struct policy_association {
   std::string pcf_location;
 
   void set_context(
-      const std::string& supi, const std::string& supi_prefix,
-      const std::string& dnn, const snssai_t& snssai, const plmn_t& plmn,
-      const uint8_t pdu_session_id,
-      const pdu_session_type_t& pdu_session_type) {
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+      const plmn_t& plmn, const uint8_t pdu_session_id,
+      const pdu_session_type_t& pdu_session_type,
+      const std::optional<paa_t> paa = std::nullopt) {
     oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
     plmn_id_model.setMcc(plmn.mcc);
@@ -84,7 +78,7 @@ struct policy_association {
     context = {};
 
     context.setPduSessionId(pdu_session_id);
-    context.setSupi(smf_get_supi_with_prefix(supi_prefix, supi));
+    context.setSupi(supi);
     oai::model::common::PduSessionType pdu_session_type_model;
     // hacky
     from_json(pdu_session_type.to_string(), pdu_session_type_model);
@@ -92,6 +86,39 @@ struct policy_association {
     context.setDnn(dnn);
     context.setSliceInfo(snssai_model);
     context.setServingNetwork(plmn_id_model);
+    // Set UE IP addresses if available
+    if (paa.has_value()) {
+      switch (paa.value().pdu_session_type.pdu_session_type) {
+        case PDU_SESSION_TYPE_E_IPV4V6: {
+          std::string ue_ipv4_addr_str = std::string(
+              inet_ntoa(*((struct in_addr*) &paa.value().ipv4_address)));
+          context.setIpv4Address(ue_ipv4_addr_str);
+
+          char str_addr6[INET6_ADDRSTRLEN];
+          if (inet_ntop(
+                  AF_INET6, &paa.value().ipv6_address, str_addr6,
+                  sizeof(str_addr6))) {
+            std::string ue_ipv6_prefix_str             = std::string(str_addr6);
+            oai::model::common::Ipv6Prefix ipv6_prefix = {};
+            ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
+            context.setIpv6AddressPrefix(ipv6_prefix);
+          }
+
+        }; break;
+        case PDU_SESSION_TYPE_E_IPV4: {
+          std::string ue_ipv4_addr_str = std::string(
+              inet_ntoa(*((struct in_addr*) &paa.value().ipv4_address)));
+          context.setIpv4Address(ue_ipv4_addr_str);
+        } break;
+
+        case PDU_SESSION_TYPE_E_IPV6: {
+          // TODO:
+        } break;
+        default: {
+          // TODO:
+        }
+      }
+    }
   }
 
   std::string toString() const {
@@ -160,7 +187,7 @@ class policy_storage {
    */
   virtual sm_policy_status_code update_policy_association(
       const oai::model::pcf::SmPolicyUpdateContextData& update_data,
-      policy_association& association) = 0;
+      std::shared_ptr<policy_association>& association) = 0;
   /**
    * @brief Get the the policy association together with the original context
    *
@@ -214,7 +241,7 @@ class smf_pcf_client : public policy_storage {
 
   sm_policy_status_code update_policy_association(
       const oai::model::pcf::SmPolicyUpdateContextData& update_data,
-      policy_association& association) override;
+      std::shared_ptr<policy_association>& association) override;
 
   sm_policy_status_code get_policy_association(
       policy_association& association) override;
@@ -288,15 +315,14 @@ class smf_n7 {
   /**
    * @brief Updates an SM Policy Association, requires the triggers to be set as
    * defined in 3GPP TS 29.512
-   *
-   * @param association The association to update
    * @param update_data The update context data
+   * @param association The association to update
    * @return sm_policy_status_code OK in case of success, otherwise NOT_FOUND,
    * INTERNAL_ERROR, PCF_NOT_AVAILABLE
    */
   sm_policy_status_code update_sm_policy_association(
-      policy_association& association,
-      const oai::model::pcf::SmPolicyUpdateContextData& update_data);
+      const oai::model::pcf::SmPolicyUpdateContextData& update_data,
+      std::shared_ptr<policy_association>& association);
 
  private:
   /**
