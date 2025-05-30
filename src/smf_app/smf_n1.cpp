@@ -137,30 +137,30 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   pdu_session_estb_accept->SetSessionAmbr(session_ambr);
 
   // PDUAddress
-//  if (sm_msg->pdu_session_establishment_accept._pdusessiontype
-//          .pdu_session_type_value == PDU_SESSION_TYPE_E_ETHERNET) {
-//    sm_msg->pdu_session_establishment_accept.presence &=
-//        ~PDU_SESSION_ESTABLISHMENT_ACCEPT_PDU_ADDRESS_PRESENCE;  // Without
-//                                                                 // PDU_ADDRESS_PRESENCE
+  //  if (sm_msg->pdu_session_establishment_accept._pdusessiontype
+  //          .pdu_session_type_value == PDU_SESSION_TYPE_E_ETHERNET) {
+  //    sm_msg->pdu_session_establishment_accept.presence &=
+  //        ~PDU_SESSION_ESTABLISHMENT_ACCEPT_PDU_ADDRESS_PRESENCE;  // Without
+  //                                                                 //
+  //                                                                 PDU_ADDRESS_PRESENCE
   paa_t paa = sm_context_res.get_paa();
   Logger::smf_n1().debug(
-          "sm_context: PDU Session Type %s", paa.pdu_session_type.to_string().c_str());
+      "sm_context: PDU Session Type %s",
+      paa.pdu_session_type.to_string().c_str());
 
   Logger::smf_n1().debug(
-          "Pdu_session_type: PDU Session Type %i", pdu_session_type.GetValue());
+      "Pdu_session_type: PDU Session Type %i", pdu_session_type.GetValue());
 
-  if(pdu_session_type.GetValue() != PDU_SESSION_TYPE_E_ETHERNET) {
+  if (pdu_session_type.GetValue() != PDU_SESSION_TYPE_E_ETHERNET) {
     oai::nas::PduAddress pdu_address(kIeiPduAddress);
     pdu_address.SetPduSessionType(paa.pdu_session_type.pdu_session_type);
     if (paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4) {
-      pdu_address.SetIpv4Address(
-          paa.ipv4_address);
+      pdu_address.SetIpv4Address(paa.ipv4_address);
       Logger::smf_n1().debug(
           "UE IPv4 Address %s", conv::toString(paa.ipv4_address).c_str());
     } else if (
         paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
-      pdu_address.SetIpv4v6Address(
-          paa.ipv4_address, paa.ipv6_address);
+      pdu_address.SetIpv4v6Address(paa.ipv4_address, paa.ipv6_address);
       Logger::smf_n1().debug(
           "UE IPv4 Address %s", conv::toString(paa.ipv4_address).c_str());
       char str_addr6[INET6_ADDRSTRLEN];
