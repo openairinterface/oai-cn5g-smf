@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-#ifndef FILE_3GPP_CONVERSIONS_HPP_SEEN
-#define FILE_3GPP_CONVERSIONS_HPP_SEEN
+#ifndef FILE_SMF_3GPP_CONVERSIONS_HPP_SEEN
+#define FILE_SMF_3GPP_CONVERSIONS_HPP_SEEN
 
 #include "3gpp_24.008.h"
 #include "3gpp_24.501.h"
@@ -38,27 +38,6 @@
 using namespace oai::nas;
 
 namespace xgpp_conv {
-
-/*
-<<<<<<<< HEAD:src/common/utils/3gpp_conversions_smf.hpp
- * Convert PCO in NAS into core type
- * @param [const protocol_configuration_options_nas_t&] pco_nas: PCO in NAS msg
- * @param [protocol_configuration_options_t&] pco: PCO in core type
- * @return void
- */
-void pco_nas_to_core(
-    const protocol_configuration_options_nas_t& pco_nas,
-    protocol_configuration_options_t& pco);
-
-/*
- * Convert PCO in core type to NAS type
- * @param [const protocol_configuration_options_t&] pco: PCO in cpre type
- * @param [protocol_configuration_options_nas_t&] pco_nas: PCO in NAS type
- * @return void
- */
-void pco_core_to_nas(
-    const protocol_configuration_options_t& pco,
-    protocol_configuration_options_nas_t& pco_nas);
 
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU

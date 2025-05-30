@@ -52,11 +52,6 @@
 #include "string.hpp"
 #include "epc.h"
 
-extern "C" {
-#include "dynamic_memory_check.h"
-#include "nas_message.h"
-}
-
 using namespace smf;
 using namespace oai::utils;
 using namespace oai::nas;
@@ -142,17 +137,21 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   pdu_session_estb_accept->SetSessionAmbr(session_ambr);
 
   // PDUAddress
-  if (sm_msg->pdu_session_establishment_accept._pdusessiontype
-          .pdu_session_type_value == PDU_SESSION_TYPE_E_ETHERNET) {
-    sm_msg->pdu_session_establishment_accept.presence &=
-        ~PDU_SESSION_ESTABLISHMENT_ACCEPT_PDU_ADDRESS_PRESENCE;  // Without
-                                                                 // PDU_ADDRESS_PRESENCE
-  } else {
-    paa_t paa = sm_context_res.get_paa();
-    Logger::smf_n1().debug(
-        "PDU Session Type %s", paa.pdu_session_type.to_string().c_str());
+//  if (sm_msg->pdu_session_establishment_accept._pdusessiontype
+//          .pdu_session_type_value == PDU_SESSION_TYPE_E_ETHERNET) {
+//    sm_msg->pdu_session_establishment_accept.presence &=
+//        ~PDU_SESSION_ESTABLISHMENT_ACCEPT_PDU_ADDRESS_PRESENCE;  // Without
+//                                                                 // PDU_ADDRESS_PRESENCE
+  paa_t paa = sm_context_res.get_paa();
+  Logger::smf_n1().debug(
+          "sm_context: PDU Session Type %s", paa.pdu_session_type.to_string().c_str());
+
+  Logger::smf_n1().debug(
+          "Pdu_session_type: PDU Session Type %i", pdu_session_type.GetValue());
+
+  if(pdu_session_type.GetValue() != PDU_SESSION_TYPE_E_ETHERNET) {
     oai::nas::PduAddress pdu_address(kIeiPduAddress);
-        pdu_address.SetPduSessionType(paa.pdu_session_type.pdu_session_type);
+    pdu_address.SetPduSessionType(paa.pdu_session_type.pdu_session_type);
     if (paa.pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4) {
       pdu_address.SetIpv4Address(
           paa.ipv4_address);
@@ -174,8 +173,8 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
       // TODO:
       Logger::smf_n1().debug("IPv6 is not fully supported yet!");
     }
+    pdu_session_estb_accept->SetPduAddress(pdu_address);
   }
-  pdu_session_estb_accept->SetPduAddress(pdu_address);
 
   // TODO: GPRSTimer
   // oai::nas::GprsTimer gprs_timer(kIeiRqTimerValue);
