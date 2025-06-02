@@ -43,10 +43,10 @@ using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
 using namespace oai::model::common;
 using namespace oai::model::pcf;
+using namespace oai::utils;
+using namespace oai::common::sbi;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-
-using namespace oai::common::sbi;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {

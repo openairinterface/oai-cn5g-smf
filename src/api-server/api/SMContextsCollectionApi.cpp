@@ -55,6 +55,7 @@ namespace api {
 
 using namespace oai::model::common::helpers;
 using namespace oai::model::smf;
+using namespace oai::utils;
 
 SMContextsCollectionApi::SMContextsCollectionApi(
     std::shared_ptr<Pistache::Rest::Router> rtr) {

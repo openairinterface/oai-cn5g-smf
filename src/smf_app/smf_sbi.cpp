@@ -40,6 +40,7 @@
 using namespace smf;
 using namespace oai::common::sbi;
 using namespace oai::http;
+using namespace oai::utils;
 using json = nlohmann::json;
 
 extern itti_mw* itti_inst;

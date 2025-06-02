@@ -43,6 +43,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::smf;
+using namespace oai::utils;
 
 IndividualSMContextApiImpl::IndividualSMContextApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
