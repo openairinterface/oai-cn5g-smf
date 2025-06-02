@@ -132,7 +132,6 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       oai::utils::xgpp_conv::pdu_session_type_to_ngap_pdu_session_type(
           sm_context_res->get_pdu_session_type());
 
-
   pdu_session_resource_setup_request_transfer.setPduSessionType(
       static_cast<e_Ngap_PDUSessionType>(pdu_session_type));
   Logger::smf_n2().debug(
