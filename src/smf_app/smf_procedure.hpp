@@ -132,8 +132,12 @@ class smf_session_procedure : public smf_procedure {
       const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& pcp_mbr);
 
   static bool pfcp_sdf_filter(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::sdf_filter_t& sdf_filter,
+      bool ethernet_sdf_filter = false);
+
+  static bool pfcp_ethernet_packet_filter(
       const std::shared_ptr<qos_upf_edge>& edge,
-      pfcp::sdf_filter_t& sdf_filter);
+      pfcp::ethernet_packet_filter& ethernet_packet_filter);
 
  protected:
   /**

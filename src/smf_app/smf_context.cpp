@@ -1038,6 +1038,10 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       return;
     } break;
 
+    case PDU_SESSION_TYPE_E_ETHERNET: {
+      Logger::smf_app().info("PDU Session Type Ethernet");
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Unknown PDN type %d", sp->pdu_session_type.pdu_session_type);
