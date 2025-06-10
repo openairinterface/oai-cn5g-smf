@@ -108,7 +108,7 @@ void smf_http2_server::start() {
               return;
             }
 
-            std::vector<mime_part> parts = {};
+            std::unordered_map<std::string, oai::utils::mime_part> parts = {};
             sp.get_mime_parts(parts);
             uint8_t size = parts.size();
             Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -125,14 +125,22 @@ void smf_http2_server::start() {
               nlohmann::json::parse(parts[0].body.c_str())
                   .get_to(smContextCreateData);
               smContextMessage.setJsonData(smContextCreateData);
-              if (parts[1].content_type.compare("application/vnd.3gpp.5gnas") ==
-                  0) {
-                smContextMessage.setBinaryDataN1SmMessage(parts[1].body);
-              } else if (
-                  parts[1].content_type.compare("application/vnd.3gpp.ngap") ==
-                  0) {
-                smContextMessage.setBinaryDataN2SmInformation(parts[1].body);
+
+              for (auto it : parts) {
+                if (boost::iequals(
+                        it.second.content_type,
+                        oai::utils::MIME_CONTENT_TYPE_NAS)) {
+                  smContextMessage.setBinaryDataN1SmMessage(it.second.body);
+                  Logger::smf_api_server().debug("N1 SM message is set");
+                }
+                if (boost::iequals(
+                        it.second.content_type,
+                        oai::utils::MIME_CONTENT_TYPE_NGAP)) {
+                  smContextMessage.setBinaryDataN2SmInformation(it.second.body);
+                  Logger::smf_api_server().debug("N2 SM information is set");
+                }
               }
+
               // process the request
               this->create_sm_contexts_handler(smContextMessage, response);
             } catch (nlohmann::detail::exception& e) {
@@ -199,7 +207,7 @@ void smf_http2_server::start() {
                 return;
               }
 
-              std::vector<mime_part> parts = {};
+              std::unordered_map<std::string, oai::utils::mime_part> parts = {};
               sp.get_mime_parts(parts);
               uint8_t size = parts.size();
               Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -214,20 +222,23 @@ void smf_http2_server::start() {
                 }
                 smContextUpdateMessage.setJsonData(smContextUpdateData);
 
-                for (int i = 1; i < size; i++) {
-                  if (parts[i].content_type.compare(
-                          "application/vnd.3gpp.5gnas") == 0) {
+                for (auto it : parts) {
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NAS)) {
                     smContextUpdateMessage.setBinaryDataN1SmMessage(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N1 SM message is set");
-                  } else if (
-                      parts[i].content_type.compare(
-                          "application/vnd.3gpp.ngap") == 0) {
+                  }
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NGAP)) {
                     smContextUpdateMessage.setBinaryDataN2SmInformation(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N2 SM information is set");
                   }
                 }
+
                 this->update_sm_context_handler(
                     smf_ref, smContextUpdateMessage, response);
 
@@ -260,7 +271,7 @@ void smf_http2_server::start() {
                 return;
               }
 
-              std::vector<mime_part> parts = {};
+              std::unordered_map<std::string, oai::utils::mime_part> parts = {};
               sp.get_mime_parts(parts);
               uint8_t size = parts.size();
               Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -278,11 +289,12 @@ void smf_http2_server::start() {
 
                 smContextReleaseMessage.setJsonData(smContextReleaseData);
 
-                for (int i = 1; i < size; i++) {
-                  if (parts[i].content_type.compare(
-                          "application/vnd.3gpp.ngap") == 0) {
+                for (auto it : parts) {
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NGAP)) {
                     smContextReleaseMessage.setBinaryDataN2SmInformation(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N2 SM information is set");
                   }
                 }

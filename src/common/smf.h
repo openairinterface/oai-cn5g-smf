@@ -111,9 +111,9 @@ typedef struct qos_profile_s {
 #define NAMF_COMMUNICATION_BASE "/namf-comm/"
 #define NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL                           \
   "/ue-contexts/{}/n1-n2-messages"  // context id
-#define N1_SM_CONTENT_ID "n1SmMsg"
+//#define N1_SM_CONTENT_ID "n1SmMsg"
 #define N1N2_MESSAGE_CLASS "SM"
-#define N2_SM_CONTENT_ID "n2msg"
+//#define N2_SM_CONTENT_ID "n2msg"
 #define NSMF_PDU_SESSION_BASE "/nsmf-pdusession/"
 #define NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE                            \
   "/callback/N1N2MsgTxfrFailureNotification/{}"  // UE Id
