@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-#ifndef FILE_3GPP_CONVERSIONS_HPP_SEEN
-#define FILE_3GPP_CONVERSIONS_HPP_SEEN
+#ifndef FILE_SMF_3GPP_CONVERSIONS_HPP_SEEN
+#define FILE_SMF_3GPP_CONVERSIONS_HPP_SEEN
 
 #include "3gpp_24.008.h"
 #include "3gpp_24.501.h"
@@ -38,28 +38,6 @@
 using namespace oai::nas;
 
 namespace xgpp_conv {
-
-/*
- * Convert PAA to PFCP UE IP Addr
- * @param [const paa_t&] paa: paa
- * @param [pfcp::ue_ip_address_t&] ue_ip_address: UE IP Addr
- * @return void
- */
-void paa_to_pfcp_ue_ip_address(
-    const paa_t& paa, pfcp::ue_ip_address_t& ue_ip_address);
-
-/*
- * Convert PDN IP to PFCP UE IP Addr
- * @param [const pdu_session_type_t&] pdu_session_type: PDU Session Type
- * @param [const struct in_addr&] ipv4_address: IPv4 Addr
- * @param [const struct in6_addr] ipv6_address: IPv6 Addr
- * @param [pfcp::ue_ip_address_t&] ue_ip_address: UE IP Addr
- * @return void
- */
-void pdn_ip_to_pfcp_ue_ip_address(
-    const pdu_session_type_t& pdu_session_type,
-    const struct in_addr& ipv4_address, const struct in6_addr ipv6_address,
-    pfcp::ue_ip_address_t& ue_ip_address);
 
 /*
  * Convert SM Context Create Msg from OpenAPI into PDU

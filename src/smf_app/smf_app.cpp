@@ -827,17 +827,18 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   xgpp_conv::sm_context_request_from_nas(nas_message, smreq->req);
 
   pdu_session_type.pdu_session_type = smreq->req.get_pdu_session_type();
-  // Support IPv4/IPv4v6 for now
+
+  // Support IPv4/IPv4v6 and Ethernet for now
   if (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
     cause_n1 = cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
   } else if (
-      (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) or
-      (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED)) {
+      pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
     cause_n1 = cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE;
   }
 
   if ((pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4) and
-      (pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4V6)) {
+      (pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4V6) and
+      (pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_ETHERNET)) {
     // PDU Session Establishment Reject
     reply_with_pdu_session_establishment_reject(
         smreq->req, n1_sm_message, cause_n1, http_status_code::FORBIDDEN,

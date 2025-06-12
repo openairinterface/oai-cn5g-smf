@@ -131,7 +131,8 @@ void session_handler::set_nas_filter_from_edge(
   // qos_rule.numberofpacketfilters = 0;
   qos_rule.SetNumberOfPacketFilters(0);
 
-  if (!flow.flowDescriptionIsSet() || flow.getFlowDescription().empty()) {
+  if ((!flow.flowDescriptionIsSet() || flow.getFlowDescription().empty()) &&
+      !flow.ethFlowDescriptionIsSet()) {
     Logger::smf_app().warn(
         "Flow description is empty for rule: %ud. Not signaled towards UE",
         qos_rule.GetQosRuleId());
@@ -802,6 +803,18 @@ bool session_handler::is_downlink_flow_direction(
   return is_flow_direction(false, flow_info);
 }
 
+bool session_handler::is_uplink_eth_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(
+      true, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+}
+
+bool session_handler::is_downlink_eth_flow_direction(
+    const FlowInformation& flow_info) {
+  return is_flow_direction(
+      false, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+}
+
 //------------------------------------------------------------------------------
 bool session_handler::is_flow_direction(
     bool uplink, const FlowInformation& flow_info) {
@@ -819,6 +832,12 @@ bool session_handler::is_flow_direction(
     flow_direction = flow_info.getFlowDirection().getEnumValue();
   }
 
+  return is_flow_direction(uplink, flow_direction);
+}
+
+bool session_handler::is_flow_direction(
+    bool uplink,
+    const FlowDirection_anyOf::eFlowDirection_anyOf& flow_direction) {
   switch (flow_direction) {
     case FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK:
       return !uplink;
@@ -842,13 +861,10 @@ bool session_handler::is_flow_direction(
         INVALID_VALUE_OPENAPI_GENERATED:
     case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
       Logger::smf_app().info(
-          "Flow Direction of flow %s is UNSPECIFIED or NULL, assume it is "
-          "BIDIRECTIONAL",
-          flow_info.getFlowDescription());
+          "Flow Direction is UNSPECIFIED or NULL, assume it is "
+          "BIDIRECTIONAL");
       return true;
   }
-
-  return false;
 }
 
 //------------------------------------------------------------------------------
