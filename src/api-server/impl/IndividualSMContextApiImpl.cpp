@@ -43,6 +43,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::smf;
+using namespace oai::utils;
 
 IndividualSMContextApiImpl::IndividualSMContextApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
@@ -192,7 +193,7 @@ void IndividualSMContextApiImpl::update_sm_context(
     Logger::smf_api_server().debug("Json data %s", json_data.dump().c_str());
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
-      mime_parser::create_multipart_related_content(
+      oai::utils::mime_parser::create_multipart_related_content(
           body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
@@ -202,7 +203,7 @@ void IndividualSMContextApiImpl::update_sm_context(
               "multipart/related; boundary=" +
               std::string(http::MIME_BOUNDARY)));
     } else if (n1_sm_msg_is_set) {
-      mime_parser::create_multipart_related_content(
+      oai::utils::mime_parser::create_multipart_related_content(
           body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
@@ -211,7 +212,7 @@ void IndividualSMContextApiImpl::update_sm_context(
               "multipart/related; boundary=" +
               std::string(http::MIME_BOUNDARY)));
     } else if (n2_sm_info_is_set) {
-      mime_parser::create_multipart_related_content(
+      oai::utils::mime_parser::create_multipart_related_content(
           body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);

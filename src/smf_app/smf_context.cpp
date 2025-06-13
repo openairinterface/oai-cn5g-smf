@@ -65,6 +65,7 @@
 #include "smf_sbi.hpp"
 #include "string.hpp"
 #include "utils.hpp"
+#include "mime_parser.hpp"
 
 using namespace smf;
 using namespace oai::utils;
@@ -1299,7 +1300,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     nlohmann::json json_data                          = {};
     json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
     json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
-        N1_SM_CONTENT_ID;
+        oai::utils::N1_SM_CONTENT_ID;
     json_data["pduSessionId"] =
         sm_context_resp_pending->res.get_pdu_session_id();
     sm_context_resp_pending->res.set_json_data(json_data);
@@ -1419,7 +1420,7 @@ bool smf_context::handle_pdu_session_modification_request(
 
   // Fill the json part with SmContextUpdatedData
   nlohmann::json json_data           = {};
-  json_data["n1SmMsg"]["contentId"]  = N1_SM_CONTENT_ID;
+  json_data["n1SmMsg"]["contentId"]  = oai::utils::N1_SM_CONTENT_ID;
   json_data["n2SmInfo"]["contentId"] = N2_SM_CONTENT_ID;
   json_data["n2SmInfoType"]          = "PDU_RES_MOD_REQ";  // NGAP message
 
@@ -2847,7 +2848,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // N1SM
   json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
-      N1_SM_CONTENT_ID;  // NAS part
+      oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
   json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
   json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
@@ -4416,7 +4417,7 @@ void smf_context::send_pdu_session_create_response(
   // N1SM
   json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
-      N1_SM_CONTENT_ID;  // NAS part
+      oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
   if (resp->res.get_cause() ==
       static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
@@ -4709,8 +4710,9 @@ void smf_context::send_pdu_session_release_response(
 
           // Prepare response to send to AMF
           // (PDUSession_UpdateSMContextResponse)
-          nlohmann::json sm_context_response_data           = {};
-          sm_context_response_data["n1SmMsg"]["contentId"]  = N1_SM_CONTENT_ID;
+          nlohmann::json sm_context_response_data = {};
+          sm_context_response_data["n1SmMsg"]["contentId"] =
+              oai::utils::N1_SM_CONTENT_ID;
           sm_context_response_data["n2SmInfo"]["contentId"] = N2_SM_CONTENT_ID;
           sm_context_response_data["n2SmInfoType"] =
               "PDU_RES_REL_CMD";  // NGAP message
@@ -4719,7 +4721,7 @@ void smf_context::send_pdu_session_release_response(
         } else {
           // fill the content of SmContextUpdatedData
           nlohmann::json json_data          = {};
-          json_data["n1SmMsg"]["contentId"] = N1_SM_CONTENT_ID;
+          json_data["n1SmMsg"]["contentId"] = oai::utils::N1_SM_CONTENT_ID;
           resp->res.set_json_data(json_data);
         }
 

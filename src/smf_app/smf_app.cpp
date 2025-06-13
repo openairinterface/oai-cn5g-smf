@@ -63,6 +63,7 @@
 #include "smf_sbi.hpp"
 #include "string.hpp"
 #include "utils.hpp"
+#include "mime_parser.hpp"
 
 using namespace smf;
 using namespace oai::config::smf;
@@ -1980,7 +1981,7 @@ void smf_app::trigger_create_context_error_response(
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   sm_context.setError(problem_details);
-  refToBinaryData.setContentId(N1_SM_CONTENT_ID);
+  refToBinaryData.setContentId(oai::utils::N1_SM_CONTENT_ID);
   sm_context.setN1SmMsg(refToBinaryData);
 
   pdu_session_create_sm_context_response sm_context_response = {};

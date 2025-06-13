@@ -309,6 +309,7 @@ include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
 
 add_executable(smf
   ${SRC_TOP_DIR}/oai_smf/main.cpp
