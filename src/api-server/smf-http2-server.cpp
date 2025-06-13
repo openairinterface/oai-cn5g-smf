@@ -122,7 +122,8 @@ void smf_http2_server::start() {
 
             // step 2. process the request
             try {
-              nlohmann::json::parse(parts[0].body.c_str())
+              nlohmann::json::parse(
+                  parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                   .get_to(smContextCreateData);
               smContextMessage.setJsonData(smContextCreateData);
 
@@ -214,7 +215,8 @@ void smf_http2_server::start() {
 
               try {
                 if (size > 0) {
-                  nlohmann::json::parse(parts[0].body.c_str())
+                  nlohmann::json::parse(
+                      parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                       .get_to(smContextUpdateData);
                 } else {
                   nlohmann::json::parse(msg.c_str())
@@ -280,7 +282,8 @@ void smf_http2_server::start() {
               SmContextReleaseData smContextReleaseData = {};
               try {
                 if (size > 0) {
-                  nlohmann::json::parse(parts[0].body.c_str())
+                  nlohmann::json::parse(
+                      parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                       .get_to(smContextReleaseData);
                 } else {
                   nlohmann::json::parse(msg.c_str())
