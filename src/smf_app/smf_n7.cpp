@@ -31,8 +31,8 @@
 #include <regex>
 #include "http_client.hpp"
 
-using namespace smf;
-using namespace smf::n7;
+using namespace oai::app::smf;
+using namespace oai::app::smf::n7;
 using namespace oai::model::pcf;
 using namespace oai::model::common;
 using namespace oai::common::sbi;

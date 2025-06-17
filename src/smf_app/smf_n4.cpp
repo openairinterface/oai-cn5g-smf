@@ -31,7 +31,7 @@
 #include "smf_config.hpp"
 
 using namespace pfcp;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace std;
 
 extern itti_mw* itti_inst;

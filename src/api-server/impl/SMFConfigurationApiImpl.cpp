@@ -27,7 +27,8 @@ namespace oai::smf_server::api {
 using namespace oai::model::smf;
 
 SMFConfigurationApiImpl::SMFConfigurationApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst)
     : SMFConfigurationApi(rtr), m_smf_app(smf_app_inst) {}
 
 void SMFConfigurationApiImpl::read_configuration(

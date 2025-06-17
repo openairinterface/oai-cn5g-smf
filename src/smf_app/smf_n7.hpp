@@ -38,7 +38,7 @@
 #include "Snssai.h"
 #include "smf.h"
 
-namespace smf::n7 {
+namespace oai::app::smf::n7 {
 
 /**
  * @brief Status codes for the communication with the PCF
@@ -347,5 +347,5 @@ class smf_n7 {
   std::unordered_map<uint32_t, std::shared_ptr<policy_storage>> policy_storages;
   mutable std::shared_mutex policy_storages_mutex;
 };
-}  // namespace smf::n7
+}  // namespace oai::app::smf::n7
 #endif /* FILE_SMF_N7_HPP_SEEN */

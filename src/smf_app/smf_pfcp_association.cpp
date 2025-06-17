@@ -28,7 +28,7 @@
 #include "smf_config.hpp"
 #include "fqdn.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace std;
 using namespace oai::model::pcf;
 using namespace oai::model::nrf;

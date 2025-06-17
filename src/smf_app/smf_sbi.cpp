@@ -36,8 +36,9 @@
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
+#include "smf_sbi_helper.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::common::sbi;
 using namespace oai::http;
 using namespace oai::utils;
@@ -121,6 +122,12 @@ void smf_sbi_task(void* args_p) {
       case SBI_REGISTER_WITH_UDM:
         smf_sbi_inst->register_with_udm(
             std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
+        break;
+
+      case SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS:
+        smf_sbi_inst->subscribe_sdm_subscriptions(
+            std::static_pointer_cast<itti_sbi_subscribe_sdm_subscriptions>(
+                shared_msg));
         break;
 
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
@@ -738,6 +745,44 @@ void smf_sbi::register_with_udm(
   if (msg->promise_id > 0) {
     smf_app_inst->make_future_ready(response_data, msg->promise_id);
   }
+}
+
+//------------------------------------------------------------------------------
+void smf_sbi::subscribe_sdm_subscriptions(
+    const std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions>& msg) {
+  Logger::smf_sbi().debug("Subscribe SDM Subscriptions with the UDM");
+
+  std::string udm_uri =
+      oai::smf::api::smf_sbi_helper::get_udm_sdm_subscriptions_uri(msg->supi);
+  Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
+
+  std::string req_body = msg->sdm_subscription.dump();
+  request req = http_client_inst->prepare_json_request(udm_uri, req_body);
+  // TODO: add retry mechanism, probably directly inside HTTP Client lib
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug(
+      "Subscribe SDM Subscriptions with UDM, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  nlohmann::json json_data = {};
+  if (resp.status_code == http_status_code::CREATED) {
+    try {
+      json_data = nlohmann::json::parse(resp.body);
+    } catch (json::exception& e) {
+      Logger::smf_sbi().warn("Could not parse JSON data from UDM");
+    }
+  } else {
+    Logger::smf_sbi().warn("Could not get response from UDM, URI %s", udm_uri);
+  }
+
+  // Notify to the result
+  nlohmann::json response_data                = {};
+  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[kSbiResponseJsonData]         = json_data;
+
+  // TODO:
 }
 
 //------------------------------------------------------------------------------

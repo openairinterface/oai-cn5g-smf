@@ -67,7 +67,7 @@
 #include "utils.hpp"
 #include "mime_parser.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 using namespace oai::common::sbi;
@@ -75,7 +75,7 @@ using namespace oai::ngap;
 
 extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
-extern smf::smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 //------------------------------------------------------------------------------
@@ -4127,7 +4127,7 @@ void smf_context::handle_plmn_change(
 //------------------------------------------------------------------------------
 void smf_context::update_qos_info(
     std::shared_ptr<smf_pdu_session>& sp,
-    ::smf::pdu_session_update_sm_context_response& res,
+    ::oai::app::smf::pdu_session_update_sm_context_response& res,
     const std::shared_ptr<Nas5gsmMessage>& nas_message) {
   // Process QoS rules and Qos Flow descriptions
   // verify message type

@@ -33,7 +33,7 @@
 #include "smf_config_types.hpp"
 
 using namespace std;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::config;
 using namespace oai::model::nrf;

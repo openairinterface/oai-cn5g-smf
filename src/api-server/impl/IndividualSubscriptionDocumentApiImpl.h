@@ -86,8 +86,8 @@ class IndividualSubscriptionDocumentApiImpl
     : public oai::smf_server::api::IndividualSubscriptionDocumentApi {
  public:
   IndividualSubscriptionDocumentApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst,
-      std::string address);
+      std::shared_ptr<Pistache::Rest::Router>,
+      oai::app::smf::smf_app* smf_app_inst, std::string address);
   ~IndividualSubscriptionDocumentApiImpl() {}
 
   void delete_individual_subcription(
@@ -99,7 +99,7 @@ class IndividualSubscriptionDocumentApiImpl
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::smf_app* m_smf_app;
+  oai::app::smf::smf_app* m_smf_app;
   std::string m_address;
 };
 

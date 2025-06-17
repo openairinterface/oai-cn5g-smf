@@ -48,7 +48,7 @@
 
 using namespace boost::placeholders;
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
  public:
@@ -247,7 +247,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   vector<pfcp::framed_route_t> ipv4_frame_route;
 
-  std::shared_ptr<::smf::n7::policy_association> policy_ptr;
+  std::shared_ptr<::oai::app::smf::n7::policy_association> policy_ptr;
 
   uint32_t pdu_session_id;
   std::string dnn;  // associated DNN
@@ -998,7 +998,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   void update_qos_info(
       std::shared_ptr<smf_pdu_session>& sp,
-      ::smf::pdu_session_update_sm_context_response& res,
+      oai::app::smf::pdu_session_update_sm_context_response& res,
       const std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message);
 
   /*
@@ -1161,7 +1161,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   mutable std::recursive_mutex m_context;
 
   // for Event Handling
-  ::smf::smf_event event_sub;
+  oai::app::smf::smf_event event_sub;
   bs2::connection sm_context_status_connection;
   bs2::connection ee_pdu_session_release_connection;
   bs2::connection ee_ue_ip_change_connection;
@@ -1171,6 +1171,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   bs2::connection ee_qos_monitoring_connection;
   bs2::connection ee_flexcn;
 };
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif

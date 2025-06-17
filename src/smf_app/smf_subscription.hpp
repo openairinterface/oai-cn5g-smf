@@ -33,7 +33,7 @@
 #include "common_root_types.h"
 #include "itti.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 /*
  * Manage the Subscription Info
@@ -51,5 +51,5 @@ class smf_subscription {
   pdu_session_id_t pdu_session_id;
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif

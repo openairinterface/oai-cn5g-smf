@@ -21,7 +21,7 @@
 
 #include "smf_msg.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 
 /*
  * class: QoS Flow Context Updated

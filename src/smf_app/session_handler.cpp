@@ -31,7 +31,7 @@
 #include "conversions.hpp"
 #include "smf_config.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::model::pcf;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
@@ -100,9 +100,9 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 }
 
 //------------------------------------------------------------------------------
-std::vector<::smf::qos_flow_context_updated>
+std::vector<::oai::app::smf::qos_flow_context_updated>
 session_handler::get_qos_flows_context_updated() {
-  std::vector<::smf::qos_flow_context_updated> flows;
+  std::vector<::oai::app::smf::qos_flow_context_updated> flows;
   flows.reserve(m_qfis_to_be_updated.size());
   for (const auto& qfi : m_qfis_to_be_updated) {
     flows.push_back(get_qos_flow_context_updated(qfi));
@@ -865,8 +865,8 @@ bool session_handler::is_flow_direction(
           "BIDIRECTIONAL");
       return true;
   }
+  return false;
 }
-
 //------------------------------------------------------------------------------
 void session_handler::set_default_qos_parameters(QosData& qos_data) {
   try {

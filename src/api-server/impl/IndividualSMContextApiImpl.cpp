@@ -46,8 +46,8 @@ using namespace oai::model::smf;
 using namespace oai::utils;
 
 IndividualSMContextApiImpl::IndividualSMContextApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : IndividualSMContextApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}
@@ -60,7 +60,7 @@ void IndividualSMContextApiImpl::release_sm_context(
   Logger::smf_api_server().info(
       "Received a PDUSession_ReleaseSMContext Request from AMF.");
 
-  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
 
   // convert from SmContextReleaseMessage to
   // pdu_session_release_sm_context_request
@@ -123,7 +123,7 @@ void IndividualSMContextApiImpl::update_sm_context(
   Logger::smf_api_server().info(
       "Received a PDUSession_UpdateSMContext Request from AMF.");
 
-  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
 
   // convert from SmContextUpdateMessage to
   // pdu_session_update_sm_context_request

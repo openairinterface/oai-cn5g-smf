@@ -35,7 +35,7 @@
 #include "smf.h"
 #include "3gpp_29.510.h"
 
-namespace smf {
+namespace oai::app::smf {
 
 using namespace std;
 class nf_profile : public std::enable_shared_from_this<nf_profile> {
@@ -532,6 +532,6 @@ class upf_profile : public nf_profile {
   oai::common::sbi::upf_info_t upf_info;
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif

@@ -32,7 +32,7 @@
 #include "SmfRegistration.h"
 #include "itti_msg_sbi.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_sbi {
  private:
@@ -158,6 +158,9 @@ class smf_sbi {
   void register_with_udm(
       const std::shared_ptr<itti_sbi_register_with_udm>& msg);
 
+  void subscribe_sdm_subscriptions(
+      const std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions>& msg);
+
   /*
    * Generate an unique value for promise id
    * @param void
@@ -167,5 +170,5 @@ class smf_sbi {
     return oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
   }
 };
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif /* FILE_SMF_SBI_HPP_SEEN */

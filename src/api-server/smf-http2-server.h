@@ -43,7 +43,8 @@ using namespace oai::model::pcf;
 
 class smf_http2_server {
  public:
-  smf_http2_server(std::string addr, uint32_t port, smf::smf_app* smf_app_inst)
+  smf_http2_server(
+      std::string addr, uint32_t port, oai::app::smf::smf_app* smf_app_inst)
       : m_address(addr),
         m_port(port),
         server(),
@@ -92,7 +93,7 @@ class smf_http2_server {
   std::string m_address;
   uint32_t m_port;
   http2 server;
-  smf::smf_app* m_smf_app;
+  oai::app::smf::smf_app* m_smf_app;
   bool running_server;
 
  protected:

@@ -42,7 +42,7 @@
 #include "string.hpp"
 #include "utils.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::model::common;
 using namespace oai::ngap;
 extern smf_app* smf_app_inst;

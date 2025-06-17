@@ -30,7 +30,7 @@
 #include "smf_config.hpp"
 #include "string.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 

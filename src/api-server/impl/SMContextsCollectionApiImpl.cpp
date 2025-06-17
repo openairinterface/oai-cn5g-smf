@@ -61,8 +61,8 @@ using namespace oai::model::pcf;
 using namespace oai::utils;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : SMContextsCollectionApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}
@@ -77,7 +77,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   Logger::smf_api_server().debug(
       "Create a pdu_session_create_sm_context_request message and store the "
       "necessary information");
-  smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
 
   // convert from SmContextMessage to pdu_session_create_sm_context_request
   xgpp_conv::sm_context_create_from_openapi(

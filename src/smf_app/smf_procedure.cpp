@@ -42,14 +42,14 @@
 #include "3gpp_24.501.h"
 
 using namespace pfcp;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace std;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
 using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
-extern smf::smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 //------------------------------------------------------------------------------

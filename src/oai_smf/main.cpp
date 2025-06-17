@@ -38,7 +38,7 @@
 #include <unistd.h>  // get_pid(), pause()
 #include <chrono>
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::utils;
 using namespace std;
 using namespace oai::smf_server::api;

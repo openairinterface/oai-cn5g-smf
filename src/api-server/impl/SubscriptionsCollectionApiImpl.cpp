@@ -50,8 +50,8 @@ namespace api {
 using namespace oai::model::smf;
 
 SubscriptionsCollectionApiImpl::SubscriptionsCollectionApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : SubscriptionsCollectionApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}
@@ -65,7 +65,7 @@ void SubscriptionsCollectionApiImpl::create_individual_subcription(
   // Create a  message and store the necessary information
   Logger::smf_api_server().debug(
       "Create a Event Exposure message and store the necessary information");
-  smf::event_exposure_msg event_exposure = {};
+  oai::app::smf::event_exposure_msg event_exposure = {};
 
   // Convert from NsmfEventExposure to event_exposure_msg
   xgpp_conv::smf_event_exposure_notification_from_openapi(

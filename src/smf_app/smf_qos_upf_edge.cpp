@@ -29,7 +29,7 @@ using namespace oai::model::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
 using namespace oai::model::common;
-using namespace smf;
+using namespace oai::app::smf;
 
 //------------------------------------------------------------------------------
 std::string upf_selection_criteria::to_string(int level) const {
