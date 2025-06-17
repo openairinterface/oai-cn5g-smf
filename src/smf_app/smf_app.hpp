@@ -43,7 +43,7 @@
 #include "smf_profile.hpp"
 #include "smf_subscription.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 #define TASK_SMF_APP_TRIGGER_T3591 (0)
 #define TASK_SMF_APP_TIMEOUT_T3591 (1)
@@ -973,8 +973,12 @@ class smf_app {
       const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       std::shared_ptr<session_management_subscription>& subscription,
       plmn_t plmn);
+
+  void subscribe_sdm_subscriptions(
+      const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+      plmn_t plmn);
 };
-}  // namespace smf
+}  // namespace oai::app::smf
 #include "smf_config.hpp"
 
 #endif /* FILE_SMF_APP_HPP_SEEN */

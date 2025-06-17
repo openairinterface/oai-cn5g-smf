@@ -57,7 +57,7 @@
 using namespace oai::smf_server::api;
 class SMFApiServer {
  public:
-  SMFApiServer(Pistache::Address address, smf::smf_app* smf_app_inst)
+  SMFApiServer(Pistache::Address address, oai::app::smf::smf_app* smf_app_inst)
       : m_httpEndpoint(std::make_shared<Pistache::Http::Endpoint>(address)) {
     m_router  = std::make_shared<Pistache::Rest::Router>();
     m_address = address.host() + ":" + (address.port()).toString();

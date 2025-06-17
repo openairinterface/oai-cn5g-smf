@@ -64,8 +64,10 @@
 #include "string.hpp"
 #include "utils.hpp"
 #include "mime_parser.hpp"
+#include "SdmSubscription.h"
+#include "smf_sbi_helper.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::smf;
@@ -76,10 +78,10 @@ using namespace oai::common::sbi;
 #define PFCP_ASSOC_RESP_WAIT 2
 
 extern oai::utils::async_shell_cmd* async_shell_cmd_inst;
-extern smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-smf_n4* smf_n4_inst   = nullptr;
-smf_sbi* smf_sbi_inst = nullptr;
+oai::app::smf::smf_n4* smf_n4_inst   = nullptr;
+oai::app::smf::smf_sbi* smf_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
 
 void smf_app_task(void*);
@@ -1012,8 +1014,9 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         return;
       }
 
-      // TODO: Subscribe to be notified when this subscription data is modified
+      // Subscribe to be notified when this subscription data is modified
       // using Nudm_SDM_Subscribe
+      subscribe_sdm_subscriptions(supi, dnn, snssai, plmn);
 
     } else {
       // Use local configuration
@@ -2548,5 +2551,59 @@ bool smf_app::get_sm_data(
     return true;
   } else {
     return false;
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::subscribe_sdm_subscriptions(
+    const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+    plmn_t plmn) {
+  // Prepare the request to be sent to UDM
+  oai::model::udm::SdmSubscription sdm_subscription = {};
+
+  sdm_subscription.setNfInstanceId(
+      nf_instance_profile.get_nf_instance_id());  // NF instance id
+
+  // Callback URI
+  std::string fmr_format_str = {};
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfCallbackPathSdmSubscription,
+      fmr_format_str);
+  std::string smf_callback_sdm_notification_uri =
+      smf_cfg->sbi.get_ipv4_root() +
+      oai::smf::api::smf_sbi_helper::SmfCallbackBase() +
+      fmt::format(fmr_format_str, supi);
+  sdm_subscription.setCallbackReference(smf_callback_sdm_notification_uri);
+  // TODO: expires/implicitUnsubscribe
+  // PLMN ID
+  oai::model::common::PlmnId plmn_id_requested = {};
+  plmn_id_requested.setMcc(plmn.mcc);
+  plmn_id_requested.setMnc(plmn.mnc);
+
+  sdm_subscription.setDnn(dnn);  // DNN
+  // singleNssai
+  oai::model::common::Snssai snssai_model_requested = snssai.to_model_snssai();
+  sdm_subscription.setSingleNssai(snssai_model_requested);
+  // TODO: Report/immediateReport
+
+  nlohmann::json sdm_subscription_json = {};
+  to_json(sdm_subscription_json, sdm_subscription);
+
+  std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions> itti_msg =
+      std::make_shared<itti_sbi_subscribe_sdm_subscriptions>(
+          TASK_SMF_APP, TASK_SMF_SBI);
+
+  itti_msg->supi = supi;
+
+  itti_msg->dnn              = dnn;
+  itti_msg->snssai           = snssai;
+  itti_msg->plmn             = plmn;
+  itti_msg->sdm_subscription = sdm_subscription_json;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
   }
 }
