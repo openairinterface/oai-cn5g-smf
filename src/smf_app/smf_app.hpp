@@ -397,6 +397,9 @@ class smf_app {
    * @return void
    */
   void handle_itti_msg(itti_sbi_subscribe_upf_status_notify_response& r);
+
+  void handle_itti_msg(itti_sbi_subscribe_sdm_subscriptions_response& response);
+
   /*
    * Restore a N4 Session
    * @param [const seid_t &] seid: Session ID to be restored

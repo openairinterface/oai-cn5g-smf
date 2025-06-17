@@ -37,6 +37,7 @@
 #include "smf.h"
 #include "smf_config.hpp"
 #include "smf_msg.hpp"
+#include "http_definitions.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -917,8 +918,9 @@ void smf_http2_server::get_configuration_handler(const response& response) {
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -986,8 +988,9 @@ void smf_http2_server::update_configuration_handler(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -1103,10 +1106,12 @@ void smf_http2_server::modify_sm_context_handler(
     nlohmann::json json_data    = {};
     header_map h                = {};
 
-    if (policy_notification_response.find(kSbiResponseHttpResponseCode) !=
+    if (policy_notification_response.find(
+            oai::http::kSbiResponseHttpResponseCode) !=
         policy_notification_response.end()) {
       http_response_code =
-          policy_notification_response[kSbiResponseHttpResponseCode].get<int>();
+          policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
+              .get<int>();
     }
 
     if (http_response_code == 200) {

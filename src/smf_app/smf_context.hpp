@@ -208,7 +208,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   void set_dnn(const std::string& d);
 
-  const vector<pfcp::framed_route_t>& get_ipv4_frame_route() const;
+  const std::vector<pfcp::framed_route_t>& get_ipv4_frame_route() const;
 
   void add_ipv4_frame_route(const pfcp::framed_route_t& framed_route);
 
@@ -245,7 +245,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   bool released;  // release session request
 
-  vector<pfcp::framed_route_t> ipv4_frame_route;
+  std::vector<pfcp::framed_route_t> ipv4_frame_route;
 
   std::shared_ptr<::oai::app::smf::n7::policy_association> policy_ptr;
 

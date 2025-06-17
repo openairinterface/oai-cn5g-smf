@@ -126,7 +126,7 @@ void session_handler::set_cause(const cause_value_5gsm_e& cause) {
 // this code is really ugly, as soon as we refactor NAS, we have to refactor
 // this as well
 void session_handler::set_nas_filter_from_edge(
-    const shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule) {
+    const std::shared_ptr<qos_upf_edge>& edge, oai::nas::QosRule& qos_rule) {
   auto flow = edge->flow_information;
   // qos_rule.numberofpacketfilters = 0;
   qos_rule.SetNumberOfPacketFilters(0);
@@ -306,7 +306,7 @@ void session_handler::set_protocol_filter(
 // the packet filter here should not be here
 //------------------------------------------------------------------------------
 oai::nas::QosRule session_handler::qos_rule_from_edge(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   oai::nas::QosRule qos_rule;
 
   if (edge->qos_rule_id == 0) {
@@ -356,7 +356,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 
 //------------------------------------------------------------------------------
 oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   oai::nas::QosFlowDescription qos_flow_description = {};
   qos_flow_description.SetQfi(edge->qfi.qfi);
   qos_flow_description.SetOperationCode(

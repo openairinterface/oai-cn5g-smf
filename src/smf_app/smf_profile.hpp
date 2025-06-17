@@ -37,7 +37,6 @@
 
 namespace oai::app::smf {
 
-using namespace std;
 class nf_profile : public std::enable_shared_from_this<nf_profile> {
  public:
   nf_profile()

@@ -159,7 +159,4 @@ constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;
 #define DEFAULT_QFI 1
 #define DEFAULT_5QI 9  // TODO: from conf file
 
-constexpr auto kSbiResponseJsonData         = "jsonData";
-constexpr auto kSbiResponseHttpResponseCode = "httpResponseCode";
-
 #endif

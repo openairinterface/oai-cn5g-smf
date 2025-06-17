@@ -21,6 +21,7 @@
 
 #include "logger.hpp"
 #include "SMFConfigurationApiImpl.h"
+#include "http_definitions.hpp"
 
 namespace oai::smf_server::api {
 
@@ -70,8 +71,9 @@ void SMFConfigurationApiImpl::read_configuration(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -136,8 +138,9 @@ void SMFConfigurationApiImpl::update_configuration(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {

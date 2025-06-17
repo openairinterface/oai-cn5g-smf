@@ -669,9 +669,9 @@ bool smf_sbi::retrieve_sm_data(
   if (!json_data.empty()) {
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
     // Notify to the result
-    nlohmann::json response_data                = {};
-    response_data[kSbiResponseHttpResponseCode] = resp.status_code;
-    response_data[kSbiResponseJsonData]         = json_data;
+    nlohmann::json response_data                           = {};
+    response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[oai::http::kSbiResponseJsonData]         = json_data;
     if (msg->promise_id > 0) {
       smf_app_inst->make_future_ready(response_data, msg->promise_id);
       return true;
@@ -738,9 +738,9 @@ void smf_sbi::register_with_udm(
   }
 
   // Notify to the result
-  nlohmann::json response_data                = {};
-  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[oai::http::kSbiResponseJsonData]         = json_data;
 
   if (msg->promise_id > 0) {
     smf_app_inst->make_future_ready(response_data, msg->promise_id);
@@ -758,7 +758,7 @@ void smf_sbi::subscribe_sdm_subscriptions(
 
   std::string req_body = msg->sdm_subscription.dump();
   request req = http_client_inst->prepare_json_request(udm_uri, req_body);
-  // TODO: add retry mechanism, probably directly inside HTTP Client lib
+  // TODO: add retry mechanism
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
   Logger::smf_sbi().debug(
@@ -773,16 +773,29 @@ void smf_sbi::subscribe_sdm_subscriptions(
     } catch (json::exception& e) {
       Logger::smf_sbi().warn("Could not parse JSON data from UDM");
     }
-  } else {
-    Logger::smf_sbi().warn("Could not get response from UDM, URI %s", udm_uri);
   }
 
   // Notify to the result
-  nlohmann::json response_data                = {};
-  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[oai::http::kSbiResponseJsonData]         = json_data;
 
-  // TODO:
+  // Send response to APP to process
+  if (resp.status_code == oai::common::sbi::http_status_code::CREATED) {
+    std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions_response>
+        itti_msg_response =
+            std::make_shared<itti_sbi_subscribe_sdm_subscriptions_response>(
+                TASK_SMF_SBI, TASK_SMF_APP);
+    itti_msg_response->response_data = response_data;
+    itti_msg_response->supi          = msg->supi;
+
+    int ret = itti_inst->send_msg(itti_msg_response);
+    if (RETURNok != ret) {
+      Logger::smf_sbi().error(
+          "Could not send ITTI message %s to task TASK_SMF_APP",
+          itti_msg_response->get_msg_name());
+    }
+  }
 }
 
 //------------------------------------------------------------------------------

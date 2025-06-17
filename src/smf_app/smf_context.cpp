@@ -66,6 +66,7 @@
 #include "string.hpp"
 #include "utils.hpp"
 #include "mime_parser.hpp"
+#include "http_definitions.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::utils;
@@ -4860,12 +4861,13 @@ bool smf_context::register_with_udm(
     Logger::smf_app().debug("Got result for promise ID %d", promise_id);
     nlohmann::json result = result_opt.value();
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
-    if (result.find(kSbiResponseJsonData) != result.end()) {
-      json_data = result[kSbiResponseJsonData];
+    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
+      json_data = result[oai::http::kSbiResponseJsonData];
     }
 
     return true;
