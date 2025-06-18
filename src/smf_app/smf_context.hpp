@@ -45,6 +45,7 @@
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
 #include "uint_generator.hpp"
+#include "SdmSubscription.h"
 
 using namespace boost::placeholders;
 
@@ -344,7 +345,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
         pending_procedures(),
         dnn_subscriptions(),
         event_sub(),
-        plmn() {
+        plmn(),
+        m_sdm_subscriptions() {
     amf_id         = {};
     amf_addr       = {};
     amf_status_uri = {};
@@ -1140,6 +1142,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::string& supi, const pdu_session_id_t& pdu_session_id,
       const oai::model::udm::SmfRegistration& smf_registration);
 
+  bool add_sdm_subscription(
+      const std::string& supi, const std::string& subscription_id,
+      const std::shared_ptr<oai::model::udm::SdmSubscription>&
+          sdm_subscription);
+
  private:
   std::vector<std::shared_ptr<smf_procedure>> pending_procedures;
   // snssai <-> session management subscription
@@ -1148,6 +1155,12 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   std::map<pdu_session_id_t, std::shared_ptr<smf_pdu_session>>
       pdu_sessions;  // Store all PDU Sessions associated with this UE
   mutable std::shared_mutex m_pdu_sessions_mutex;
+  // Supi <-> SDM Subscription
+  std::map<
+      std::string,
+      std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>>
+      sdm_subscriptions;
+  mutable std::shared_mutex m_sdm_subscriptions;
 
   std::string supi;
   plmn_t plmn;

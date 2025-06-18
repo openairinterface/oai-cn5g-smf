@@ -4874,3 +4874,52 @@ bool smf_context::register_with_udm(
   }
   return false;
 }
+
+//------------------------------------------------------------------------------
+bool smf_context::add_sdm_subscription(
+    const std::string& supi, const std::string& subscription_id,
+    const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
+  std::unique_lock lock(
+      m_sdm_subscriptions,
+      std::defer_lock);  // Do not lock it first
+  Logger::smf_app().info(
+      "Add SDM Subscription with Id %s, SUPI %s", subscription_id, supi);
+
+  if (sdm_subscriptions.count(supi) > 0) {
+    if (sdm_subscriptions.at(supi).count(subscription_id) > 0) {
+      Logger::smf_app().error(
+          "Failed to add SDM Subscription with Id %s, SUPI %s, existed",
+          subscription_id, supi);
+      return false;
+    } else {
+      lock.lock();  // Lock it here
+      sdm_subscriptions.at(supi).insert(
+          std::pair<
+              std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
+              subscription_id, sdm_subscription));
+      return true;
+    }
+
+  } else {
+    lock.lock();  // Lock it here
+    std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>
+        subscriptions;
+    subscriptions.insert(
+        std::pair<
+            std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
+            subscription_id, sdm_subscription));
+
+    sdm_subscriptions.insert(
+        std::pair<
+            std::string,
+            std::map<
+                std::string,
+                std::shared_ptr<oai::model::udm::SdmSubscription>>>(
+            supi, subscriptions));
+    Logger::smf_app().debug(
+        "SDM Subscription with Id %s, SUPI %s has been added successfully",
+        subscription_id, supi);
+    return true;
+  }
+  return false;
+}

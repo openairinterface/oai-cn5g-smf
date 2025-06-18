@@ -820,18 +820,48 @@ void smf_app::handle_itti_msg(
   }
 
   if (response_code == oai::common::sbi::http_status_code::CREATED) {
-    // Store location
-    if (response.response_data.find(oai::http::kSbiResponseHeaderLocation) !=
-        response.response_data.end()) {
-      /*
-    std::shared_ptr<ue_context> uc = {};
-    if (supi_2_ue_context(r.supi, uc)) {
-      uc->amf_3gpp_access_location =
-          r.response_data[kSbiResponseHeaderLocation].get<std::string>();
+    std::string subscription_id     = {};
+    std::shared_ptr<smf_context> sc = {};
+    if (is_supi_2_smf_context(response.supi)) {
+      sc = supi_2_smf_context(response.supi);
+
+      // Store location
+      if (response.response_data.find(oai::http::kSbiResponseHeaderLocation) !=
+          response.response_data.end()) {
+        std::string sub_location =
+            response.response_data[oai::http::kSbiResponseHeaderLocation]
+                .get<std::string>();
+        // Get Subscription ID from the location
+        // Location's format:
+        // {apiRoot}/nudm-sdm/<apiVersion>/{ueId}/sdm-subscriptions/{subscriptionId}
+        std::vector<std::string> split_result;
+        boost::split(split_result, sub_location, boost::is_any_of("/"));
+        if (split_result.size() < 6) {
+          Logger::smf_app().warn("Location is not valid");
+        } else {
+          subscription_id = split_result[split_result.size() - 1];
+        }
+      }
+
+      // TODO: SDM Subscription data
+      try {
+        oai::model::udm::SdmSubscription sdm_subscription = {};
+        from_json(
+            response.response_data[oai::http::kSbiResponseJsonData],
+            sdm_subscription);
+        std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription_ptr =
+            std::make_shared<oai::model::udm::SdmSubscription>(
+                sdm_subscription);
+        sc->add_sdm_subscription(
+            response.supi, subscription_id, sdm_subscription_ptr);
+
+      } catch (std::exception& e) {
+        Logger::smf_app().warn(
+            "Could not parse SdmSubscription from "
+            "Json");
+      }
     }
-    */
-    }
-    // TODO:
+
   } else {
     Logger::smf_app().debug("SMF has failed to subscribe to UDM.");
   }
