@@ -756,8 +756,8 @@ void smf_sbi::subscribe_sdm_subscriptions(
       oai::smf::api::smf_sbi_helper::get_udm_sdm_subscriptions_uri(msg->supi);
   Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
 
-  std::string req_body = msg->sdm_subscription.dump();
-  request req = http_client_inst->prepare_json_request(udm_uri, req_body);
+  request req = http_client_inst->prepare_json_request(
+      udm_uri, msg->sdm_subscription.dump());
   // TODO: add retry mechanism
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
@@ -775,12 +775,11 @@ void smf_sbi::subscribe_sdm_subscriptions(
     }
   }
 
-  // Notify to the result
+  // Send response to APP to process
   nlohmann::json response_data                           = {};
   response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
   response_data[oai::http::kSbiResponseJsonData]         = json_data;
 
-  // Send response to APP to process
   if (resp.status_code == oai::common::sbi::http_status_code::CREATED) {
     std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions_response>
         itti_msg_response =

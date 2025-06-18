@@ -824,7 +824,6 @@ void smf_app::handle_itti_msg(
     std::shared_ptr<smf_context> sc = {};
     if (is_supi_2_smf_context(response.supi)) {
       sc = supi_2_smf_context(response.supi);
-
       // Store location
       if (response.response_data.find(oai::http::kSbiResponseHeaderLocation) !=
           response.response_data.end()) {
@@ -843,7 +842,7 @@ void smf_app::handle_itti_msg(
         }
       }
 
-      // TODO: SDM Subscription data
+      // Store: SDM Subscription data
       try {
         oai::model::udm::SdmSubscription sdm_subscription = {};
         from_json(
@@ -854,11 +853,8 @@ void smf_app::handle_itti_msg(
                 sdm_subscription);
         sc->add_sdm_subscription(
             response.supi, subscription_id, sdm_subscription_ptr);
-
       } catch (std::exception& e) {
-        Logger::smf_app().warn(
-            "Could not parse SdmSubscription from "
-            "Json");
+        Logger::smf_app().warn("Could not parse SdmSubscription from JSON");
       }
     }
 
