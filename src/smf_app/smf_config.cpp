@@ -32,8 +32,7 @@
 #include "fqdn.hpp"
 #include "smf_config_types.hpp"
 
-using namespace std;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::config;
 using namespace oai::model::nrf;
@@ -319,7 +318,7 @@ bool smf_config::from_json(nlohmann::json& json_data) {
 }
 
 //------------------------------------------------------------------------------
-const ue_dns& smf_config::get_dns_from_dnn(const string& dnn) {
+const ue_dns& smf_config::get_dns_from_dnn(const std::string& dnn) {
   for (const auto& dnn_cfg : get_dnns()) {
     if (dnn_cfg.get_dnn() == dnn) {
       return dnn_cfg.get_ue_dns();

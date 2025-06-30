@@ -41,8 +41,8 @@ namespace api {
 using namespace oai::model::smf;
 
 IndividualPDUSessionHSMFApiImpl::IndividualPDUSessionHSMFApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : IndividualPDUSessionHSMFApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}

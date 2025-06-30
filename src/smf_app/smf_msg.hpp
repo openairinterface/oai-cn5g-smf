@@ -57,7 +57,7 @@ typedef enum {
   PDU_SESSION_MSG_TYPE_MAX
 } pdu_session_msg_type_t;
 
-namespace smf {
+namespace oai::app::smf {
 
 //-----------------------------------------------------------------------------
 // QoS flow to be created/modified/removed
@@ -815,6 +815,6 @@ class event_notification {
   // bool m_MaxWaitTimeIsSet;
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif

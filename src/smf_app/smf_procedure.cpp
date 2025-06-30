@@ -42,14 +42,13 @@
 #include "3gpp_24.501.h"
 
 using namespace pfcp;
-using namespace smf;
-using namespace std;
+using namespace oai::app::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
 using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
-extern smf::smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 //------------------------------------------------------------------------------
@@ -485,7 +484,7 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
 
 //------------------------------------------------------------------------------
 pfcp::remove_pdr smf_session_procedure::pfcp_remove_pdr(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_pdr remove_pdr;
   remove_pdr.set(edge->pdr_id);
   return remove_pdr;
@@ -493,7 +492,7 @@ pfcp::remove_pdr smf_session_procedure::pfcp_remove_pdr(
 
 //------------------------------------------------------------------------------
 pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_qer remove_qer;
   remove_qer.set(edge->qer_id);
 
@@ -502,7 +501,7 @@ pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
 
 //------------------------------------------------------------------------------
 pfcp::remove_far smf_session_procedure::pfcp_remove_far(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_far remove_far;
   remove_far.set(edge->far_id);
 
@@ -511,7 +510,7 @@ pfcp::remove_far smf_session_procedure::pfcp_remove_far(
 
 //------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   // TODO some duplicated code from create_pdr
 
   oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
@@ -602,7 +601,7 @@ pfcp::update_qer smf_session_procedure::pfcp_update_qer(
 
 //------------------------------------------------------------------------------
 pfcp::update_far smf_session_procedure::pfcp_update_far(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   // TODO there is some duplicated code from create_far
   // Update FAR
   pfcp::update_far update_far                                     = {};
@@ -632,7 +631,7 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
 
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
-    const shared_ptr<qos_upf_edge>& edge,
+    const std::shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
@@ -731,8 +730,8 @@ bool smf_session_procedure::is_qfi_served_in_edges(
 //------------------------------------------------------------------------------
 std::vector<pfcp::qfi_t>
 smf_session_procedure::associate_fteid_with_created_pdrs(
-    const vector<pfcp::created_pdr>& created_pdrs,
-    const vector<std::shared_ptr<qos_upf_edge>>& edges) {
+    const std::vector<pfcp::created_pdr>& created_pdrs,
+    const std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
   // using set to eliminate duplicates (e.g. for UL CL scenario)
   std::set<uint8_t> used_qfis;
   std::vector<pfcp::qfi_t> used_qfis_pfcp;
@@ -767,8 +766,8 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
 
 //------------------------------------------------------------------------------
 void smf_session_procedure::check_if_all_qfis_are_handled(
-    const vector<pfcp::qfi_t>& all_qfis_to_check,
-    const vector<pfcp::qfi_t>& handled_qfis) {
+    const std::vector<pfcp::qfi_t>& all_qfis_to_check,
+    const std::vector<pfcp::qfi_t>& handled_qfis) {
   if (all_qfis_to_check.size() != handled_qfis.size()) {
     Logger::smf_app().error(
         "Not all QFIs were handled by UPF, rejecting PDU session");
@@ -782,7 +781,7 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
 
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_sdf_filter(
-    const shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter,
+    const std::shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter,
     bool ethernet_sdf_filter) {
   bool is_uplink_fdir, is_downlink_fdir;
   if (ethernet_sdf_filter) {
@@ -827,7 +826,7 @@ bool smf_session_procedure::pfcp_sdf_filter(
 
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_ethernet_packet_filter(
-    const shared_ptr<qos_upf_edge>& edge,
+    const std::shared_ptr<qos_upf_edge>& edge,
     ethernet_packet_filter& ethernet_packet_filter) {
   if (!edge->flow_information.ethFlowDescriptionIsSet()) {
     Logger::smf_app().warn("No Ethernet Flow Description found!");
@@ -1776,7 +1775,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
 //------------------------------------------------------------------------------
 void session_update_sm_context_procedure::remove_pdrs_fars_qers(
-    const vector<std::shared_ptr<qos_upf_edge>>& edges) {
+    const std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {
     if (edge->pdr_id.rule_id != 0) {
       n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));

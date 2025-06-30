@@ -24,8 +24,8 @@
 #include "smf_app.hpp"
 #include "smf_subscription.hpp"
 
-using namespace smf;
-extern smf::smf_app* smf_app_inst;
+using namespace oai::app::smf;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------

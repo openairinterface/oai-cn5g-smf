@@ -64,8 +64,11 @@
 #include "string.hpp"
 #include "utils.hpp"
 #include "mime_parser.hpp"
+#include "SdmSubscription.h"
+#include "smf_sbi_helper.hpp"
+#include "http_definitions.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::smf;
@@ -76,10 +79,10 @@ using namespace oai::common::sbi;
 #define PFCP_ASSOC_RESP_WAIT 2
 
 extern oai::utils::async_shell_cmd* async_shell_cmd_inst;
-extern smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-smf_n4* smf_n4_inst   = nullptr;
-smf_sbi* smf_sbi_inst = nullptr;
+oai::app::smf::smf_n4* smf_n4_inst   = nullptr;
+oai::app::smf::smf_sbi* smf_sbi_inst = nullptr;
 extern itti_mw* itti_inst;
 
 void smf_app_task(void*);
@@ -285,6 +288,14 @@ void smf_app_task(void*) {
       case N11_SUBSCRIBE_UPF_STATUS_NOTIFY_RESPONSE:
         if (itti_sbi_subscribe_upf_status_notify_response* m =
                 dynamic_cast<itti_sbi_subscribe_upf_status_notify_response*>(
+                    msg)) {
+          smf_app_inst->handle_itti_msg(std::ref(*m));
+        }
+        break;
+
+      case SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS_RESPONSE:
+        if (itti_sbi_subscribe_sdm_subscriptions_response* m =
+                dynamic_cast<itti_sbi_subscribe_sdm_subscriptions_response*>(
                     msg)) {
           smf_app_inst->handle_itti_msg(std::ref(*m));
         }
@@ -796,6 +807,63 @@ void smf_app::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(
+    itti_sbi_subscribe_sdm_subscriptions_response& response) {
+  Logger::smf_app().debug("Process SDM Subscription response");
+
+  uint32_t response_code = oai::common::sbi::http_status_code::NO_RESPONSE;
+  if (response.response_data.find(oai::http::kSbiResponseHttpResponseCode) !=
+      response.response_data.end()) {
+    response_code =
+        response.response_data[oai::http::kSbiResponseHttpResponseCode]
+            .get<int>();
+  }
+
+  if (response_code == oai::common::sbi::http_status_code::CREATED) {
+    std::string subscription_id     = {};
+    std::shared_ptr<smf_context> sc = {};
+    if (is_supi_2_smf_context(response.supi)) {
+      sc = supi_2_smf_context(response.supi);
+      // Store location
+      if (response.response_data.find(oai::http::kSbiResponseHeaderLocation) !=
+          response.response_data.end()) {
+        std::string sub_location =
+            response.response_data[oai::http::kSbiResponseHeaderLocation]
+                .get<std::string>();
+        // Get Subscription ID from the location
+        // Location's format:
+        // {apiRoot}/nudm-sdm/<apiVersion>/{ueId}/sdm-subscriptions/{subscriptionId}
+        std::vector<std::string> split_result;
+        boost::split(split_result, sub_location, boost::is_any_of("/"));
+        if (split_result.size() < 6) {
+          Logger::smf_app().warn("Location is not valid");
+        } else {
+          subscription_id = split_result[split_result.size() - 1];
+        }
+      }
+
+      // Store: SDM Subscription data
+      try {
+        oai::model::udm::SdmSubscription sdm_subscription = {};
+        from_json(
+            response.response_data[oai::http::kSbiResponseJsonData],
+            sdm_subscription);
+        std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription_ptr =
+            std::make_shared<oai::model::udm::SdmSubscription>(
+                sdm_subscription);
+        sc->add_sdm_subscription(
+            response.supi, subscription_id, sdm_subscription_ptr);
+      } catch (std::exception& e) {
+        Logger::smf_app().warn("Could not parse SdmSubscription from JSON");
+      }
+    }
+
+  } else {
+    Logger::smf_app().debug("SMF has failed to subscribe to UDM.");
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
@@ -1012,8 +1080,9 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         return;
       }
 
-      // TODO: Subscribe to be notified when this subscription data is modified
+      // Subscribe to be notified when this subscription data is modified
       // using Nudm_SDM_Subscribe
+      subscribe_sdm_subscriptions(supi, dnn, snssai, plmn);
 
     } else {
       // Use local configuration
@@ -1422,9 +1491,11 @@ void smf_app::handle_sbi_get_configuration(
   if (read_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data[kSbiResponseHttpResponseCode] = http_status_code::OK;
+    response_data[oai::http::kSbiResponseHttpResponseCode] =
+        http_status_code::OK;
   } else {
-    response_data[kSbiResponseHttpResponseCode] = http_status_code::BAD_REQUEST;
+    response_data[oai::http::kSbiResponseHttpResponseCode] =
+        http_status_code::BAD_REQUEST;
     oai::model::common::ProblemDetails problem_details = {};
     // TODO set problem_details
     to_json(response_data["ProblemDetails"], problem_details);
@@ -1452,7 +1523,8 @@ void smf_app::handle_sbi_update_configuration(
   if (update_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data[kSbiResponseHttpResponseCode] = http_status_code::OK;
+    response_data[oai::http::kSbiResponseHttpResponseCode] =
+        http_status_code::OK;
 
     // Update SMF profile
     generate_smf_profile();
@@ -1462,7 +1534,7 @@ void smf_app::handle_sbi_update_configuration(
     if (smf_cfg->register_nrf()) register_to_nrf();
 
   } else {
-    response_data[kSbiResponseHttpResponseCode] =
+    response_data[oai::http::kSbiResponseHttpResponseCode] =
         http_status_code::NOT_ACCEPTABLE;
     oai::model::common::ProblemDetails problem_details = {};
     // TODO set problem_details
@@ -2379,12 +2451,13 @@ bool smf_app::get_sm_data(
     Logger::smf_app().debug("Got result for promise ID %d", promise_id);
     nlohmann::json result = result_opt.value();
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
-    if (result.find(kSbiResponseJsonData) != result.end()) {
-      json_data = result[kSbiResponseJsonData];
+    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
+      json_data = result[oai::http::kSbiResponseJsonData];
     }
 
   } else {
@@ -2548,5 +2621,55 @@ bool smf_app::get_sm_data(
     return true;
   } else {
     return false;
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::subscribe_sdm_subscriptions(
+    const std::string& supi, const std::string& dnn, const snssai_t& snssai,
+    plmn_t plmn) {
+  // Prepare the request to be sent to UDM
+  oai::model::udm::SdmSubscription sdm_subscription = {};
+
+  sdm_subscription.setNfInstanceId(
+      nf_instance_profile.get_nf_instance_id());  // NF instance id
+
+  // Callback URI
+  std::string fmr_format_str = {};
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfCallbackPathSdmSubscription,
+      fmr_format_str);
+  std::string smf_callback_sdm_notification_uri =
+      smf_cfg->sbi.get_ipv4_root() +
+      oai::smf::api::smf_sbi_helper::SmfCallbackBase() +
+      fmt::format(fmr_format_str, supi);
+  sdm_subscription.setCallbackReference(smf_callback_sdm_notification_uri);
+  // TODO: expires/implicitUnsubscribe
+  // PLMN ID
+  oai::model::common::PlmnId plmn_id_requested = {};
+  plmn_id_requested.setMcc(plmn.mcc);
+  plmn_id_requested.setMnc(plmn.mnc);
+
+  sdm_subscription.setDnn(dnn);  // DNN
+  // singleNssai
+  oai::model::common::Snssai snssai_model_requested = snssai.to_model_snssai();
+  sdm_subscription.setSingleNssai(snssai_model_requested);
+  // TODO: Report/immediateReport
+
+  nlohmann::json sdm_subscription_json = {};
+  to_json(sdm_subscription_json, sdm_subscription);
+
+  std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions> itti_msg =
+      std::make_shared<itti_sbi_subscribe_sdm_subscriptions>(
+          TASK_SMF_APP, TASK_SMF_SBI);
+
+  itti_msg->supi             = supi;
+  itti_msg->sdm_subscription = sdm_subscription_json;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
   }
 }

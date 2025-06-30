@@ -26,7 +26,7 @@
 #include "common_defs.h"
 #include "itti_msg_sbi.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 
-extern smf::smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern itti_mw* itti_inst;

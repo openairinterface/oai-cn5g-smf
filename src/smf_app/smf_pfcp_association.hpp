@@ -41,7 +41,7 @@
 #include "smf_qos_upf_edge.hpp"
 #include "uint_generator.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 const int PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC  = 10;
 const int PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES   = 2;
@@ -497,6 +497,6 @@ class pfcp_associations {
   bool remove_association(const int32_t& hash_node_id);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif /* FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN */

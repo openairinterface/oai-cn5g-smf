@@ -29,7 +29,7 @@
 #include "smf_pfcp_association.hpp"
 #include "config.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 class pfcp_association;
 
@@ -146,4 +146,4 @@ class qos_upf_edge {
   void associate_dnai(const oai::config::smf::upf& upf_cfg);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf

@@ -36,8 +36,9 @@
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
+#include "smf_sbi_helper.hpp"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::common::sbi;
 using namespace oai::http;
 using namespace oai::utils;
@@ -121,6 +122,12 @@ void smf_sbi_task(void* args_p) {
       case SBI_REGISTER_WITH_UDM:
         smf_sbi_inst->register_with_udm(
             std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
+        break;
+
+      case SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS:
+        smf_sbi_inst->subscribe_sdm_subscriptions(
+            std::static_pointer_cast<itti_sbi_subscribe_sdm_subscriptions>(
+                shared_msg));
         break;
 
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
@@ -662,9 +669,9 @@ bool smf_sbi::retrieve_sm_data(
   if (!json_data.empty()) {
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
     // Notify to the result
-    nlohmann::json response_data                = {};
-    response_data[kSbiResponseHttpResponseCode] = resp.status_code;
-    response_data[kSbiResponseJsonData]         = json_data;
+    nlohmann::json response_data                           = {};
+    response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[oai::http::kSbiResponseJsonData]         = json_data;
     if (msg->promise_id > 0) {
       smf_app_inst->make_future_ready(response_data, msg->promise_id);
       return true;
@@ -731,12 +738,62 @@ void smf_sbi::register_with_udm(
   }
 
   // Notify to the result
-  nlohmann::json response_data                = {};
-  response_data[kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[oai::http::kSbiResponseJsonData]         = json_data;
 
   if (msg->promise_id > 0) {
     smf_app_inst->make_future_ready(response_data, msg->promise_id);
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_sbi::subscribe_sdm_subscriptions(
+    const std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions>& msg) {
+  Logger::smf_sbi().debug("Subscribe SDM Subscriptions with the UDM");
+
+  std::string udm_uri =
+      oai::smf::api::smf_sbi_helper::get_udm_sdm_subscriptions_uri(msg->supi);
+  Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
+
+  request req = http_client_inst->prepare_json_request(
+      udm_uri, msg->sdm_subscription.dump());
+  // TODO: add retry mechanism
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug(
+      "Subscribe SDM Subscriptions with UDM, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  nlohmann::json json_data = {};
+  if (resp.status_code == http_status_code::CREATED) {
+    try {
+      json_data = nlohmann::json::parse(resp.body);
+    } catch (json::exception& e) {
+      Logger::smf_sbi().warn("Could not parse JSON data from UDM");
+    }
+  }
+
+  // Send response to APP to process
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[oai::http::kSbiResponseJsonData]         = json_data;
+
+  if (resp.status_code == oai::common::sbi::http_status_code::CREATED) {
+    std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions_response>
+        itti_msg_response =
+            std::make_shared<itti_sbi_subscribe_sdm_subscriptions_response>(
+                TASK_SMF_SBI, TASK_SMF_APP);
+    itti_msg_response->response_data = response_data;
+    itti_msg_response->supi          = msg->supi;
+
+    int ret = itti_inst->send_msg(itti_msg_response);
+    if (RETURNok != ret) {
+      Logger::smf_sbi().error(
+          "Could not send ITTI message %s to task TASK_SMF_APP",
+          itti_msg_response->get_msg_name());
+    }
   }
 }
 

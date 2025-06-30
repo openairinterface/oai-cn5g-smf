@@ -52,7 +52,7 @@
 #include "string.hpp"
 #include "epc.h"
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::utils;
 using namespace oai::nas;
 extern smf_app* smf_app_inst;
@@ -423,7 +423,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // TODO: MappedEPSBearerContexts
 
   // TODO: Authorized QoS Flow Descriptions
-  std::vector<::smf::qos_flow_context_updated> qos_flows =
+  std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
   if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
@@ -552,7 +552,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   // TODO: MappedEPSBearerContexts
 
   // TODO: Authorized QoS Flow Descriptions
-  std::vector<::smf::qos_flow_context_updated> qos_flows =
+  std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
   if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {

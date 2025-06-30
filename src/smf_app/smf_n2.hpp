@@ -47,7 +47,7 @@
 #include "smf_app.hpp"
 #include "smf_msg.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_n2 {
  private:
@@ -304,6 +304,6 @@ class smf_n2 {
       const std::string& n2_sm_info);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif /* FILE_SMF_N2_HPP_SEEN */

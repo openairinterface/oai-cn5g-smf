@@ -28,8 +28,7 @@
 #include "string.hpp"
 #include "SnssaiSmfInfoItem.h"
 
-using namespace std;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::common::sbi;
 using namespace oai::model::nrf;
 

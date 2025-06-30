@@ -44,7 +44,7 @@ using namespace oai::nas;
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
     const oai::model::smf::SmContextMessage& scd,
-    smf::pdu_session_create_sm_context_request& pcr) {
+    oai::app::smf::pdu_session_create_sm_context_request& pcr) {
   Logger::smf_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
@@ -173,7 +173,7 @@ void xgpp_conv::sm_context_create_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_update_from_openapi(
     const oai::model::smf::SmContextUpdateMessage& scu,
-    smf::pdu_session_update_sm_context_request& pur) {
+    oai::app::smf::pdu_session_update_sm_context_request& pur) {
   Logger::smf_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
@@ -294,7 +294,7 @@ void xgpp_conv::sm_context_update_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_release_from_openapi(
     const oai::model::smf::SmContextReleaseMessage& srm,
-    smf::pdu_session_release_sm_context_request& prr) {
+    oai::app::smf::pdu_session_release_sm_context_request& prr) {
   Logger::smf_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
@@ -325,7 +325,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
     const oai::model::smf::NsmfEventExposure& nee,
-    smf::event_exposure_msg& eem) {
+    oai::app::smf::event_exposure_msg& eem) {
   Logger::smf_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "
       "Event Exposure Msg");
@@ -394,7 +394,7 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_request_from_nas(
     const std::shared_ptr<Nas5gsmMessage>& nas_msg,
-    smf::pdu_session_create_sm_context_request& pcr) {
+    oai::app::smf::pdu_session_create_sm_context_request& pcr) {
   pdu_session_type_t pdu_session_type = {};
   pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
 

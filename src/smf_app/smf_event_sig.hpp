@@ -30,7 +30,7 @@
 
 namespace bs2 = boost::signals2;
 
-namespace smf {
+namespace oai::app::smf {
 
 // Signal for PDU session status
 // SCID, PDU Session Status, HTTP version
@@ -81,5 +81,5 @@ typedef bs2::signal_type<
     void(scid_t, uint8_t), bs2::keywords::mutex_type<bs2::dummy_mutex>>::type
     ee_flexcn_sig_t;
 
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif /* FILE_SMF_EVENT_SIG_HPP_SEEN */

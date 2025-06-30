@@ -19,40 +19,33 @@
  *      contact@openairinterface.org
  */
 
-#ifndef SMF_CONFIGURATION_API_IMPL_H_
-#define SMF_CONFIGURATION_API_IMPL_H_
+#ifndef _SMF_SBI_HELPER_HPP
+#define _SMF_SBI_HELPER_HPP
 
-#include "smf_app.hpp"
-#include <SMFConfigurationApi.h>
-#include <pistache/http.h>
-#include <pistache/optional.h>
+#include <nlohmann/json.hpp>
 
-namespace oai::smf_server::api {
+#include "smf_config.hpp"
+#include "sbi_helper.hpp"
 
-using namespace oai::model::smf;
+using namespace oai::config;
+using namespace oai::common::sbi;
 
-class SMFConfigurationApiImpl
-    : public oai::smf_server::api::SMFConfigurationApi {
- private:
-  oai::app::smf::smf_app* m_smf_app;
+extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+namespace oai::smf::api {
+
+class smf_sbi_helper : public sbi_helper {
  public:
-  SMFConfigurationApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>,
-      oai::app::smf::smf_app* smf_app_inst);
-  ~SMFConfigurationApiImpl() {}
-
-  void read_configuration(Pistache::Http::ResponseWriter& response);
-  void update_configuration(
-      nlohmann::json& configuration_info,
-      Pistache::Http::ResponseWriter& response);
-
- protected:
-  static uint64_t generate_promise_id() {
-    return oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
+  static std::string SmfCallbackBase() {
+    return sbi_helper::SmfCallbackBase + smf_cfg->sbi_api_version;
   }
+
+  static void set_problem_details(
+      nlohmann::json& json_data, const std::string& detail);
+
+  static std::string get_udm_sdm_subscriptions_uri(const std::string& supi);
 };
 
-}  // namespace oai::smf_server::api
+}  // namespace oai::smf::api
 
 #endif

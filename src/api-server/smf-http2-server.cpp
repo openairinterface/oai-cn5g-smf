@@ -37,6 +37,7 @@
 #include "smf.h"
 #include "smf_config.hpp"
 #include "smf_msg.hpp"
+#include "http_definitions.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -522,7 +523,7 @@ void smf_http2_server::create_sm_contexts_handler(
   Logger::smf_api_server().debug(
       "Create a pdu_session_create_sm_context_request message and store the "
       "necessary information");
-  smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextMessage to pdu_session_create_sm_context_request
   xgpp_conv::sm_context_create_from_openapi(
@@ -670,7 +671,7 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_UpdateSMContext Request from AMF.");
 
-  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextUpdateMessage to
   // pdu_session_update_sm_context_request
@@ -789,7 +790,7 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Handle PDU Session Release SM Context Request.");
 
-  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
   // Convert from SmContextReleaseMessage to
   // pdu_session_release_sm_context_request
   xgpp_conv::sm_context_release_from_openapi(
@@ -917,8 +918,9 @@ void smf_http2_server::get_configuration_handler(const response& response) {
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -986,8 +988,9 @@ void smf_http2_server::update_configuration_handler(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find(kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code = result[kSbiResponseHttpResponseCode].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -1016,7 +1019,7 @@ void smf_http2_server::create_event_subscription_handler(
   Logger::smf_api_server().info("Received SmfCreateEventSubscription Request");
 
   header_map h;
-  smf::event_exposure_msg event_exposure = {};
+  oai::app::smf::event_exposure_msg event_exposure = {};
 
   // Convert from NsmfEventExposure to event_exposure_msg
   xgpp_conv::smf_event_exposure_notification_from_openapi(
@@ -1059,8 +1062,8 @@ void smf_http2_server::modify_sm_context_handler(
       "Received a PCF-initiated SM Policy Association Modification "
       "(SmPolicyNotification Request)");
 
-  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
-  nlohmann::json sm_policy_notification                         = {};
+  oai::app::smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  nlohmann::json sm_policy_notification                                   = {};
 
   to_json(sm_policy_notification, smPolicyNotification);
   sm_context_req_msg.set_json_data(sm_policy_notification);
@@ -1103,10 +1106,12 @@ void smf_http2_server::modify_sm_context_handler(
     nlohmann::json json_data    = {};
     header_map h                = {};
 
-    if (policy_notification_response.find(kSbiResponseHttpResponseCode) !=
+    if (policy_notification_response.find(
+            oai::http::kSbiResponseHttpResponseCode) !=
         policy_notification_response.end()) {
       http_response_code =
-          policy_notification_response[kSbiResponseHttpResponseCode].get<int>();
+          policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
+              .get<int>();
     }
 
     if (http_response_code == 200) {
@@ -1143,8 +1148,8 @@ void smf_http2_server::terminate_policy_notification_handler(
   response.end();
 
   // Process the request in APP
-  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
-  nlohmann::json termination_notification                        = {};
+  oai::app::smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  nlohmann::json termination_notification                                  = {};
 
   to_json(termination_notification, terminationNotification);
   sm_context_req_msg.set_json_data(termination_notification);

@@ -50,7 +50,7 @@ namespace xgpp_conv {
  */
 void sm_context_create_from_openapi(
     const oai::model::smf::SmContextMessage& scm,
-    smf::pdu_session_create_sm_context_request& pcr);
+    oai::app::smf::pdu_session_create_sm_context_request& pcr);
 
 /*
  * Convert SM Context Update Msg from OpenAPI into PDU
@@ -63,7 +63,7 @@ void sm_context_create_from_openapi(
  */
 void sm_context_update_from_openapi(
     const oai::model::smf::SmContextUpdateMessage& scu,
-    smf::pdu_session_update_sm_context_request& pur);
+    oai::app::smf::pdu_session_update_sm_context_request& pur);
 
 /*
  * Convert SM Context Release Msg from OpenAPI into PDU
@@ -76,7 +76,7 @@ void sm_context_update_from_openapi(
  */
 void sm_context_release_from_openapi(
     const oai::model::smf::SmContextReleaseMessage& srm,
-    smf::pdu_session_release_sm_context_request& prr);
+    oai::app::smf::pdu_session_release_sm_context_request& prr);
 
 /*
  * Convert NsmfEventExposure from OpenAPI into Event Exposure Msg
@@ -87,7 +87,7 @@ void sm_context_release_from_openapi(
  */
 void smf_event_exposure_notification_from_openapi(
     const oai::model::smf::NsmfEventExposure& nee,
-    smf::event_exposure_msg& eem);
+    oai::app::smf::event_exposure_msg& eem);
 
 /*
  * Convert NAS to SM Context Request msg
@@ -98,7 +98,7 @@ void smf_event_exposure_notification_from_openapi(
  */
 void sm_context_request_from_nas(
     const std::shared_ptr<Nas5gsmMessage>& nas_msg,
-    smf::pdu_session_create_sm_context_request& pcr);
+    oai::app::smf::pdu_session_create_sm_context_request& pcr);
 
 void create_sm_context_response_from_ctx_request(
     const std::shared_ptr<itti_sbi_create_sm_context_request>& ct_request,

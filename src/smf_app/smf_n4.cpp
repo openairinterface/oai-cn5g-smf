@@ -31,8 +31,7 @@
 #include "smf_config.hpp"
 
 using namespace pfcp;
-using namespace smf;
-using namespace std;
+using namespace oai::app::smf;
 
 extern itti_mw* itti_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
@@ -52,14 +51,14 @@ void smf_n4_task(void* args_p) {
       case N4_HEARTBEAT_REQUEST:
         if (itti_n4_heartbeat_request* m =
                 dynamic_cast<itti_n4_heartbeat_request*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_HEARTBEAT_RESPONSE:
         if (itti_n4_heartbeat_response* m =
                 dynamic_cast<itti_n4_heartbeat_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
@@ -67,92 +66,92 @@ void smf_n4_task(void* args_p) {
         if (itti_n4_association_setup_request* m =
                 dynamic_cast<itti_n4_association_setup_request*>(msg)) {
           // m->trxn_id = smf_n4_inst->generate_trxn_id();
-          smf_n4_inst->send_association_setup_request(ref(*m));
-          // smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->send_association_setup_request(std::ref(*m));
+          // smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_ASSOCIATION_SETUP_RESPONSE:
         if (itti_n4_association_setup_response* m =
                 dynamic_cast<itti_n4_association_setup_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_ASSOCIATION_UPDATE_REQUEST:
         if (itti_n4_association_update_request* m =
                 dynamic_cast<itti_n4_association_update_request*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_ASSOCIATION_UPDATE_RESPONSE:
         if (itti_n4_association_update_response* m =
                 dynamic_cast<itti_n4_association_update_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_ASSOCIATION_RELEASE_REQUEST:
         if (itti_n4_association_release_request* m =
                 dynamic_cast<itti_n4_association_release_request*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_ASSOCIATION_RELEASE_RESPONSE:
         if (itti_n4_association_release_response* m =
                 dynamic_cast<itti_n4_association_release_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_VERSION_NOT_SUPPORTED_RESPONSE:
         if (itti_n4_version_not_supported_response* m =
                 dynamic_cast<itti_n4_version_not_supported_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_NODE_REPORT_RESPONSE:
         if (itti_n4_node_report_response* m =
                 dynamic_cast<itti_n4_node_report_response*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_SESSION_SET_DELETION_REQUEST:
         if (itti_n4_session_set_deletion_request* m =
                 dynamic_cast<itti_n4_session_set_deletion_request*>(msg)) {
-          smf_n4_inst->handle_itti_msg(ref(*m));
+          smf_n4_inst->handle_itti_msg(std::ref(*m));
         }
         break;
 
       case N4_SESSION_ESTABLISHMENT_REQUEST:
         if (itti_n4_session_establishment_request* m =
                 dynamic_cast<itti_n4_session_establishment_request*>(msg)) {
-          smf_n4_inst->send_n4_msg(ref(*m));
+          smf_n4_inst->send_n4_msg(std::ref(*m));
         }
         break;
 
       case N4_SESSION_MODIFICATION_REQUEST:
         if (itti_n4_session_modification_request* m =
                 dynamic_cast<itti_n4_session_modification_request*>(msg)) {
-          smf_n4_inst->send_n4_msg(ref(*m));
+          smf_n4_inst->send_n4_msg(std::ref(*m));
         }
         break;
 
       case N4_SESSION_DELETION_REQUEST:
         if (itti_n4_session_deletion_request* m =
                 dynamic_cast<itti_n4_session_deletion_request*>(msg)) {
-          smf_n4_inst->send_n4_msg(ref(*m));
+          smf_n4_inst->send_n4_msg(std::ref(*m));
         }
         break;
 
       case N4_SESSION_REPORT_RESPONSE:
         if (itti_n4_session_report_response* m =
                 dynamic_cast<itti_n4_session_report_response*>(msg)) {
-          smf_n4_inst->send_n4_msg(ref(*m));
+          smf_n4_inst->send_n4_msg(std::ref(*m));
         }
         break;
 
@@ -197,7 +196,7 @@ void smf_n4_task(void* args_p) {
 //------------------------------------------------------------------------------
 smf_n4::smf_n4()
     : pfcp_l4_stack(
-          string(inet_ntoa(smf_cfg->n4.addr4)), smf_cfg->n4.port,
+          std::string(inet_ntoa(smf_cfg->n4.addr4)), smf_cfg->n4.port,
           smf_cfg->n4.thread_rd_sched_params) {
   Logger::smf_n4().startup("Starting...");
   // TODO  refine this, look at RFC5905

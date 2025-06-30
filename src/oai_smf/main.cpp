@@ -38,11 +38,11 @@
 #include <unistd.h>  // get_pid(), pause()
 #include <chrono>
 
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::utils;
-using namespace std;
 using namespace oai::smf_server::api;
 using namespace oai::config::smf;
+using namespace std::chrono_literals;
 
 itti_mw* itti_inst                    = nullptr;
 async_shell_cmd* async_shell_cmd_inst = nullptr;
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
 
   // PID file
   // Currently hard-coded value. TODO: add as config option.
-  string pid_file_name =
+  std::string pid_file_name =
       oai::utils::get_exe_absolute_path("/var/run", smf_cfg->instance);
   if (!oai::utils::is_pid_file_lock_success(pid_file_name.c_str())) {
     Logger::smf_app().error("Lock PID file %s failed\n", pid_file_name.c_str());

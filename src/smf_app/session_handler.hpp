@@ -29,7 +29,7 @@
 
 #pragma once
 
-namespace smf {
+namespace oai::app::smf {
 
 class session_handler {
  public:
@@ -54,7 +54,7 @@ class session_handler {
    * @param qos_flow_context_updated
    * @return
    */
-  ::smf::qos_flow_context_updated get_qos_flow_context_updated(
+  ::oai::app::smf::qos_flow_context_updated get_qos_flow_context_updated(
       const pfcp::qfi_t& qfi);
 
   /**
@@ -62,7 +62,8 @@ class session_handler {
    * set_qfis_to_be_updated before
    * @return
    */
-  std::vector<::smf::qos_flow_context_updated> get_qos_flows_context_updated();
+  std::vector<::oai::app::smf::qos_flow_context_updated>
+  get_qos_flows_context_updated();
 
   /**
    * Set the list of all QFIs that need to be updated towards N1/N2 and N4
@@ -113,7 +114,7 @@ class session_handler {
    * @param qos_rules_ie
    * @return
    */
-  ::smf::qos_flow_context_updated update_qos_rule(
+  ::oai::app::smf::qos_flow_context_updated update_qos_rule(
       oai::nas::QosRule qos_rules_ie);
 
   /**
@@ -309,4 +310,4 @@ class session_handler {
   };
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf

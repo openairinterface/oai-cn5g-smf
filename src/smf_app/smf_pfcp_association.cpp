@@ -28,8 +28,7 @@
 #include "smf_config.hpp"
 #include "fqdn.hpp"
 
-using namespace smf;
-using namespace std;
+using namespace oai::app::smf;
 using namespace oai::model::pcf;
 using namespace oai::model::nrf;
 
@@ -1229,7 +1228,8 @@ bool upf_graph::verify(const upf_selection_criteria& criteria) {
 }
 
 //---------------------------------------------------------------------------------------------
-std::string upf_graph::get_dnai_list(const std::unordered_set<string>& dnais) {
+std::string upf_graph::get_dnai_list(
+    const std::unordered_set<std::string>& dnais) {
   std::string out = {};
 
   for (const auto& dnai : dnais) {
@@ -1241,6 +1241,7 @@ std::string upf_graph::get_dnai_list(const std::unordered_set<string>& dnais) {
   return out;
 }
 
+//---------------------------------------------------------------------------------------------
 void upf_graph::update_next_hop_fteid(
     const std::shared_ptr<qos_upf_edge>& src_edge, const pfcp::fteid_t& fteid) {
   std::shared_lock graph_lock(graph_mutex);
@@ -1370,6 +1371,7 @@ bool upf_graph::full() const {
   return adjacency_list.size() >= PFCP_MAX_ASSOCIATIONS;
 }
 
+//---------------------------------------------------------------------------------------------
 std::string upf_graph::to_string(const std::string& indent) const {
   std::shared_lock graph_lock(graph_mutex);
 
@@ -1442,10 +1444,12 @@ std::string upf_graph::to_string_from_start_node(
   return output;
 }
 
+//---------------------------------------------------------------------------------------------
 uint8_t upf_graph::generate_qfi() {
   return qfi_generator.get_uid();
 }
 
+//---------------------------------------------------------------------------------------------
 void upf_graph::release_qfi(uint8_t qfi) {
   qfi_generator.free_uid(qfi);
 }

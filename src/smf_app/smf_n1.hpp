@@ -31,7 +31,7 @@
 
 using namespace oai::nas;
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_n1 {
  private:
@@ -174,6 +174,6 @@ class smf_n1 {
       std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif /* FILE_SMF_N1_HPP_SEEN */
