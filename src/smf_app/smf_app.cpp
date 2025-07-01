@@ -848,11 +848,15 @@ void smf_app::handle_itti_msg(
         from_json(
             response.response_data[oai::http::kSbiResponseJsonData],
             sdm_subscription);
+        sdm_subscription.setSubscriptionId(subscription_id);
         std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription_ptr =
             std::make_shared<oai::model::udm::SdmSubscription>(
                 sdm_subscription);
-        sc->add_sdm_subscription(
-            response.supi, subscription_id, sdm_subscription_ptr);
+
+        std::string key = {};
+        get_dnn_snssai_key(
+            sdm_subscription.getDnn(), sdm_subscription.getSingleNssai(), key);
+        sc->add_sdm_subscription(key, sdm_subscription_ptr);
       } catch (std::exception& e) {
         Logger::smf_app().warn("Could not parse SdmSubscription from JSON");
       }
@@ -2672,4 +2676,14 @@ void smf_app::subscribe_sdm_subscriptions(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
   }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::get_dnn_snssai_key(
+    const std::string& dnn, const oai::model::common::Snssai& snssai,
+    std::string& key) {
+  oai::model::common::Snssai snssai_3gpp_model = snssai;
+  snssai_3gpp_model.parse_sd_int_with_hex();
+  key = dnn + std::to_string(snssai_3gpp_model.getSst()) +
+        snssai_3gpp_model.getSd();
 }

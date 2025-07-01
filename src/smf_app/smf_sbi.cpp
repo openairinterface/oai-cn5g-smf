@@ -130,6 +130,12 @@ void smf_sbi_task(void* args_p) {
                 shared_msg));
         break;
 
+      case SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS:
+        smf_sbi_inst->unsubscribe_sdm_subscriptions(
+            std::static_pointer_cast<itti_sbi_unsubscribe_sdm_subscriptions>(
+                shared_msg));
+        break;
+
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
         break;
 
@@ -787,6 +793,42 @@ void smf_sbi::subscribe_sdm_subscriptions(
                 TASK_SMF_SBI, TASK_SMF_APP);
     itti_msg_response->response_data = response_data;
     itti_msg_response->supi          = msg->supi;
+
+    int ret = itti_inst->send_msg(itti_msg_response);
+    if (RETURNok != ret) {
+      Logger::smf_sbi().error(
+          "Could not send ITTI message %s to task TASK_SMF_APP",
+          itti_msg_response->get_msg_name());
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_sbi::unsubscribe_sdm_subscriptions(
+    const std::shared_ptr<itti_sbi_unsubscribe_sdm_subscriptions>& msg) {
+  Logger::smf_sbi().debug("Subscribe SDM Subscriptions with the UDM");
+
+  std::string udm_uri =
+      oai::smf::api::smf_sbi_helper::get_udm_sdm_unsubscriptions_uri(
+          msg->supi, msg->subscription_id);
+  Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
+
+  request req   = {};
+  req.uri       = udm_uri;
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug(
+      "Unsubscribe SDM Subscriptions with UDM, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  // Send response to APP to process
+  if (resp.status_code == oai::common::sbi::http_status_code::NO_CONTENT) {
+    std::shared_ptr<itti_sbi_unsubscribe_sdm_subscriptions_response>
+        itti_msg_response =
+            std::make_shared<itti_sbi_unsubscribe_sdm_subscriptions_response>(
+                TASK_SMF_SBI, TASK_SMF_APP);
+    itti_msg_response->supi = msg->supi;
 
     int ret = itti_inst->send_msg(itti_msg_response);
     if (RETURNok != ret) {
