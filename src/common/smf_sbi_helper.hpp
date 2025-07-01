@@ -44,6 +44,8 @@ class smf_sbi_helper : public sbi_helper {
       nlohmann::json& json_data, const std::string& detail);
 
   static std::string get_udm_sdm_subscriptions_uri(const std::string& supi);
+  static std::string get_udm_sdm_unsubscriptions_uri(
+      const std::string& supi, const std::string& subscription_id);
 };
 
 }  // namespace oai::smf::api

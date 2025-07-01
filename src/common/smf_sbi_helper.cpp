@@ -55,4 +55,21 @@ std::string smf_sbi_helper::get_udm_sdm_subscriptions_uri(
              .get_api_version() +
          fmt::format(fmr_format_str, supi);
 }
+
+//------------------------------------------------------------------------------
+std::string smf_sbi_helper::get_udm_sdm_unsubscriptions_uri(
+    const std::string& supi, const std::string& subscription_id) {
+  std::string fmr_format_str = {};
+  get_fmt_format_form(
+      UdmSdmPathSupiSdmSubscriptionsSubscriptionId, fmr_format_str);
+
+  return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_url(smf_cfg->enable_tls()) +
+         oai::common::sbi::sbi_helper::UdmUeCmBase +
+         smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_api_version() +
+         fmt::format(fmr_format_str, supi, subscription_id);
+}
 }  // namespace oai::smf::api
