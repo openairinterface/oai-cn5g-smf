@@ -1142,6 +1142,9 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::string& supi, const pdu_session_id_t& pdu_session_id,
       const oai::model::udm::SmfRegistration& smf_registration);
 
+  void deregister_with_udm(
+      const std::string& supi, const pdu_session_id_t& pdu_session_id);
+
   bool add_sdm_subscription(
       const std::string& supi, const std::string& subscription_id,
       const std::shared_ptr<oai::model::udm::SdmSubscription>&

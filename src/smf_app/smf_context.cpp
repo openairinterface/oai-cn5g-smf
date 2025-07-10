@@ -4876,6 +4876,27 @@ bool smf_context::register_with_udm(
 }
 
 //------------------------------------------------------------------------------
+void smf_context::deregister_with_udm(
+    const std::string& supi, const pdu_session_id_t& pdu_session_id) {
+  Logger::smf_sbi().debug(
+      "Deregister with the UDM for this PDU Session (ID %d)", pdu_session_id);
+
+  std::shared_ptr<itti_sbi_deregister_with_udm> itti_msg =
+      std::make_shared<itti_sbi_deregister_with_udm>(
+          TASK_SMF_APP, TASK_SMF_SBI);
+
+  itti_msg->supi           = supi;
+  itti_msg->pdu_session_id = pdu_session_id;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
 bool smf_context::add_sdm_subscription(
     const std::string& supi, const std::string& subscription_id,
     const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {

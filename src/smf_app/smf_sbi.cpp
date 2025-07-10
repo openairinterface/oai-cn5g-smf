@@ -22,7 +22,6 @@
 #include "smf_sbi.hpp"
 
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -122,6 +121,11 @@ void smf_sbi_task(void* args_p) {
       case SBI_REGISTER_WITH_UDM:
         smf_sbi_inst->register_with_udm(
             std::static_pointer_cast<itti_sbi_register_with_udm>(shared_msg));
+        break;
+
+      case SBI_DEREGISTER_WITH_UDM:
+        smf_sbi_inst->deregister_with_udm(
+            std::static_pointer_cast<itti_sbi_deregister_with_udm>(shared_msg));
         break;
 
       case SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS:
@@ -269,7 +273,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   } catch (json::exception& e) {
     Logger::smf_sbi().warn("Could not get the cause from the response");
   }
-  Logger::smf_sbi().debug("Response from AMF, Http Code: %i", resp.status_code);
+  Logger::smf_sbi().debug("Response from AMF, HTTP Code: %i", resp.status_code);
 }
 
 //------------------------------------------------------------------------------
@@ -313,7 +317,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
     response_data_json["cause"] = "504 Gateway Timeout";
   }
   Logger::smf_sbi().debug(
-      "Response from AMF, Http Code: %i, cause %s", resp.status_code,
+      "Response from AMF, HTTP Code: %i, cause %s", resp.status_code,
       response_data_json["cause"].dump().c_str());
 
   // Send response to APP to process
@@ -363,7 +367,6 @@ void smf_sbi::notify_subscribed_event(
   Logger::smf_sbi().debug(
       "Send notification for the subscribed event to the subscription");
 
-  // Create and add an easy handle to a  multi curl request
   for (auto i : msg->event_notifs) {
     // Fill the json part
     nlohmann::json json_data   = {};
@@ -435,7 +438,9 @@ void smf_sbi::register_nf_instance(
   nlohmann::json json_data = {};
   msg->profile.to_json(json_data);
 
-  std::string url = get_nrf_base_url() + msg->profile.get_nf_instance_id();
+  std::string url = oai::smf::api::smf_sbi_helper::get_nrf_nf_instance_uri(
+      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
+      smf_cfg->enable_tls(), msg->profile.get_nf_instance_id());
 
   Logger::smf_sbi().debug(
       "Send NF Instance Registration to NRF, NRF URL %s", url.c_str());
@@ -504,7 +509,9 @@ void smf_sbi::update_nf_instance(
   std::string body = json_data.dump();
   Logger::smf_sbi().debug("Send NF Update to NRF, Msg body %s", body.c_str());
 
-  std::string url = get_nrf_base_url() + msg->smf_instance_id;
+  std::string url = oai::smf::api::smf_sbi_helper::get_nrf_nf_instance_uri(
+      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
+      smf_cfg->enable_tls(), msg->smf_instance_id);
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
 
@@ -546,7 +553,9 @@ void smf_sbi::deregister_nf_instance(
       "Send NF De-register to NRF (HTTP version %d)", msg->http_version);
 
   request req;
-  req.uri = get_nrf_base_url() + msg->smf_instance_id;
+  req.uri = oai::smf::api::smf_sbi_helper::get_nrf_nf_instance_uri(
+      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
+      smf_cfg->enable_tls(), msg->smf_instance_id);
   Logger::smf_sbi().debug(
       "Send NF De-register to NRF (NRF URL %s)", req.uri.c_str());
 
@@ -622,21 +631,9 @@ bool smf_sbi::retrieve_sm_data(
               "&plmn-id={\"mcc\":\"" + msg->plmn.mcc + "\",\"mnc\":\"" +
               msg->plmn.mnc + "\"}";
 
-  std::string fmr_format_str = {};
-  oai::common::sbi::sbi_helper::get_fmt_format_form(
-      oai::common::sbi::sbi_helper::UdmSdmPathSupiSmData, fmr_format_str);
-
-  // TODO: TOBE UPDATED
-  std::string udm_url = smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-                            ->get_sbi()
-                            .get_url(smf_cfg->enable_tls()) +
-
-                        oai::common::sbi::sbi_helper::UdmSdmBase +
-                        smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-                            ->get_sbi()
-                            .get_api_version() +
-                        fmt::format(fmr_format_str, msg->supi) + query_str;
-
+  std::string udm_url =
+      oai::smf::api::smf_sbi_helper::get_udm_sdm_sm_data_uri(msg->supi) +
+      query_str;
   Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
 
   request req;
@@ -695,27 +692,13 @@ void smf_sbi::register_with_udm(
       "Register with the UDM for this PDU Session (ID %d)",
       msg->pdu_session_id);
 
-  // TODO: Create new wrapper for SBI Helper to handle this
-  std::string fmr_format_str = {};
-  oai::common::sbi::sbi_helper::get_fmt_format_form(
-      oai::common::sbi::sbi_helper::UdmUeCmPathSmfRegistrationPduSession,
-      fmr_format_str);
-
-  std::string udm_url =
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_url(smf_cfg->enable_tls()) +
-      oai::common::sbi::sbi_helper::UdmUeCmBase +
-      smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
-          ->get_sbi()
-          .get_api_version() +
-      fmt::format(fmr_format_str, msg->supi, msg->pdu_session_id);
-
-  Logger::smf_sbi().debug("UDM's URL: %s ", udm_url.c_str());
+  std::string udm_uri = oai::smf::api::smf_sbi_helper::
+      get_udm_uecm_smf_registration_pdu_session_uri(
+          msg->supi, msg->pdu_session_id);
+  Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
 
   std::string req_body = msg->smf_registration.dump();
-  request req = http_client_inst->prepare_json_request(udm_url, req_body);
-  // TODO: add retry mechanism, probably directly inside HTTP Client lib
+  request req   = http_client_inst->prepare_json_request(udm_uri, req_body);
   response resp = http_client_inst->send_http_request(method_e::GET, req);
 
   Logger::smf_sbi().debug(
@@ -725,16 +708,14 @@ void smf_sbi::register_with_udm(
 
   nlohmann::json json_data = {};
   if ((resp.status_code == http_status_code::OK) or
-      (resp.status_code == http_status_code::CREATED) or
-      (resp.status_code == http_status_code::NO_CONTENT)) {
+      (resp.status_code == http_status_code::CREATED)) {
     try {
       json_data = nlohmann::json::parse(resp.body);
     } catch (json::exception& e) {
       Logger::smf_sbi().warn("Could not parse Json data from UDM");
     }
   } else {
-    Logger::smf_sbi().warn(
-        "Could not get response from UDM, URL %s, retry ...", udm_url);
+    Logger::smf_sbi().warn("Could not get response from UDM, URI %s", udm_uri);
   }
 
   // Notify to the result
@@ -744,6 +725,46 @@ void smf_sbi::register_with_udm(
 
   if (msg->promise_id > 0) {
     smf_app_inst->make_future_ready(response_data, msg->promise_id);
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_sbi::deregister_with_udm(
+    const std::shared_ptr<itti_sbi_deregister_with_udm>& msg) {
+  Logger::smf_sbi().debug(
+      "Deregister with the UDM for this PDU Session (ID %d)",
+      msg->pdu_session_id);
+
+  std::string udm_uri = oai::smf::api::smf_sbi_helper::
+      get_udm_uecm_smf_registration_pdu_session_uri(
+          msg->supi, msg->pdu_session_id);
+  Logger::smf_sbi().debug("UDM's URI: %s ", udm_uri);
+
+  request req   = {};
+  req.uri       = udm_uri;
+  response resp = http_client_inst->send_http_request(method_e::DELETE, req);
+
+  Logger::smf_sbi().debug(
+      "Deregister with UDM for this PDU Session, response from UDM");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  // Send response to APP to process
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+
+  if (resp.status_code == oai::common::sbi::http_status_code::NO_CONTENT) {
+    std::shared_ptr<itti_sbi_deregister_with_udm_response> itti_msg_response =
+        std::make_shared<itti_sbi_deregister_with_udm_response>(
+            TASK_SMF_SBI, TASK_SMF_APP);
+    itti_msg_response->pdu_session_id = msg->pdu_session_id;
+
+    int ret = itti_inst->send_msg(itti_msg_response);
+    if (RETURNok != ret) {
+      Logger::smf_sbi().error(
+          "Could not send ITTI message %s to task TASK_SMF_APP",
+          itti_msg_response->get_msg_name());
+    }
   }
 }
 
@@ -795,11 +816,4 @@ void smf_sbi::subscribe_sdm_subscriptions(
           itti_msg_response->get_msg_name());
     }
   }
-}
-
-//------------------------------------------------------------------------------
-std::string smf_sbi::get_nrf_base_url() {
-  auto nrf_sbi = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  return nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
-         nrf_sbi.get_api_version() + NNRF_NF_REGISTER_URL;
 }

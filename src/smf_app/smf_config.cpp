@@ -237,6 +237,7 @@ void smf_config::to_smf_config() {
   }
 }
 
+//------------------------------------------------------------------------------
 bool smf_config::init() {
   bool success = config::init();
   // we update DNS settings per DNN if user did not set it
@@ -257,10 +258,12 @@ bool smf_config::init() {
   return success;
 }
 
+//------------------------------------------------------------------------------
 std::shared_ptr<smf_config_type> smf_config::smf() const {
   return std::dynamic_pointer_cast<smf_config_type>(get_local());
 }
 
+//------------------------------------------------------------------------------
 void smf_config::update_used_nfs() {
   config::update_used_nfs();
   if (config::register_nrf()) {
