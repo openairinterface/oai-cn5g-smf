@@ -691,4 +691,50 @@ class itti_sbi_subscribe_sdm_subscriptions_response : public itti_sbi_msg {
   nlohmann::json response_data;
 };
 
+//-----------------------------------------------------------------------------
+class itti_sbi_unsubscribe_sdm_subscriptions : public itti_sbi_msg {
+ public:
+  itti_sbi_unsubscribe_sdm_subscriptions(
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS, orig, dest),
+        supi(),
+        subscription_id() {}
+
+  itti_sbi_unsubscribe_sdm_subscriptions(
+      const itti_sbi_unsubscribe_sdm_subscriptions& i)
+      : itti_sbi_msg(i) {
+    supi            = i.supi;
+    subscription_id = i.subscription_id;
+  }
+  virtual ~itti_sbi_unsubscribe_sdm_subscriptions(){};
+  const char* get_msg_name() { return "SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS"; };
+
+  std::string supi;
+  std::string subscription_id;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_unsubscribe_sdm_subscriptions_response : public itti_sbi_msg {
+ public:
+  itti_sbi_unsubscribe_sdm_subscriptions_response(
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS_RESPONSE, orig, dest),
+        supi(),
+        subscription_id() {}
+
+  itti_sbi_unsubscribe_sdm_subscriptions_response(
+      const itti_sbi_unsubscribe_sdm_subscriptions_response& i)
+      : itti_sbi_msg(i) {
+    supi            = i.supi;
+    subscription_id = i.subscription_id;
+  }
+  virtual ~itti_sbi_unsubscribe_sdm_subscriptions_response(){};
+  const char* get_msg_name() {
+    return "SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS_RESPONSE";
+  };
+
+  std::string supi;
+  std::string subscription_id;
+};
+
 #endif /* ITTI_MSG_SBI_HPP_INCLUDED_ */

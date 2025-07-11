@@ -1316,6 +1316,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
           "Could not send ITTI message %s to task TASK_SMF_SBI",
           sm_context_resp_pending->get_msg_name());
     }
+
+    // unsubscribes to the modifications of Session Management Subscription data
+    // for the corresponding (SUPI, DNN, S-NSSAI of the HPLMN)
+    std::string key                              = {};
+    oai::model::common::Snssai snssai_3gpp_model = snssai.to_model_snssai();
+    smf_app_inst->get_dnn_snssai_key(dnn, snssai_3gpp_model, key);
+    std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription = {};
+    get_sdm_subscription(key, sdm_subscription);
+    unsubscribe_sdm_subscriptions(supi, sdm_subscription);
   }
 }
 
@@ -2244,7 +2253,19 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
         if (!handle_pdu_session_resource_setup_response_transfer(
                 n2_sm_information, smreq)) {
-          // TODO:
+          // unsubscribes to the modifications of Session Management
+          // Subscription data for the corresponding (SUPI, DNN, S-NSSAI of the
+          // HPLMN)
+          std::string key = {};
+          oai::model::common::Snssai snssai_3gpp_model =
+              sp.get()->get_snssai().to_model_snssai();
+          smf_app_inst->get_dnn_snssai_key(
+              sp.get()->get_dnn(), snssai_3gpp_model, key);
+          std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription =
+              {};
+          get_sdm_subscription(key, sdm_subscription);
+          unsubscribe_sdm_subscriptions(supi, sdm_subscription);
+
           return false;
         }
 
@@ -4898,49 +4919,59 @@ void smf_context::deregister_with_udm(
 
 //------------------------------------------------------------------------------
 bool smf_context::add_sdm_subscription(
-    const std::string& supi, const std::string& subscription_id,
+    const std::string& key,
     const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
   std::unique_lock lock(
       m_sdm_subscriptions,
       std::defer_lock);  // Do not lock it first
-  Logger::smf_app().info(
-      "Add SDM Subscription with Id %s, SUPI %s", subscription_id, supi);
+  Logger::smf_app().info("Add SDM Subscription with key %s", key);
 
-  if (sdm_subscriptions.count(supi) > 0) {
-    if (sdm_subscriptions.at(supi).count(subscription_id) > 0) {
-      Logger::smf_app().error(
-          "Failed to add SDM Subscription with Id %s, SUPI %s, existed",
-          subscription_id, supi);
-      return false;
-    } else {
-      lock.lock();  // Lock it here
-      sdm_subscriptions.at(supi).insert(
-          std::pair<
-              std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
-              subscription_id, sdm_subscription));
-      return true;
-    }
-
+  if (sdm_subscriptions.count(key) > 0) {
+    Logger::smf_app().error(
+        "Failed to add SDM Subscription with key %s existed", key);
+    return false;
   } else {
     lock.lock();  // Lock it here
-    std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>
-        subscriptions;
-    subscriptions.insert(
-        std::pair<
-            std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
-            subscription_id, sdm_subscription));
-
     sdm_subscriptions.insert(
         std::pair<
-            std::string,
-            std::map<
-                std::string,
-                std::shared_ptr<oai::model::udm::SdmSubscription>>>(
-            supi, subscriptions));
+            std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
+            key, sdm_subscription));
+
     Logger::smf_app().debug(
-        "SDM Subscription with Id %s, SUPI %s has been added successfully",
-        subscription_id, supi);
+        "SDM Subscription with key %s has been added successfully", key);
     return true;
   }
   return false;
+}
+
+//------------------------------------------------------------------------------
+void smf_context::get_sdm_subscription(
+    const std::string& key,
+    std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) const {
+  std::shared_lock lock(m_sdm_subscriptions);
+  if (sdm_subscriptions.count(key) > 0) {
+    sdm_subscription = sdm_subscriptions.at(key);
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_context::unsubscribe_sdm_subscriptions(
+    const std::string& supi,
+    const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
+  nlohmann::json sdm_subscription_json = {};
+  to_json(sdm_subscription_json, *sdm_subscription.get());
+
+  std::shared_ptr<itti_sbi_unsubscribe_sdm_subscriptions> itti_msg =
+      std::make_shared<itti_sbi_unsubscribe_sdm_subscriptions>(
+          TASK_SMF_APP, TASK_SMF_SBI);
+
+  itti_msg->supi            = supi;
+  itti_msg->subscription_id = sdm_subscription->getSubscriptionId();
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
 }

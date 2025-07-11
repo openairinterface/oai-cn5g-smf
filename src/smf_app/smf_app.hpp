@@ -980,6 +980,16 @@ class smf_app {
   void subscribe_sdm_subscriptions(
       const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       plmn_t plmn);
+  /*
+   * Get a unique key from <DNN, SNSSAI>
+   * @param [const std::string&] dnn: DNN
+   * @param [const oai::model::common::Snssai&] snssai
+   * @param [std::string] key: generated key
+   * @return void
+   */
+  void get_dnn_snssai_key(
+      const std::string& dnn, const oai::model::common::Snssai& snssai,
+      std::string& key);
 };
 }  // namespace oai::app::smf
 #include "smf_config.hpp"

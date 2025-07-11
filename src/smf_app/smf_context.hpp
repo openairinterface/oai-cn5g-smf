@@ -1146,7 +1146,17 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::string& supi, const pdu_session_id_t& pdu_session_id);
 
   bool add_sdm_subscription(
-      const std::string& supi, const std::string& subscription_id,
+      const std::string& key,
+      const std::shared_ptr<oai::model::udm::SdmSubscription>&
+          sdm_subscription);
+
+  void get_sdm_subscription(
+      const std::string& key,
+      std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription)
+      const;
+
+  void unsubscribe_sdm_subscriptions(
+      const std::string& supi,
       const std::shared_ptr<oai::model::udm::SdmSubscription>&
           sdm_subscription);
 
@@ -1158,10 +1168,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   std::map<pdu_session_id_t, std::shared_ptr<smf_pdu_session>>
       pdu_sessions;  // Store all PDU Sessions associated with this UE
   mutable std::shared_mutex m_pdu_sessions_mutex;
-  // Supi <-> SDM Subscription
-  std::map<
-      std::string,
-      std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>>
+  // key <-> SDM Subscription
+  std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>
       sdm_subscriptions;
   mutable std::shared_mutex m_sdm_subscriptions;
 
