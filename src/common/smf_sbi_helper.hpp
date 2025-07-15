@@ -40,10 +40,17 @@ class smf_sbi_helper : public sbi_helper {
     return sbi_helper::SmfCallbackBase + smf_cfg->sbi_api_version;
   }
 
+  static std::string UdmUeCmBase() {
+    return sbi_helper::UdmUeCmBase + smf_cfg->sbi_api_version;
+  }
+
   static void set_problem_details(
       nlohmann::json& json_data, const std::string& detail);
 
+  static std::string get_udm_sdm_sm_data_uri(const std::string& supi);
   static std::string get_udm_sdm_subscriptions_uri(const std::string& supi);
+  static std::string get_udm_uecm_smf_registration_pdu_session_uri(
+      const std::string& supi, const uint8_t& pdu_session_id);
   static std::string get_udm_sdm_unsubscriptions_uri(
       const std::string& supi, const std::string& subscription_id);
 };

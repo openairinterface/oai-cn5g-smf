@@ -41,6 +41,21 @@ void smf_sbi_helper::set_problem_details(
 }
 
 //------------------------------------------------------------------------------
+std::string smf_sbi_helper::get_udm_sdm_sm_data_uri(const std::string& supi) {
+  std::string fmr_format_str = {};
+  get_fmt_format_form(UdmSdmPathSupiSmData, fmr_format_str);
+
+  return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_url(smf_cfg->enable_tls()) +
+         oai::common::sbi::sbi_helper::UdmSdmBase +
+         smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_api_version() +
+         fmt::format(fmr_format_str, supi);
+}
+
+//------------------------------------------------------------------------------
 std::string smf_sbi_helper::get_udm_sdm_subscriptions_uri(
     const std::string& supi) {
   std::string fmr_format_str = {};
@@ -72,4 +87,22 @@ std::string smf_sbi_helper::get_udm_sdm_unsubscriptions_uri(
              .get_api_version() +
          fmt::format(fmr_format_str, supi, subscription_id);
 }
+
+//------------------------------------------------------------------------------
+std::string smf_sbi_helper::get_udm_uecm_smf_registration_pdu_session_uri(
+    const std::string& supi, const uint8_t& pdu_session_id) {
+  std::string fmr_format_str = {};
+  get_fmt_format_form(UdmUeCmPathSmfRegistrationPduSession, fmr_format_str);
+
+  return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_url(smf_cfg->enable_tls()) +
+         oai::common::sbi::sbi_helper::UdmUeCmBase +
+         smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
+             ->get_sbi()
+             .get_api_version() +
+         fmt::format(
+             fmr_format_str, supi, static_cast<uint8_t>(pdu_session_id));
+}
+
 }  // namespace oai::smf::api

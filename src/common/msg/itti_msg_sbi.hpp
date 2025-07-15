@@ -604,6 +604,48 @@ class itti_sbi_register_with_udm : public itti_sbi_msg {
 };
 
 //-----------------------------------------------------------------------------
+class itti_sbi_deregister_with_udm : public itti_sbi_msg {
+ public:
+  itti_sbi_deregister_with_udm(const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_DEREGISTER_WITH_UDM, orig, dest),
+        supi(),
+        pdu_session_id() {}
+
+  itti_sbi_deregister_with_udm(const itti_sbi_deregister_with_udm& i)
+      : itti_sbi_msg(i) {
+    supi           = i.supi;
+    pdu_session_id = i.pdu_session_id;
+  }
+  virtual ~itti_sbi_deregister_with_udm(){};
+  const char* get_msg_name() { return "SBI_DEREGISTER_WITH_UDM"; };
+
+  std::string supi;
+  pdu_session_id_t pdu_session_id;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_deregister_with_udm_response : public itti_sbi_msg {
+ public:
+  itti_sbi_deregister_with_udm_response(
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_DEREGISTER_WITH_UDM_RESPONSE, orig, dest),
+        supi(),
+        pdu_session_id() {}
+
+  itti_sbi_deregister_with_udm_response(
+      const itti_sbi_deregister_with_udm_response& i)
+      : itti_sbi_msg(i) {
+    supi           = i.supi;
+    pdu_session_id = i.pdu_session_id;
+  }
+  virtual ~itti_sbi_deregister_with_udm_response(){};
+  const char* get_msg_name() { return "SBI_DEREGISTER_WITH_UDM_RESPONSE"; };
+
+  std::string supi;
+  pdu_session_id_t pdu_session_id;
+};
+
+//-----------------------------------------------------------------------------
 class itti_sbi_subscribe_sdm_subscriptions : public itti_sbi_msg {
  public:
   itti_sbi_subscribe_sdm_subscriptions(

@@ -34,6 +34,7 @@
 #include "if.hpp"
 #include "logger_base.hpp"
 #include "pfcp.hpp"
+#include "sbi_helper.hpp"
 #include "smf.h"
 #include "smf_config_types.hpp"
 #include "smf_profile.hpp"

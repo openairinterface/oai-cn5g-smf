@@ -37,7 +37,6 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 
 add_library(SMF_COMMON_TYPES STATIC
-${CMAKE_CURRENT_SOURCE_DIR}/smf_sbi_helper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/smf_sbi_helper.cpp
 )
 

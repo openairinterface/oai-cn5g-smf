@@ -38,11 +38,6 @@ class smf_sbi {
  private:
   std::thread::id thread_id;
   std::thread thread;
-  /**
-   * Generate NRF base URL from configuration, including API version
-   * @return
-   */
-  static std::string get_nrf_base_url();
 
  public:
   smf_sbi();
@@ -157,6 +152,9 @@ class smf_sbi {
    */
   void register_with_udm(
       const std::shared_ptr<itti_sbi_register_with_udm>& msg);
+
+  void deregister_with_udm(
+      const std::shared_ptr<itti_sbi_deregister_with_udm>& msg);
 
   void subscribe_sdm_subscriptions(
       const std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions>& msg);
