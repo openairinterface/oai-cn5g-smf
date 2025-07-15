@@ -48,7 +48,7 @@ std::string smf_sbi_helper::get_udm_sdm_sm_data_uri(const std::string& supi) {
   return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_url(smf_cfg->enable_tls()) +
-         oai::common::sbi::sbi_helper::UdmUeCmBase +
+         oai::common::sbi::sbi_helper::UdmSdmBase +
          smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_api_version() +
