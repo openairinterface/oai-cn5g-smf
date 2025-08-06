@@ -29,7 +29,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "3gpp_24.501.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"

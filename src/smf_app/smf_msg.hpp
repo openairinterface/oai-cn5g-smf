@@ -23,7 +23,7 @@
 #define FILE_SMF_MSG_HPP_SEEN
 
 #include "3gpp_23.003.h"
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "3gpp_24.501.h"
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.244.h"
