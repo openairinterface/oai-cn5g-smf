@@ -133,7 +133,7 @@ class session_handler {
    */
   void deallocate_resources();
 
-  void set_cause(const cause_value_5gsm_e& cause);
+  void set_cause(const uint8_t& cause);
 
   /**
    * Generates a unique URR ID
@@ -198,8 +198,7 @@ class session_handler {
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
-  cause_value_5gsm_e m_cause_value =
-      cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED;  // for NGAP cause
+  uint8_t m_cause_value = k5gsmCauseRequestAccepted;  // for NGAP cause
   pdu_session_type_e m_pdu_session_type;
   oai::utils::uint_generator<uint32_t> m_qos_rule_id_generator;
   oai::utils::uint_generator<uint32_t> m_qfi_generator;

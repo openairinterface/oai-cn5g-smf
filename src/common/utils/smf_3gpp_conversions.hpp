@@ -23,7 +23,7 @@
 #define FILE_SMF_3GPP_CONVERSIONS_HPP_SEEN
 
 #include "3gpp_24.008.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.244.h"
 #include "NotificationData.h"
 #include "NsmfEventExposure.h"

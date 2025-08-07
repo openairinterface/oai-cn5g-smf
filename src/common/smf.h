@@ -28,7 +28,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.274.h"
 #include "3gpp_29.571.h"
 #include "Snssai.h"

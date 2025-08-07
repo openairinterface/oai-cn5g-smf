@@ -29,7 +29,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
 #include "EventSubscription.h"
 #include "ExtendedProtocolConfigurationOptions.hpp"
@@ -407,7 +407,7 @@ void xgpp_conv::sm_context_request_from_nas(
   // TODO: Integrity protection maximum data rate (Mandatory)
 
   // PDU session type (Optional)
-  if (message_type == PDU_SESSION_ESTABLISHMENT_REQUEST) {
+  if (message_type == kPduSessionEstablishmentRequest) {
     std::optional<PduSessionType> pdu_session_type_opt =
         (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
             ->GetPduSessionType();
@@ -427,7 +427,7 @@ void xgpp_conv::sm_context_request_from_nas(
   // TODO: SMPDUDNRequestContainer
 
   // ExtendedProtocolConfigurationOptions
-  if (message_type == PDU_SESSION_ESTABLISHMENT_REQUEST) {
+  if (message_type == kPduSessionEstablishmentRequest) {
     std::optional<oai::nas::ExtendedProtocolConfigurationOptions>
         conf_options_opt =
             (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
@@ -452,8 +452,7 @@ void xgpp_conv::create_sm_context_response_from_ctx_request(
   ctx_response->http_version = ctx_request->http_version;
   ctx_response->res.set_http_code(oai::common::sbi::http_status_code::OK);
   ctx_response->res.set_supi(ctx_request->req.get_supi());
-  ctx_response->res.set_cause(
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  ctx_response->res.set_cause(k5gsmCauseRequestAccepted);
   ctx_response->res.set_pdu_session_id(ctx_request->req.get_pdu_session_id());
   ctx_response->res.set_snssai(ctx_request->req.get_snssai());
   ctx_response->res.set_dnn(ctx_request->req.get_dnn());
@@ -470,8 +469,7 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
   ct_response->res.set_http_code(
       oai::common::sbi::http_status_code::OK);  // default status code
   ct_response->res.set_supi(ct_request->req.get_supi());
-  ct_response->res.set_cause(
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  ct_response->res.set_cause(k5gsmCauseRequestAccepted);
   ct_response->res.set_pdu_session_id(ct_request->req.get_pdu_session_id());
   ct_response->res.set_snssai(ct_request->req.get_snssai());
   ct_response->res.set_dnn(ct_request->req.get_dnn());

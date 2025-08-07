@@ -30,7 +30,7 @@
 #include <stdexcept>
 
 #include "3gpp_24.007.hpp"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "Nas5gsmMessage.hpp"
@@ -590,16 +590,15 @@ void smf_app::handle_itti_msg(
         PDU_SESSION_ESTABLISHMENT_UE_REQUESTED: {
       // Update PDU Session accordingly
       Logger::smf_app().info("PDU_SESSION_ESTABLISHMENT_UE_REQUESTED");
-      pdu_session_status_e status = {
-          pdu_session_status_e::PDU_SESSION_INACTIVE};
+      uint8_t status      = {kPduSessionStatusInactive};
       upCnx_state_e state = {upCnx_state_e::UPCNX_STATE_DEACTIVATED};
 
       if ((m.response_code == http_status_code::OK) or
           (m.response_code == http_status_code::ACCEPTED)) {
-        if (m.msg_type == PDU_SESSION_ESTABLISHMENT_REJECT) {
-          status = pdu_session_status_e::PDU_SESSION_INACTIVE;
-        } else if (m.msg_type == PDU_SESSION_ESTABLISHMENT_ACCEPT) {
-          status = pdu_session_status_e::PDU_SESSION_ESTABLISHMENT_PENDING;
+        if (m.msg_type == kPduSessionEstablishmentReject) {
+          status = kPduSessionStatusInactive;
+        } else if (m.msg_type == kPduSessionEstablishmentAccept) {
+          status = kPduSessionStatusEstablishmentPending;
           // state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
         }
         update_pdu_session_status(m.scid, status);
@@ -607,8 +606,7 @@ void smf_app::handle_itti_msg(
         Logger::smf_app().debug(
             "Got successful response from AMF (response code %d), set session "
             "status to %s",
-            m.response_code,
-            pdu_session_status_e2str.at(static_cast<int>(status)).c_str());
+            m.response_code, get_pdu_session_status_str(status));
       } else {
         // TODO:
         Logger::smf_app().debug(
@@ -877,7 +875,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Handle PDU Session Create SM Context Request (Section 4.3.2@3GPP TS 23.502)
   std::string n1_sm_message           = {};
   std::string n1_sm_message_hex       = {};
-  cause_value_5gsm_e cause_n1         = {cause_value_5gsm_e::CAUSE_0_UNKNOWN};
+  uint8_t cause_n1                    = {k5gsmCauseUnknown};
   pdu_session_type_t pdu_session_type = {};
   pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
   auto nas_message                    = std::make_shared<Nas5gsmMessage>();
@@ -889,8 +887,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   if (decoded_size == KEncodeDecodeError) {
     Logger::smf_app().warn("N1 SM container cannot be decoded correctly!");
     reply_with_pdu_session_establishment_reject(
-        smreq->req, n1_sm_message,
-        cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE,
+        smreq->req, n1_sm_message, k5gsmCauseSemanticallyIncorrectMessage,
         http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
         smreq->pid);
     return;
@@ -902,10 +899,10 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Support IPv4/IPv4v6 and Ethernet for now
   if (pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
-    cause_n1 = cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
+    cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
   } else if (
       pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_UNSTRUCTURED) {
-    cause_n1 = cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE;
+    cause_n1 = k5gsmCauseUnknownPduSessionType;
   }
 
   if ((pdu_session_type.pdu_session_type != PDU_SESSION_TYPE_E_IPV4) and
@@ -939,8 +936,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     // PDU Session Establishment Reject including cause "#81 Invalid PTI value"
     // (section 7.3.1 @3GPP TS 24.501)
     reply_with_pdu_session_establishment_reject(
-        smreq->req, n1_sm_message,
-        cause_value_5gsm_e::CAUSE_81_INVALID_PTI_VALUE,
+        smreq->req, n1_sm_message, k5gsmCauseInvalidPtiValue,
         http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
         smreq->pid);
     return;
@@ -963,7 +959,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Check Message Type
   uint8_t message_type = nas_message->GetHeader().GetMessageType();
-  if (message_type != PDU_SESSION_ESTABLISHMENT_REQUEST) {
+  if (message_type != kPduSessionEstablishmentRequest) {
     Logger::smf_app().warn(
         "Invalid Message Type (Message Type = %d)", message_type);
     // PDU Session Establishment Reject
@@ -972,8 +968,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     // compatible with protocol state."
     reply_with_pdu_session_establishment_reject(
         smreq->req, n1_sm_message,
-        cause_value_5gsm_e::
-            CAUSE_98_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROTOCOL_STATE,
+        k5gsmCauseMessageTypeNotCompatibleWithTheProtocolState,
         http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR,
         smreq->pid);
     return;
@@ -1014,8 +1009,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         dnn.c_str());
     // PDU Session Establishment Reject
     reply_with_pdu_session_establishment_reject(
-        smreq->req, n1_sm_message,
-        cause_value_5gsm_e::CAUSE_27_MISSING_OR_UNKNOWN_DNN,
+        smreq->req, n1_sm_message, k5gsmCauseMissingOrUnknownDnn,
         http_status_code::FORBIDDEN, PDU_SESSION_APPLICATION_ERROR_DNN_DENIED,
         smreq->pid);
     return;
@@ -1077,8 +1071,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         // PDU Session Establishment Reject
         reply_with_pdu_session_establishment_reject(
             smreq->req, n1_sm_message,
-            cause_value_5gsm_e::
-                CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+            k5gsmCauseUserAuthenticationOrAuthorizationFailed,
             http_status_code::FORBIDDEN,
             PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
         return;
@@ -1108,8 +1101,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
         // PDU Session Establishment Reject
         reply_with_pdu_session_establishment_reject(
             smreq->req, n1_sm_message,
-            cause_value_5gsm_e::
-                CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+            k5gsmCauseUserAuthenticationOrAuthorizationFailed,
             http_status_code::FORBIDDEN,
             PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED, smreq->pid);
         return;
@@ -1702,7 +1694,7 @@ bool smf_app::is_create_sm_context_request_valid() const {
 
 //---------------------------------------------------------------------------------------------
 void smf_app::update_pdu_session_status(
-    const scid_t& scid, const pdu_session_status_e& status) {
+    const scid_t& scid, const uint8_t& status) {
   Logger::smf_app().info("Update PDU Session Status");
 
   // get the SMF Context
@@ -1739,8 +1731,7 @@ void smf_app::update_pdu_session_status(
 
   sp.get()->set_pdu_session_status(status);
   Logger::smf_app().info(
-      "Set PDU Session Status to %s",
-      pdu_session_status_e2str.at(static_cast<int>(status)).c_str());
+      "Set PDU Session Status to %s", get_pdu_session_status_str(status));
 }
 
 //---------------------------------------------------------------------------------------------
@@ -1810,12 +1801,11 @@ void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
 
   if (n11_msg) {
     uint8_t number_retransmission = sp.get()->get_number_retransmission_T3591();
-    if (number_retransmission <= NUMBER_RETRANSMISSION_TIMES_T3591) {
+    if (number_retransmission <= kNumberRetransmissionTimesT3591) {
       sp.get()->set_number_retransmission_T3591(number_retransmission + 1);
     } else {
       // Update PDU Session status -> ACTIVE
-      sp.get()->set_pdu_session_status(
-          pdu_session_status_e::PDU_SESSION_ACTIVE);
+      sp.get()->set_pdu_session_status(kPduSessionStatusActive);
       // TODO: check 6.3.2.5 a,@3GPP TS 24.501 V16.1.0 (2019-06)
       return;
     }
@@ -1864,12 +1854,11 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
 
   if (n11_msg) {
     uint8_t number_retransmission = sp.get()->get_number_retransmission_T3592();
-    if (number_retransmission <= NUMBER_RETRANSMISSION_TIMES_T3592) {
+    if (number_retransmission <= kNumberRetransmissionTimesT3592) {
       sp.get()->set_number_retransmission_T3592(number_retransmission + 1);
     } else {
       // Update PDU Session status -> INACTIVE -  to be verified
-      sp.get()->set_pdu_session_status(
-          pdu_session_status_e::PDU_SESSION_INACTIVE);
+      sp.get()->set_pdu_session_status(kPduSessionStatusInactive);
       return;
     }
     Logger::smf_app().info(
@@ -2393,9 +2382,8 @@ std::string smf_app::get_smf_instance_id() const {
 
 //------------------------------------------------------------------------------
 void smf_app::reply_with_pdu_session_establishment_reject(
-    pdu_session_msg& msg, std::string& n1_sm_message,
-    cause_value_5gsm_e sm_cause, const uint32_t& http_code,
-    const uint8_t& cause, uint32_t& promise_id) {
+    pdu_session_msg& msg, std::string& n1_sm_message, uint8_t sm_cause,
+    const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id) {
   if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
           msg, n1_sm_message, sm_cause)) {
     std::string n1_sm_message_hex = {};

@@ -693,11 +693,10 @@ class smf_app {
   /*
    * Update PDU session status
    * @param [const scid_t &] id SM Context ID
-   * @param [const pdu_session_status_e &] status PDU Session Status
+   * @param [const uint8_t &] status PDU Session Status
    * @return void
    */
-  void update_pdu_session_status(
-      const scid_t& id, const pdu_session_status_e& status);
+  void update_pdu_session_status(const scid_t& id, const uint8_t& status);
 
   /*
    * Convert N2 Info type representing by a string to  n2_sm_info_type_e
@@ -881,9 +880,8 @@ class smf_app {
       uint32_t& pid);
 
   void reply_with_pdu_session_establishment_reject(
-      pdu_session_msg& msg, std::string& n1_sm_message,
-      cause_value_5gsm_e sm_cause, const uint32_t& http_code,
-      const uint8_t& cause, uint32_t& promise_id);
+      pdu_session_msg& msg, std::string& n1_sm_message, uint8_t sm_cause,
+      const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID

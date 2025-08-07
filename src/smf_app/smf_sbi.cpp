@@ -226,11 +226,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
   itti_msg->set_procedure_type(session_management_procedures_type_e::
                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
   itti_msg->set_cause(response_data_json["cause"]);
-  if (sm_context_res->res.get_cause() ==
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
-    itti_msg->set_msg_type(PDU_SESSION_ESTABLISHMENT_ACCEPT);
+  if (sm_context_res->res.get_cause() == k5gsmCauseRequestAccepted) {
+    itti_msg->set_msg_type(kPduSessionEstablishmentAccept);
   } else {
-    itti_msg->set_msg_type(PDU_SESSION_ESTABLISHMENT_REJECT);
+    itti_msg->set_msg_type(kPduSessionEstablishmentReject);
   }
 
   int ret = itti_inst->send_msg(itti_msg);

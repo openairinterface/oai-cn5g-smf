@@ -39,7 +39,7 @@
 #include "smf_context.hpp"
 #include "smf_pfcp_association.hpp"
 #include "ProblemDetails.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 
 using namespace pfcp;
 using namespace oai::app::smf;
@@ -771,8 +771,7 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
   if (all_qfis_to_check.size() != handled_qfis.size()) {
     Logger::smf_app().error(
         "Not all QFIs were handled by UPF, rejecting PDU session");
-    sps->get_session_handler()->set_cause(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED);
+    sps->get_session_handler()->set_cause(k5gsmCauseRequestRejectedUnspecified);
   }
 
   // set the values to be updated in session handler
@@ -1177,8 +1176,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   resp.pfcp_ies.get(cause);
   if (cause.cause_value == pfcp::CAUSE_VALUE_REQUEST_ACCEPTED) {
     resp.pfcp_ies.get(sps->up_fseid);
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
   } else {
     // remove QFIs to be handled to
     sps->get_session_handler()->set_qfis_to_be_updated({});
@@ -1187,8 +1185,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
         "by UPF",
         n11_trigger->req.get_pdu_session_id());
     // TODO we should have a good cause mapping here
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     // TODO we need to abort all ongoing sessions
     return smf_procedure_code::ERROR;
   }
@@ -1427,8 +1424,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
   }
 
@@ -1595,8 +1591,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   pfcp::cause_t cause = {};
   resp.pfcp_ies.get(cause);
 
-  n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+  n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
     // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
@@ -1619,8 +1614,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     return smf_procedure_code::ERROR;
 
   } else {
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
   }
 
   // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
@@ -1650,8 +1644,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
   }
 
@@ -1904,13 +1897,11 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
   }
 
   if (cause.cause_value == CAUSE_VALUE_REQUEST_ACCEPTED) {
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
     Logger::smf_app().info("PDU Session Release SM Context accepted by UPFs");
     return smf_procedure_code::OK;
   } else {
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     // We cannot return an error here, because we need to delete all the UPFs
     return smf_procedure_code::ERROR;
   }
