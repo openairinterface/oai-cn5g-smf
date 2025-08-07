@@ -2366,6 +2366,7 @@ void smf_app::trigger_upf_status_notification_subscribe() {
       smf_cfg->sbi_api_version + "/subscriptions";
 
   json_data["subscrCond"]["nfType"] = "UPF";
+  json_data["subscriptionId"]       = "12345-x3Lf57A:nid=abc123def45:oai-smf";
   json_data["reqNotifEvents"]       = nlohmann::json::array();
   json_data["reqNotifEvents"].push_back("NF_REGISTERED");
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
