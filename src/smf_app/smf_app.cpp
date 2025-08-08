@@ -434,7 +434,7 @@ void smf_app::start_upf_association(oai::config::smf::upf& upf_cfg) {
 
   pfcp::node_id_t node_id_tmp = upf_cfg.get_node_id();
   // Resolve FQDN/IP addr if necessary
-  if (!fqdn::resolve(node_id_tmp)) {
+  if (!oai::utils::fqdn::resolve(node_id_tmp)) {
     Logger::smf_app().warn(
         "Resolving of PFCP Node ID not possible. Do not send UPF association");
     return;

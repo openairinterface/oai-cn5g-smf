@@ -53,7 +53,6 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 set(CN_UTILS_SRC STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/smf_3gpp_conversions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/epc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fqdn.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async_shell_cmd.cpp
     )
 
