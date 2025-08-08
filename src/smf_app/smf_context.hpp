@@ -68,7 +68,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     seid                               = 0;
     up_fseid                           = {};
     default_qfi.qfi                    = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
-    pdu_session_status                 = kPduSessionStatusInactive;
+    pdu_session_status                 = pdu_session_status_t::Inactive;
     upCnx_state                        = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
     ho_state                           = ho_state_e::HO_STATE_NONE;
     timer_T3590                        = ITTI_INVALID_TIMER_ID;
@@ -94,7 +94,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     seid                        = 0;
     up_fseid                    = {};
     default_qfi.qfi             = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
-    pdu_session_status          = kPduSessionStatusInactive;
+    pdu_session_status          = pdu_session_status_t::Inactive;
     upCnx_state                 = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
     ho_state                    = ho_state_e::HO_STATE_NONE;
     timer_T3590                 = ITTI_INVALID_TIMER_ID;

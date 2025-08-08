@@ -590,15 +590,15 @@ void smf_app::handle_itti_msg(
         PDU_SESSION_ESTABLISHMENT_UE_REQUESTED: {
       // Update PDU Session accordingly
       Logger::smf_app().info("PDU_SESSION_ESTABLISHMENT_UE_REQUESTED");
-      uint8_t status      = {kPduSessionStatusInactive};
+      uint8_t status      = {pdu_session_status_t::Inactive};
       upCnx_state_e state = {upCnx_state_e::UPCNX_STATE_DEACTIVATED};
 
       if ((m.response_code == http_status_code::OK) or
           (m.response_code == http_status_code::ACCEPTED)) {
         if (m.msg_type == kPduSessionEstablishmentReject) {
-          status = kPduSessionStatusInactive;
+          status = pdu_session_status_t::Inactive;
         } else if (m.msg_type == kPduSessionEstablishmentAccept) {
-          status = kPduSessionStatusEstablishmentPending;
+          status = pdu_session_status_t::EstablishmentPending;
           // state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
         }
         update_pdu_session_status(m.scid, status);
@@ -1805,7 +1805,7 @@ void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
       sp.get()->set_number_retransmission_T3591(number_retransmission + 1);
     } else {
       // Update PDU Session status -> ACTIVE
-      sp.get()->set_pdu_session_status(kPduSessionStatusActive);
+      sp.get()->set_pdu_session_status(pdu_session_status_t::Active);
       // TODO: check 6.3.2.5 a,@3GPP TS 24.501 V16.1.0 (2019-06)
       return;
     }
@@ -1858,7 +1858,7 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
       sp.get()->set_number_retransmission_T3592(number_retransmission + 1);
     } else {
       // Update PDU Session status -> INACTIVE -  to be verified
-      sp.get()->set_pdu_session_status(kPduSessionStatusInactive);
+      sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
       return;
     }
     Logger::smf_app().info(

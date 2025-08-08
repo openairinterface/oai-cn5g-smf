@@ -179,7 +179,7 @@ std::string smf_pdu_session::toString() const {
   std::string s = {};
 
   bool is_released = false;
-  if (pdu_session_status == kPduSessionStatusInactive) is_released = true;
+  if (pdu_session_status == pdu_session_status_t::Inactive) is_released = true;
   if (!is_released) {
     s.append("\tPDU Session ID:\t\t\t")
         .append(std::to_string((uint8_t) pdu_session_id))
@@ -1334,7 +1334,8 @@ bool smf_context::handle_pdu_session_modification_request(
 
   // check if the PDU Session Release Command is already sent for this
   // message (see section 6.3.3.5 @3GPP TS 24.501)
-  if (sp.get()->get_pdu_session_status() == kPduSessionStatusInactivePending) {
+  if (sp.get()->get_pdu_session_status() ==
+      pdu_session_status_t::InactivePending) {
     // Ignore the message
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
@@ -1346,7 +1347,7 @@ bool smf_context::handle_pdu_session_modification_request(
   // check if the session is in state Modification pending, SMF will
   // ignore this message (see section 6.3.2.5 @3GPP TS 24.501)
   if (sp.get()->get_pdu_session_status() ==
-      kPduSessionStatusModificationPending) {
+      pdu_session_status_t::ModificationPending) {
     // Ignore the message
     Logger::smf_app().info(
         "This PDU session is in MODIFICATION_PENDING State (session ID "
@@ -1427,7 +1428,7 @@ bool smf_context::handle_pdu_session_modification_request(
 
   sm_context_resp.get()->res.set_json_data(json_data);
   // Update PDU Session status
-  sp.get()->set_pdu_session_status(kPduSessionStatusModificationPending);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::ModificationPending);
 
   scid_t scid = {};
   try {
@@ -1467,7 +1468,7 @@ bool smf_context::handle_pdu_session_modification_complete(
    same value, otherwise it shall use a default value.
    */
   // Update PDU Session status -> ACTIVE
-  sp.get()->set_pdu_session_status(kPduSessionStatusActive);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::Active);
   // stop T3591
   itti_inst->timer_remove(sp.get()->timer_T3591);
 
@@ -1513,14 +1514,14 @@ bool smf_context::handle_pdu_session_modification_command_reject(
       ->Get5gsmCause(_5gsm_cause);
   if (_5gsm_cause.GetValue() == k5gsmCauseInvalidPduSessionIdentity) {
     // Update PDU Session status -> INACTIVE
-    sp.get()->set_pdu_session_status(kPduSessionStatusInactive);
+    sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
     // TODO: Release locally the existing PDU Session (see
     // section 6.3.2.5@3GPP TS 24.501)
   } else if (
       sp.get()->get_pdu_session_status() ==
-      kPduSessionStatusModificationPending) {
+      pdu_session_status_t::ModificationPending) {
     // Update PDU Session status -> ACTIVE
-    sp.get()->set_pdu_session_status(kPduSessionStatusActive);
+    sp.get()->set_pdu_session_status(pdu_session_status_t::Active);
   }
 
   // presence
@@ -1552,7 +1553,7 @@ bool smf_context::handle_pdu_session_release_request(
   }
 
   // Abnormal cases in network side (see section 6.4.3.6 @3GPP TS 24.501)
-  if (sp.get()->get_pdu_session_status() == kPduSessionStatusInactive) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Inactive) {
     Logger::smf_app().warn(
         "PDU Session status: INACTIVE, send PDU Session Release Reject "
         "to UE!");
@@ -1574,7 +1575,8 @@ bool smf_context::handle_pdu_session_release_request(
     return false;
   }
   // Abnormal cases in network side (see section 6.3.3.5 @3GPP TS 24.501)
-  if (sp.get()->get_pdu_session_status() == kPduSessionStatusInactivePending) {
+  if (sp.get()->get_pdu_session_status() ==
+      pdu_session_status_t::InactivePending) {
     // Ignore the message
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
@@ -1661,7 +1663,7 @@ bool smf_context::handle_pdu_session_release_complete(
   event_sub.sm_context_status(scid, status);
 
   // TODO: Notify AMF that the SM context for this PDU session is released
-  if (sp.get()->get_pdu_session_status() == kPduSessionStatusActive) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     Logger::smf_app().debug(
         "Signal the PDU Session Release Event notification");
     trigger_pdu_session_release(scid, 1);
@@ -1690,7 +1692,7 @@ bool smf_context::handle_pdu_session_release_complete(
   // TODO: Invoke Nudm_UECM_Deregistration
 
   // Update PDU Session status -> INACTIVE
-  sp.get()->set_pdu_session_status(kPduSessionStatusInactive);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
   // Stop timer T3592
   itti_inst->timer_remove(sp.get()->timer_T3592);
   return true;
@@ -1938,7 +1940,7 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
   }
 
   // Notify AMF that the SM context for this PDU session is released
-  if (sp.get()->get_pdu_session_status() == kPduSessionStatusActive) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     trigger_pdu_session_release(scid, 1);
   }
 
@@ -2330,7 +2332,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                 PDU_SESSION_RELEASE_UE_REQUESTED_STEP2;
 
         // Update PDU session status to PDU_SESSION_INACTIVE
-        sp.get()->set_pdu_session_status(kPduSessionStatusInactive);
+        sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
 
         // don't need to create a procedure to update UPF
         pdu_session_release_procedure = true;
@@ -4511,7 +4513,7 @@ void smf_context::send_pdu_session_update_response(
         resp->res.set_json_data(json_data);
 
         // Update PDU session status to ACTIVE
-        sps->set_pdu_session_status(kPduSessionStatusActive);
+        sps->set_pdu_session_status(pdu_session_status_t::Active);
 
         // set UpCnxState to ACTIVATED
         sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATED);
@@ -4721,7 +4723,7 @@ void smf_context::send_pdu_session_release_response(
         }
 
         // Update PDU session status to PDU_SESSION_INACTIVE_PENDING
-        sps->set_pdu_session_status(kPduSessionStatusInactivePending);
+        sps->set_pdu_session_status(pdu_session_status_t::InactivePending);
 
         // set UpCnxState to DEACTIVATED
         sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
