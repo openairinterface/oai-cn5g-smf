@@ -472,7 +472,8 @@ void smf_sbi::register_nf_instance(
   itti_msg_response->http_version = msg->http_version;
   Logger::smf_app().debug("Registered SMF profile (from NRF)");
 
-  if (resp.status_code == http_status_code::CREATED) {
+  if ((resp.status_code == http_status_code::CREATED) or
+      (resp.status_code == http_status_code::OK)) {
     json response_json = {};
     try {
       response_json = json::parse(resp.body);
@@ -521,7 +522,8 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
 
-  request req   = http_client_inst->prepare_json_request(url, body);
+  request req = http_client_inst->prepare_json_request(
+      url, body, "application/json-patch+json");
   response resp = http_client_inst->send_http_request(method_e::PATCH, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);

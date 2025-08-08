@@ -744,7 +744,8 @@ void smf_app::handle_itti_msg(itti_sbi_release_sm_context_response& m) {
 void smf_app::handle_itti_msg(itti_sbi_register_nf_instance_response& r) {
   Logger::smf_app().debug("Handle NF Instance Registration response");
 
-  if (r.http_response_code == http_status_code::CREATED) {
+  if ((r.http_response_code == http_status_code::CREATED) or
+      (r.http_response_code == http_status_code::OK)) {
     nf_instance_profile = r.profile;
     // Set heartbeat timer
     Logger::smf_app().debug(
@@ -2361,13 +2362,15 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   if (smf_cfg->http_version == 2) port = smf_cfg->sbi_http2_port;
   // TODO: remove hardcoded values by using model SubscriptionData
   json_data["nfStatusNotificationUri"] =
+      "http://" +
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg->sbi.addr4))) + ":" +
       std::to_string(port) + "/nsmf-nfstatus-notify/" +
       smf_cfg->sbi_api_version + "/subscriptions";
 
   json_data["subscrCond"]["nfType"] = "UPF";
-  json_data["subscriptionId"]       = "12345-x3Lf57A:nid=abc123def45:oai-smf";
-  json_data["reqNotifEvents"]       = nlohmann::json::array();
+  // json_data["subscriptionId"]       =
+  // "12345-x3Lf57A:nid=abc123def45:oai-smf";
+  json_data["reqNotifEvents"] = nlohmann::json::array();
   json_data["reqNotifEvents"].push_back("NF_REGISTERED");
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
   json_data["validityTime"] = "20390531T235959";
