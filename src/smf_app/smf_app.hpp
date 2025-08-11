@@ -785,7 +785,14 @@ class smf_app {
    */
   void start_nf_discovery();
 
+  /*
+   * Process UPF profile received from NRF
+   * @param [const oai::model::smf::NFProfile] upf_profile: Profile of an UPF
+   * Node
+   * @return void
+   */
   bool process_upf_profile(const oai::model::smf::NFProfile& upf_profile);
+
   /*
    * To store a promise of a SBI Server response message to be
    * triggered when the result is ready

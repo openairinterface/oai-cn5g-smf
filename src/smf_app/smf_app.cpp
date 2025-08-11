@@ -415,23 +415,24 @@ void smf_app::stop() {
 
 //------------------------------------------------------------------------------
 void smf_app::start_nf_discovery() {
-  // if (smf_cfg->register_nrf()) {
-  trigger_upf_status_notification_subscribe();
-  //} else {
-  for (auto upf : smf_cfg->smf()->get_upfs()) {
-    for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
-      start_upf_association(upf);
-      sleep(PFCP_ASSOC_RESP_WAIT);
-      std::shared_ptr<pfcp_association> sa = {};
-      if (!pfcp_associations::get_instance().get_association(
-              upf.get_node_id(), sa))
-        Logger::smf_app().warn(
-            "Failed to receive PFCP Association Response, Retrying .....!!");
-      else
-        break;
+  if (smf_cfg->register_nrf()) {
+    trigger_upf_discovery();
+    trigger_upf_status_notification_subscribe();
+  } else {
+    for (auto upf : smf_cfg->smf()->get_upfs()) {
+      for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
+        start_upf_association(upf);
+        sleep(PFCP_ASSOC_RESP_WAIT);
+        std::shared_ptr<pfcp_association> sa = {};
+        if (!pfcp_associations::get_instance().get_association(
+                upf.get_node_id(), sa))
+          Logger::smf_app().warn(
+              "Failed to receive PFCP Association Response, Retrying .....!!");
+        else
+          break;
+      }
     }
   }
-  // }
 }
 
 //------------------------------------------------------------------------------
