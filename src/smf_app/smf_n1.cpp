@@ -44,13 +44,11 @@
 #include "PduSessionReleaseRequest.hpp"
 #include "_5gsmStatus.hpp"
 #include "common_defs.hpp"
-#include "epc.h"
 #include "output_wrapper.hpp"
 #include "smf.h"
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "string.hpp"
-#include "epc.h"
 
 using namespace oai::app::smf;
 using namespace oai::utils;
@@ -231,7 +229,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // DNN
   plmn_t plmn = {};
   sc->get_plmn(plmn);
-  std::string gprs = EPC::Utility::home_network_gprs(plmn);
+  std::string gprs = oai::utils::conv::home_network_gprs(plmn.mnc, plmn.mcc);
   std::string full_dnn =
       sm_context_res.get_dnn() + gprs;  //".mnc011.mcc110.gprs";
   std::string dotted;
