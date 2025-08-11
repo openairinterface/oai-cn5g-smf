@@ -51,7 +51,7 @@
 #include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
-#include "sbi_helper.hpp"
+#include "smf_sbi_helper.hpp"
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -544,9 +544,9 @@ void smf_context::handle_itti_msg(
                     ->get_sbi()
                     .get_api_version();
             std::string url =
-                get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-                fmt::format(
-                    NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+                get_amf_addr() +
+                oai::smf::api::smf_sbi_helper::
+                    get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
             session_report_msg.set_amf_url(url);
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
@@ -1284,9 +1284,9 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                   ->get_sbi()
                                   .get_api_version();
-    std::string url =
-        get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-        fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+    std::string url = get_amf_addr() +
+                      oai::smf::api::smf_sbi_helper::
+                          get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
     sm_context_resp_pending->res.set_amf_url(url);
 
     // Fill the json part
@@ -2838,10 +2838,9 @@ void smf_context::handle_pdu_session_modification_network_requested(
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
-  std::string url =
-      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-      fmt::format(
-          NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
+  std::string url = get_amf_addr() +
+                    oai::smf::api::smf_sbi_helper::
+                        get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   itti_msg->msg.set_amf_url(url);
   Logger::smf_app().debug(
       "N1N2MessageTransfer will be sent to AMF with URL: %s", url.c_str());
@@ -4398,13 +4397,10 @@ void smf_context::send_pdu_session_create_response(
 
   // Fill N1N2MesasgeTransferRequestData
   // get SUPI and put into URL
-  std::string supi        = resp->res.get_supi();
-  std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
-                                ->get_sbi()
-                                .get_api_version();
-  std::string url =
-      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-      fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+  std::string supi = resp->res.get_supi();
+  std::string url  = get_amf_addr() +
+                    oai::smf::api::smf_sbi_helper::
+                        get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   resp->res.set_amf_url(url);
   Logger::smf_app().debug(
       "N1N2MessageTransfer will be sent to AMF with URL: %s", url.c_str());

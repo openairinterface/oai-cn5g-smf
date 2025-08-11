@@ -47,6 +47,8 @@ class smf_sbi_helper : public sbi_helper {
   static void set_problem_details(
       nlohmann::json& json_data, const std::string& detail);
 
+  static std::string get_amf_comm_ue_context_n1_n2_message_base_uri(
+      const std::string& supi);
   static std::string get_udm_sdm_sm_data_uri(const std::string& supi);
   static std::string get_udm_sdm_subscriptions_uri(const std::string& supi);
   static std::string get_udm_uecm_smf_registration_pdu_session_uri(

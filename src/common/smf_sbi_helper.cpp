@@ -41,6 +41,19 @@ void smf_sbi_helper::set_problem_details(
 }
 
 //------------------------------------------------------------------------------
+std::string smf_sbi_helper::get_amf_comm_ue_context_n1_n2_message_base_uri(
+    const std::string& supi) {
+  std::string fmr_format_str = {};
+  get_fmt_format_form(AmfCommPathUeContextContextIdN1N2Message, fmr_format_str);
+  // TODO: the API version should be fetched from AMF
+  return oai::common::sbi::sbi_helper::AmfCommBase +
+         smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
+             ->get_sbi()
+             .get_api_version() +
+         fmt::format(fmr_format_str, supi);
+}
+
+//------------------------------------------------------------------------------
 std::string smf_sbi_helper::get_udm_sdm_sm_data_uri(const std::string& supi) {
   std::string fmr_format_str = {};
   get_fmt_format_form(UdmSdmPathSupiSmData, fmr_format_str);
