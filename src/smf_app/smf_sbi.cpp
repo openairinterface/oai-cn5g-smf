@@ -143,6 +143,11 @@ void smf_sbi_task(void* args_p) {
       case N10_SESSION_GET_SESSION_MANAGEMENT_SUBSCRIPTION:
         break;
 
+      case SBI_DISCOVER_UPF:
+        smf_sbi_inst->discover_upf(
+            std::static_pointer_cast<itti_sbi_discover_upf>(shared_msg));
+        break;
+
       case TERMINATE:
         if (itti_msg_terminate* terminate =
                 dynamic_cast<itti_msg_terminate*>(msg)) {
@@ -852,6 +857,53 @@ void smf_sbi::unsubscribe_sdm_subscriptions(
             std::make_shared<itti_sbi_unsubscribe_sdm_subscriptions_response>(
                 TASK_SMF_SBI, TASK_SMF_APP);
     itti_msg_response->supi = msg->supi;
+
+    int ret = itti_inst->send_msg(itti_msg_response);
+    if (RETURNok != ret) {
+      Logger::smf_sbi().error(
+          "Could not send ITTI message %s to task TASK_SMF_APP",
+          itti_msg_response->get_msg_name());
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_sbi::discover_upf(const std::shared_ptr<itti_sbi_discover_upf>& msg) {
+  Logger::smf_sbi().debug("Discover UPF with the PCF");
+
+  std::string nrf_uri = oai::smf::api::smf_sbi_helper::get_nrf_disc_api_root(
+      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
+      smf_cfg->enable_tls());
+
+  nrf_uri += "?target-nf-type=UPF&requester-nf-type=SMF";
+
+  request req;
+  req.uri       = nrf_uri;
+  response resp = http_client_inst->send_http_request(method_e::GET, req);
+
+  Logger::smf_sbi().debug("Discover UPF with NRF, response from NRF");
+  Logger::smf_sbi().debug("Response data %s", resp.body);
+  Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
+
+  nlohmann::json json_data = {};
+  if (resp.status_code == http_status_code::OK) {
+    try {
+      json_data = nlohmann::json::parse(resp.body);
+    } catch (json::exception& e) {
+      Logger::smf_sbi().warn("Could not parse JSON data from NRF");
+    }
+  }
+
+  // Send response to APP to process
+  nlohmann::json response_data                           = {};
+  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[oai::http::kSbiResponseJsonData]         = json_data;
+
+  if (resp.status_code == oai::common::sbi::http_status_code::OK) {
+    std::shared_ptr<itti_sbi_discover_upf_response> itti_msg_response =
+        std::make_shared<itti_sbi_discover_upf_response>(
+            TASK_SMF_SBI, TASK_SMF_APP);
+    itti_msg_response->response_data = response_data;
 
     int ret = itti_inst->send_msg(itti_msg_response);
     if (RETURNok != ret) {

@@ -593,6 +593,13 @@ class smf_app {
       oai::model::common::ProblemDetails& problem_details, uint8_t& http_code);
 
   /*
+   * Handle UPF Discovery response
+   * @param [std::shared_ptr<itti_sbi_discover_upf_response>&] response
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_discover_upf_response& response);
+
+  /*
    * Handle SBI API to get SMF configuration (Get SMF configuration)
    * @param [std::shared_ptr<itti_sbi_smf_configuration>&] c
    * @return void
@@ -778,6 +785,7 @@ class smf_app {
    */
   void start_nf_discovery();
 
+  bool process_upf_profile(const oai::model::smf::NFProfile& upf_profile);
   /*
    * To store a promise of a SBI Server response message to be
    * triggered when the result is ready
@@ -964,6 +972,13 @@ class smf_app {
    * @return void
    */
   void trigger_upf_status_notification_subscribe();
+
+  /*
+   * Send request to N11 task to trigger UPF Discovery to NRF
+   * @param [void]
+   * @return void
+   */
+  void trigger_upf_discovery();
 
   /*
    * Get the SMF instance ID
