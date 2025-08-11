@@ -871,9 +871,10 @@ void smf_sbi::unsubscribe_sdm_subscriptions(
 void smf_sbi::discover_upf(const std::shared_ptr<itti_sbi_discover_upf>& msg) {
   Logger::smf_sbi().debug("Discover UPF with the PCF");
 
-  std::string nrf_uri = oai::smf::api::smf_sbi_helper::get_nrf_disc_api_root(
-      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
-      smf_cfg->enable_tls());
+  std::string nrf_uri =
+      oai::smf::api::smf_sbi_helper::get_nrf_disc_search_nf_instances_uri(
+          smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),
+          smf_cfg->enable_tls());
 
   nrf_uri += "?target-nf-type=UPF&requester-nf-type=SMF";
 
