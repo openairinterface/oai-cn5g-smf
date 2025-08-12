@@ -2349,8 +2349,9 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   // TODO: remove hardcoded values by using model SubscriptionData
   json_data["nfStatusNotificationUri"] =
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg->sbi.addr4))) + ":" +
-      std::to_string(port) + "/nsmf-nfstatus-notify/" +
-      smf_cfg->sbi_api_version + "/subscriptions";
+      std::to_string(port) +
+      oai::smf::api::smf_sbi_helper::SmfStatusNotifyBase() +
+      oai::smf::api::smf_sbi_helper::SmfStatusNotifyPathSubscriptions;
 
   json_data["subscrCond"]["nfType"] = "UPF";
   json_data["reqNotifEvents"]       = nlohmann::json::array();
@@ -2359,9 +2360,9 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   json_data["validityTime"] = "20390531T235959";
 
   auto nrf_sbi    = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
-  std::string url = nrf_sbi.get_url(smf_cfg->enable_tls()) + NNRF_NFM_BASE +
-                    nrf_sbi.get_api_version() + NNRF_NF_STATUS_SUBSCRIBE_URL;
-
+  std::string url = oai::smf::api::smf_sbi_helper::get_nrf_nfm_api_root(
+                        nrf_sbi, smf_cfg->enable_tls()) +
+                    oai::smf::api::smf_sbi_helper::NrfNfmPathSubscriptions;
   itti_msg->url          = url;
   itti_msg->json_data    = json_data;
   itti_msg->http_version = smf_cfg->http_version;

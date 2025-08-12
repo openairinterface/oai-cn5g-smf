@@ -36,6 +36,21 @@ namespace oai::smf::api {
 
 class smf_sbi_helper : public sbi_helper {
  public:
+  static std::string SmfPduSessionBase() {
+    return sbi_helper::SmfPduSessionBase + smf_cfg->sbi_api_version;
+  }
+  static std::string SmfEventExposureBase() {
+    return sbi_helper::SmfEventExposureBase + smf_cfg->sbi_api_version;
+  }
+
+  static std::string SmfStatusNotifyBase() {
+    return sbi_helper::SmfStatusNotifyBase + smf_cfg->sbi_api_version;
+  }
+
+  static std::string SmfConfBase() {
+    return sbi_helper::SmfConfBase + smf_cfg->sbi_api_version;
+  }
+
   static std::string SmfCallbackBase() {
     return sbi_helper::SmfCallbackBase + smf_cfg->sbi_api_version;
   }

@@ -85,8 +85,8 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
 
   // Set API Root to be used as location header in HTTP response
   sm_context_req_msg.set_api_root(
-      m_address + base + smf_cfg->sbi_api_version +
-      NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
+      m_address + base +
+      oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContexts);
 
   boost::shared_ptr<boost::promise<nlohmann::json> > p =
       boost::make_shared<boost::promise<nlohmann::json> >();

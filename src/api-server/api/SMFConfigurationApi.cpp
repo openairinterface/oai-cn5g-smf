@@ -42,13 +42,11 @@ void SMFConfigurationApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Get(
-      *router,
-      base + smf_cfg->sbi_api_version + NSMF_CUSTOMIZED_API_CONFIGURATION_URL,
+      *router, base + oai::smf::api::smf_sbi_helper::SmfConfPathConfiguration,
       Routes::bind(&SMFConfigurationApi::read_configuration_handler, this));
 
   Routes::Put(
-      *router,
-      base + smf_cfg->sbi_api_version + NSMF_CUSTOMIZED_API_CONFIGURATION_URL,
+      *router, base + oai::smf::api::smf_sbi_helper::SmfConfPathConfiguration,
       Routes::bind(&SMFConfigurationApi::update_configuration_handler, this));
 
   // Default handler, called when a route is not found

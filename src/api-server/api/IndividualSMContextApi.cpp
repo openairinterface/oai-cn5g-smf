@@ -71,15 +71,15 @@ void IndividualSMContextApi::setupRoutes() {
 
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/release",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsRelease,
       Routes::bind(&IndividualSMContextApi::release_sm_context_handler, this));
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/retrieve",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsRetrieve,
       Routes::bind(&IndividualSMContextApi::retrieve_sm_context_handler, this));
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/modify",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsModify,
       Routes::bind(&IndividualSMContextApi::update_sm_context_handler, this));
 
   // Default handler, called when a route is not found

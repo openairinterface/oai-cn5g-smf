@@ -38,12 +38,12 @@ void IndividualPDUSessionHSMFApi::setupRoutes() {
 
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/pdu-sessions/:pduSessionRef/release",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathPduSessionsRelease,
       Routes::bind(
           &IndividualPDUSessionHSMFApi::release_pdu_session_handler, this));
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/pdu-sessions/:pduSessionRef/modify",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathPduSessionsModify,
       Routes::bind(
           &IndividualPDUSessionHSMFApi::update_pdu_session_handler, this));
 

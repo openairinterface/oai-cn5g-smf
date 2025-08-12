@@ -571,7 +571,7 @@ void smf_context::handle_itti_msg(
             // Fill the json part
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
-                N1N2_MESSAGE_CLASS;
+                oai::utils::N1N2_MESSAGE_CLASS;
             json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -1088,12 +1088,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
   // to notify the SMF of policy decisions. The SMF shall set the notification
   // The URI value will have the base uri of the SMF
+
+  std::string fmr_format_str = {};
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfCallbackPathSmPolicyAssociation,
+      fmr_format_str);
   std::string notification_uri =
       smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
-      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
-      fmt::format(
-          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
-          std::to_string(sp->policy_ptr->id).c_str());
+      oai::smf::api::smf_sbi_helper::SmfCallbackBase() + "/" +
+      fmt::format(fmr_format_str, std::to_string(sp->policy_ptr->id).c_str());
   // Add association id to url
   Logger::smf_app().debug(fmt::format(
       "Set the notification URI {} for the PCF to use to notify the SMF of ",
@@ -1202,14 +1205,13 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // {apiRoot}/nsmf-pdusession/{apiVersion}/sm-contexts/{smContextRef}
 
   auto smf_sbi = smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi();
-  std::string fmr_format_str = {};
-  oai::common::sbi::sbi_helper::get_fmt_format_form(
-      oai::common::sbi::sbi_helper::SmfPduSessionPathSmContextsCreate,
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsCreate,
       fmr_format_str);
   std::string smf_context_uri =
       smf_sbi.get_url(smf_cfg->enable_tls()) +
-      oai::common::sbi::sbi_helper::SmfPduSessionBase +
-      smf_cfg->sbi_api_version + fmt::format(fmr_format_str, sm_context_ref);
+      oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+      fmt::format(fmr_format_str, sm_context_ref);
 
   sm_context_response.set_smf_context_uri(smf_context_uri);
   sm_context_response.set_cause(k5gsmCauseRequestAccepted);  // TODO
@@ -1290,8 +1292,9 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     sm_context_resp_pending->res.set_amf_url(url);
 
     // Fill the json part
-    nlohmann::json json_data                          = {};
-    json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+    nlohmann::json json_data = {};
+    json_data["n1MessageContainer"]["n1MessageClass"] =
+        oai::utils::N1N2_MESSAGE_CLASS;
     json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
         oai::utils::N1_SM_CONTENT_ID;
     json_data["pduSessionId"] =
@@ -2848,11 +2851,13 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // Fill the json part
   nlohmann::json json_data = {};
   // N1SM
-  json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
       oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
-  json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n2InfoContainer"]["n2InformationClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
       itti_msg->msg.get_pdu_session_id();
   // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -4411,12 +4416,14 @@ void smf_context::send_pdu_session_create_response(
   // Fill the json part
   nlohmann::json json_data = {};
   // N1SM
-  json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
       oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
   if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
-    json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+    json_data["n2InfoContainer"]["n2InformationClass"] =
+        oai::utils::N1N2_MESSAGE_CLASS;
     json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
         resp->res.get_pdu_session_id();
     // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -4429,10 +4436,15 @@ void smf_context::send_pdu_session_create_response(
     json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
         resp->res.get_snssai().sd;
     // N1N2MsgTxfrFailureNotification
+    std::string fmr_format_str = {};
+    oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+        oai::smf::api::smf_sbi_helper::
+            SmfCallbackPathN1N2MessageTransferFailure,
+        fmr_format_str);
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
-        NSMF_PDU_SESSION_BASE + smf_cfg->local().get_sbi().get_api_version() +
-        fmt::format(NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi);
+        oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+        fmt::format(fmr_format_str, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }
   // Others information

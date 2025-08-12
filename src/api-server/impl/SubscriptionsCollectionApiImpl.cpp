@@ -87,7 +87,8 @@ void SubscriptionsCollectionApiImpl::create_individual_subcription(
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
     response.headers().add<Pistache::Http::Header::Location>(
-        m_address + base + smf_cfg->sbi_api_version + "/nsmf_event-exposure/" +
+        m_address + base +
+        oai::smf::api::smf_sbi_helper::SmfEventExposurePathSubscriptions +
         std::to_string(sub_id));  // Location header
   }
 
