@@ -527,8 +527,8 @@ void smf_sbi::update_nf_instance(
 
   Logger::smf_sbi().debug("Send NF Update to NRF, NRF URL %s", url.c_str());
 
-  request req = http_client_inst->prepare_json_request(
-      url, body, "application/json-patch+json");
+  request req =
+      http_client_inst->prepare_json_request(url, body, "application/json");
   response resp = http_client_inst->send_http_request(method_e::PATCH, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
