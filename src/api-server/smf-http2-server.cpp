@@ -38,6 +38,7 @@
 #include "smf_config.hpp"
 #include "smf_msg.hpp"
 #include "http_definitions.hpp"
+#include "smf_sbi_helper.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -46,6 +47,7 @@ using namespace oai::model::common;
 using namespace oai::model::pcf;
 using namespace oai::utils;
 using namespace oai::common::sbi;
+using namespace oai::smf::api;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -75,8 +77,8 @@ void smf_http2_server::start() {
   Logger::smf_api_server().info("HTTP2 server being started");
   // Create SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-          NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL,
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathSmContexts,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
@@ -163,8 +165,8 @@ void smf_http2_server::start() {
 
   // Update SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-          NSMF_PDU_SESSION_SM_CONTEXT_UPDATE_URL,
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathSmContextsUpdate,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
@@ -335,8 +337,8 @@ void smf_http2_server::start() {
 
   // NFStatusNotify
   server.handle(
-      NNRF_NF_STATUS_NOTIFY_BASE + smf_cfg->sbi_api_version +
-          NNRF_NF_STATUS_SUBSCRIBE_URL,
+      smf_sbi_helper::SmfStatusNotifyBase() +
+          smf_sbi_helper::SmfStatusNotifyPathSubscriptions,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           std::string msg((char*) data, len);
@@ -358,8 +360,7 @@ void smf_http2_server::start() {
 
   // SMF Configuration
   server.handle(
-      NSMF_CUSTOMIZED_API_BASE + smf_cfg->sbi_api_version +
-          NSMF_CUSTOMIZED_API_CONFIGURATION_URL,
+      smf_sbi_helper::SmfConfBase() + smf_sbi_helper::SmfConfPathConfiguration,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           try {
@@ -382,8 +383,8 @@ void smf_http2_server::start() {
       });
   // Event Exposure
   server.handle(
-      NSMF_EVENT_EXPOSURE_API_BASE + smf_cfg->sbi_api_version +
-          NSMF_EVENT_EXPOSURE_SUBSCRIBE_URL,
+      smf_sbi_helper::SmfEventExposureBase() +
+          smf_sbi_helper::SmfEventExposurePathSubscriptions,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           try {
@@ -414,7 +415,7 @@ void smf_http2_server::start() {
 
   // SMF Callback (including SM Policy Notification)
   server.handle(
-      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version,
+      smf_sbi_helper::SmfCallbackBase(),
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
@@ -532,8 +533,8 @@ void smf_http2_server::create_sm_contexts_handler(
   // Set api root to be used as location header in HTTP response
   sm_context_req_msg.set_api_root(
       // m_address + ":" + std::to_string(m_port) +
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-      NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
+      smf_sbi_helper::SmfPduSessionBase() +
+      smf_sbi_helper::SmfPduSessionPathSmContexts);
 
   boost::shared_ptr<boost::promise<nlohmann::json>> p =
       boost::make_shared<boost::promise<nlohmann::json>>();
@@ -1041,11 +1042,10 @@ void smf_http2_server::create_event_subscription_handler(
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
     h.emplace(
-        "Location",
-        header_value{
-            m_address + NSMF_EVENT_EXPOSURE_API_BASE +
-            smf_cfg->sbi_api_version + NSMF_EVENT_EXPOSURE_SUBSCRIBE_URL +
-            std::to_string(sub_id)});
+        "Location", header_value{
+                        m_address + smf_sbi_helper::SmfEventExposureBase() +
+                        smf_sbi_helper::SmfEventExposurePathSubscriptions +
+                        std::to_string(sub_id)});
   }
 
   h.emplace("content-type", header_value{"application/json"});

@@ -28,7 +28,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.274.h"
 #include "3gpp_29.571.h"
 #include "Snssai.h"
@@ -86,65 +86,6 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
 
 };
 
-typedef struct qos_profile_gbr_s {
-  gfbr_t gfbr;  // Guaranteed Flow Bit Rate
-  mfbr_t mfbr;  // Maximum Flow Bit Rate
-  // Notification Control
-  // Maximum Packet Loss Rate (UL/DL)
-} qos_profile_gbr_t;
-
-enum class qos_profile_type_e { NON_GBR = 0, GBR = 1 };
-
-// See Section 5.7.2@3GPP TS 23.501
-typedef struct qos_profile_s {
-  uint8_t _5qi;
-  arp_5gc_t arp;
-  uint8_t priority_level;
-  qos_profile_type_e profile_type;
-  union {
-    reflective_qos_attribute_e rqa;     // Reflective QoS Attribute (RQA)
-    qos_profile_gbr_t qos_profile_gbr;  // Attributes for GBR
-  } parameter;
-} qos_profile_t;
-
-// URL, N1, N2 (may get from configuration file)
-#define NAMF_COMMUNICATION_BASE "/namf-comm/"
-#define NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL                           \
-  "/ue-contexts/{}/n1-n2-messages"  // context id
-//#define N1_SM_CONTENT_ID "n1SmMsg"
-#define N1N2_MESSAGE_CLASS "SM"
-//#define N2_SM_CONTENT_ID "n2msg"
-#define NSMF_PDU_SESSION_BASE "/nsmf-pdusession/"
-#define NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE                            \
-  "/callback/N1N2MsgTxfrFailureNotification/{}"  // UE Id
-#define NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL "/sm-contexts"
-#define NSMF_PDU_SESSION_SM_CONTEXT_UPDATE_URL "/sm-contexts/"
-#define NSMF_SMF_CONFIGURATION_BASE "/nsmf-configuration/"
-#define NSMF_SMF_CONFIGURATION_CREATE_DNN "/dnn-configurations"
-
-#define NSMF_CUSTOMIZED_API_BASE "/nsmf-oai/"
-#define NSMF_CUSTOMIZED_API_CONFIGURATION_URL "/configuration"
-
-// Event Exposure
-#define NSMF_EVENT_EXPOSURE_API_BASE "/nsmf_event-exposure/"
-#define NSMF_EVENT_EXPOSURE_SUBSCRIBE_URL "/subscriptions"
-// NRF
-#define NNRF_NFM_BASE "/nnrf-nfm/"
-#define NNRF_NF_REGISTER_URL "/nf-instances/"
-#define NNRF_NF_STATUS_SUBSCRIBE_URL "/subscriptions"
-#define NNRF_NF_STATUS_NOTIFY_BASE "/nsmf-nfstatus-notify/"
-
-// Callbacks
-#define NSMF_CALLBACK_BASE "/nsmf-callback/"
-#define NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK                                 \
-  "{}/sm-policy-control-notify"  // Association Id
-
-// for CURL
-#define NF_CURL_TIMEOUT_MS 3000L
-#define MAX_WAIT_MSECS 10000  // 1 second
-#define AMF_NUMBER_RETRIES 3
-#define UDM_NUMBER_RETRIES 3
-
 // for N1N2
 #define BUF_LEN 2046
 
@@ -153,8 +94,6 @@ typedef struct qos_profile_s {
 
 // for PFCP
 constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;
-// 8.22  Fully Qualified TEID (F-TEID) - 3GPP TS 29.274 V16.0.0
-#define TEID_GRE_KEY_LENGTH 4
 
 #define DEFAULT_QFI 1
 #define DEFAULT_5QI 9  // TODO: from conf file

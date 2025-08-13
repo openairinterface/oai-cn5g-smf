@@ -25,7 +25,7 @@
 #include "config.hpp"
 #include "config_types.hpp"
 #include "3gpp_29.571.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "smf.h"
 #include "SmfInfo.h"
 #include "Snssai.h"

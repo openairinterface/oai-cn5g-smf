@@ -44,13 +44,11 @@
 #include "PduSessionReleaseRequest.hpp"
 #include "_5gsmStatus.hpp"
 #include "common_defs.hpp"
-#include "epc.h"
 #include "output_wrapper.hpp"
 #include "smf.h"
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "string.hpp"
-#include "epc.h"
 
 using namespace oai::app::smf;
 using namespace oai::utils;
@@ -60,7 +58,7 @@ extern smf_app* smf_app_inst;
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_establishment_accept(
     pdu_session_create_sm_context_response& sm_context_res,
-    std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
+    std::string& nas_msg_str, uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Establishment Accept");
   int bytes                   = {0};
@@ -231,7 +229,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   // DNN
   plmn_t plmn = {};
   sc->get_plmn(plmn);
-  std::string gprs = EPC::Utility::home_network_gprs(plmn);
+  std::string gprs = oai::utils::conv::home_network_gprs(plmn.mnc, plmn.mcc);
   std::string full_dnn =
       sm_context_res.get_dnn() + gprs;  //".mnc011.mcc110.gprs";
   std::string dotted;
@@ -278,8 +276,7 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_establishment_reject(
-    pdu_session_msg& msg, std::string& nas_msg_str,
-    cause_value_5gsm_e sm_cause) {
+    pdu_session_msg& msg, std::string& nas_msg_str, uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Establishment Reject");
   bool result = false;
@@ -344,7 +341,7 @@ bool smf_n1::create_n1_pdu_session_establishment_reject(
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_modification_command(
     pdu_session_update_sm_context_response& sm_context_res,
-    std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
+    std::string& nas_msg_str, uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Modification Command "
       "(pdu_session_update_sm_context_response)");
@@ -474,7 +471,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_modification_command(
     pdu_session_modification_network_requested& msg, std::string& nas_msg_str,
-    cause_value_5gsm_e sm_cause) {
+    uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Modification Command "
       "(pdu_session_modification_network_requested)");
@@ -603,7 +600,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_release_reject(
     pdu_session_update_sm_context_request& sm_context_res,
-    std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
+    std::string& nas_msg_str, uint8_t sm_cause) {
   Logger::smf_n1().info("Create N1 SM Container, PDU Session Release Reject");
   bool result                     = false;
   auto pdu_session_release_reject = std::make_unique<PduSessionReleaseReject>();
@@ -651,7 +648,7 @@ bool smf_n1::create_n1_pdu_session_release_reject(
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_release_command(
     const std::shared_ptr<pdu_session_msg>& msg, std::string& nas_msg_str,
-    cause_value_5gsm_e sm_cause) {
+    uint8_t sm_cause) {
   Logger::smf_n1().info("Create N1 SM Container, PDU Session Release Command");
 
   bool result = false;
@@ -711,7 +708,7 @@ bool smf_n1::create_n1_pdu_session_release_command(
 //-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_release_command(
     pdu_session_update_sm_context_response& sm_context_res,
-    std::string& nas_msg_str, cause_value_5gsm_e sm_cause) {
+    std::string& nas_msg_str, uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Release Command "
       "(pdu_session_update_sm_context_response)");
@@ -775,7 +772,7 @@ bool smf_n1::create_n1_pdu_session_release_command(
 //-----------------------------------------------------------------------------------------------------
 bool create_n1_pdu_session_release_command(
     pdu_session_modification_network_requested& msg, std::string& nas_msg_str,
-    cause_value_5gsm_e sm_cause) {
+    uint8_t sm_cause) {
   Logger::smf_n1().info(
       "Create N1 SM Container, PDU Session Release Command "
       "(pdu_session_modification_network_requested)");

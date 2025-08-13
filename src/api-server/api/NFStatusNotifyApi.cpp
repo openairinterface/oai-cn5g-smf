@@ -46,7 +46,8 @@ void NFStatusNotifyApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Post(
-      *router, base + smf_cfg->sbi_api_version + "/subscriptions",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::SmfStatusNotifyPathSubscriptions,
       Routes::bind(&NFStatusNotifyApi::notify_nf_status_handler, this));
 
   // Default handler, called when a route is not found

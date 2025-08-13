@@ -34,7 +34,7 @@
 #include "itti.hpp"
 #include "smf_profile.hpp"
 #include "SmPolicyDecision.h"
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "UpfInfo.h"
 #include "smf.h"
 #include "smf_config_types.hpp"

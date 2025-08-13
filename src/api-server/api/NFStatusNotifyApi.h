@@ -35,6 +35,7 @@
 
 #include "NotificationData.h"
 #include "ProblemDetails.h"
+#include "smf_sbi_helper.hpp"
 
 namespace oai {
 namespace smf_server {
@@ -48,7 +49,7 @@ class NFStatusNotifyApi {
   virtual ~NFStatusNotifyApi() {}
   void init();
 
-  const std::string base = "/nsmf-nfstatus-notify/";
+  const std::string base = oai::smf::api::smf_sbi_helper::SmfStatusNotifyBase();
 
  private:
   void setupRoutes();

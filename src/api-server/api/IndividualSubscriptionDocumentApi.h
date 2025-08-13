@@ -28,6 +28,7 @@
 #include "NsmfEventExposure.h"
 #include "ProblemDetails.h"
 #include <string>
+#include "smf_sbi_helper.hpp"
 
 namespace oai {
 namespace smf_server {
@@ -41,7 +42,8 @@ class IndividualSubscriptionDocumentApi {
   virtual ~IndividualSubscriptionDocumentApi() {}
   void init();
 
-  const std::string base = "/nsmf_event-exposure/";
+  const std::string base =
+      oai::smf::api::smf_sbi_helper::SmfEventExposureBase();
 
  private:
   void setupRoutes();

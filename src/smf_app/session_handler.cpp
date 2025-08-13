@@ -71,7 +71,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
     flow.qfi         = edge->qfi;
     flow.qos_profile = edge->qos_profile;
     set_default_qos_parameters(flow.qos_profile);
-    flow.cause_value = static_cast<uint8_t>(m_cause_value);
+    flow.cause_value = m_cause_value;
     flow.set_dl_fteid(edge->next_hop_fteid);
     flow.set_ul_fteid(edge->fteid);
 
@@ -94,8 +94,7 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
   Logger::smf_app().error(
       "Cannot receive QoS flow for QFI %u, it does not exist", qfi.qfi);
   qos_flow_context_updated flow;
-  flow.cause_value = static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED);
+  flow.cause_value = k5gsmCauseRequestRejectedUnspecified;
   return qos_flow_context_updated{};
 }
 
@@ -118,7 +117,7 @@ void session_handler::set_qfis_to_be_updated(
 }
 
 //------------------------------------------------------------------------------
-void session_handler::set_cause(const cause_value_5gsm_e& cause) {
+void session_handler::set_cause(const uint8_t& cause) {
   m_cause_value = cause;
 }
 

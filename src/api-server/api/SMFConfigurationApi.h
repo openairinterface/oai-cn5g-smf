@@ -30,6 +30,7 @@
 #include <nlohmann/json.hpp>
 
 #include "smf.h"
+#include "smf_sbi_helper.hpp"
 
 namespace oai::smf_server::api {
 
@@ -39,7 +40,7 @@ class SMFConfigurationApi {
   virtual ~SMFConfigurationApi() {}
   void init();
 
-  const std::string base = NSMF_CUSTOMIZED_API_BASE;
+  const std::string base = oai::smf::api::smf_sbi_helper::SmfConfBase();
 
  private:
   void setupRoutes();

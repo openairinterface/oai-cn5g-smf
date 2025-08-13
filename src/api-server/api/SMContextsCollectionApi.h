@@ -51,6 +51,7 @@
 #include "SmContextCreateError.h"
 #include "SmContextCreatedData.h"
 #include "smf.h"
+#include "smf_sbi_helper.hpp"
 
 namespace oai {
 namespace smf_server {
@@ -64,7 +65,7 @@ class SMContextsCollectionApi {
   virtual ~SMContextsCollectionApi() {}
   void init();
 
-  const std::string base = NSMF_PDU_SESSION_BASE;
+  const std::string base = oai::smf::api::smf_sbi_helper::SmfPduSessionBase();
 
  private:
   void setupRoutes();

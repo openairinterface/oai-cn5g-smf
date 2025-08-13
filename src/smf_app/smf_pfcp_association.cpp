@@ -183,7 +183,7 @@ bool pfcp_associations::resolve_upf_hostname(pfcp::node_id_t& node_id) {
     uint32_t port       = {0};
     uint8_t addr_type   = {0};
 
-    if (!fqdn::resolve(node_id.fqdn, ip_addr, port, addr_type)) {
+    if (!oai::utils::fqdn::resolve(node_id.fqdn, ip_addr, port, addr_type)) {
       Logger::smf_app().warn(
           "Add association with node (FQDN) %s: cannot resolve the hostname!",
           node_id.fqdn.c_str());
@@ -309,7 +309,7 @@ bool pfcp_associations::get_association(
   pfcp::node_id_t node_id_tmp                   = node_id;
 
   // Resolve FQDN/IP Addr if necessary
-  fqdn::resolve(node_id_tmp);
+  oai::utils::fqdn::resolve(node_id_tmp);
 
   // We suppose that by default hash map is made with node_id_type FQDN
   if (node_id_tmp.node_id_type == pfcp::NODE_ID_TYPE_FQDN) {

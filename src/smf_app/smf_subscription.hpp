@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "3gpp_29.508.h"
 #include "common_root_types.h"
 #include "itti.hpp"

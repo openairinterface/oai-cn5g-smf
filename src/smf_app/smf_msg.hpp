@@ -23,8 +23,7 @@
 #define FILE_SMF_MSG_HPP_SEEN
 
 #include "3gpp_23.003.h"
-#include "3gpp_24.007.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.007.hpp"
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.244.h"
 #include "3gpp_29.508.h"
@@ -190,19 +189,19 @@ class pdu_session_sm_context_request : public pdu_session_msg {
  public:
   pdu_session_sm_context_request() : pdu_session_msg() {
     m_epd          = EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-    m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
+    m_message_type = k5gsSessionManagementMessageTypeUnknown;
   };
   pdu_session_sm_context_request(pdu_session_msg_type_t msg_type)
       : pdu_session_msg(msg_type) {
     m_epd          = EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-    m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
+    m_message_type = k5gsSessionManagementMessageTypeUnknown;
   };
   pdu_session_sm_context_request(
       pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai) {
     m_epd          = EPD_5GS_SESSION_MANAGEMENT_MESSAGES;
-    m_message_type = PDU_SESSION_MESSAGE_TYPE_UNKNOWN;
+    m_message_type = k5gsSessionManagementMessageTypeUnknown;
   }
 
   uint8_t get_epd() const;

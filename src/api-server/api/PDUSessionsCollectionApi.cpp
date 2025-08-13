@@ -37,7 +37,8 @@ void PDUSessionsCollectionApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Post(
-      *router, base + smf_cfg->sbi_api_version + "/pdu-sessions",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathPduSessions,
       Routes::bind(&PDUSessionsCollectionApi::post_pdu_sessions_handler, this));
 
   // Default handler, called when a route is not found

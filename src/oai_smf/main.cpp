@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "async_shell_cmd.hpp"
 #include "common_defs.h"
 #include "itti.hpp"
 #include "logger.hpp"
@@ -44,9 +43,8 @@ using namespace oai::smf_server::api;
 using namespace oai::config::smf;
 using namespace std::chrono_literals;
 
-itti_mw* itti_inst                    = nullptr;
-async_shell_cmd* async_shell_cmd_inst = nullptr;
-smf_app* smf_app_inst                 = nullptr;
+itti_mw* itti_inst    = nullptr;
+smf_app* smf_app_inst = nullptr;
 std::unique_ptr<smf_config> smf_cfg;
 SMFApiServer* smf_api_server_1                           = nullptr;
 smf_http2_server* smf_api_server_2                       = nullptr;
@@ -93,11 +91,6 @@ void my_app_signal_handler(int s) {
   }
 
   Logger::system().debug("Freeing allocated memory...");
-  if (async_shell_cmd_inst) {
-    delete async_shell_cmd_inst;
-    async_shell_cmd_inst = nullptr;
-    Logger::system().debug("Async Shell CMD memory done.");
-  }
   if (smf_api_server_1) {
     delete smf_api_server_1;
     smf_api_server_1 = nullptr;
@@ -188,10 +181,6 @@ int main(int argc, char** argv) {
   http_client_inst = oai::http::http_client::create_instance(
       Logger::smf_sbi(), smf_cfg->get_http_request_timeout(),
       smf_cfg->sbi.if_name, smf_cfg->http_version, smf_cfg->enable_tls());
-
-  // system command
-  async_shell_cmd_inst =
-      new async_shell_cmd(smf_cfg->itti.async_cmd_sched_params);
 
   // SMF application layer
   smf_app_inst = new smf_app(Options::getlibconfigConfig());

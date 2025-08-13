@@ -25,7 +25,7 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_commons.h"
@@ -51,7 +51,7 @@
 #include "http_client.hpp"
 #include "itti.hpp"
 #include "logger.hpp"
-#include "sbi_helper.hpp"
+#include "smf_sbi_helper.hpp"
 #include "smf_3gpp_conversions.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -179,8 +179,7 @@ std::string smf_pdu_session::toString() const {
   std::string s = {};
 
   bool is_released = false;
-  if (pdu_session_status == pdu_session_status_e::PDU_SESSION_INACTIVE)
-    is_released = true;
+  if (pdu_session_status == pdu_session_status_t::Inactive) is_released = true;
   if (!is_released) {
     s.append("\tPDU Session ID:\t\t\t")
         .append(std::to_string((uint8_t) pdu_session_id))
@@ -223,18 +222,16 @@ std::string smf_pdu_session::toString() const {
 }
 
 //------------------------------------------------------------------------------
-void smf_pdu_session::set_pdu_session_status(
-    const pdu_session_status_e& status) {
+void smf_pdu_session::set_pdu_session_status(const uint8_t& status) {
   // TODO: Should consider congestion handling
   Logger::smf_app().info(
-      "Set PDU Session Status to %s",
-      pdu_session_status_e2str.at(static_cast<int>(status)).c_str());
+      "Set PDU Session Status to %s", get_pdu_session_status_str(status));
   std::unique_lock lock(m_pdu_session_mutex);
   pdu_session_status = status;
 }
 
 //------------------------------------------------------------------------------
-pdu_session_status_e smf_pdu_session::get_pdu_session_status() const {
+uint8_t smf_pdu_session::get_pdu_session_status() const {
   std::shared_lock lock(m_pdu_session_mutex);
   return pdu_session_status;
 }
@@ -547,9 +544,9 @@ void smf_context::handle_itti_msg(
                     ->get_sbi()
                     .get_api_version();
             std::string url =
-                get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-                fmt::format(
-                    NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+                get_amf_addr() +
+                oai::smf::api::smf_sbi_helper::
+                    get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
             session_report_msg.set_amf_url(url);
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
@@ -574,7 +571,7 @@ void smf_context::handle_itti_msg(
             // Fill the json part
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
-                N1N2_MESSAGE_CLASS;
+                oai::utils::N1N2_MESSAGE_CLASS;
             json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -829,9 +826,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
         "Received a PDU Session Create SM Context Request, the request is not "
         "valid!");
     send_pdu_session_establishment_response_reject(
-        smreq,
-        cause_value_5gsm_e::
-            CAUSE_29_USER_AUTHENTICATION_OR_AUTHORIZATION_FAILED,
+        smreq, k5gsmCauseUserAuthenticationOrAuthorizationFailed,
         pdu_session_application_error_e::
             PDU_SESSION_APPLICATION_ERROR_SUBSCRIPTION_DENIED,
         http_status_code::UNAUTHORIZED);
@@ -969,7 +964,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
         } else {
           // ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
           send_pdu_session_establishment_response_reject(
-              smreq, cause_value_5gsm_e::CAUSE_26_INSUFFICIENT_RESOURCES,
+              smreq, k5gsmCauseInsufficientResources,
               pdu_session_application_error_e::
                   PDU_SESSION_APPLICATION_ERROR_INSUFFICIENT_RESOURCES_SLICE_DNN,
               http_status_code::INTERNAL_SERVER_ERROR);
@@ -999,7 +994,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
             set_paa = true;
           } else {
             send_pdu_session_establishment_response_reject(
-                smreq, cause_value_5gsm_e::CAUSE_26_INSUFFICIENT_RESOURCES,
+                smreq, k5gsmCauseInsufficientResources,
                 pdu_session_application_error_e::
                     PDU_SESSION_APPLICATION_ERROR_INSUFFICIENT_RESOURCES_SLICE_DNN,
                 http_status_code::INTERNAL_SERVER_ERROR);
@@ -1018,7 +1013,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
             "feature has not been supported yet!");
         // TODO maybe find a better response code
         send_pdu_session_establishment_response_reject(
-            smreq, cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE,
+            smreq, k5gsmCauseUnknownPduSessionType,
             pdu_session_application_error_e::
                 PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
             http_status_code::FORBIDDEN);
@@ -1033,7 +1028,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
       Logger::smf_app().warn("IPv6 is not supported yet!");
       // PDU Session Establishment Reject
       send_pdu_session_establishment_response_reject(
-          smreq, cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE,
+          smreq, k5gsmCauseUnknownPduSessionType,
           pdu_session_application_error_e::
               PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
           http_status_code::FORBIDDEN);
@@ -1049,11 +1044,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
           "Unknown PDN type %d", sp->pdu_session_type.pdu_session_type);
       // PDU Session Establishment Reject
       send_pdu_session_establishment_response_reject(
-          smreq, cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE,
+          smreq, k5gsmCauseUnknownPduSessionType,
           pdu_session_application_error_e::
               PDU_SESSION_APPLICATION_ERROR_PDUTYPE_NOT_SUPPORTED,
           http_status_code::FORBIDDEN);
-      // sm_context_resp_pending->res.set_cause(static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_28_UNKNOWN_PDU_SESSION_TYPE));
+      // sm_context_resp_pending->res.set_cause(k5gsmCauseUnknownPduSessionType);
       return;
     }
   }
@@ -1093,12 +1088,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
   // to notify the SMF of policy decisions. The SMF shall set the notification
   // The URI value will have the base uri of the SMF
+
+  std::string fmr_format_str = {};
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfCallbackPathSmPolicyAssociation,
+      fmr_format_str);
   std::string notification_uri =
       smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi().get_url() +
-      NSMF_CALLBACK_BASE + smf_cfg->sbi_api_version + "/" +
-      fmt::format(
-          NSMF_N7_SM_POLICY_ASSOCIATION_CALLBACK,
-          std::to_string(sp->policy_ptr->id).c_str());
+      oai::smf::api::smf_sbi_helper::SmfCallbackBase() + "/" +
+      fmt::format(fmr_format_str, std::to_string(sp->policy_ptr->id).c_str());
   // Add association id to url
   Logger::smf_app().debug(fmt::format(
       "Set the notification URI {} for the PCF to use to notify the SMF of ",
@@ -1207,18 +1205,16 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // {apiRoot}/nsmf-pdusession/{apiVersion}/sm-contexts/{smContextRef}
 
   auto smf_sbi = smf_cfg->get_nf(oai::config::SMF_CONFIG_NAME)->get_sbi();
-  std::string fmr_format_str = {};
-  oai::common::sbi::sbi_helper::get_fmt_format_form(
-      oai::common::sbi::sbi_helper::SmfPduSessionPathSmContextsCreate,
+  oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+      oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsCreate,
       fmr_format_str);
   std::string smf_context_uri =
       smf_sbi.get_url(smf_cfg->enable_tls()) +
-      oai::common::sbi::sbi_helper::SmfPduSessionBase +
-      smf_cfg->sbi_api_version + fmt::format(fmr_format_str, sm_context_ref);
+      oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+      fmt::format(fmr_format_str, sm_context_ref);
 
   sm_context_response.set_smf_context_uri(smf_context_uri);
-  sm_context_response.set_cause(static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));  // TODO
+  sm_context_response.set_cause(k5gsmCauseRequestAccepted);  // TODO
 
   nlohmann::json json_data          = {};
   json_data["smfServiceInstanceId"] = smf_app_inst->get_smf_instance_id();
@@ -1252,8 +1248,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Step 10. if error when establishing the pdu session,
   // send ITTI message to APP to trigger N1N2MessageTransfer towards AMFs (PDU
   // Session Establishment Reject)
-  if (sm_context_resp_pending->res.get_cause() !=
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+  if (sm_context_resp_pending->res.get_cause() != k5gsmCauseRequestAccepted) {
     // clear pco, ambr
 
     // free paa
@@ -1278,8 +1273,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     // Create PDU Session Establishment Reject and embedded in
     // Namf_Communication_N1N2MessageTransfer Request
     Logger::smf_app().debug("Create PDU Session Establishment Reject");
-    cause_value_5gsm_e cause_n1 = static_cast<cause_value_5gsm_e>(
-        sm_context_resp_pending->res.get_cause());
+    uint8_t cause_n1 = sm_context_resp_pending->res.get_cause();
 
     smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
         sm_context_resp_pending->res, n1_sm_message, cause_n1);
@@ -1292,14 +1286,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                   ->get_sbi()
                                   .get_api_version();
-    std::string url =
-        get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-        fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+    std::string url = get_amf_addr() +
+                      oai::smf::api::smf_sbi_helper::
+                          get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
     sm_context_resp_pending->res.set_amf_url(url);
 
     // Fill the json part
-    nlohmann::json json_data                          = {};
-    json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+    nlohmann::json json_data = {};
+    json_data["n1MessageContainer"]["n1MessageClass"] =
+        oai::utils::N1N2_MESSAGE_CLASS;
     json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
         oai::utils::N1_SM_CONTENT_ID;
     json_data["pduSessionId"] =
@@ -1343,7 +1338,7 @@ bool smf_context::handle_pdu_session_modification_request(
   // check if the PDU Session Release Command is already sent for this
   // message (see section 6.3.3.5 @3GPP TS 24.501)
   if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_INACTIVE_PENDING) {
+      pdu_session_status_t::InactivePending) {
     // Ignore the message
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
@@ -1355,7 +1350,7 @@ bool smf_context::handle_pdu_session_modification_request(
   // check if the session is in state Modification pending, SMF will
   // ignore this message (see section 6.3.2.5 @3GPP TS 24.501)
   if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_MODIFICATION_PENDING) {
+      pdu_session_status_t::ModificationPending) {
     // Ignore the message
     Logger::smf_app().info(
         "This PDU session is in MODIFICATION_PENDING State (session ID "
@@ -1404,7 +1399,7 @@ bool smf_context::handle_pdu_session_modification_request(
   // N1 SM (PDU Session Modification Command)
   if (not smf_n1::get_instance().create_n1_pdu_session_modification_command(
           sm_context_resp.get()->res, n1_sm_msg_to_be_created,
-          cause_value_5gsm_e::CAUSE_0_UNKNOWN) or
+          k5gsmCauseUnknown) or
       // N2 SM (PDU Session Resource Modify Request Transfer IE)
       not smf_n2::get_instance()
               .create_n2_pdu_session_resource_modify_request_transfer(
@@ -1436,8 +1431,7 @@ bool smf_context::handle_pdu_session_modification_request(
 
   sm_context_resp.get()->res.set_json_data(json_data);
   // Update PDU Session status
-  sp.get()->set_pdu_session_status(
-      pdu_session_status_e::PDU_SESSION_MODIFICATION_PENDING);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::ModificationPending);
 
   scid_t scid = {};
   try {
@@ -1477,7 +1471,7 @@ bool smf_context::handle_pdu_session_modification_complete(
    same value, otherwise it shall use a default value.
    */
   // Update PDU Session status -> ACTIVE
-  sp.get()->set_pdu_session_status(pdu_session_status_e::PDU_SESSION_ACTIVE);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::Active);
   // stop T3591
   itti_inst->timer_remove(sp.get()->timer_T3591);
 
@@ -1512,7 +1506,7 @@ bool smf_context::handle_pdu_session_modification_command_reject(
 
   // Message Type
   uint8_t message_type = nas_message->GetHeader().GetMessageType();
-  if (message_type != PDU_SESSION_MODIFICATION_COMMAND_REJECT) {
+  if (message_type != kPduSessionModificationCommandReject) {
     return false;
   }
 
@@ -1521,19 +1515,16 @@ bool smf_context::handle_pdu_session_modification_command_reject(
   (std::dynamic_pointer_cast<oai::nas::PduSessionModificationCommandReject>(
        nas_message))
       ->Get5gsmCause(_5gsm_cause);
-  if (_5gsm_cause.GetValue() ==
-      static_cast<uint8_t>(
-          cause_value_5gsm_e::CAUSE_43_INVALID_PDU_SESSION_IDENTITY)) {
+  if (_5gsm_cause.GetValue() == k5gsmCauseInvalidPduSessionIdentity) {
     // Update PDU Session status -> INACTIVE
-    sp.get()->set_pdu_session_status(
-        pdu_session_status_e::PDU_SESSION_INACTIVE);
+    sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
     // TODO: Release locally the existing PDU Session (see
     // section 6.3.2.5@3GPP TS 24.501)
   } else if (
       sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_MODIFICATION_PENDING) {
+      pdu_session_status_t::ModificationPending) {
     // Update PDU Session status -> ACTIVE
-    sp.get()->set_pdu_session_status(pdu_session_status_e::PDU_SESSION_ACTIVE);
+    sp.get()->set_pdu_session_status(pdu_session_status_t::Active);
   }
 
   // presence
@@ -1565,14 +1556,13 @@ bool smf_context::handle_pdu_session_release_request(
   }
 
   // Abnormal cases in network side (see section 6.4.3.6 @3GPP TS 24.501)
-  if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_INACTIVE) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Inactive) {
     Logger::smf_app().warn(
         "PDU Session status: INACTIVE, send PDU Session Release Reject "
         "to UE!");
     if (smf_n1::get_instance().create_n1_pdu_session_release_reject(
             sm_context_request.get()->req, n1_sm_msg,
-            cause_value_5gsm_e::CAUSE_43_INVALID_PDU_SESSION_IDENTITY)) {
+            k5gsmCauseInvalidPduSessionIdentity)) {
       conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
       // trigger to send reply to AMF
       smf_app_inst->trigger_update_context_error_response(
@@ -1589,7 +1579,7 @@ bool smf_context::handle_pdu_session_release_request(
   }
   // Abnormal cases in network side (see section 6.3.3.5 @3GPP TS 24.501)
   if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_INACTIVE_PENDING) {
+      pdu_session_status_t::InactivePending) {
     // Ignore the message
     Logger::smf_app().info(
         "A PDU Session Release Command has been sent for this session "
@@ -1651,7 +1641,7 @@ bool smf_context::handle_pdu_session_release_complete(
 
   // Message Type
   uint8_t message_type = nas_message->GetHeader().GetMessageType();
-  if (message_type != PDU_SESSION_RELEASE_COMPLETE) {
+  if (message_type != kPduSessionReleaseComplete) {
     // TODO: Message Type mismatch
     // return false;
   }
@@ -1676,8 +1666,7 @@ bool smf_context::handle_pdu_session_release_complete(
   event_sub.sm_context_status(scid, status);
 
   // TODO: Notify AMF that the SM context for this PDU session is released
-  if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_ACTIVE) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     Logger::smf_app().debug(
         "Signal the PDU Session Release Event notification");
     trigger_pdu_session_release(scid, 1);
@@ -1706,7 +1695,7 @@ bool smf_context::handle_pdu_session_release_complete(
   // TODO: Invoke Nudm_UECM_Deregistration
 
   // Update PDU Session status -> INACTIVE
-  sp.get()->set_pdu_session_status(pdu_session_status_e::PDU_SESSION_INACTIVE);
+  sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
   // Stop timer T3592
   itti_inst->timer_remove(sp.get()->timer_T3592);
   return true;
@@ -1735,7 +1724,7 @@ bool smf_context::handle_pdu_session_resource_setup_response_transfer(
     // Semantically incorrect message"
     if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
             sm_context_request.get()->req, n1_sm_msg,
-            cause_value_5gsm_e::CAUSE_95_SEMANTICALLY_INCORRECT_MESSAGE)) {
+            k5gsmCauseSemanticallyIncorrectMessage)) {
       conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
       // trigger to send reply to AMF
       smf_app_inst->trigger_update_context_error_response(
@@ -1827,7 +1816,7 @@ bool smf_context::handle_pdu_session_resource_setup_unsuccessful_transfer(
   // resources"
   if (smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
           sm_context_request.get()->req, n1_sm_msg,
-          cause_value_5gsm_e::CAUSE_26_INSUFFICIENT_RESOURCES)) {
+          k5gsmCauseInsufficientResources)) {
     conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
     // trigger to send reply to AMF
     smf_app_inst->trigger_update_context_error_response(
@@ -1954,8 +1943,7 @@ bool smf_context::handle_pdu_session_resource_release_response_transfer(
   }
 
   // Notify AMF that the SM context for this PDU session is released
-  if (sp.get()->get_pdu_session_status() ==
-      pdu_session_status_e::PDU_SESSION_ACTIVE) {
+  if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     trigger_pdu_session_release(scid, 1);
   }
 
@@ -1983,8 +1971,7 @@ bool smf_context::handle_service_request(
   //  for (auto i : qos_flows) {
   //    sm_context_request.get()->req.add_qfi(i.qfi.qfi);
   //    qos_flow_context_updated qcu = {};
-  //    qcu.set_cause(
-  //        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  //    qcu.set_cause(k5gsmCauseRequestAccepted);
   //    qcu.set_qfi(i.qfi);
   //    qcu.set_ul_fteid(i.ul_fteid);
   //    qcu.set_qos_profile(i.qos_profile);
@@ -2132,7 +2119,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     uint8_t message_type = nas_message->GetHeader().GetMessageType();
 
     switch (message_type) {
-      case PDU_SESSION_MODIFICATION_REQUEST: {
+      case kPduSessionModificationRequest: {
         // PDU Session Modification procedure (UE-initiated, step 1.a,
         // Section 4.3.3.2@3GPP TS 23.502). UE initiated PDU session
         // modification request (Step 1)
@@ -2148,7 +2135,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // don't need to create a procedure to update UPF
       } break;
 
-      case PDU_SESSION_MODIFICATION_COMPLETE: {
+      case kPduSessionModificationComplete: {
         // PDU Session Modification procedure (UE-initiated/Network-requested)
         // (step 3)  PDU Session  Modification Command Complete
         Logger::smf_app().debug("PDU_SESSION_MODIFICATION_COMPLETE");
@@ -2163,7 +2150,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // don't need to create a procedure to update UPF
       } break;
 
-      case PDU_SESSION_MODIFICATION_COMMAND_REJECT: {
+      case kPduSessionModificationCommandReject: {
         // PDU Session Modification procedure (Section 4.3.3.2@3GPP TS 23.502)
         Logger::smf_app().debug("PDU_SESSION_MODIFICATION_COMMAND_REJECT");
 
@@ -2178,7 +2165,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // don't need to create a procedure to update UPF
       } break;
 
-      case PDU_SESSION_RELEASE_REQUEST: {
+      case kPduSessionReleaseRequest: {
         // PDU Session Release procedure (Section 4.3.4@3GPP TS 23.502)
         // PDU Session Release UE-Initiated (Step 1)
 
@@ -2199,7 +2186,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         pdu_session_release_procedure = true;
       } break;
 
-      case PDU_SESSION_RELEASE_COMPLETE: {
+      case kPduSessionReleaseComplete: {
         // PDU Session Release procedure
         // PDU Session Release UE-Initiated (Step 3)
 
@@ -2348,8 +2335,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                 PDU_SESSION_RELEASE_UE_REQUESTED_STEP2;
 
         // Update PDU session status to PDU_SESSION_INACTIVE
-        sp.get()->set_pdu_session_status(
-            pdu_session_status_e::PDU_SESSION_INACTIVE);
+        sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
 
         // don't need to create a procedure to update UPF
         pdu_session_release_procedure = true;
@@ -2601,7 +2587,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             if (smf_n1::get_instance()
                     .create_n1_pdu_session_establishment_reject(
                         sm_context_req_msg, n1_sm_msg,
-                        cause_value_5gsm_e::CAUSE_38_NETWORK_FAILURE)) {
+                        k5gsmCauseNetworkFailure)) {
               conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
               // trigger to send reply to the NF consumer (AMF)
               smf_app_inst->trigger_update_context_error_response(
@@ -2681,8 +2667,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       sm_context_rel_resp_pending->res.set_http_code(http_status_code::OK);
       sm_context_rel_resp_pending->res.set_supi(
           sm_context_rel_req_msg.get_supi());
-      sm_context_rel_resp_pending->res.set_cause(
-          static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+      sm_context_rel_resp_pending->res.set_cause(k5gsmCauseRequestAccepted);
       sm_context_rel_resp_pending->res.set_pdu_session_id(
           sm_context_rel_req_msg.get_pdu_session_id());
       sm_context_rel_resp_pending->res.set_snssai(
@@ -2776,8 +2761,7 @@ void smf_context::handle_pdu_session_release_sm_context_request(
 
   sm_context_resp_pending->res.set_http_code(http_status_code::OK);
   sm_context_resp_pending->res.set_supi(smreq->req.get_supi());
-  sm_context_resp_pending->res.set_cause(
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+  sm_context_resp_pending->res.set_cause(k5gsmCauseRequestAccepted);
   sm_context_resp_pending->res.set_pdu_session_id(
       smreq->req.get_pdu_session_id());
   sm_context_resp_pending->res.set_snssai(smreq->req.get_snssai());
@@ -2840,7 +2824,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // TODO: handle encode N1, N2 failure
   // N1: PDU_SESSION_MODIFICATION_COMMAND
   smf_n1::get_instance().create_n1_pdu_session_modification_command(
-      itti_msg->msg, n1_sm_msg, cause_value_5gsm_e::CAUSE_0_UNKNOWN);
+      itti_msg->msg, n1_sm_msg, k5gsmCauseUnknown);
   conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
   itti_msg->msg.set_n1_sm_message(n1_sm_msg_hex);
 
@@ -2857,10 +2841,9 @@ void smf_context::handle_pdu_session_modification_network_requested(
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
-  std::string url =
-      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-      fmt::format(
-          NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi_str.c_str());
+  std::string url = get_amf_addr() +
+                    oai::smf::api::smf_sbi_helper::
+                        get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   itti_msg->msg.set_amf_url(url);
   Logger::smf_app().debug(
       "N1N2MessageTransfer will be sent to AMF with URL: %s", url.c_str());
@@ -2868,11 +2851,13 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // Fill the json part
   nlohmann::json json_data = {};
   // N1SM
-  json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
       oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
-  json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n2InfoContainer"]["n2InformationClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
       itti_msg->msg.get_pdu_session_id();
   // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -4156,7 +4141,7 @@ void smf_context::update_qos_info(
 
   // Message Type
   uint8_t message_type = nas_message->GetHeader().GetMessageType();
-  if (message_type != PDU_SESSION_MODIFICATION_REQUEST) {
+  if (message_type != kPduSessionModificationRequest) {
     return;
   }
 
@@ -4344,7 +4329,7 @@ bool smf_context::check_handover_possibility(
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_establishment_response_reject(
     const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
-    cause_value_5gsm_e cause, pdu_session_application_error_e application_error,
+    uint8_t cause, pdu_session_application_error_e application_error,
     uint16_t http_status) {
   std::string n1_sm_message = {};
   std::string n1_sm_msg_hex = {};
@@ -4369,23 +4354,21 @@ void smf_context::send_pdu_session_create_response(
     const std::shared_ptr<itti_sbi_create_sm_context_response>& resp) {
   // fill content for N1N2MessageTransfer (including N1, N2 SM)
   // Create N1 SM container & N2 SM Information
-  std::string n1_sm_msg       = {};
-  std::string n1_sm_msg_hex   = {};
-  std::string n2_sm_info      = {};
-  std::string n2_sm_info_hex  = {};
-  cause_value_5gsm_e cause_n1 = {cause_value_5gsm_e::CAUSE_0_UNKNOWN};
+  std::string n1_sm_msg      = {};
+  std::string n1_sm_msg_hex  = {};
+  std::string n2_sm_info     = {};
+  std::string n2_sm_info_hex = {};
+  uint8_t cause_n1           = {k5gsmCauseUnknown};
 
-  if (resp->res.get_cause() !=
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+  if (resp->res.get_cause() != k5gsmCauseRequestAccepted) {
     // PDU Session Establishment Reject
     Logger::smf_app().debug(
         "Prepare a PDU Session Establishment Reject message and send to UE");
-    cause_n1 = cause_value_5gsm_e::CAUSE_38_NETWORK_FAILURE;
+    cause_n1 = k5gsmCauseNetworkFailure;
     // TODO: Support IPv4 only for now
     if (resp->res.get_pdu_session_type() == PDU_SESSION_TYPE_E_IPV6) {
       resp->res.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
-      cause_n1 =
-          cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
+      cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
     }
 
     smf_n1::get_instance().create_n1_pdu_session_establishment_reject(
@@ -4400,8 +4383,7 @@ void smf_context::send_pdu_session_create_response(
     // TODO: Support IPv4 only for now
     if (resp->res.get_pdu_session_type() == PDU_SESSION_TYPE_E_IPV6) {
       resp->res.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
-      cause_n1 =
-          cause_value_5gsm_e::CAUSE_50_PDU_SESSION_TYPE_IPV4_ONLY_ALLOWED;
+      cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
     }
 
     smf_n1::get_instance().create_n1_pdu_session_establishment_accept(
@@ -4420,13 +4402,10 @@ void smf_context::send_pdu_session_create_response(
 
   // Fill N1N2MesasgeTransferRequestData
   // get SUPI and put into URL
-  std::string supi        = resp->res.get_supi();
-  std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
-                                ->get_sbi()
-                                .get_api_version();
-  std::string url =
-      get_amf_addr() + NAMF_COMMUNICATION_BASE + api_version +
-      fmt::format(NAMF_COMMUNICATION_N1N2_MESSAGE_TRANSFER_URL, supi.c_str());
+  std::string supi = resp->res.get_supi();
+  std::string url  = get_amf_addr() +
+                    oai::smf::api::smf_sbi_helper::
+                        get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   resp->res.set_amf_url(url);
   Logger::smf_app().debug(
       "N1N2MessageTransfer will be sent to AMF with URL: %s", url.c_str());
@@ -4437,13 +4416,14 @@ void smf_context::send_pdu_session_create_response(
   // Fill the json part
   nlohmann::json json_data = {};
   // N1SM
-  json_data["n1MessageContainer"]["n1MessageClass"] = N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
   json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
       oai::utils::N1_SM_CONTENT_ID;  // NAS part
   // N2SM
-  if (resp->res.get_cause() ==
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
-    json_data["n2InfoContainer"]["n2InformationClass"] = N1N2_MESSAGE_CLASS;
+  if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
+    json_data["n2InfoContainer"]["n2InformationClass"] =
+        oai::utils::N1N2_MESSAGE_CLASS;
     json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
         resp->res.get_pdu_session_id();
     // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -4456,10 +4436,15 @@ void smf_context::send_pdu_session_create_response(
     json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
         resp->res.get_snssai().sd;
     // N1N2MsgTxfrFailureNotification
+    std::string fmr_format_str = {};
+    oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+        oai::smf::api::smf_sbi_helper::
+            SmfCallbackPathN1N2MessageTransferFailure,
+        fmr_format_str);
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
-        NSMF_PDU_SESSION_BASE + smf_cfg->local().get_sbi().get_api_version() +
-        fmt::format(NSMF_CALLBACK_N1N2_MESSAGE_TRANSFER_FAILURE, supi);
+        oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+        fmt::format(fmr_format_str, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }
   // Others information
@@ -4523,8 +4508,7 @@ void smf_context::send_pdu_session_update_response(
   register_with_udm(supi, pdu_session_id, smf_registration);
 
   // Process the response
-  if (resp->res.get_cause() ==
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+  if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
     switch (session_procedure_type) {
       // PDU Session Establishment UE-Requested
       case session_management_procedures_type_e::
@@ -4537,7 +4521,7 @@ void smf_context::send_pdu_session_update_response(
         resp->res.set_json_data(json_data);
 
         // Update PDU session status to ACTIVE
-        sps->set_pdu_session_status(pdu_session_status_e::PDU_SESSION_ACTIVE);
+        sps->set_pdu_session_status(pdu_session_status_t::Active);
 
         // set UpCnxState to ACTIVATED
         sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_ACTIVATED);
@@ -4692,8 +4676,7 @@ void smf_context::send_pdu_session_release_response(
     const std::shared_ptr<itti_sbi_release_sm_context_response>& resp,
     const session_management_procedures_type_e& session_procedure_type,
     const std::shared_ptr<smf_pdu_session>& sps) {
-  if (resp->res.get_cause() ==
-      static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED)) {
+  if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
     switch (session_procedure_type) {
       case session_management_procedures_type_e::
           PDU_SESSION_RELEASE_UE_REQUESTED_STEP1: {
@@ -4709,9 +4692,9 @@ void smf_context::send_pdu_session_release_response(
         std::string n1_sm_msg_hex = {};
         smf_n1::get_instance().create_n1_pdu_session_release_command(
             session_release_msg, n1_sm_msg,
-            cause_value_5gsm_e::CAUSE_36_REGULAR_DEACTIVATION);  // TODO:
-                                                                 // check
-                                                                 // Cause
+            k5gsmCauseRegularDeactivation);  // TODO:
+                                             // check
+                                             // Cause
         conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
         resp->res.set_n1_sm_message(n1_sm_msg_hex);
 
@@ -4748,8 +4731,7 @@ void smf_context::send_pdu_session_release_response(
         }
 
         // Update PDU session status to PDU_SESSION_INACTIVE_PENDING
-        sps->set_pdu_session_status(
-            pdu_session_status_e::PDU_SESSION_INACTIVE_PENDING);
+        sps->set_pdu_session_status(pdu_session_status_t::InactivePending);
 
         // set UpCnxState to DEACTIVATED
         sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);

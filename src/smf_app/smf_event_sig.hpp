@@ -25,7 +25,7 @@
 #include <boost/signals2.hpp>
 #include <string>
 
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "EventNotification.h"
 
 namespace bs2 = boost::signals2;

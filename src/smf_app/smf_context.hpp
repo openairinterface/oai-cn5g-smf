@@ -57,24 +57,24 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   smf_pdu_session(pdu_session_id_t psi)
       : pdu_session_id(psi), m_pdu_session_mutex(), ipv4_frame_route() {
-    ipv4                = false;
-    ipv6                = false;
-    ipv4_address.s_addr = INADDR_ANY;
-    ipv6_address        = in6addr_any;
-    released            = false;
-    dnn                 = {};
-    snssai              = {};
-    pdu_session_type    = {};
-    seid                = 0;
-    up_fseid            = {};
-    default_qfi.qfi     = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
-    pdu_session_status  = pdu_session_status_e::PDU_SESSION_INACTIVE;
-    upCnx_state         = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
-    ho_state            = ho_state_e::HO_STATE_NONE;
-    timer_T3590         = ITTI_INVALID_TIMER_ID;
-    timer_T3591         = ITTI_INVALID_TIMER_ID;
-    timer_T3592         = ITTI_INVALID_TIMER_ID;
-    number_of_supported_packet_filters         = 0;
+    ipv4                               = false;
+    ipv6                               = false;
+    ipv4_address.s_addr                = INADDR_ANY;
+    ipv6_address                       = in6addr_any;
+    released                           = false;
+    dnn                                = {};
+    snssai                             = {};
+    pdu_session_type                   = {};
+    seid                               = 0;
+    up_fseid                           = {};
+    default_qfi.qfi                    = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
+    pdu_session_status                 = pdu_session_status_t::Inactive;
+    upCnx_state                        = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
+    ho_state                           = ho_state_e::HO_STATE_NONE;
+    timer_T3590                        = ITTI_INVALID_TIMER_ID;
+    timer_T3591                        = ITTI_INVALID_TIMER_ID;
+    timer_T3592                        = ITTI_INVALID_TIMER_ID;
+    number_of_supported_packet_filters = 0;
     maximum_number_of_supported_packet_filters = 0;
     number_retransmission_T3591                = 0;
     number_retransmission_T3592                = 0;
@@ -94,7 +94,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     seid                        = 0;
     up_fseid                    = {};
     default_qfi.qfi             = NO_QOS_FLOW_IDENTIFIER_ASSIGNED;
-    pdu_session_status          = pdu_session_status_e::PDU_SESSION_INACTIVE;
+    pdu_session_status          = pdu_session_status_t::Inactive;
     upCnx_state                 = upCnx_state_e::UPCNX_STATE_DEACTIVATED;
     ho_state                    = ho_state_e::HO_STATE_NONE;
     timer_T3590                 = ITTI_INVALID_TIMER_ID;
@@ -125,17 +125,17 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   /*
    * Set current status of PDU Session
-   * @param [const pdu_session_status_e &] status: status to be set
+   * @param [const uint8_t &] status: status to be set
    * @return void
    */
-  void set_pdu_session_status(const pdu_session_status_e& status);
+  void set_pdu_session_status(const uint8_t& status);
 
   /*
    * Get current status of PDU Session
    * @param void
-   * @return pdu_session_status_e: status of PDU session
+   * @return uint8_t: status of PDU session
    */
-  pdu_session_status_e get_pdu_session_status() const;
+  uint8_t get_pdu_session_status() const;
 
   /*
    * Set upCnxState for a N3 Tunnel
@@ -262,7 +262,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   std::shared_ptr<session_handler> m_session_handler;
 
-  pdu_session_status_e pdu_session_status;
+  uint8_t pdu_session_status;
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
   ho_state_e ho_state;
@@ -1107,8 +1107,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    */
   void send_pdu_session_establishment_response_reject(
       const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
-      cause_value_5gsm_e cause,
-      pdu_session_application_error_e application_error, uint16_t http_status);
+      uint8_t cause, pdu_session_application_error_e application_error,
+      uint16_t http_status);
 
   /**
    * Send a PDU session Create Response, based on the content of resp.
