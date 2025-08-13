@@ -29,8 +29,8 @@
 #include "fqdn.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::pcf;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 extern itti_mw* itti_inst;
 extern smf_n4* smf_n4_inst;
@@ -111,7 +111,7 @@ const oai::config::smf::upf& pfcp_association::get_upf_config() const {
 
 //------------------------------------------------------------------------------
 bool pfcp_association::serves_network(
-    const oai::model::common::Snssai& snssai, const std::string& dnn) const {
+    const oai::_3gpp::model::Snssai& snssai, const std::string& dnn) const {
   if (get_upf_info().getSNssaiUpfInfoList().empty()) {
     Logger::smf_app().info(
         "UPF does not have SNSSAIs configured, accept any SNSSAI");

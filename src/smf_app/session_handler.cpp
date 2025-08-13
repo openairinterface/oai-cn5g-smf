@@ -32,7 +32,7 @@
 #include "smf_config.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;

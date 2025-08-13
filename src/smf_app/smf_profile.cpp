@@ -30,7 +30,7 @@
 
 using namespace oai::app::smf;
 using namespace oai::common::sbi;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
 
 //------------------------------------------------------------------------------
 void nf_profile::set_nf_instance_id(const std::string& instance_id) {

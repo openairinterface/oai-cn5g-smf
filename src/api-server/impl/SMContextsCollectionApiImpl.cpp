@@ -56,8 +56,8 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::model::smf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(

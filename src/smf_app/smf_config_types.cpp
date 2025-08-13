@@ -24,8 +24,8 @@
 
 using namespace oai::config::smf;
 using namespace oai::config;
-using namespace oai::model::common;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 smf_support_features::smf_support_features(
     bool local_subscription_info, bool local_pcc_rules) {
@@ -320,7 +320,7 @@ const std::string& upf::get_local_n3_ip() const {
   return m_local_n3_ipv4.get_value();
 }
 
-const oai::model::nrf::UpfInfo& upf::get_upf_info() const {
+const oai::_3gpp::model::UpfInfo& upf::get_upf_info() const {
   return m_upf_info;
 }
 
@@ -328,7 +328,7 @@ void upf::enable_upf_info(bool val) {
   m_upf_info_is_set = val;
 }
 
-void upf::set_upf_info(const oai::model::nrf::UpfInfo& upf_info) {
+void upf::set_upf_info(const oai::_3gpp::model::UpfInfo& upf_info) {
   m_upf_info        = upf_info;
   m_upf_info_is_set = true;
 }

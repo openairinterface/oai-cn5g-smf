@@ -43,7 +43,7 @@
 #include "utils.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::common;
+using namespace oai::_3gpp::model;
 using namespace oai::ngap;
 extern smf_app* smf_app_inst;
 

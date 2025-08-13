@@ -70,8 +70,8 @@
 
 using namespace oai::app::smf;
 using namespace oai::config::smf;
-using namespace oai::model::nrf;
-using namespace oai::model::smf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 using namespace oai::common::sbi;
 
@@ -850,14 +850,15 @@ void smf_app::handle_itti_msg(
 
       // Store: SDM Subscription data
       try {
-        oai::model::udm::SdmSubscription sdm_subscription = {};
+        oai::_3gpp::model::SdmSubscription sdm_subscription = {};
         from_json(
             response.response_data[oai::http::kSbiResponseJsonData],
             sdm_subscription);
         sdm_subscription.setSubscriptionId(subscription_id);
-        std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription_ptr =
-            std::make_shared<oai::model::udm::SdmSubscription>(
-                sdm_subscription);
+        std::shared_ptr<oai::_3gpp::model::SdmSubscription>
+            sdm_subscription_ptr =
+                std::make_shared<oai::_3gpp::model::SdmSubscription>(
+                    sdm_subscription);
 
         std::string key = {};
         get_dnn_snssai_key(
@@ -888,12 +889,12 @@ void smf_app::handle_itti_msg(itti_sbi_discover_upf_response& response) {
   std::string upf_addr = {};
   if (response_code == oai::common::sbi::http_status_code::OK) {
     try {
-      oai::model::nrf::SearchResult search_result = {};
+      oai::_3gpp::model::SearchResult search_result = {};
       from_json(
           response.response_data[oai::http::kSbiResponseJsonData],
           search_result);
 
-      std::vector<oai::model::smf::NFProfile> nf_instances =
+      std::vector<oai::_3gpp::model::NFProfile> nf_instances =
           search_result.getNfInstances();
       for (auto const& it : nf_instances) {
         process_upf_profile(it);
@@ -1429,7 +1430,7 @@ evsub_id_t smf_app::handle_event_exposure_subscription(
 //------------------------------------------------------------------------------
 bool smf_app::handle_nf_status_notification(
     std::shared_ptr<itti_sbi_notification_data>& msg,
-    oai::model::common::ProblemDetails& problem_details, uint8_t& http_code) {
+    oai::_3gpp::model::ProblemDetails& problem_details, uint8_t& http_code) {
   Logger::smf_app().info(
       "Handle a NF status notification from NRF (HTTP version "
       "%d)",
@@ -1483,7 +1484,7 @@ void smf_app::handle_sbi_get_configuration(
   } else {
     response_data[oai::http::kSbiResponseHttpResponseCode] =
         http_status_code::BAD_REQUEST;
-    oai::model::common::ProblemDetails problem_details = {};
+    oai::_3gpp::model::ProblemDetails problem_details = {};
     // TODO set problem_details
     to_json(response_data["ProblemDetails"], problem_details);
   }
@@ -1523,7 +1524,7 @@ void smf_app::handle_sbi_update_configuration(
   } else {
     response_data[oai::http::kSbiResponseHttpResponseCode] =
         http_status_code::NOT_ACCEPTABLE;
-    oai::model::common::ProblemDetails problem_details = {};
+    oai::_3gpp::model::ProblemDetails problem_details = {};
     // TODO set problem_details
     to_json(response_data["ProblemDetails"], problem_details);
   }
@@ -1880,10 +1881,10 @@ void smf_app::timer_nrf_heartbeat_timeout(
       std::make_shared<itti_sbi_update_nf_instance_request>(
           TASK_SMF_APP, TASK_SMF_SBI);
 
-  oai::model::common::PatchItem patch_item = {};
-  oai::model::common::PatchOperation op;
+  oai::_3gpp::model::PatchItem patch_item = {};
+  oai::_3gpp::model::PatchOperation op;
   op.setEnumValue(
-      oai::model::common::PatchOperation_anyOf::ePatchOperation_anyOf::REPLACE);
+      oai::_3gpp::model::PatchOperation_anyOf::ePatchOperation_anyOf::REPLACE);
   patch_item.setOp(op);
   patch_item.setPath("/nfStatus");
   patch_item.setValue("REGISTERED");
@@ -1943,7 +1944,7 @@ bool smf_app::get_session_management_subscription_data(
       std::make_shared<dnn_configuration_t>();
 
   for (const auto& sub : smf_cfg->smf()->get_subscription_info()) {
-    oai::model::common::Snssai snnsai_common_model = sub.get_single_nssai();
+    oai::_3gpp::model::Snssai snnsai_common_model = sub.get_single_nssai();
     snssai_t sub_snssai(
         snnsai_common_model.getSst(), snnsai_common_model.getSd());
 
@@ -2031,9 +2032,9 @@ void smf_app::trigger_create_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of Server");
 
-  oai::model::smf::SmContextCreateError sm_context    = {};
-  oai::model::common::ProblemDetails problem_details  = {};
-  oai::model::common::RefToBinaryData refToBinaryData = {};
+  oai::_3gpp::model::SmContextCreateError sm_context = {};
+  oai::_3gpp::model::ProblemDetails problem_details  = {};
+  oai::_3gpp::model::RefToBinaryData refToBinaryData = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   sm_context.setError(problem_details);
@@ -2056,8 +2057,8 @@ void smf_app::trigger_update_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of API Server");
 
-  oai::model::smf::SmContextUpdateError smContextUpdateError = {};
-  oai::model::common::ProblemDetails problem_details         = {};
+  oai::_3gpp::model::SmContextUpdateError smContextUpdateError = {};
+  oai::_3gpp::model::ProblemDetails problem_details            = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 
@@ -2077,8 +2078,8 @@ void smf_app::trigger_update_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
 
-  oai::model::smf::SmContextUpdateError smContextUpdateError = {};
-  oai::model::common::ProblemDetails problem_details         = {};
+  oai::_3gpp::model::SmContextUpdateError smContextUpdateError = {};
+  oai::_3gpp::model::ProblemDetails problem_details            = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 
@@ -2481,9 +2482,8 @@ bool smf_app::get_sm_data(
     Logger::smf_app().debug("Response from UDM %s", json_data.dump().c_str());
 
     // Verify SNSSAI
-    oai::model::common::Snssai snssai_model_requested =
-        snssai.to_model_snssai();
-    oai::model::common::Snssai snssai_model_from_udm = {};
+    oai::_3gpp::model::Snssai snssai_model_requested = snssai.to_model_snssai();
+    oai::_3gpp::model::Snssai snssai_model_from_udm  = {};
 
     if (json_data.find("singleNssai") == json_data.end()) return false;
     if (json_data["singleNssai"].find("sst") !=
@@ -2636,7 +2636,7 @@ void smf_app::subscribe_sdm_subscriptions(
     const std::string& supi, const std::string& dnn, const snssai_t& snssai,
     plmn_t plmn) {
   // Prepare the request to be sent to UDM
-  oai::model::udm::SdmSubscription sdm_subscription = {};
+  oai::_3gpp::model::SdmSubscription sdm_subscription = {};
 
   sdm_subscription.setNfInstanceId(
       nf_instance_profile.get_nf_instance_id());  // NF instance id
@@ -2653,13 +2653,13 @@ void smf_app::subscribe_sdm_subscriptions(
   sdm_subscription.setCallbackReference(smf_callback_sdm_notification_uri);
   // TODO: expires/implicitUnsubscribe
   // PLMN ID
-  oai::model::common::PlmnId plmn_id_requested = {};
+  oai::_3gpp::model::PlmnId plmn_id_requested = {};
   plmn_id_requested.setMcc(plmn.mcc);
   plmn_id_requested.setMnc(plmn.mnc);
 
   sdm_subscription.setDnn(dnn);  // DNN
   // singleNssai
-  oai::model::common::Snssai snssai_model_requested = snssai.to_model_snssai();
+  oai::_3gpp::model::Snssai snssai_model_requested = snssai.to_model_snssai();
   sdm_subscription.setSingleNssai(snssai_model_requested);
   // TODO: Report/immediateReport
 
@@ -2683,9 +2683,9 @@ void smf_app::subscribe_sdm_subscriptions(
 
 //------------------------------------------------------------------------------
 void smf_app::get_dnn_snssai_key(
-    const std::string& dnn, const oai::model::common::Snssai& snssai,
+    const std::string& dnn, const oai::_3gpp::model::Snssai& snssai,
     std::string& key) {
-  oai::model::common::Snssai snssai_3gpp_model = snssai;
+  oai::_3gpp::model::Snssai snssai_3gpp_model = snssai;
   snssai_3gpp_model.parse_sd_int_with_hex();
   key = dnn + std::to_string(snssai_3gpp_model.getSst()) +
         snssai_3gpp_model.getSd();
@@ -2693,7 +2693,7 @@ void smf_app::get_dnn_snssai_key(
 
 //------------------------------------------------------------------------------
 bool smf_app::process_upf_profile(
-    const oai::model::smf::NFProfile& upf_profile) {
+    const oai::_3gpp::model::NFProfile& upf_profile) {
   Logger::smf_app().debug("Process UPF Profile");
 
   if (upf_profile.getNfType() != "UPF") {

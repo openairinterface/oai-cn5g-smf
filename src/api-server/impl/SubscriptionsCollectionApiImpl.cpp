@@ -47,7 +47,7 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::model::smf;
+using namespace oai::_3gpp::model;
 
 SubscriptionsCollectionApiImpl::SubscriptionsCollectionApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr,

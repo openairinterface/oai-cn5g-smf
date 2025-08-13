@@ -25,7 +25,7 @@
 ## build speed
 
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 
 # Add common model dependencies from SMF API model
 list(APPEND USED_COMMON_MODEL_SRC_FILES
@@ -193,8 +193,8 @@ list(APPEND USED_PCF_MODEL_SRC_FILES
         ${PCF_MODEL_DIR}/AnGwAddress.cpp
         ${PCF_MODEL_DIR}/MaPduIndication.cpp
         ${PCF_MODEL_DIR}/MaPduIndication_anyOf.cpp
-        ${PCF_MODEL_DIR}/PcfAtsssCapability.cpp
-        ${PCF_MODEL_DIR}/PcfAtsssCapability_anyOf.cpp
+ #       ${PCF_MODEL_DIR}/PcfAtsssCapability.cpp
+ #       ${PCF_MODEL_DIR}/PcfAtsssCapability_anyOf.cpp
         # SmPolicyUpdateContextData
         ${PCF_MODEL_DIR}/SmPolicyUpdateContextData.cpp
         ${PCF_MODEL_DIR}/UeInitiatedResourceRequest.cpp
@@ -241,13 +241,13 @@ list(APPEND USED_UDM_MODEL_SRC_FILES
         ${UDM_MODEL_DIR}/SmfRegistration.cpp
 )
 
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf_model.cmake)
 
 # we also use NRF models
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/udm/udm.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/udm.cmake)
 
 # finally, we have to include common_model.cmake (has to be last
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model.cmake)

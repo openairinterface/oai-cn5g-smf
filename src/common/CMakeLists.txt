@@ -40,9 +40,9 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf/pcf_model.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/pcf_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 
 add_library(SMF_COMMON_TYPES STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/smf_sbi_helper.cpp
