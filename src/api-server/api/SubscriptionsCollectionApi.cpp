@@ -38,7 +38,7 @@ void SubscriptionsCollectionApi::setupRoutes() {
 
   Routes::Post(
       *router,
-      base + oai::smf::api::smf_sbi_helper::SmfStatusNotifyPathSubscriptions,
+      base + oai::smf::api::smf_sbi_helper::SmfEventExposurePathSubscriptions,
       Routes::bind(
           &SubscriptionsCollectionApi::create_individual_subcription_handler,
           this));
