@@ -737,4 +737,43 @@ class itti_sbi_unsubscribe_sdm_subscriptions_response : public itti_sbi_msg {
   std::string subscription_id;
 };
 
+//-----------------------------------------------------------------------------
+class itti_sbi_discover_upf : public itti_sbi_msg {
+ public:
+  itti_sbi_discover_upf(const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_DISCOVER_UPF, orig, dest) {
+    dnn    = std::nullopt;
+    snssai = std::nullopt;
+    plmn   = std::nullopt;
+  }
+
+  itti_sbi_discover_upf(const itti_sbi_discover_upf& i) : itti_sbi_msg(i) {
+    dnn    = i.dnn;
+    snssai = i.snssai;
+    plmn   = i.plmn;
+  }
+  virtual ~itti_sbi_discover_upf(){};
+  const char* get_msg_name() { return "SBI_DISCOVER_UPF"; };
+
+  std::optional<std::string> dnn;
+  std::optional<snssai_t> snssai;
+  std::optional<plmn_t> plmn;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_discover_upf_response : public itti_sbi_msg {
+ public:
+  itti_sbi_discover_upf_response(const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(SBI_DISCOVER_UPF_RESPONSE, orig, dest) {}
+
+  itti_sbi_discover_upf_response(const itti_sbi_discover_upf_response& i)
+      : itti_sbi_msg(i) {
+    response_data = i.response_data;
+  }
+  virtual ~itti_sbi_discover_upf_response(){};
+  const char* get_msg_name() { return "SBI_DISCOVER_UPF_RESPONSE"; };
+
+  nlohmann::json response_data;
+};
+
 #endif /* ITTI_MSG_SBI_HPP_INCLUDED_ */

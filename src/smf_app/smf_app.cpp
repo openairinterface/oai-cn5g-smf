@@ -67,6 +67,7 @@
 #include "SdmSubscription.h"
 #include "smf_sbi_helper.hpp"
 #include "http_definitions.hpp"
+#include "SearchResult.h"
 
 using namespace oai::app::smf;
 using namespace oai::config::smf;
@@ -301,6 +302,13 @@ void smf_app_task(void*) {
         }
         break;
 
+      case SBI_DISCOVER_UPF_RESPONSE:
+        if (itti_sbi_discover_upf_response* m =
+                dynamic_cast<itti_sbi_discover_upf_response*>(msg)) {
+          smf_app_inst->handle_itti_msg(std::ref(*m));
+        }
+        break;
+
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::smf_app().info("TIME-OUT event timer id %d", to->timer_id);
@@ -408,6 +416,7 @@ void smf_app::stop() {
 //------------------------------------------------------------------------------
 void smf_app::start_nf_discovery() {
   if (smf_cfg->register_nrf()) {
+    trigger_upf_discovery();
     trigger_upf_status_notification_subscribe();
   } else {
     for (auto upf : smf_cfg->smf()->get_upfs()) {
@@ -744,7 +753,8 @@ void smf_app::handle_itti_msg(itti_sbi_release_sm_context_response& m) {
 void smf_app::handle_itti_msg(itti_sbi_register_nf_instance_response& r) {
   Logger::smf_app().debug("Handle NF Instance Registration response");
 
-  if (r.http_response_code == http_status_code::CREATED) {
+  if ((r.http_response_code == http_status_code::CREATED) or
+      (r.http_response_code == http_status_code::OK)) {
     nf_instance_profile = r.profile;
     // Set heartbeat timer
     Logger::smf_app().debug(
@@ -868,6 +878,42 @@ void smf_app::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(itti_sbi_discover_upf_response& response) {
+  Logger::smf_app().debug("Process UPF Discovery response");
+
+  uint32_t response_code = oai::common::sbi::http_status_code::NO_RESPONSE;
+  if (response.response_data.find(oai::http::kSbiResponseHttpResponseCode) !=
+      response.response_data.end()) {
+    response_code =
+        response.response_data[oai::http::kSbiResponseHttpResponseCode]
+            .get<int>();
+  }
+
+  std::string upf_addr = {};
+  if (response_code == oai::common::sbi::http_status_code::OK) {
+    try {
+      oai::model::nrf::SearchResult search_result = {};
+      from_json(
+          response.response_data[oai::http::kSbiResponseJsonData],
+          search_result);
+
+      std::vector<oai::model::smf::NFProfile> nf_instances =
+          search_result.getNfInstances();
+      for (auto const& it : nf_instances) {
+        process_upf_profile(it);
+      }
+
+    } catch (std::exception& e) {
+      Logger::smf_app().warn("Could not parse SearchResult from JSON");
+    }
+
+  } else {
+    Logger::smf_app().debug(
+        "SMF has failed to get the list available UPFs from NRF.");
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_app::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
@@ -981,6 +1027,12 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Check Request Type
   std::string request_type = smreq->req.get_request_type();
+  if (request_type.empty()) {
+    Logger::smf_app().warn(
+        "Request Type is not provided, set to INITIAL_REQUEST");
+    request_type = "INITIAL_REQUEST";
+  }
+
   if (request_type.compare("INITIAL_REQUEST") !=
       0) {  // TODO: avoid using direclty hard-coded value
     Logger::smf_app().warn(
@@ -1405,66 +1457,7 @@ bool smf_app::handle_nf_status_notification(
         REGISTERED: {
       // TODO also update NFProfile in SMF, this should also be an ENUM
       NFProfile profile = notification.getNfProfile();
-      if (profile.getNfType() != "UPF") {
-        Logger::smf_app().warn(
-            "Received status notification for NF type %s. It is ignored",
-            profile.getNfType());
-        return false;
-      }
-      if (!profile.upfInfoIsSet()) {
-        Logger::smf_app().error(
-            "UPF Profile needs to be set in NRF status notification");
-        return false;
-      }
-
-      std::string host;
-
-      if (profile.fqdnIsSet()) {
-        host = profile.getFqdn();
-      } else if (profile.ipv4AddressesIsSet()) {
-        for (const auto& ipv4 : profile.getIpv4Addresses()) {
-          host = ipv4;
-        }
-      }
-      upf local_upf_cfg = DEFAULT_UPF;
-      bool found        = false;
-      for (const auto& upf_cfg : smf_cfg->smf()->get_upfs()) {
-        if (upf_cfg.get_host() == host) {
-          found = true;
-          Logger::smf_app().debug(
-              "Found NRF UPF with host name %s in configuration, take config "
-              "from there",
-              host);
-          local_upf_cfg = upf_cfg;
-        }
-      }
-      if (!found) {
-        Logger::smf_app().debug(
-            "NRF UPF with host name %s was not found in configuration, take "
-            "default configuration",
-            host);
-        // we use the same default behavior for locally configured and
-        // NRF-received UPF
-        local_upf_cfg = upf(
-            host, local_upf_cfg.get_port(),
-            local_upf_cfg.enable_usage_reporting(), local_upf_cfg.enable_qers(),
-            local_upf_cfg.enable_dl_pdr_in_session_establishment(),
-            local_upf_cfg.get_local_n3_ip());
-      }
-      local_upf_cfg.set_upf_info(profile.getUpfInfo());
-
-      // Trigger N4 association request with retry if needed
-      auto itti_msg = std::make_shared<itti_n4_association_retry>(
-          TASK_SMF_APP, TASK_SMF_APP);
-      itti_msg->upf_cfg = local_upf_cfg;
-      int ret           = itti_inst->send_msg(itti_msg);
-      if (RETURNok != ret) {
-        Logger::smf_n4().error(
-            "Could not send ITTI message %s to task TASK_SMF_N4",
-            itti_msg->get_msg_name());
-        return false;
-      }
-      return true;
+      return process_upf_profile(profile);
     }
     case NotificationEventType_anyOf::eNotificationEventType_anyOf::
         DEREGISTERED:
@@ -2347,6 +2340,26 @@ void smf_app::deregister_to_nrf() {
 }
 
 //------------------------------------------------------------------------------
+void smf_app::trigger_upf_discovery() {
+  Logger::smf_app().debug(
+      "Send ITTI msg to N11 task to trigger UPF discovery from NRF");
+
+  std::shared_ptr<itti_sbi_discover_upf> itti_msg =
+      std::make_shared<itti_sbi_discover_upf>(TASK_SMF_APP, TASK_SMF_SBI);
+
+  itti_msg->dnn = std::make_optional<std::string>(smf_cfg->get_default_dnn());
+  // TODO: NSSAI
+  // itti_msg->snssai       = smf_cfg->default_snssai;
+
+  int ret = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_app::trigger_upf_status_notification_subscribe() {
   Logger::smf_app().debug(
       "Send ITTI msg to N11 task to subscribe to UPF status notification "
@@ -2361,13 +2374,15 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   if (smf_cfg->http_version == 2) port = smf_cfg->sbi_http2_port;
   // TODO: remove hardcoded values by using model SubscriptionData
   json_data["nfStatusNotificationUri"] =
+      "http://" +
       std::string(inet_ntoa(*((struct in_addr*) &smf_cfg->sbi.addr4))) + ":" +
       std::to_string(port) + "/nsmf-nfstatus-notify/" +
       smf_cfg->sbi_api_version + "/subscriptions";
 
   json_data["subscrCond"]["nfType"] = "UPF";
-  json_data["subscriptionId"]       = "12345-x3Lf57A:nid=abc123def45:oai-smf";
-  json_data["reqNotifEvents"]       = nlohmann::json::array();
+  // json_data["subscriptionId"]       =
+  // "12345-x3Lf57A:nid=abc123def45:oai-smf";
+  json_data["reqNotifEvents"] = nlohmann::json::array();
   json_data["reqNotifEvents"].push_back("NF_REGISTERED");
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
   json_data["validityTime"] = "20390531T235959";
@@ -2687,4 +2702,72 @@ void smf_app::get_dnn_snssai_key(
   snssai_3gpp_model.parse_sd_int_with_hex();
   key = dnn + std::to_string(snssai_3gpp_model.getSst()) +
         snssai_3gpp_model.getSd();
+}
+
+//------------------------------------------------------------------------------
+bool smf_app::process_upf_profile(
+    const oai::model::smf::NFProfile& upf_profile) {
+  Logger::smf_app().debug("Process UPF Profile");
+
+  if (upf_profile.getNfType() != "UPF") {
+    Logger::smf_app().warn(
+        "Not a UPF profile ( type %s), ignored!", upf_profile.getNfType());
+    return false;
+  }
+
+  if (!upf_profile.upfInfoIsSet()) {
+    Logger::smf_app().error("UPF Profile needs to be set in the NF Profile");
+    return false;
+  }
+
+  std::string host = {};
+
+  if (upf_profile.fqdnIsSet()) {
+    host = upf_profile.getFqdn();
+  } else if (upf_profile.ipv4AddressesIsSet()) {
+    for (const auto& ipv4 : upf_profile.getIpv4Addresses()) {
+      host = ipv4;
+    }
+  }
+
+  upf local_upf_cfg = DEFAULT_UPF;
+  bool found        = false;
+  for (const auto& upf_cfg : smf_cfg->smf()->get_upfs()) {
+    if (upf_cfg.get_host() == host) {
+      found = true;
+      Logger::smf_app().debug(
+          "Found UPF with host name %s in configuration, take config "
+          "from there",
+          host);
+      local_upf_cfg = upf_cfg;
+    }
+  }
+
+  if (!found) {
+    Logger::smf_app().debug(
+        "UPF with host name %s was not found in configuration, take "
+        "default configuration",
+        host);
+    // we use the same default behavior for locally configured and
+    // NRF-received UPF
+    local_upf_cfg =
+        upf(host, local_upf_cfg.get_port(),
+            local_upf_cfg.enable_usage_reporting(), local_upf_cfg.enable_qers(),
+            local_upf_cfg.enable_dl_pdr_in_session_establishment(),
+            local_upf_cfg.get_local_n3_ip());
+  }
+  local_upf_cfg.set_upf_info(upf_profile.getUpfInfo());
+
+  // Trigger N4 association request with retry if needed
+  auto itti_msg =
+      std::make_shared<itti_n4_association_retry>(TASK_SMF_APP, TASK_SMF_APP);
+  itti_msg->upf_cfg = local_upf_cfg;
+  int ret           = itti_inst->send_msg(itti_msg);
+  if (RETURNok != ret) {
+    Logger::smf_n4().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        itti_msg->get_msg_name());
+    return false;
+  }
+  return true;
 }
