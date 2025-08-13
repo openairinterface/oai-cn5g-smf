@@ -431,6 +431,7 @@ void smf_sbi::notify_subscribed_event(
 
     request req =
         http_client_inst->prepare_json_request(i.get_notif_uri(), body);
+    Logger::smf_sbi().debug("Notif URI %s", i.get_notif_uri());
     response resp = http_client_inst->send_http_request(method_e::POST, req);
 
     Logger::smf_sbi().debug("Response code %d", resp.status_code);
