@@ -161,6 +161,8 @@ class smf_sbi {
 
   void unsubscribe_sdm_subscriptions(
       const std::shared_ptr<itti_sbi_unsubscribe_sdm_subscriptions>& msg);
+
+  void discover_upf(const std::shared_ptr<itti_sbi_discover_upf>& msg);
   /*
    * Generate an unique value for promise id
    * @param void
