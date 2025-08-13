@@ -24,7 +24,7 @@
 ## DO NOT JUST COPY THIS FILE FROM OTHER NFs. The reasoning behind this is to only compile used files to optimize
 ## build speed
 
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf/smf_model.cmake)
 
 # Add common model dependencies from SMF API model
@@ -250,4 +250,4 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/nrf/nrf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/udm/udm.cmake)
 
 # finally, we have to include common_model.cmake (has to be last
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model/common_model.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model.cmake)
