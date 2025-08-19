@@ -254,7 +254,7 @@ void xgpp_conv::sm_context_update_from_openapi(
   // For N2 Handover,
   // HO state
   if (context_data.hoStateIsSet()) {
-    std::string state = context_data.getHoState().state;
+    HoState_anyOf state = context_data.getHoState().getValue();
     pur.set_ho_state(state);
   }
   // Target ID

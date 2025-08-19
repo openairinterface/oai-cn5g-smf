@@ -697,19 +697,19 @@ bool pdu_session_update_sm_context_request::get_failed_to_be_switched() const {
 }
 
 //-----------------------------------------------------------------------------
-std::string pdu_session_update_sm_context_request::get_ho_state() const {
+HoState_anyOf pdu_session_update_sm_context_request::get_ho_state() const {
   return m_ho_state;
 }
 
 //-----------------------------------------------------------------------------
 void pdu_session_update_sm_context_request::get_ho_state(
-    std::string& state) const {
+    HoState_anyOf& state) const {
   state = m_ho_state;
 }
 
 //-----------------------------------------------------------------------------
 void pdu_session_update_sm_context_request::set_ho_state(
-    const std::string& state) {
+    const HoState_anyOf& state) {
   m_ho_state        = state;
   m_ho_state_is_set = true;
 }

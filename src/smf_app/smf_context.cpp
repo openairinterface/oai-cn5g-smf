@@ -2428,8 +2428,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // Inter NG-RAN node N2 based handover (Section 4.9.1.3@3GPP TS 23.502
         // V16.0.0)
         if (sm_context_req_msg.ho_state_is_set()) {
-          std::string ho_state = sm_context_req_msg.get_ho_state();
-          if (ho_state.compare("COMPLETED") == 0) {
+          HoState_anyOf ho_state = sm_context_req_msg.get_ho_state();
+          if (ho_state.getValue() == HoState_anyOf::eHoState_anyOf::COMPLETED) {
             // TODO:
           }
         }
@@ -2514,10 +2514,10 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   // Step 5. N2 Handover Execution/Cancellation
   if (sm_context_req_msg.ho_state_is_set() or
       sm_context_req_msg.n2_sm_info_is_set()) {
-    std::string ho_state = sm_context_req_msg.get_ho_state();
+    HoState_anyOf ho_state = sm_context_req_msg.get_ho_state();
 
     // Handover Execution
-    if (ho_state.compare("COMPLETED") == 0 or
+    if ((ho_state.getValue() == HoState_anyOf::eHoState_anyOf::COMPLETED) or
         n2_sm_info_type == n2_sm_info_type_e::SECONDARY_RAT_USAGE) {
       Logger::smf_app().info(
           "Inter NG-RAN node N2 based handover (Handover execution, "
@@ -2537,7 +2537,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     }
 
     // Handover Cancellation
-    if (ho_state.compare("CANCELLED") == 0) {
+    if (ho_state.getValue() == HoState_anyOf::eHoState_anyOf::CANCELLED) {
       if (!handle_ho_cancellation(
               n2_sm_information, smreq, sm_context_resp_pending, sp)) {
         // TODO:

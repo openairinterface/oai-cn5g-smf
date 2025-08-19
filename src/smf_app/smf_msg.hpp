@@ -39,6 +39,7 @@
 #include "pistache/http.h"
 #include "smf.h"
 #include "smf_profile.hpp"
+#include "HoState_anyOf.h"
 
 typedef enum {
   PDU_SESSION_MSG_TYPE_NONE             = -1,
@@ -391,8 +392,8 @@ class pdu_session_update_sm_context_request
   void get_failed_to_be_switched(bool& value) const;
 
   std::string get_ho_state() const;
-  void get_ho_state(std::string& state) const;
-  void set_ho_state(const std::string& state);
+  void get_ho_state(HoState_anyOf& state) const;
+  void set_ho_state(const HoState_anyOf& state);
   bool ho_state_is_set() const;
 
   ng_ran_target_id_t get_target_id() const;
