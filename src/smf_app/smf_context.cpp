@@ -1319,7 +1319,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     smf_app_inst->get_dnn_snssai_key(dnn, snssai_3gpp_model, key);
     std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription = {};
     get_sdm_subscription(key, sdm_subscription);
-    unsubscribe_sdm_subscriptions(supi, sdm_subscription);
+    if (sdm_subscription) unsubscribe_sdm_subscriptions(supi, sdm_subscription);
   }
 }
 
@@ -2251,7 +2251,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription =
               {};
           get_sdm_subscription(key, sdm_subscription);
-          unsubscribe_sdm_subscriptions(supi, sdm_subscription);
+          if (sdm_subscription)
+            unsubscribe_sdm_subscriptions(supi, sdm_subscription);
 
           return false;
         }
@@ -4932,7 +4933,7 @@ void smf_context::get_sdm_subscription(
     std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) const {
   std::shared_lock lock(m_sdm_subscriptions);
   if (sdm_subscriptions.count(key) > 0) {
-    sdm_subscription = sdm_subscriptions.at(key);
+    if (sdm_subscriptions.at(key)) sdm_subscription = sdm_subscriptions.at(key);
   }
 }
 
@@ -4940,6 +4941,7 @@ void smf_context::get_sdm_subscription(
 void smf_context::unsubscribe_sdm_subscriptions(
     const std::string& supi,
     const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
+  if (!sdm_subscription) return;
   nlohmann::json sdm_subscription_json = {};
   to_json(sdm_subscription_json, *sdm_subscription.get());
 
