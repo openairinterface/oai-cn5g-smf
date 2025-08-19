@@ -2689,6 +2689,7 @@ void smf_app::get_dnn_snssai_key(
   snssai_3gpp_model.parse_sd_int_with_hex();
   key = dnn + std::to_string(snssai_3gpp_model.getSst()) +
         snssai_3gpp_model.getSd();
+  Logger::smf_app().debug("Key for DNN, SNSSAI: %s", key);
 }
 
 //------------------------------------------------------------------------------
