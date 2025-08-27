@@ -413,10 +413,10 @@ void smf_app::stop() {
 
 //------------------------------------------------------------------------------
 void smf_app::start_nf_discovery() {
-  if (smf_cfg->register_nrf()) {
+ // if (smf_cfg->register_nrf()) {
     trigger_upf_discovery();
     trigger_upf_status_notification_subscribe();
-  } else {
+ // } else {
     for (auto upf : smf_cfg->smf()->get_upfs()) {
       for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
         start_upf_association(upf);
@@ -430,7 +430,7 @@ void smf_app::start_nf_discovery() {
           break;
       }
     }
-  }
+//  }
 }
 
 //------------------------------------------------------------------------------
