@@ -88,8 +88,11 @@ smf_config::smf_config(
   oai::_3gpp::model::SmfInfo smf_info;
   oai::_3gpp::model::SnssaiSmfInfoItem info_item;
   oai::_3gpp::model::DnnSmfInfoItem dnn_item;
+
+  oai::_3gpp::model::ExtSnssai default_ext_snssai;
+  default_ext_snssai.setSst(1);
   dnn_item.setDnn(DEFAULT_DNN);
-  info_item.setSNssai(DEFAULT_SNSSAI);
+  info_item.setSNssai(default_ext_snssai);
   info_item.setDnnSmfInfoList(std::vector{dnn_item});
   smf_info.setSNssaiSmfInfoList(std::vector{info_item});
   smf->m_smf_info = smf_info;

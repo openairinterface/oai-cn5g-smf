@@ -2428,7 +2428,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // Inter NG-RAN node N2 based handover (Section 4.9.1.3@3GPP TS 23.502
         // V16.0.0)
         if (sm_context_req_msg.ho_state_is_set()) {
-          HoState_anyOf ho_state = sm_context_req_msg.get_ho_state();
+          HoState_anyOf ho_state = {};
+          sm_context_req_msg.get_ho_state(ho_state);
           if (ho_state.getValue() == HoState_anyOf::eHoState_anyOf::COMPLETED) {
             // TODO:
           }
@@ -3185,9 +3186,9 @@ bool smf_context::handle_ho_preparation_request_fail(
   conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
 
   // Prepare SmContextUpdateError
-  oai::_3gpp::model::SmContextUpdateError sm_context = {};
-  oai::_3gpp::model::ProblemDetails problem_details  = {};
-  oai::_3gpp::model::RefToBinaryData refToBinaryData = {};
+  oai::_3gpp::model::SmContextUpdateError sm_context   = {};
+  oai::_3gpp::model::ExtProblemDetails problem_details = {};
+  oai::_3gpp::model::RefToBinaryData refToBinaryData   = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(
       PDU_SESSION_APPLICATION_ERROR_HANDOVER_RESOURCE_ALLOCATION_FAILURE));

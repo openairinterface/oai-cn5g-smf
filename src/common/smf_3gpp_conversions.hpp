@@ -44,7 +44,7 @@ namespace xgpp_conv {
  * SessionCreateSMContextRequest msg
  * @param [const oai::_3gpp::model::SmContextMessage&] scm: SM Context
  * Create Msg in OpenAPI
- * @param [smf::pdu_session_create_sm_context_request&] pcr: PDU
+ * @param [oai::app::smf::pdu_session_create_sm_context_request&] pcr: PDU
  * SessionCreateSMContextRequest msg
  * @return void
  */
@@ -57,7 +57,7 @@ void sm_context_create_from_openapi(
  * SessionUpdateSMContextRequest msg
  * @param [const oai::_3gpp::model::SmContextUpdateMessage&] scu: SM
  * Context Update Msg in OpenAPI
- * @param [smf::pdu_session_update_sm_context_request&] pur: PDU
+ * @param [oai::app::smf::pdu_session_update_sm_context_request&] pur: PDU
  * SessionUpdateSMContextRequest msg
  * @return void
  */

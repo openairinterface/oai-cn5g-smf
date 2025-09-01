@@ -697,19 +697,20 @@ bool pdu_session_update_sm_context_request::get_failed_to_be_switched() const {
 }
 
 //-----------------------------------------------------------------------------
-HoState_anyOf pdu_session_update_sm_context_request::get_ho_state() const {
+oai::_3gpp::model::HoState_anyOf
+pdu_session_update_sm_context_request::get_ho_state() const {
   return m_ho_state;
 }
 
 //-----------------------------------------------------------------------------
 void pdu_session_update_sm_context_request::get_ho_state(
-    HoState_anyOf& state) const {
+    oai::_3gpp::model::HoState_anyOf& state) const {
   state = m_ho_state;
 }
 
 //-----------------------------------------------------------------------------
 void pdu_session_update_sm_context_request::set_ho_state(
-    const HoState_anyOf& state) {
+    const oai::_3gpp::model::HoState_anyOf& state) {
   m_ho_state        = state;
   m_ho_state_is_set = true;
 }
@@ -1140,11 +1141,11 @@ smf_event_t event_notification::get_smf_event() const {
 //-----------------------------------------------------------------------------
 // ddds change
 void event_notification::set_Ddds(
-    oai::model::smf::DlDataDeliveryStatus const& value) {
+    oai::_3gpp::model::DlDataDeliveryStatus const& value) {
   m_DddStatus      = value;
   m_DddStatusIsSet = true;
 }
-oai::model::smf::DlDataDeliveryStatus event_notification::get_ddds() const {
+oai::_3gpp::model::DlDataDeliveryStatus event_notification::get_ddds() const {
   return m_DddStatus;
 }
 

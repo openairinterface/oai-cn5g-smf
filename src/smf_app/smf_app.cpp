@@ -2032,9 +2032,9 @@ void smf_app::trigger_create_context_error_response(
   Logger::smf_app().debug(
       "Send ITTI msg to SMF APP to trigger the response of Server");
 
-  oai::_3gpp::model::SmContextCreateError sm_context = {};
-  oai::_3gpp::model::ProblemDetails problem_details  = {};
-  oai::_3gpp::model::RefToBinaryData refToBinaryData = {};
+  oai::_3gpp::model::SmContextCreateError sm_context   = {};
+  oai::_3gpp::model::ExtProblemDetails problem_details = {};
+  oai::_3gpp::model::RefToBinaryData refToBinaryData   = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   sm_context.setError(problem_details);
@@ -2058,7 +2058,7 @@ void smf_app::trigger_update_context_error_response(
       "Send ITTI msg to SMF APP to trigger the response of API Server");
 
   oai::_3gpp::model::SmContextUpdateError smContextUpdateError = {};
-  oai::_3gpp::model::ProblemDetails problem_details            = {};
+  oai::_3gpp::model::ExtProblemDetails problem_details         = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 
@@ -2079,7 +2079,7 @@ void smf_app::trigger_update_context_error_response(
       "Send ITTI msg to SMF APP to trigger the response of HTTP Server");
 
   oai::_3gpp::model::SmContextUpdateError smContextUpdateError = {};
-  oai::_3gpp::model::ProblemDetails problem_details            = {};
+  oai::_3gpp::model::ExtProblemDetails problem_details         = {};
   problem_details.setCause(pdu_session_application_error_e2str.at(cause));
   smContextUpdateError.setError(problem_details);
 
@@ -2696,9 +2696,9 @@ bool smf_app::process_upf_profile(
     const oai::_3gpp::model::NFProfile& upf_profile) {
   Logger::smf_app().debug("Process UPF Profile");
 
-  if (upf_profile.getNfType() != "UPF") {
-    Logger::smf_app().warn(
-        "Not a UPF profile ( type %s), ignored!", upf_profile.getNfType());
+  if (upf_profile.getNfType().getEnumValue() !=
+      NFType_anyOf::eNFType_anyOf::UPF) {
+    Logger::smf_app().warn("Not a UPF profile, ignored!");
     return false;
   }
 

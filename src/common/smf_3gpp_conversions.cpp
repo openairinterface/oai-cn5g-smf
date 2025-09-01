@@ -348,35 +348,35 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
   eem.set_notif_id(nee.getNotifId());    // NotifId
   eem.set_notif_uri(nee.getNotifUri());  // NotifUri
 
-  std::vector<oai::_3gpp::model::EventSubscription> event_subcription_api = {};
-  nee.getEventSubs(event_subcription_api);
+  std::vector<oai::_3gpp::model::EventSubscription> event_subcription_api =
+      nee.getEventSubs();
 
   std::vector<event_subscription_t> event_subscriptions = {};
   for (auto e : event_subcription_api) {
     // EventSubscription: TODO
-    event_subscription_t event_subscription = {};
-    uint8_t event_id_enum                   = 0;
-    std::string event_id                    = e.getEvent().get_value();
-    if (event_id.compare("AC_TY_CH") == 0) {
+    event_subscription_t event_subscription  = {};
+    uint8_t event_id_enum                    = 0;
+    SmfEvent_anyOf::eSmfEvent_anyOf event_id = e.getEvent().getEnumValue();
+    if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::AC_TY_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_AC_TY_CH;
-    } else if (event_id.compare("UP_PATH_CH") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::UP_PATH_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_UP_PATH_CH;
-    } else if (event_id.compare("PDU_SES_REL") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::PDU_SES_REL) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PDU_SES_REL;
-    } else if (event_id.compare("PLMN_CH") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::PLMN_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PLMN_CH;
-    } else if (event_id.compare("UE_IP_CH") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::UE_IP_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_UE_IP_CH;
-    } else if (event_id.compare("DDDS") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::DDDS) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_DDDS;
-    } else if (event_id.compare("PDU_SES_EST") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::PDU_SES_EST) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PDUSESEST;
-    } else if (event_id.compare("QOS_MON") == 0) {
+    } else if (event_id == SmfEvent_anyOf::eSmfEvent_anyOf::QOS_MON) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_QOS_MON;
-    } else if (event_id.compare("FLEXCN") == 0) {
-      event_subscription.smf_event = smf_event_e::SMF_EVENT_FLEXCN;
+      // TODO: } else if (event_id.compare("FLEXCN") == 0) {
+      //  event_subscription.smf_event = smf_event_e::SMF_EVENT_FLEXCN;
     } else {
-      Logger::smf_api_server().debug("Unknown SMF Event %s", event_id.c_str());
+      Logger::smf_api_server().debug("Unknown SMF Event");
       break;
     }
 
@@ -408,7 +408,7 @@ void xgpp_conv::sm_context_request_from_nas(
 
   // PDU session type (Optional)
   if (message_type == kPduSessionEstablishmentRequest) {
-    std::optional<PduSessionType> pdu_session_type_opt =
+    std::optional<oai::nas::PduSessionType> pdu_session_type_opt =
         (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
             ->GetPduSessionType();
     if (pdu_session_type_opt.has_value()) {

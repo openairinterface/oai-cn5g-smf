@@ -54,7 +54,7 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::_3gpp::model::helpers;
-using namespace oai::_3gpp::modell;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 
 SMContextsCollectionApi::SMContextsCollectionApi(

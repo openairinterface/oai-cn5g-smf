@@ -992,7 +992,7 @@ oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
   QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
 
   // QosCharacteristics
-  QosCharacteristics qos_characteristics             = {};
+  oai::ngap::QosCharacteristics qos_characteristics  = {};
   NonDynamic5qiDescriptor non_dynamic_5qi_descriptor = {};
   FiveQI five_qi                                     = {};
   if (qos_flow.qos_profile.r5qiIsSet())

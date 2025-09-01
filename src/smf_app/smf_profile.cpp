@@ -385,7 +385,7 @@ void smf_profile::display() const {
   // we convert to re-use the existing to_string function
   for (const auto& s : smf_info.snssai_smf_info_list) {
     SnssaiSmfInfoItem item;
-    item.setSNssai(s.snssai.to_model_snssai());
+    item.setSNssai(s.snssai.to_model_ext_snssai());
     std::vector<DnnSmfInfoItem> list_of_dnns;
     for (const auto& d : s.dnn_smf_info_list) {
       DnnSmfInfoItem dnn_item;
@@ -521,7 +521,7 @@ void upf_profile::display() const {
   // we convert to re-use the existing to_string function
   for (auto s : upf_info.snssai_upf_info_list) {
     SnssaiUpfInfoItem item;
-    item.setSNssai(s.snssai.to_model_snssai());
+    item.setSNssai(s.snssai.to_model_ext_snssai());
     std::vector<DnnUpfInfoItem> list_of_dnns;
 
     for (auto d : s.dnn_upf_info_list) {

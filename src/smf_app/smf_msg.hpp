@@ -391,9 +391,9 @@ class pdu_session_update_sm_context_request
   bool get_failed_to_be_switched() const;
   void get_failed_to_be_switched(bool& value) const;
 
-  std::string get_ho_state() const;
-  void get_ho_state(HoState_anyOf& state) const;
-  void set_ho_state(const HoState_anyOf& state);
+  oai::_3gpp::model::HoState_anyOf get_ho_state() const;
+  void get_ho_state(oai::_3gpp::model::HoState_anyOf& state) const;
+  void set_ho_state(const oai::_3gpp::model::HoState_anyOf& state);
   bool ho_state_is_set() const;
 
   ng_ran_target_id_t get_target_id() const;
@@ -428,7 +428,7 @@ class pdu_session_update_sm_context_request
   bool m_failed_to_be_switched;
   bool m_is_failed_to_be_switched;
   bool m_failed_to_be_switched_is_set;
-  std::string m_ho_state;
+  oai::_3gpp::model::HoState_anyOf m_ho_state;
   bool m_ho_state_is_set;
   ng_ran_target_id_t m_ng_ran_target_id;
   bool m_target_id_is_set;
