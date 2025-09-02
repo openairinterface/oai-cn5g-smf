@@ -66,6 +66,7 @@ class upf : public config_type {
   oai::model::nrf::UpfInfo m_upf_info;
   bool m_upf_info_is_set = true;
   pfcp::node_id_t m_node_id;
+  option_config_value m_enable_upf_wo_nf_discovery;
 
   void generate_node_id();
 
@@ -90,6 +91,7 @@ class upf : public config_type {
   [[nodiscard]] bool enable_usage_reporting() const;
   [[nodiscard]] bool enable_dl_pdr_in_session_establishment() const;
   [[nodiscard]] bool enable_qers() const;
+  [[nodiscard]] bool enable_upf_wo_nf_discovery() const;
   [[nodiscard]] const std::string& get_local_n3_ip() const;
   [[nodiscard]] const oai::model::nrf::UpfInfo& get_upf_info() const;
   [[nodiscard]] const pfcp::node_id_t& get_node_id() const;

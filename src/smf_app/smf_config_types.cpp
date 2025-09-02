@@ -139,6 +139,10 @@ upf::upf(
   m_usage_reporting =
       option_config_value("enable_usage_reporting", enable_usage_reporting);
   m_qers = option_config_value("enable_qers", enable_qers);
+
+  m_enable_upf_wo_nf_discovery =
+      option_config_value("enable_upf_wo_nf_discovery", false);
+
   m_dl_pdr_in_session_establishment = option_config_value(
       "enable_dl_pdr_in_session_establishment",
       enable_dl_pdr_in_session_establishment);
@@ -181,6 +185,10 @@ void upf::from_yaml(const YAML::Node& node) {
     }
     if (node["config"]["enable_qers"]) {
       m_qers.from_yaml(node["config"]["enable_qers"]);
+    }
+    if (node["config"]["enable_upf_wo_nf_discovery"]) {
+      m_enable_upf_wo_nf_discovery.from_yaml(
+          node["config"]["enable_upf_wo_nf_discovery"]);
     }
     if (node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]) {
       m_dl_pdr_in_session_establishment.from_yaml(
@@ -232,6 +240,15 @@ bool upf::from_json(const nlohmann::json& json_data) {
           json_data.end()) {
         m_qers.from_json(json_data["config"][m_qers.get_config_name()]);
       }
+
+      if (json_data["config"].find(
+              m_enable_upf_wo_nf_discovery.get_config_name()) !=
+          json_data.end()) {
+        m_enable_upf_wo_nf_discovery.from_json(
+            json_data["config"]
+                     [m_enable_upf_wo_nf_discovery.get_config_name()]);
+      }
+
       if (json_data["config"].find(
               m_dl_pdr_in_session_establishment.get_config_name()) !=
           json_data.end()) {
@@ -272,6 +289,10 @@ std::string upf::to_string(const std::string& indent) const {
       m_usage_reporting.to_string("")));
   out.append(
       fmt::format(fmt_value, m_qers.get_config_name(), m_qers.to_string("")));
+
+  out.append(fmt::format(
+      fmt_value, m_enable_upf_wo_nf_discovery.get_config_name(),
+      m_enable_upf_wo_nf_discovery.to_string("")));
   out.append(fmt::format(
       fmt_value, m_dl_pdr_in_session_establishment.get_config_name(),
       m_dl_pdr_in_session_establishment.to_string("")));
@@ -314,6 +335,10 @@ bool upf::enable_dl_pdr_in_session_establishment() const {
 
 bool upf::enable_qers() const {
   return m_qers.get_value();
+}
+
+bool upf::enable_upf_wo_nf_discovery() const {
+  return m_enable_upf_wo_nf_discovery.get_value();
 }
 
 const std::string& upf::get_local_n3_ip() const {

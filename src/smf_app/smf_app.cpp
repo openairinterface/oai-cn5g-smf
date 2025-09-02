@@ -413,11 +413,16 @@ void smf_app::stop() {
 
 //------------------------------------------------------------------------------
 void smf_app::start_nf_discovery() {
+  // Discovery UPF via NRF
   if (smf_cfg->register_nrf()) {
     trigger_upf_discovery();
     trigger_upf_status_notification_subscribe();
-  } else {
-    for (auto upf : smf_cfg->smf()->get_upfs()) {
+  }
+
+  // Associate with the UPF configured statically in the config file event if
+  // NRF discovery is disabled
+  for (auto upf : smf_cfg->smf()->get_upfs()) {
+    if (!smf_cfg->register_nrf() or upf.enable_upf_wo_nf_discovery()) {
       for (int i = 0; i < PFCP_ASSOC_RETRY_COUNT; i++) {
         start_upf_association(upf);
         sleep(PFCP_ASSOC_RESP_WAIT);
