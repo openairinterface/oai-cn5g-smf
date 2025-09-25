@@ -345,7 +345,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 
   qos_rule.SetPrecedence(edge->precedence);
   qos_rule.SetSegregation(oai::nas::kQosRuleSegregationNotRequested);
-  qos_rule.SetQfi(edge->qfi.qfi);
+  qos_rule.SetQfi(5);
   // qos_rule.qosruleprecedence = edge->precedence;
   // qos_rule.segregation       = SEGREGATION_NOT_REQUESTED;
   // qos_rule.qosflowidentifer  = edge->qfi.qfi;
@@ -357,7 +357,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 oai::nas::QosFlowDescription session_handler::qos_flow_description_from_edge(
     const std::shared_ptr<qos_upf_edge>& edge) {
   oai::nas::QosFlowDescription qos_flow_description = {};
-  qos_flow_description.SetQfi(edge->qfi.qfi);
+  qos_flow_description.SetQfi(5);
   qos_flow_description.SetOperationCode(
       oai::nas::
           kQosFlowDescriptionRuleOperationCodeCreateNewQosFlowDescription);

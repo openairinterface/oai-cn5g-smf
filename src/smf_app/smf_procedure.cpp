@@ -112,11 +112,11 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
         oai::utils::conv::toString(local_fteid.ipv4_address).c_str());
   } else if (fteid.is_zero()) {
     local_fteid.ch   = 1;
-    local_fteid.v4   = 1;
-    local_fteid.chid = 1;
+    local_fteid.v4   = 0;
+    local_fteid.chid = 0;
     // same choose ID, indicates that same TEID should be generated for
     // more than one PDR
-    local_fteid.choose_id = 42;
+    // local_fteid.choose_id = 42;
   } else {
     local_fteid = fteid;
   }
@@ -208,7 +208,9 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   if (pfcp_gbr(edge, guaranteed_bitrate)) {
     create_qer.set(guaranteed_bitrate);
   }
-  create_qer.set(edge->qfi);
+  qfi_t qfi = {};
+  qfi.qfi   = 5;
+  create_qer.set(qfi);
 
   return create_qer;
 }
@@ -372,7 +374,9 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
-    pdi.set(edge->qfi);  // QFI - QoS Flow ID
+    qfi_t qfi = {};
+    qfi.qfi   = 5;
+    pdi.set(qfi);  // QFI - QoS Flow ID
   }
 
   // Framed IPv4 Route
@@ -419,7 +423,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // Here we take the precedence directly from the PCC rules. It should be okay
   // because both values are integer, but we might need to provide another
   // mapping
-  precedence.precedence = edge->precedence;
+  precedence.precedence = 255;  // edge->precedence;
 
   create_pdr.set(precedence);
   create_pdr.set(pdi);
@@ -525,7 +529,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   // UE IP address
   pdi.set(pfcp_ue_ip_address(edge));
 
-  precedence.precedence = edge->precedence;
+  precedence.precedence = 255;  // edge->precedence;
   // TODO this is now only in DL direction
   source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   if (!edge->nw_instance.empty()) {
@@ -593,8 +597,9 @@ pfcp::update_qer smf_session_procedure::pfcp_update_qer(
   if (pfcp_gbr(edge, guaranteed_bitrate)) {
     update_qer.set(guaranteed_bitrate);
   }
-
-  update_qer.set(edge->qfi);
+  qfi_t qfi = {};
+  qfi.qfi   = 5;
+  update_qer.set(qfi);
 
   return update_qer;
 }
@@ -1018,29 +1023,34 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
     if (upf_cfg.enable_qers()) {
-      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+      // n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
     }
   }
   for (const auto& dl_edge : dl_edges) {
     nlohmann::json j = dl_edge->flow_information;
     Logger::smf_app().info("Create PDR for FlowInfo:\n %s", j.dump());
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
+    n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+    break;
   }
 
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
       if (upf_cfg.enable_qers()) {
-        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+        // n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+        break;
       }
     }
+    /*
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
       if (upf_cfg.enable_qers()) {
         n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+        break;
       }
     }
-
+*/
     Logger::smf_app().info(
         "Adding DL PDR and FAR during PFCP session establishment");
   }

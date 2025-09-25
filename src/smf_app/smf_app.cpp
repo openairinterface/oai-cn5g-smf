@@ -416,7 +416,7 @@ void smf_app::start_nf_discovery() {
   // Discovery UPF via NRF
   if (smf_cfg->register_nrf()) {
     trigger_upf_discovery();
-    trigger_upf_status_notification_subscribe();
+    // trigger_upf_status_notification_subscribe();
   }
 
   // Associate with the UPF configured statically in the config file event if
