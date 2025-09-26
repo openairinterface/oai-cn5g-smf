@@ -813,7 +813,9 @@ bool smf_session_procedure::pfcp_sdf_filter(
   }
 
   if (add_sdf_filter) {
-    sdf_filter.fd = 1;
+    sdf_filter.fd    = 1;
+    sdf_filter.bid   = 1;
+    sdf_filter.spare = 0;
     if (ethernet_sdf_filter) {
       sdf_filter.flow_description =
           edge->flow_information.getEthFlowDescription().getFDesc();
@@ -1036,21 +1038,22 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
-      n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      // n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
       if (upf_cfg.enable_qers()) {
         // n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
         break;
       }
     }
-    /*
+
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+      n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
       if (upf_cfg.enable_qers()) {
         n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
         break;
       }
     }
-*/
+
     Logger::smf_app().info(
         "Adding DL PDR and FAR during PFCP session establishment");
   }
