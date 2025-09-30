@@ -1093,6 +1093,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   // Now we have gathered all the information, run the DFS algorithm for each
   // PCC rule (e.g. graph path or QoS flow)
   uint8_t generated_qfi;
+  Logger::smf_app().warn("select_upf_nodes 3");
   for (int i = 0; i < selection_criterias.size(); i++) {
     auto verify_criteria    = verify_criterias[i];
     auto selection_criteria = selection_criterias[i];
@@ -1109,8 +1110,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // here we start the DFS algorithm for all start nodes because we can
     // have disconnected graphs
 
+    Logger::smf_app().warn("select_upf_nodes 2");
     select_upf_nodes(selection_criteria, sub_graph_ptr, verify_criteria);
     generated_qfi = selection_criteria.qfi;
+    break;
   }
 
   auto last_verify_criteria = verify_criterias.back();
@@ -1128,6 +1131,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   return sub_graph_ptr;
 }
 
+//------------------------------------------------------------------------------
 bool upf_graph::select_upf_nodes(
     upf_selection_criteria& criteria, std::shared_ptr<upf_graph>& sub_graph_ptr,
     const upf_selection_criteria& verify_criteria) {
@@ -1141,7 +1145,10 @@ bool upf_graph::select_upf_nodes(
   UPInterfaceType n3_type;
   n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
   bool has_n3 = false;
+  Logger::smf_app().warn("select_upf_nodes 1 ");
   for (const auto& [upf, edges] : adjacency_list) {
+    Logger::smf_app().warn(
+        "select_upf_nodes checking UPF %s", upf->get_printable_name());
     if (visited[upf]) {
       continue;
     }
@@ -1178,6 +1185,7 @@ bool upf_graph::select_upf_nodes(
         return true;
       }
     }
+    break;
   }
   Logger::smf_app().warn("UPF selection failed");
 

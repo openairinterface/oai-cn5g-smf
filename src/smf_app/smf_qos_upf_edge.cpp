@@ -139,6 +139,7 @@ std::vector<std::shared_ptr<qos_upf_edge>> qos_upf_edge::create_edges(
     // Associate DNAIs with this NW instance
     edge.associate_dnai(this_upf_cfg);
 
+    // For N9, we need to check if the other UPF has a N9 interface as well
     if (type.getEnumValue() ==
         UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9) {
       if (other_upf &&
