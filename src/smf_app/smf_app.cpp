@@ -640,7 +640,6 @@ void smf_app::handle_itti_msg(
         std::shared_ptr<smf_context_ref> scf = {};
         if (smf_app_inst->is_scid_2_smf_context(m.scid)) {
           scf = scid_2_smf_context(m.scid);
-          // up_node_id = scf.get()->upf_node_id;
         } else {
           Logger::smf_app().warn(
               "SM Context associated with this id " SCID_FMT " does not exit!",

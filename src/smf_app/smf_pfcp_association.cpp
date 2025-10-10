@@ -861,10 +861,10 @@ bool upf_graph::dfs_next_upf(
       } else {
         info_dl.push_back(edge_it);
       }
-      current_upf_asynch      = upf;
-      current_edges_dl_asynch = info_dl;
-      current_edges_ul_asynch = info_ul;
     }
+    current_upf_asynch      = upf;
+    current_edges_dl_asynch = info_dl;
+    current_edges_ul_asynch = info_ul;
   }
   return true;
 }

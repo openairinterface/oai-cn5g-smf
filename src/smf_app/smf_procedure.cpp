@@ -1110,27 +1110,21 @@ smf_procedure_code session_create_sm_context_procedure::run(
 
   criteria.qos_profile.setR5qi(default_qos._5qi);
 
-  // TODO this conversion should be somewhere else but is only used once so far
   oai::model::common::Arp arp;
-  oai::model::common::PreemptionVulnerability preempt_vuln;
-  from_json(default_qos.arp.preempt_vuln, preempt_vuln);
-  oai::model::common::PreemptionCapability preempt_cap;
-  from_json(default_qos.arp.preempt_cap, preempt_cap);
-
-  arp.setPreemptCap(preempt_cap);
-  arp.setPreemptVuln(preempt_vuln);
-  arp.setPriorityLevel(default_qos.arp.priority_level);
-
+  nlohmann::json arp_json   = {};
+  arp_json["priorityLevel"] = default_qos.arp.priority_level;
+  arp_json["preemptVuln"]   = default_qos.arp.preempt_vuln;
+  arp_json["preemptCap"]    = default_qos.arp.preempt_cap;
+  from_json(arp_json, arp);
   criteria.qos_profile.setArp(arp);
+
   if (default_qos.priority_level != 0) {
     criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
   }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};
-  if (smf_app_inst->is_scid_2_smf_context(sm_context_req->scid)) {
-    scf = smf_app_inst->scid_2_smf_context(sm_context_req->scid);
-    // scf.get()->upf_node_id = up_node_id;
+  if (smf_app_inst->scid_2_smf_context(sm_context_req->scid, scf)) {
     std::shared_ptr<smf_pdu_session> sp = {};
     if (!sc->find_pdu_session(scf->pdu_session_id, sp)) {
       Logger::smf_app().warn("PDU session context does not exist!");
@@ -1164,7 +1158,7 @@ smf_procedure_code session_create_sm_context_procedure::run(
     Logger::smf_app().warn(
         "SM Context associated with this id " SCID_FMT " does not exit!",
         sm_context_req->scid);
-    // TODO:
+    return smf_procedure_code::ERROR;
   }
 
   //-------------------
@@ -1385,7 +1379,6 @@ smf_procedure_code session_update_sm_context_procedure::run(
   }
   if (smf_app_inst->is_scid_2_smf_context(scid)) {
     scf = smf_app_inst->scid_2_smf_context(scid);
-    // up_node_id = scf.get()->upf_node_id;
   } else {
     Logger::smf_app().warn(
         "SM Context associated with this id " SCID_FMT " does not exit!", scid);
@@ -1861,8 +1854,7 @@ smf_procedure_code session_release_sm_context_procedure::run(
     const std::shared_ptr<smf::smf_context>& sc) {
   Logger::smf_app().info("Release SM Context Request");
   // TODO check if compatible with ongoing procedures if any
-  pfcp::node_id_t up_node_id = {};
-  // Get UPF node
+
   std::shared_ptr<smf_context_ref> scf = {};
   scid_t scid                          = {};
   try {
@@ -1874,7 +1866,6 @@ smf_procedure_code session_release_sm_context_procedure::run(
   }
   if (smf_app_inst->is_scid_2_smf_context(scid)) {
     scf = smf_app_inst->scid_2_smf_context(scid);
-    // up_node_id = scf.get()->upf_node_id;
   } else {
     Logger::smf_app().warn(
         "SM Context associated with this id " SCID_FMT " does not exit!", scid);
