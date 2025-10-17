@@ -2219,6 +2219,8 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
+  nf_instance_profile.set_fqdn(
+      "oai-smf.openair5g.eur");  // TODO: Remove hardcoded value
 
   // NF services
   // IP Endpoint (common for each service)
@@ -2232,7 +2234,7 @@ void smf_app::generate_smf_profile() {
 
   // nsmf-pdusession
   nf_service_t nf_service        = {};
-  nf_service.service_instance_id = "nsmf-pdusession";
+  nf_service.service_instance_id = smf_instance_id;
   nf_service.service_name        = "nsmf-pdusession";
   nf_service_version_t version   = {};
   version.api_version_in_uri     = "v1";
@@ -2241,6 +2243,8 @@ void smf_app::generate_smf_profile() {
   nf_service.scheme            = "http";
   nf_service.nf_service_status = "REGISTERED";
   nf_service.ip_endpoints.push_back(endpoint);
+
+  nf_instance_profile.add_nf_service_list(nf_service);
 
   // nsmf-event-exposure
   nf_service_t nf_service_evts        = {};
@@ -2746,7 +2750,7 @@ bool smf_app::process_upf_profile(
     local_upf_cfg =
         upf(host, local_upf_cfg.get_port(),
             local_upf_cfg.enable_usage_reporting(), local_upf_cfg.enable_qers(),
-            local_upf_cfg.enable_dl_pdr_in_session_establishment(),
+            local_upf_cfg.enable_dl_pdr_in_pfcp_session_establishment(),
             local_upf_cfg.get_local_n3_ip());
   }
   local_upf_cfg.set_upf_info(upf_profile.getUpfInfo());

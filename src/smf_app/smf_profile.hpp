@@ -348,6 +348,7 @@ class smf_profile : public nf_profile {
     custom_info      = s.custom_info;
     smf_info         = s.smf_info;
     nf_services      = s.nf_services;
+    nf_service_list  = s.nf_service_list;
     return *this;
   }
   // smf_profile(smf_profile &b) = delete;
@@ -376,6 +377,13 @@ class smf_profile : public nf_profile {
    * @return void:
    */
   void get_nf_services(std::vector<oai::common::sbi::nf_service_t>& n) const;
+
+  /*
+   * Add nf service
+   * @param [snssai_t &] n: nf service
+   * @return void
+   */
+  void add_nf_service_list(const oai::common::sbi::nf_service_t& n);
 
   /*
    * Set custom info
@@ -442,6 +450,7 @@ class smf_profile : public nf_profile {
 
  protected:
   std::vector<oai::common::sbi::nf_service_t> nf_services;
+  std::map<std::string, oai::common::sbi::nf_service_t> nf_service_list;
   nlohmann::json custom_info;  // store extra json data
   oai::common::sbi::smf_info_t smf_info;
 };

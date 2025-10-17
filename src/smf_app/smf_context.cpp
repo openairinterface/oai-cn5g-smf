@@ -67,6 +67,7 @@
 #include "utils.hpp"
 #include "mime_parser.hpp"
 #include "http_definitions.hpp"
+#include "fqdn.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::utils;
@@ -4249,8 +4250,21 @@ std::string smf_context::get_amf_addr_from_amf_status_uri(
     } else {
       addr = full_addr;
     }
+
+    Logger::smf_api_server().error("Bad IPv4 for AMF %s", addr.c_str());
+
+    std::string ip_addr = {};
+    uint32_t port       = {0};
+    uint8_t addr_type   = {0};
+
+    if (!oai::utils::fqdn::resolve(addr, ip_addr, port, addr_type)) {
+      Logger::smf_app().warn(
+          "Bad IPv4 for AMF  %s: cannot resolve the hostname!", addr.c_str());
+      ip_addr = addr;
+    }
+
     struct in_addr amf_ipv4_addr;
-    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
+    if (inet_pton(AF_INET, trim(ip_addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
       if (smf_cfg->enable_tls())

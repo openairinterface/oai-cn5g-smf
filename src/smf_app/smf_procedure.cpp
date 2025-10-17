@@ -240,7 +240,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   } else {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
 
-    if (cfg.enable_dl_pdr_in_session_establishment()) {
+    if (cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
       apply_action.forw = 0;
       apply_action.drop = 1;
       create_far.set(edge->far_id);
@@ -368,7 +368,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // do not remove outer header in dl direction
   // also we dont add this information if we use DL PDR in session establishment
   // as we update it later anyway
-  if (edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment()) {
+  if (edge->type != n6_type &&
+      !cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
@@ -1027,7 +1028,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
   }
 
-  if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
+  if (upf_cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
       if (upf_cfg.enable_qers()) {
@@ -1205,7 +1206,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
 
   // TODO
   /*
-  if (upf_cfg.enable_dl_pdr_in_session_establishment() &&
+  if (upf_cfg.enable_dl_pdr_in_pfcp_session_establishment() &&
       resp.pfcp_ies.created_pdrs.empty()) {
     pfcp::pdr_id_t pdr_id_tmp;
     // we use qos flow for 1st PDR for the moment

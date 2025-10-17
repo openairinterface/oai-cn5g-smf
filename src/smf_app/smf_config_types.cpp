@@ -132,7 +132,7 @@ bool smf_support_features::use_local_pcc_rules() const {
 
 upf::upf(
     const std::string& host, int port, bool enable_usage_reporting,
-    bool enable_qers, bool enable_dl_pdr_in_session_establishment,
+    bool enable_qers, bool enable_dl_pdr_in_pfcp_session_establishment,
     const std::string& local_n3_ip) {
   m_host = string_config_value("host", host);
   m_port = int_config_value("port", port);
@@ -143,9 +143,9 @@ upf::upf(
   m_enable_upf_wo_nf_discovery =
       option_config_value("enable_upf_wo_nf_discovery", false);
 
-  m_dl_pdr_in_session_establishment = option_config_value(
-      "enable_dl_pdr_in_session_establishment",
-      enable_dl_pdr_in_session_establishment);
+  m_dl_pdr_in_pfcp_session_establishment = option_config_value(
+      "enable_dl_pdr_in_pfcp_session_establishment",
+      enable_dl_pdr_in_pfcp_session_establishment);
   m_local_n3_ipv4 = string_config_value("local_n3_ipv4", local_n3_ip);
 
   m_host.set_validation_regex(HOST_VALIDATOR_REGEX);
@@ -191,7 +191,7 @@ void upf::from_yaml(const YAML::Node& node) {
           node["config"]["enable_upf_wo_nf_discovery"]);
     }
     if (node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]) {
-      m_dl_pdr_in_session_establishment.from_yaml(
+      m_dl_pdr_in_pfcp_session_establishment.from_yaml(
           node["config"]["enable_dl_pdr_in_pfcp_session_establishment"]);
     }
     if (node["config"]["n3_local_ipv4"]) {
@@ -212,8 +212,9 @@ nlohmann::json upf::to_json() {
   json_data["config"][m_usage_reporting.get_config_name()] =
       m_usage_reporting.get_value();
   json_data["config"][m_qers.get_config_name()] = m_qers.get_value();
-  json_data["config"][m_dl_pdr_in_session_establishment.get_config_name()] =
-      m_dl_pdr_in_session_establishment.get_value();
+  json_data["config"]
+           [m_dl_pdr_in_pfcp_session_establishment.get_config_name()] =
+               m_dl_pdr_in_pfcp_session_establishment.get_value();
   json_data["config"][m_local_n3_ipv4.get_config_name()] =
       m_local_n3_ipv4.to_json();
   nlohmann::to_json(json_data["upf_info"], m_upf_info);
@@ -250,11 +251,11 @@ bool upf::from_json(const nlohmann::json& json_data) {
       }
 
       if (json_data["config"].find(
-              m_dl_pdr_in_session_establishment.get_config_name()) !=
+              m_dl_pdr_in_pfcp_session_establishment.get_config_name()) !=
           json_data.end()) {
-        m_dl_pdr_in_session_establishment.from_json(
-            json_data["config"]
-                     [m_dl_pdr_in_session_establishment.get_config_name()]);
+        m_dl_pdr_in_pfcp_session_establishment.from_json(
+            json_data["config"][m_dl_pdr_in_pfcp_session_establishment
+                                    .get_config_name()]);
       }
       if (json_data["config"].find(m_local_n3_ipv4.get_config_name()) !=
           json_data.end()) {
@@ -294,8 +295,8 @@ std::string upf::to_string(const std::string& indent) const {
       fmt_value, m_enable_upf_wo_nf_discovery.get_config_name(),
       m_enable_upf_wo_nf_discovery.to_string("")));
   out.append(fmt::format(
-      fmt_value, m_dl_pdr_in_session_establishment.get_config_name(),
-      m_dl_pdr_in_session_establishment.to_string("")));
+      fmt_value, m_dl_pdr_in_pfcp_session_establishment.get_config_name(),
+      m_dl_pdr_in_pfcp_session_establishment.to_string("")));
   if (m_local_n3_ipv4.is_set()) {
     out.append(fmt::format(
         fmt_value, m_local_n3_ipv4.get_config_name(),
@@ -329,8 +330,8 @@ bool upf::enable_usage_reporting() const {
   return m_usage_reporting.get_value();
 }
 
-bool upf::enable_dl_pdr_in_session_establishment() const {
-  return m_dl_pdr_in_session_establishment.get_value();
+bool upf::enable_dl_pdr_in_pfcp_session_establishment() const {
+  return m_dl_pdr_in_pfcp_session_establishment.get_value();
 }
 
 bool upf::enable_qers() const {
