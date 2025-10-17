@@ -368,8 +368,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // do not remove outer header in dl direction
   // also we dont add this information if we use DL PDR in session establishment
   // as we update it later anyway
-  if (edge->type != n6_type &&
-      !cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
+  // if (edge->type != n6_type) {
+  if (!(cfg.enable_dl_pdr_in_pfcp_session_establishment() && edge->uplink)) {
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
@@ -1031,17 +1031,22 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   if (upf_cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
-      if (upf_cfg.enable_qers()) {
-        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
-      }
+      // if (upf_cfg.enable_qers()) {
+      //   n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      // }
     }
+
     for (const auto& ul_edge : ul_edges) {
+      n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
+    }
+
+    /* for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
       if (upf_cfg.enable_qers()) {
         n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
       }
     }
-
+*/
     Logger::smf_app().info(
         "Adding DL PDR and FAR during PFCP session establishment");
   }
