@@ -90,8 +90,8 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     Logger::smf_app().info(
         "Generating N3-UL TEID since current UPF does not support TEID "
         "Creation");
-    local_fteid.ch   = 0;
-    local_fteid.v4   = 1;
+    local_fteid.ch = 0;
+    // local_fteid.v4   = 1;
     local_fteid.chid = 0;
     if (cfg.get_local_n3_ip().empty()) {
       Logger::smf_app().warn(
@@ -111,12 +111,12 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
         local_fteid.teid,
         oai::utils::conv::toString(local_fteid.ipv4_address).c_str());
   } else if (fteid.is_zero()) {
-    local_fteid.ch   = 1;
-    local_fteid.v4   = 1;
-    local_fteid.chid = 1;
+    local_fteid.ch = 1;
+    local_fteid.v4 = 0;
+    // local_fteid.chid = 1;
     // same choose ID, indicates that same TEID should be generated for
     // more than one PDR
-    local_fteid.choose_id = 42;
+    // local_fteid.choose_id = 42;
   } else {
     local_fteid = fteid;
   }
@@ -208,14 +208,14 @@ pfcp::create_qer smf_session_procedure::pfcp_create_qer(
   if (pfcp_gbr(edge, guaranteed_bitrate)) {
     create_qer.set(guaranteed_bitrate);
   }
-  create_qer.set(edge->qfi);
+  create_qer.set(0x05);
 
   return create_qer;
 }
 
 //------------------------------------------------------------------------------
 pfcp::create_far smf_session_procedure::pfcp_create_far(
-    const std::shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge, bool is_outer_header_creation) {
   // When we have a FAR and edge is uplink we know we are in an uplink procedure
   //  e.g. FAR from N3 to N6, N6 is uplink edge -> uplink procedure
 
@@ -239,14 +239,6 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   } else {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
-
-    if (cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
-      apply_action.forw = 0;
-      apply_action.drop = 1;
-      create_far.set(edge->far_id);
-      create_far.set(apply_action);
-      return create_far;
-    }
   }
 
   forwarding_parameters.set(destination_interface);
@@ -269,8 +261,13 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
-  if (pfcp_outer_header_creation(edge, outer_header_creation)) {
+  if (is_outer_header_creation &&
+      pfcp_outer_header_creation(edge, outer_header_creation)) {
     forwarding_parameters.set(outer_header_creation);
+  }
+  if (!is_outer_header_creation) {
+    apply_action.forw = 0;  // forward the packets
+    apply_action.buff = 1;  // forward the packets
   }
 
   create_far.set(edge->far_id);
@@ -357,7 +354,9 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
       sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
       sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
-    pdi.set(pfcp_ue_ip_address(edge));
+    if ((cfg.enable_dl_pdr_in_pfcp_session_establishment() && edge->uplink)) {
+      pdi.set(pfcp_ue_ip_address(edge));
+    }
   }
 
   if (edge->type == n3_type) {
@@ -373,7 +372,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
-    pdi.set(edge->qfi);  // QFI - QoS Flow ID
+    pdi.set(0x05);  // QFI - QoS Flow ID
   }
 
   // Framed IPv4 Route
@@ -411,8 +410,14 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     }
   }
 
-  if (pfcp_sdf_filter(edge, sdf_filter)) {
-    pdi.set(sdf_filter);
+  if ((cfg.enable_dl_pdr_in_pfcp_session_establishment() && edge->uplink)) {
+    if (pfcp_sdf_filter(edge, sdf_filter, false, false)) {
+      pdi.set(sdf_filter);
+    }
+  } else {
+    if (pfcp_sdf_filter(edge, sdf_filter)) {
+      pdi.set(sdf_filter);
+    }
   }
 
   pdi.set(source_interface_type);
@@ -420,7 +425,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // Here we take the precedence directly from the PCC rules. It should be okay
   // because both values are integer, but we might need to provide another
   // mapping
-  precedence.precedence = edge->precedence;
+  precedence.precedence = 255;
 
   create_pdr.set(precedence);
   create_pdr.set(pdi);
@@ -433,7 +438,9 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // relationship between the PDR and a specific QER that dictates how QoS
   // policies should be enforced for traffic handled by this PDR.
   if (cfg.enable_qers()) {
-    create_pdr.set(edge->associated_edge->qer_id);
+    pfcp::qer_id_t qer_id = {};
+    qer_id.qer_id         = 0x01;
+    create_pdr.set(qer_id);
   }
 
   if (cfg.enable_usage_reporting()) {
@@ -526,7 +533,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   // UE IP address
   pdi.set(pfcp_ue_ip_address(edge));
 
-  precedence.precedence = edge->precedence;
+  precedence.precedence = 255;
   // TODO this is now only in DL direction
   source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   if (!edge->nw_instance.empty()) {
@@ -782,7 +789,7 @@ void smf_session_procedure::check_if_all_qfis_are_handled(
 //------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_sdf_filter(
     const std::shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter,
-    bool ethernet_sdf_filter) {
+    bool ethernet_sdf_filter, bool is_flow_description) {
   bool is_uplink_fdir, is_downlink_fdir;
   if (ethernet_sdf_filter) {
     if (!edge->flow_information.getEthFlowDescription().fDescIsSet()) {
@@ -808,16 +815,25 @@ bool smf_session_procedure::pfcp_sdf_filter(
     add_sdf_filter = true;
   }
 
-  if (add_sdf_filter) {
-    sdf_filter.fd = 1;
+  if (add_sdf_filter && is_flow_description) {
+    sdf_filter.bid = 1;
+    sdf_filter.fd  = 1;
     if (ethernet_sdf_filter) {
       sdf_filter.flow_description =
           edge->flow_information.getEthFlowDescription().getFDesc();
     } else {
       sdf_filter.flow_description = edge->flow_information.getFlowDescription();
     }
+
+    sdf_filter.flow_description = "permit out ip from any to 12.1.1.1";
     sdf_filter.length_of_flow_description =
         sdf_filter.flow_description.length();
+    sdf_filter.sdf_filter_id = 0x00000001;  // hardcoded for the moment
+    return true;
+  } else if (!is_flow_description) {
+    sdf_filter.bid           = 1;
+    sdf_filter.fd            = 0;
+    sdf_filter.sdf_filter_id = 0x00000001;  // hardcoded for the moment
     return true;
   }
 
@@ -1021,23 +1037,27 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     if (upf_cfg.enable_qers()) {
       n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
     }
+    break;
   }
   for (const auto& dl_edge : dl_edges) {
     nlohmann::json j = dl_edge->flow_information;
     Logger::smf_app().info("Create PDR for FlowInfo:\n %s", j.dump());
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
+    break;
   }
 
   if (upf_cfg.enable_dl_pdr_in_pfcp_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
-      n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge, false));
       // if (upf_cfg.enable_qers()) {
       //   n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
       // }
+      break;
     }
 
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
+      break;
     }
 
     /* for (const auto& ul_edge : ul_edges) {
@@ -1050,6 +1070,35 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     Logger::smf_app().info(
         "Adding DL PDR and FAR during PFCP session establishment");
   }
+
+  // User id
+  pfcp::user_id_t user_id = {};
+  user_id.msisdnf         = 0;
+  user_id.naif            = 0;
+  user_id.imeif           = 1;
+  user_id.imsif           = 1;
+  user_id.length_of_imsi  = 8;
+  user_id.imsi.num_digits = 15;
+  user_id.imsi.u1.b[0]    = 0x22;
+  user_id.imsi.u1.b[1]    = 0x06;
+  user_id.imsi.u1.b[2]    = 0x04;
+  user_id.imsi.u1.b[3]    = 0x00;
+  user_id.imsi.u1.b[4]    = 0x00;
+  user_id.imsi.u1.b[5]    = 0x00;
+  user_id.imsi.u1.b[6]    = 0x10;
+
+  user_id.length_of_imei = 8;
+  user_id.imei           = "86700001";
+
+  /*  user_id.length_of_msisdn = 6;
+    user_id.msisdn.u1.b[0] = 0x01;
+    user_id.msisdn.u1.b[1] = 0x00;
+    user_id.msisdn.u1.b[2] = 0x00;
+    user_id.msisdn.u1.b[3] = 0x00;
+    user_id.msisdn.u1.b[4] = 0x00;
+    user_id.msisdn.u1.b[5] = 0xf0;
+*/
+  n4_triggered->pfcp_ies.set(user_id);
 
   // TODO: verify whether N4 SessionID should be included in PDR and FAR
   // (Section 5.8.2.11@3GPP TS 23.501)
@@ -1529,14 +1578,14 @@ smf_procedure_code session_update_sm_context_procedure::run(
       // TODO do we still need this "trick" to increase precedence to not
       // confuse UPF?
       for (const auto& ul_edge : ul_edges_to_update) {
-        ul_edge->precedence += 1;
+        // ul_edge->precedence += 1;
         n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
         if (upf_cfg.enable_qers()) {
           n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
         }
       }
       for (const auto& dl_edge : dl_edges_to_update) {
-        dl_edge->precedence += 1;
+        // dl_edge->precedence += 1;
         n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
       }
       // Re-enable also old URR

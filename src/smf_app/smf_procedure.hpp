@@ -90,7 +90,9 @@ class smf_session_procedure : public smf_procedure {
 
   pfcp::create_qer pfcp_create_qer(const std::shared_ptr<qos_upf_edge>& edge);
 
-  pfcp::create_far pfcp_create_far(const std::shared_ptr<qos_upf_edge>& edge);
+  pfcp::create_far pfcp_create_far(
+      const std::shared_ptr<qos_upf_edge>& edge,
+      bool is_outer_header_creation = true);
 
   pfcp::create_pdr pfcp_create_pdr(const std::shared_ptr<qos_upf_edge>& edge);
 
@@ -133,7 +135,7 @@ class smf_session_procedure : public smf_procedure {
 
   static bool pfcp_sdf_filter(
       const std::shared_ptr<qos_upf_edge>& edge, pfcp::sdf_filter_t& sdf_filter,
-      bool ethernet_sdf_filter = false);
+      bool ethernet_sdf_filter = false, bool is_flow_description = true);
 
   static bool pfcp_ethernet_packet_filter(
       const std::shared_ptr<qos_upf_edge>& edge,
