@@ -825,7 +825,7 @@ bool smf_session_procedure::pfcp_sdf_filter(
       sdf_filter.flow_description = edge->flow_information.getFlowDescription();
     }
 
-    sdf_filter.flow_description = "permit out ip from any to 12.1.1.1";
+    sdf_filter.flow_description = "permit out ip from any to 172.16.0.1";
     sdf_filter.length_of_flow_description =
         sdf_filter.flow_description.length();
     sdf_filter.sdf_filter_id = 0x00000001;  // hardcoded for the moment
@@ -1006,7 +1006,7 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   pfcp::fseid_t cp_fseid = {};
   smf_cfg->get_pfcp_fseid(cp_fseid);
   cp_fseid.seid      = sps->seid;
-  n4_triggered->seid = sps->seid;
+  n4_triggered->seid = 0;
   n4_triggered->pfcp_ies.set(cp_fseid);
 
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
@@ -1073,11 +1073,11 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
   // User id
   pfcp::user_id_t user_id = {};
-  user_id.msisdnf         = 0;
+  user_id.msisdnf         = 1;
   user_id.naif            = 0;
   user_id.imeif           = 1;
   user_id.imsif           = 1;
-  user_id.length_of_imsi  = 8;
+  user_id.length_of_imsi  = 7;
   user_id.imsi.num_digits = 15;
   user_id.imsi.u1.b[0]    = 0x22;
   user_id.imsi.u1.b[1]    = 0x06;
@@ -1090,14 +1090,15 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   user_id.length_of_imei = 8;
   user_id.imei           = "86700001";
 
-  /*  user_id.length_of_msisdn = 6;
-    user_id.msisdn.u1.b[0] = 0x01;
-    user_id.msisdn.u1.b[1] = 0x00;
-    user_id.msisdn.u1.b[2] = 0x00;
-    user_id.msisdn.u1.b[3] = 0x00;
-    user_id.msisdn.u1.b[4] = 0x00;
-    user_id.msisdn.u1.b[5] = 0xf0;
-*/
+  user_id.length_of_msisdn  = 6;
+  user_id.msisdn.num_digits = 11;
+  user_id.msisdn.u1.b[0]    = 0x01;
+  user_id.msisdn.u1.b[1]    = 0x00;
+  user_id.msisdn.u1.b[2]    = 0x00;
+  user_id.msisdn.u1.b[3]    = 0x00;
+  user_id.msisdn.u1.b[4]    = 0x00;
+  user_id.msisdn.u1.b[5]    = 0xf0;
+
   n4_triggered->pfcp_ies.set(user_id);
 
   // TODO: verify whether N4 SessionID should be included in PDR and FAR
