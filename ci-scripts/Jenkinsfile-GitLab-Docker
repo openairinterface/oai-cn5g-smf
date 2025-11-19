@@ -72,6 +72,8 @@ server = 'https://api.oai.cs.eurecom.fr:6443'
 // Docker build options
 dockerBuildOptions = '--no-cache '
 
+runRobotStage = false
+
 //-------------------------------------------------------------------------------
 // Pipeline start
 pipeline {
@@ -495,6 +497,9 @@ pipeline {
         }
         // Home-made RAN emulator
         stage ('Robot-Test') {
+          when {
+            expression { runRobotStage }
+          }
           steps {
             script {
               gitlabCommitStatus(name: "Robot-Test") {
@@ -525,6 +530,9 @@ pipeline {
         }
         // Home-made RAN emulator
         stage ('Robot-NorthBound-Test') {
+          when {
+            expression { runRobotStage }
+          }
           steps {
             script {
               gitlabCommitStatus(name: "Robot-NorthBound-Test") {
