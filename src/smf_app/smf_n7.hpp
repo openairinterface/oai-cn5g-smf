@@ -121,12 +121,12 @@ struct policy_association {
         }
       }
     }
-    // TODO: SubsSessAmbr
+    // SubsSessAmbr
     oai::model::common::Ambr ambr = {};
     ambr.setUplink(session_ambr.uplink);
     ambr.setDownlink(session_ambr.downlink);
     context.setSubsSessAmbr(ambr);
-    // TODO: SubsDefQos
+    // SubsDefQos
     oai::model::common::SubscribedDefaultQos def_qos = {};
     def_qos.setR5qi(default_qos._5qi);
     oai::model::common::Arp arp = {};
@@ -139,14 +139,6 @@ struct policy_association {
     pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
                         ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
     arp.setPreemptVuln(pv);
-
-    // arp.setPreemptCap
-    //  arp.setPreemptionCapability(
-    //      static_cast<oai::model::common::Arp5gc::PreemptionCapabilityEnum>(
-    //          default_qos.arp.preemption_capability));
-    //  arp.setPreemptionVulnerability(
-    //      static_cast<oai::model::common::Arp5gc::PreemptionVulnerabilityEnum>(
-    //          default_qos.arp.preemption_vulnerability));
     def_qos.setArp(arp);
     context.setSubsDefQos(def_qos);
   }

@@ -816,7 +816,6 @@ bool smf_session_procedure::pfcp_sdf_filter(
       sdf_filter.flow_description = edge->flow_information.getFlowDescription();
     }
 
-    sdf_filter.flow_description = "permit out ip from any to any";
     sdf_filter.length_of_flow_description =
         sdf_filter.flow_description.length();
     return true;

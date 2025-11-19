@@ -2219,7 +2219,7 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
-  nf_instance_profile.set_fqdn("smf.oai.eur");  // TODO: Remove hardcoded value
+  nf_instance_profile.set_fqdn(smf_cfg->get_local()->get_host());
 
   // NF services
   // IP Endpoint (common for each service)

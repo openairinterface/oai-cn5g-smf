@@ -4278,8 +4278,6 @@ std::string smf_context::get_amf_addr_from_amf_status_uri(
       addr = full_addr;
     }
 
-    Logger::smf_api_server().error("Bad IPv4 for AMF %s", addr.c_str());
-
     std::string ip_addr = {};
     uint32_t port       = {0};
     uint8_t addr_type   = {0};
