@@ -67,6 +67,7 @@
 #include "utils.hpp"
 #include "mime_parser.hpp"
 #include "http_definitions.hpp"
+#include "fqdn.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::utils;
@@ -803,6 +804,29 @@ void smf_context::get_session_ambr(
 }
 
 //------------------------------------------------------------------------------
+void smf_context::get_session_ambr(
+    session_ambr_t& session_ambr, const snssai_t& snssai,
+    const std::string& dnn) {
+  Logger::smf_app().debug(
+      "Get AMBR info from the subscription information (DNN %s)", dnn.c_str());
+
+  std::shared_ptr<session_management_subscription> ss = {};
+  std::shared_ptr<dnn_configuration_t> sdc            = {};
+  find_dnn_subscription(snssai, ss);
+
+  if (nullptr != ss) {
+    ss->find_dnn_configuration(dnn, sdc);
+    if (nullptr != sdc) {
+      session_ambr = sdc->session_ambr;
+    }
+  } else {
+    Logger::smf_app().warn(
+        "Could not get default info from the subscription information for AMBR "
+        "Dl/UL value, use default 1 MBPS");
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
@@ -1078,11 +1102,15 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     paa_opt                               = std::make_optional<paa_t>(paa);
     include_ue_ip_in_sm_association_estab = true;
   }
+  subscribed_default_qos_t default_qos = {};
+  get_default_qos(snssai, smreq->req.get_dnn(), default_qos);
+  session_ambr_t session_ambr = {};
+  get_session_ambr(session_ambr, snssai, smreq->req.get_dnn());
 
   sp->policy_ptr->set_context(
       smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(),
-      paa_opt);
+      default_qos, session_ambr, paa_opt);
 
   sp->policy_ptr->id = smreq->scid;
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
@@ -4249,8 +4277,21 @@ std::string smf_context::get_amf_addr_from_amf_status_uri(
     } else {
       addr = full_addr;
     }
+
+    Logger::smf_api_server().error("Bad IPv4 for AMF %s", addr.c_str());
+
+    std::string ip_addr = {};
+    uint32_t port       = {0};
+    uint8_t addr_type   = {0};
+
+    if (!oai::utils::fqdn::resolve(addr, ip_addr, port, addr_type)) {
+      Logger::smf_app().warn(
+          "Bad IPv4 for AMF  %s: cannot resolve the hostname!", addr.c_str());
+      ip_addr = addr;
+    }
+
     struct in_addr amf_ipv4_addr;
-    if (inet_pton(AF_INET, trim(addr).c_str(), &amf_ipv4_addr) == 0) {
+    if (inet_pton(AF_INET, trim(ip_addr).c_str(), &amf_ipv4_addr) == 0) {
       Logger::smf_api_server().warn("Bad IPv4 for AMF");
     } else {
       if (smf_cfg->enable_tls())

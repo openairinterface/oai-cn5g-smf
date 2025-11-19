@@ -333,6 +333,10 @@ void smf_profile::get_nf_services(std::vector<nf_service_t>& n) const {
   n = nf_services;
 }
 
+void smf_profile::add_nf_service_list(const oai::common::sbi::nf_service_t& n) {
+  nf_service_list.emplace(std::make_pair(n.service_instance_id, n));
+}
+
 //------------------------------------------------------------------------------
 void smf_profile::set_custom_info(const nlohmann::json& c) {
   custom_info = c;
@@ -369,6 +373,14 @@ void smf_profile::display() const {
   }
   for (auto service : nf_services) {
     Logger::smf_app().debug("\t\t%s", service.to_string().c_str());
+  }
+
+  if (nf_service_list.size() > 0) {
+    Logger::smf_app().debug("\tNF Service List");
+  }
+  for (const auto& service : nf_service_list) {
+    Logger::smf_app().debug("\t\t%s", service.first.c_str());
+    Logger::smf_app().debug("\t\t\t%s", service.second.to_string().c_str());
   }
 
   if (!custom_info.empty()) {
@@ -428,6 +440,49 @@ void smf_profile::to_json(nlohmann::json& data) const {
 
     data["nfServices"].push_back(srv_tmp);
   }
+
+  // NF service list
+  data["nfServiceList"] = {};
+  for (const auto& service : nf_service_list) {
+    nlohmann::json srv_tmp       = {};
+    srv_tmp["serviceInstanceId"] = service.second.service_instance_id;
+    srv_tmp["serviceName"]       = service.second.service_name;
+    srv_tmp["versions"]          = nlohmann::json::array();
+    for (auto v : service.second.versions) {
+      nlohmann::json v_tmp     = {};
+      v_tmp["apiVersionInUri"] = v.api_version_in_uri;
+      v_tmp["apiFullVersion"]  = v.api_full_version;
+      srv_tmp["versions"].push_back(v_tmp);
+    }
+    srv_tmp["scheme"]          = service.second.scheme;
+    srv_tmp["nfServiceStatus"] = service.second.nf_service_status;
+    /* // IP endpoints
+     srv_tmp["ipEndPoints"] = nlohmann::json::array();
+     for (auto endpoint : service.second.ip_endpoints) {
+       nlohmann::json ep_tmp = {};
+       ep_tmp["ipv4Address"] = nlohmann::json::array();
+       ep_tmp["ipv4Address"] = inet_ntoa(endpoint.ipv4_address);
+       ep_tmp["transport"]   = endpoint.transport;
+       ep_tmp["port"]        = endpoint.port;
+       srv_tmp["ipEndPoints"].push_back(ep_tmp);
+     }
+     */
+    srv_tmp["fqdn"]     = "smf.oai.eur";  // TODO: remove hardcoded value
+    srv_tmp["capacity"] = 100;            // TODO: remove hardcoded value
+    srv_tmp["load"]     = 0;              // TODO: remove hardcoded value
+    srv_tmp["priority"] = 0;              // TODO: remove hardcoded value
+    // Allowed NF Types
+    srv_tmp["allowedNfTypes"]      = nlohmann::json::array();
+    nlohmann::json allowed_nf_type = "AMF";
+    srv_tmp["allowedNfTypes"].push_back(allowed_nf_type);
+
+    data["nfServiceList"][service.first] = srv_tmp;
+  }
+
+  // Allowed NF Types
+  data["allowedNfTypes"]         = nlohmann::json::array();
+  nlohmann::json allowed_nf_type = "AMF";
+  data["allowedNfTypes"].push_back(allowed_nf_type);
 
   data["custom_info"] = custom_info;
 
