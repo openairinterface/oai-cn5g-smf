@@ -25,12 +25,15 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "logger.hpp"
+#include "smf_config.hpp"
 #include "string.hpp"
 #include "SnssaiSmfInfoItem.h"
 
 using namespace oai::app::smf;
 using namespace oai::common::sbi;
 using namespace oai::model::nrf;
+
+extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 //------------------------------------------------------------------------------
 void nf_profile::set_nf_instance_id(const std::string& instance_id) {
@@ -467,10 +470,10 @@ void smf_profile::to_json(nlohmann::json& data) const {
        srv_tmp["ipEndPoints"].push_back(ep_tmp);
      }
      */
-    srv_tmp["fqdn"]     = "smf.oai.eur";  // TODO: remove hardcoded value
-    srv_tmp["capacity"] = 100;            // TODO: remove hardcoded value
-    srv_tmp["load"]     = 0;              // TODO: remove hardcoded value
-    srv_tmp["priority"] = 0;              // TODO: remove hardcoded value
+    srv_tmp["fqdn"]     = smf_cfg->get_local()->get_host();
+    srv_tmp["capacity"] = 100;  // TODO: remove hardcoded value
+    srv_tmp["load"]     = 0;    // TODO: remove hardcoded value
+    srv_tmp["priority"] = 0;    // TODO: remove hardcoded value
     // Allowed NF Types
     srv_tmp["allowedNfTypes"]      = nlohmann::json::array();
     nlohmann::json allowed_nf_type = "AMF";

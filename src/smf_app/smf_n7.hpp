@@ -132,12 +132,20 @@ struct policy_association {
     oai::model::common::Arp arp = {};
     arp.setPriorityLevel(default_qos.priority_level);
     oai::model::common::PreemptionCapability pc = {};
-    pc.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
-                        ePreemptionCapability_anyOf::NOT_PREEMPT);
+    if (default_qos.arp.preempt_cap == "MAY_PREEMPT")
+      pc.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
+                          ePreemptionCapability_anyOf::MAY_PREEMPT);
+    else
+      pc.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
+                          ePreemptionCapability_anyOf::NOT_PREEMPT);
     arp.setPreemptCap(pc);
     oai::model::common::PreemptionVulnerability pv = {};
-    pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
-                        ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
+    if (default_qos.arp.preempt_vuln == "PREEMPTABLE")
+      pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
+                          ePreemptionVulnerability_anyOf::PREEMPTABLE);
+    else
+      pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
+                          ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
     arp.setPreemptVuln(pv);
     def_qos.setArp(arp);
     context.setSubsDefQos(def_qos);
