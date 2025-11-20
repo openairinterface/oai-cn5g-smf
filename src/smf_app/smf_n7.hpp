@@ -70,6 +70,8 @@ struct policy_association {
       const std::string& supi, const std::string& dnn, const snssai_t& snssai,
       const plmn_t& plmn, const uint8_t pdu_session_id,
       const pdu_session_type_t& pdu_session_type,
+      const subscribed_default_qos_t& default_qos,
+      const session_ambr_t& session_ambr,
       const std::optional<paa_t> paa = std::nullopt) {
     oai::model::common::Snssai snssai_model = snssai.to_model_snssai();
     oai::model::common::PlmnIdNid plmn_id_model;
@@ -119,6 +121,34 @@ struct policy_association {
         }
       }
     }
+    // SubsSessAmbr
+    oai::model::common::Ambr ambr = {};
+    ambr.setUplink(session_ambr.uplink);
+    ambr.setDownlink(session_ambr.downlink);
+    context.setSubsSessAmbr(ambr);
+    // SubsDefQos
+    oai::model::common::SubscribedDefaultQos def_qos = {};
+    def_qos.setR5qi(default_qos._5qi);
+    oai::model::common::Arp arp = {};
+    arp.setPriorityLevel(default_qos.priority_level);
+    oai::model::common::PreemptionCapability pc = {};
+    if (default_qos.arp.preempt_cap == "MAY_PREEMPT")
+      pc.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
+                          ePreemptionCapability_anyOf::MAY_PREEMPT);
+    else
+      pc.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
+                          ePreemptionCapability_anyOf::NOT_PREEMPT);
+    arp.setPreemptCap(pc);
+    oai::model::common::PreemptionVulnerability pv = {};
+    if (default_qos.arp.preempt_vuln == "PREEMPTABLE")
+      pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
+                          ePreemptionVulnerability_anyOf::PREEMPTABLE);
+    else
+      pv.setEnumValue(oai::model::common::PreemptionVulnerability_anyOf::
+                          ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
+    arp.setPreemptVuln(pv);
+    def_qos.setArp(arp);
+    context.setSubsDefQos(def_qos);
   }
 
   std::string toString() const {

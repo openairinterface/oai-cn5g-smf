@@ -856,6 +856,17 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::string& dnn);
 
   /*
+   * Get the default value of Session-AMBR
+   * @param [session_ambr_t &] session_ambr
+   * @param [const snssai_t &] snssai
+   * @param [const std::string &] dnn
+   * @return void
+   */
+  void get_session_ambr(
+      session_ambr_t& session_ambr, const snssai_t& snssai,
+      const std::string& dnn);
+
+  /*
    * Get the default value of Session-AMBR and stored as
    * Ngap_PDUSessionAggregateMaximumBitRate
    * @param [Ngap_PDUSessionAggregateMaximumBitRate_t &] session_ambr

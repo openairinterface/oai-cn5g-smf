@@ -160,10 +160,12 @@ upf::upf(
   UPInterfaceType type_n6;
   type_n3.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
   type_n6.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
-  item_n3.setNetworkInstance("access.oai.org");
+  item_n3.setNetworkInstance(
+      "access.oai.org");  // TODO: get this parameter from config file
   item_n3.setInterfaceType(type_n3);
 
-  item_n6.setNetworkInstance("core.oai.org");
+  item_n6.setNetworkInstance(
+      "core.oai.org");  // TODO: get this parameter from config file
   item_n6.setInterfaceType(type_n6);
 
   m_upf_info.setInterfaceUpfInfoList(

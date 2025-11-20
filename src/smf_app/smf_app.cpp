@@ -2219,6 +2219,7 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
+  nf_instance_profile.set_fqdn(smf_cfg->get_local()->get_host());
 
   // NF services
   // IP Endpoint (common for each service)
@@ -2232,7 +2233,7 @@ void smf_app::generate_smf_profile() {
 
   // nsmf-pdusession
   nf_service_t nf_service        = {};
-  nf_service.service_instance_id = "nsmf-pdusession";
+  nf_service.service_instance_id = smf_instance_id;
   nf_service.service_name        = "nsmf-pdusession";
   nf_service_version_t version   = {};
   version.api_version_in_uri     = "v1";
@@ -2241,6 +2242,8 @@ void smf_app::generate_smf_profile() {
   nf_service.scheme            = "http";
   nf_service.nf_service_status = "REGISTERED";
   nf_service.ip_endpoints.push_back(endpoint);
+
+  nf_instance_profile.add_nf_service_list(nf_service);
 
   // nsmf-event-exposure
   nf_service_t nf_service_evts        = {};

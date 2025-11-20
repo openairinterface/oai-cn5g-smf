@@ -815,6 +815,7 @@ bool smf_session_procedure::pfcp_sdf_filter(
     } else {
       sdf_filter.flow_description = edge->flow_information.getFlowDescription();
     }
+
     sdf_filter.length_of_flow_description =
         sdf_filter.flow_description.length();
     return true;
