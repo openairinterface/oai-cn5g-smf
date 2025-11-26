@@ -242,8 +242,9 @@ void nf_profile::to_json(nlohmann::json& data) const {
   }
   // ipv4_addresses
   data["ipv4Addresses"] = nlohmann::json::array();
+  nlohmann::json tmp    = "smf.oai.eur";
   for (auto address : ipv4_addresses) {
-    data["ipv4Addresses"].push_back(inet_ntoa(address));
+    data["ipv4Addresses"].push_back(tmp);
   }
   // // ipv6_addresses
   // data["ipv6Addresses"] = nlohmann::json::array();
@@ -427,19 +428,23 @@ void smf_profile::to_json(nlohmann::json& data) const {
       nlohmann::json v_tmp     = {};
       v_tmp["apiVersionInUri"] = v.api_version_in_uri;
       v_tmp["apiFullVersion"]  = v.api_full_version;
+      v_tmp["expiry"]          = "2025-11-26T08:31:18.900402358Z";
       srv_tmp["versions"].push_back(v_tmp);
     }
-    srv_tmp["scheme"]          = service.scheme;
+    srv_tmp["scheme"]          = "https";
     srv_tmp["nfServiceStatus"] = service.nf_service_status;
+    srv_tmp["apiPrefix"]       = "http://smf.oai.eur:8080";
+
     // IP endpoints
-    srv_tmp["ipEndPoints"] = nlohmann::json::array();
-    for (auto endpoint : service.ip_endpoints) {
-      nlohmann::json ep_tmp = {};
-      ep_tmp["ipv4Address"] = inet_ntoa(endpoint.ipv4_address);
-      ep_tmp["transport"]   = endpoint.transport;
-      ep_tmp["port"]        = endpoint.port;
-      srv_tmp["ipEndPoints"].push_back(ep_tmp);
-    }
+    /* srv_tmp["ipEndPoints"] = nlohmann::json::array();
+     for (auto endpoint : service.ip_endpoints) {
+       nlohmann::json ep_tmp = {};
+       ep_tmp["ipv4Address"] = inet_ntoa(endpoint.ipv4_address);
+       ep_tmp["transport"]   = endpoint.transport;
+       ep_tmp["port"]        = endpoint.port;
+       srv_tmp["ipEndPoints"].push_back(ep_tmp);
+     }
+ */
 
     data["nfServices"].push_back(srv_tmp);
   }
@@ -470,24 +475,25 @@ void smf_profile::to_json(nlohmann::json& data) const {
        srv_tmp["ipEndPoints"].push_back(ep_tmp);
      }
      */
-    srv_tmp["fqdn"]     = smf_cfg->get_local()->get_host();
-    srv_tmp["capacity"] = 100;  // TODO: remove hardcoded value
-    srv_tmp["load"]     = 0;    // TODO: remove hardcoded value
-    srv_tmp["priority"] = 0;    // TODO: remove hardcoded value
+    // srv_tmp["fqdn"]     = smf_cfg->get_local()->get_host();
+    // srv_tmp["capacity"] = 100;  // TODO: remove hardcoded value
+    // srv_tmp["load"]     = 0;    // TODO: remove hardcoded value
+    // srv_tmp["priority"] = 0;    // TODO: remove hardcoded value
     // Allowed NF Types
-    srv_tmp["allowedNfTypes"]      = nlohmann::json::array();
-    nlohmann::json allowed_nf_type = "AMF";
-    srv_tmp["allowedNfTypes"].push_back(allowed_nf_type);
+    // srv_tmp["allowedNfTypes"]      = nlohmann::json::array();
+    // nlohmann::json allowed_nf_type = "AMF";
+    // srv_tmp["allowedNfTypes"].push_back(allowed_nf_type);
 
     data["nfServiceList"][service.first] = srv_tmp;
   }
 
   // Allowed NF Types
-  data["allowedNfTypes"]         = nlohmann::json::array();
-  nlohmann::json allowed_nf_type = "AMF";
-  data["allowedNfTypes"].push_back(allowed_nf_type);
+  // data["allowedNfTypes"]         = nlohmann::json::array();
+  // nlohmann::json allowed_nf_type = "AMF";
+  // data["allowedNfTypes"].push_back(allowed_nf_type);
 
-  data["custom_info"] = custom_info;
+  data["customInfo"]["oauth2"] = false;
+  data["locality"]             = "area1";
 
   // SMF info
   data["smfInfo"]                      = {};

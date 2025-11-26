@@ -448,6 +448,14 @@ void smf_sbi::register_nf_instance(
       msg->http_version);
   nlohmann::json json_data = {};
   msg->profile.to_json(json_data);
+  nlohmann::json plmn_item = {};
+  plmn_item["mcc"]         = "208";
+  plmn_item["mnc"]         = "93";
+
+  nlohmann::json plmn_list = nlohmann::json::array();
+  plmn_list.push_back(plmn_item);
+
+  json_data["plmnList"] = plmn_list;
 
   std::string url = oai::smf::api::smf_sbi_helper::get_nrf_nf_instance_uri(
       smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(),

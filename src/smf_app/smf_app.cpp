@@ -2219,7 +2219,7 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
-  nf_instance_profile.set_fqdn(smf_cfg->get_local()->get_host());
+  nf_instance_profile.set_fqdn("http://10.100.200.5:8080");
 
   // NF services
   // IP Endpoint (common for each service)
@@ -2233,25 +2233,29 @@ void smf_app::generate_smf_profile() {
 
   // nsmf-pdusession
   nf_service_t nf_service        = {};
-  nf_service.service_instance_id = smf_instance_id;
+  nf_service.service_instance_id = smf_instance_id + "nsmf-pdusession";
   nf_service.service_name        = "nsmf-pdusession";
   nf_service_version_t version   = {};
   version.api_version_in_uri     = "v1";
-  version.api_full_version       = "1.0.0";  // TODO: to be updated
+  version.api_full_version =
+      "https://10.100.200.5:8080/nsmf-pdusession/v1";  // TODO: to be updated
   nf_service.versions.push_back(version);
-  nf_service.scheme            = "http";
+  nf_service.scheme            = "https";
   nf_service.nf_service_status = "REGISTERED";
+  nf_service.api_prefix        = "http://10.100.200.5:8080";
+
   nf_service.ip_endpoints.push_back(endpoint);
 
   nf_instance_profile.add_nf_service_list(nf_service);
 
   // nsmf-event-exposure
   nf_service_t nf_service_evts        = {};
-  nf_service_evts.service_instance_id = "nsmf_event-exposure";
-  nf_service_evts.service_name        = "nsmf_event-exposure";
+  nf_service_evts.service_instance_id = smf_instance_id + "nsmf-event-exposure";
+  nf_service_evts.service_name        = "nsmf-event-exposure";
   nf_service_version_t version_evts   = {};
   version_evts.api_version_in_uri     = "v1";
-  version_evts.api_full_version       = "1.0.0";  // TODO: to be updated
+  version_evts.api_full_version =
+      "http://10.100.200.5:8080/nsmf-pdusession/v1";  // TODO: to be updated
   nf_service_evts.versions.push_back(version_evts);
   nf_service_evts.scheme            = "http";
   nf_service_evts.nf_service_status = "REGISTERED";
