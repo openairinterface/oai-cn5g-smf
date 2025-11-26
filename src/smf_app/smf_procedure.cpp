@@ -1089,9 +1089,14 @@ smf_procedure_code session_create_sm_context_procedure::run(
   // TODO this conversion should be somewhere else but is only used once so far
   oai::model::common::Arp arp;
   oai::model::common::PreemptionVulnerability preempt_vuln;
-  from_json(default_qos.arp.preempt_vuln, preempt_vuln);
+  preempt_vuln.setEnumValue(
+      oai::model::common::PreemptionVulnerability_anyOf::
+          ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
+  // from_json(default_qos.arp.preempt_vuln, preempt_vuln);
   oai::model::common::PreemptionCapability preempt_cap;
-  from_json(default_qos.arp.preempt_cap, preempt_cap);
+  preempt_cap.setEnumValue(oai::model::common::PreemptionCapability_anyOf::
+                               ePreemptionCapability_anyOf::NOT_PREEMPT);
+  // from_json(default_qos.arp.preempt_cap, preempt_cap);
 
   arp.setPreemptCap(preempt_cap);
   arp.setPreemptVuln(preempt_vuln);

@@ -198,6 +198,7 @@ void smf_http2_server::start() {
             if (method.compare("modify") == 0) {  // Update SM Context Request
               Logger::smf_api_server().info(
                   "Handle Update SM Context Request from AMF");
+              smf_ref = "1";
 
               SmContextUpdateMessage smContextUpdateMessage = {};
               SmContextUpdateData smContextUpdateData       = {};

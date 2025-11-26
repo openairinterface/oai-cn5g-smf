@@ -205,8 +205,11 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
     policy_association& association) {
   nlohmann::json json_data;
   to_json(json_data, association.context);
+  json_data["accessType"] = "3GPP_ACCESS";
 
   Logger::smf_n7().info("Sending PCF SM policy association creation request");
+  Logger::smf_n7().info("PCF URI: %s", root_uri.c_str());
+  Logger::smf_n7().info("Data: %s", json_data.dump());
 
   request req =
       http_client_inst->prepare_json_request(root_uri, json_data.dump());
@@ -219,7 +222,9 @@ sm_policy_status_code smf_pcf_client::create_policy_association(
       return sm_policy_status_code::INTERNAL_ERROR;
     } else {
       association.pcf_location = resp.headers["location"];
-      nlohmann::json j         = {};
+      Logger::smf_n7().info("SM Policy Association response: %s", resp.body);
+
+      nlohmann::json j = {};
       try {
         j = nlohmann::json::parse(resp.body);
         from_json(j, association.decision);

@@ -2385,7 +2385,7 @@ void smf_app::trigger_upf_status_notification_subscribe() {
   json_data["reqNotifEvents"] = nlohmann::json::array();
   json_data["reqNotifEvents"].push_back("NF_REGISTERED");
   json_data["reqNotifEvents"].push_back("NF_DEREGISTERED");
-  json_data["validityTime"] = "20390531T235959";
+  json_data["validityTime"] = "2037-11-26T14:46:28Z";
 
   auto nrf_sbi    = smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi();
   std::string url = oai::smf::api::smf_sbi_helper::get_nrf_nfm_api_root(
