@@ -415,8 +415,12 @@ void smf_http2_server::start() {
 
   // SMF Callback (including SM Policy Notification)
   server.handle(
-      smf_sbi_helper::SmfCallbackBase(),
+      smf_sbi_helper::SmfCallbackBase() + "/",
       [&](const request& request, const response& response) {
+        Logger::smf_api_server().debug("=== CALLBACK HANDLER INVOKED ===");
+        Logger::smf_api_server().debug("Request URI: %s", request.uri().path.c_str());
+        Logger::smf_api_server().debug("Request method: %s", request.method().c_str());
+
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
             Logger::smf_api_server().debug("Received a callback");
@@ -491,6 +495,33 @@ void smf_http2_server::start() {
             response.end();
             return;
           }
+        });
+      });
+
+  // Default catch-all handler to log unmatched requests
+  Logger::smf_api_server().debug("Registering default catch-all handler");
+  server.handle(
+      "/",
+      [&](const request& request, const response& response) {
+        Logger::smf_api_server().warn("=== DEFAULT HANDLER: UNMATCHED REQUEST ===");
+        Logger::smf_api_server().warn("Request URI: %s", request.uri().path.c_str());
+        Logger::smf_api_server().warn("Request method: %s", request.method().c_str());
+        Logger::smf_api_server().warn("Request host: %s", request.uri().host.c_str());
+
+        // Log request headers
+        for (const auto& header : request.header()) {
+          Logger::smf_api_server().warn("Header: %s = %s", header.first.c_str(), header.second.value.c_str());
+        }
+
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          if (len > 0) {
+            std::string msg((char*) data, len);
+            Logger::smf_api_server().warn("Request body: %s", msg.c_str());
+          }
+
+          // Respond with 404 Not Found
+          response.write_head(http_status_code::NOT_FOUND);
+          response.end("Endpoint not found");
         });
       });
 

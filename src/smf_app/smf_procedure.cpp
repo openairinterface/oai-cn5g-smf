@@ -1550,8 +1550,46 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      // TODO:
-      send_n4 = false;
+      // TODO: Implement PCF-initiated session modification logic
+      // 1. Extract SM Policy Decision from the request JSON data
+      // 2. Analyze policy changes (pccRules, qosDecs)
+      // 3. Build N4 Session Modification Request with updated PDRs/FARs/QERs
+      // 4. Update QoS flows and traffic rules based on new policy
+
+      Logger::smf_app().info("Building N4 request for PCF-initiated policy update");
+
+      // TODO: Parse smPolicyDecision from JSON
+      nlohmann::json json_data = {};
+      n11_trigger->req.get_json_data(json_data);
+
+      if (json_data.contains("smPolicyDecision")) {
+        // TODO: Extract policy information
+        auto policy_decision = json_data["smPolicyDecision"];
+
+        // TODO: Process pccRules if present
+        if (policy_decision.contains("pccRules")) {
+          Logger::smf_app().debug("Processing PCC Rules from PCF");
+          // TODO: Parse PCC rules and update session context
+          // TODO: Create/modify PDRs and FARs based on flow descriptions
+        }
+
+        // TODO: Process qosDecs if present
+        if (policy_decision.contains("qosDecs")) {
+          Logger::smf_app().debug("Processing QoS Decisions from PCF");
+          // TODO: Parse QoS decisions and update QoS Flow contexts
+          // TODO: Create/modify QERs based on QoS parameters
+        }
+
+        // TODO: Build N4 Session Modification Request
+        // TODO: Add updated PDRs, FARs, QERs to the request
+        // TODO: Set appropriate PFCP session modification flags
+
+        send_n4 = true; // TODO: Set based on whether UPF update is actually needed
+        Logger::smf_app().warn("TODO: Complete N4 Session Modification Request building");
+      } else {
+        Logger::smf_app().error("No smPolicyDecision found in PCF-initiated request");
+        send_n4 = false;
+      }
     } break;
 
     default: {

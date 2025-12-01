@@ -622,6 +622,12 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
       const oai::model::pcf::SmPolicyDecision& sm_policy_decision);
   oai::model::pcf::SmPolicyDecision get_sm_policy_decision() const;
 
+  // TODO: Add helper methods for parsing SM Policy Decision:
+  // - bool parse_pcc_rules(const nlohmann::json& pccRules);
+  // - bool parse_qos_decisions(const nlohmann::json& qosDecs);
+  // - bool parse_traffic_control_decisions(const nlohmann::json& traffContDecs);
+  // - bool apply_policy_to_session_context(std::shared_ptr<smf_pdu_session> session);
+
  private:
   oai::model::pcf::SmPolicyDecision m_sm_policy_decision;
 };

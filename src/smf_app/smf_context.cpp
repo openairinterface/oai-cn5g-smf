@@ -2553,10 +2553,46 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED) {
     // Process the request -> update UPF if necesssary
-    // TODO:
-    // example:
-    pdu_session_release_procedure = false;
-    update_upf                    = false;
+    // TODO: Parse and apply SM Policy Decision from PCF
+    // 1. Extract smPolicyDecision from JSON data
+    // 2. Parse pccRules and qosDecs
+    // 3. Update session policy context with new rules
+    // 4. Determine if UPF update is needed based on policy changes
+
+    Logger::smf_app().info("Processing PCF-initiated SM Policy Modification");
+
+    // TODO: Extract and parse SM Policy Decision
+    nlohmann::json json_data = {};
+    smreq->req.get_json_data(json_data);
+
+    if (json_data.contains("smPolicyDecision")) {
+      Logger::smf_app().debug("Found smPolicyDecision in request");
+
+      // TODO: Parse smPolicyDecision and extract:
+      // - pccRules: Policy and Charging Control rules
+      // - qosDecs: QoS Decisions
+      // - traffContDecs: Traffic Control Decisions
+      // - chgDecs: Charging Decisions
+
+      // TODO: Apply policy changes to session context:
+      // - Update QoS Flow contexts with new QoS parameters
+      // - Update PDR/FAR rules in session context
+      // - Check if new flows need to be created or existing ones modified
+
+      // TODO: Determine UPF update requirements:
+      // - Compare new policies with existing ones
+      // - Identify PDRs/FARs/QERs that need modification
+      // - Set update_upf = true if changes require UPF interaction
+
+      pdu_session_release_procedure = false;
+      update_upf = true; // TODO: Set based on actual policy analysis
+
+      Logger::smf_app().warn("TODO: Implement SM Policy Decision parsing and application");
+    } else {
+      Logger::smf_app().warn("No smPolicyDecision found in PCF request");
+      pdu_session_release_procedure = false;
+      update_upf = false;
+    }
   }
 
   // Step 5. Create a procedure for update SM context and let the procedure
@@ -4790,7 +4826,12 @@ void smf_context::send_pdu_session_release_response(
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
-        // TODO: To be completed
+        // TODO: Handle PCF-initiated session release
+        // This should handle TerminationNotification from PCF
+        // 1. Extract termination reason from request
+        // 2. Clean up policy associations
+        // 3. Trigger session release procedure
+        // Note: This is different from modification - this is for session termination
       } break;
 
       default: {
