@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*
- *  itti_msg_nx.hpp
- *
- *  Created on:
- *  Author:
- */
-
 #ifndef ITTI_MSG_NX_HPP_INCLUDED_
 #define ITTI_MSG_NX_HPP_INCLUDED_
 
@@ -63,7 +56,7 @@ class itti_nx_trigger_pdu_session_modification : public itti_nx_msg {
       const task_id_t dest)
       : itti_nx_msg(i, orig, dest), msg(), http_version(i.http_version) {}
   const char* get_msg_name() { return "NX_TRIGGER_PDU_SESSION_MODIFICATION"; };
-  smf::pdu_session_modification_network_requested msg;
+  oai::app::smf::pdu_session_modification_network_requested msg;
   uint8_t http_version;
 };
 

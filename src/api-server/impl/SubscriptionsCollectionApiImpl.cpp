@@ -39,7 +39,7 @@
 #include "3gpp_29.508.h"
 #include "itti_msg_sbi.hpp"
 #include "smf_config.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -50,8 +50,8 @@ namespace api {
 using namespace oai::model::smf;
 
 SubscriptionsCollectionApiImpl::SubscriptionsCollectionApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : SubscriptionsCollectionApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}
@@ -65,7 +65,7 @@ void SubscriptionsCollectionApiImpl::create_individual_subcription(
   // Create a  message and store the necessary information
   Logger::smf_api_server().debug(
       "Create a Event Exposure message and store the necessary information");
-  smf::event_exposure_msg event_exposure = {};
+  oai::app::smf::event_exposure_msg event_exposure = {};
 
   // Convert from NsmfEventExposure to event_exposure_msg
   xgpp_conv::smf_event_exposure_notification_from_openapi(
@@ -87,7 +87,8 @@ void SubscriptionsCollectionApiImpl::create_individual_subcription(
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
     response.headers().add<Pistache::Http::Header::Location>(
-        m_address + base + smf_cfg->sbi_api_version + "/nsmf_event-exposure/" +
+        m_address + base + "/nsmf_event-exposure/" +
+        // oai::smf::api::smf_sbi_helper::SmfEventExposurePathSubscriptions +
         std::to_string(sub_id));  // Location header
   }
 

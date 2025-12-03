@@ -1,5 +1,37 @@
 # RELEASE NOTES: #
 
+## v2.2.0 -- December 2025 ##
+
+* Features
+  - Ethernet PDU session
+  - Support framed routing
+  - Support QoS enforcement
+  - Support SMF Registration/Deregistration towards UDM
+  - SM Policy Association Establishment/Modification/Termination
+  - SM Policy Notification
+  - SM Context Status Notify
+  - Trigger the asociation with the UPFs in the configuration file even NRF discovery option is enabled
+  - Support TLS
+* Fixes
+  - Default QoS info: ARP values
+  - Add NF Service List in SMF profile
+  - Fix SmfEventExposurePathSubscriptionsSubscriptionId
+  - Fix SMF SM context update endpoint
+  - Add SubscriptionID for SubscriptionData
+  - Fix NRF URI
+  - Fix NRF NF Discovery SearchNFInstances URI
+  - Fix UDM SDM URI
+  - Mime parser with insensitive content-type
+  - SD with/without 0x prefix
+  - Add fix for QoSFlowDescriptons and QoSFlows IE length
+  - Fix GTP TEID IE
+* Tech Debt
+  - Add support for Ubuntu 24.04
+  - Add support for RHEL 10, update container images to UBI 10
+  - Fix build issue in non-containerized environment
+* Miscellaneous
+  - Code refactoring: NAS SM IEs, NGAP IEs
+
 ## v2.1.0 -- August 2024 ##
 
 * Features

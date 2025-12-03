@@ -64,8 +64,8 @@ class SubscriptionsCollectionApiImpl
     : public oai::smf_server::api::SubscriptionsCollectionApi {
  public:
   SubscriptionsCollectionApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst,
-      std::string address);
+      std::shared_ptr<Pistache::Rest::Router>,
+      oai::app::smf::smf_app* smf_app_inst, std::string address);
   ~SubscriptionsCollectionApiImpl() {}
 
   void create_individual_subcription(
@@ -73,7 +73,7 @@ class SubscriptionsCollectionApiImpl
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::smf_app* m_smf_app;
+  oai::app::smf::smf_app* m_smf_app;
   std::string m_address;
 
  protected:

@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_http2-server.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf-http2-server.h"
 
 #include <boost/algorithm/string.hpp>
@@ -37,33 +29,56 @@
 
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
 #include "smf.h"
 #include "smf_config.hpp"
 #include "smf_msg.hpp"
+#include "http_definitions.hpp"
+#include "smf_sbi_helper.hpp"
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::model::smf;
 using namespace oai::model::common;
+using namespace oai::model::pcf;
+using namespace oai::utils;
+using namespace oai::common::sbi;
+using namespace oai::smf::api;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-
-using namespace oai::common::sbi;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {
   boost::system::error_code ec;
 
+  boost::asio::ssl::context tls(boost::asio::ssl::context::sslv23);
+  bool enable_tls = smf_cfg->enable_tls();
+
+  if (enable_tls) {
+    try {
+      std::string key_file =
+          smf_cfg->get_tls_config().get_cert_key_path() + "/oai_smf.key";
+      std::string certificate_file =
+          smf_cfg->get_tls_config().get_cert_certificate_path() +
+          "/oai_smf.crt";
+      tls.use_private_key_file(key_file, boost::asio::ssl::context::pem);
+      tls.use_certificate_chain_file(certificate_file);
+      configure_tls_context_easy(ec, tls);
+    } catch (std::exception& e) {
+      Logger::smf_app().error("%s", e.what());
+      enable_tls = false;
+    }
+  }
+
   Logger::smf_api_server().info("HTTP2 server being started");
   // Create SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-          NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL,
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathSmContexts,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
@@ -96,7 +111,7 @@ void smf_http2_server::start() {
               return;
             }
 
-            std::vector<mime_part> parts = {};
+            std::unordered_map<std::string, oai::utils::mime_part> parts = {};
             sp.get_mime_parts(parts);
             uint8_t size = parts.size();
             Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -110,17 +125,26 @@ void smf_http2_server::start() {
 
             // step 2. process the request
             try {
-              nlohmann::json::parse(parts[0].body.c_str())
+              nlohmann::json::parse(
+                  parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                   .get_to(smContextCreateData);
               smContextMessage.setJsonData(smContextCreateData);
-              if (parts[1].content_type.compare("application/vnd.3gpp.5gnas") ==
-                  0) {
-                smContextMessage.setBinaryDataN1SmMessage(parts[1].body);
-              } else if (
-                  parts[1].content_type.compare("application/vnd.3gpp.ngap") ==
-                  0) {
-                smContextMessage.setBinaryDataN2SmInformation(parts[1].body);
+
+              for (auto it : parts) {
+                if (boost::iequals(
+                        it.second.content_type,
+                        oai::utils::MIME_CONTENT_TYPE_NAS)) {
+                  smContextMessage.setBinaryDataN1SmMessage(it.second.body);
+                  Logger::smf_api_server().debug("N1 SM message is set");
+                }
+                if (boost::iequals(
+                        it.second.content_type,
+                        oai::utils::MIME_CONTENT_TYPE_NGAP)) {
+                  smContextMessage.setBinaryDataN2SmInformation(it.second.body);
+                  Logger::smf_api_server().debug("N2 SM information is set");
+                }
               }
+
               // process the request
               this->create_sm_contexts_handler(smContextMessage, response);
             } catch (nlohmann::detail::exception& e) {
@@ -141,8 +165,8 @@ void smf_http2_server::start() {
 
   // Update SM Context Request
   server.handle(
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-          NSMF_PDU_SESSION_SM_CONTEXT_UPDATE_URL,
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathSmContextsUpdate,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {
@@ -187,14 +211,15 @@ void smf_http2_server::start() {
                 return;
               }
 
-              std::vector<mime_part> parts = {};
+              std::unordered_map<std::string, oai::utils::mime_part> parts = {};
               sp.get_mime_parts(parts);
               uint8_t size = parts.size();
               Logger::smf_api_server().debug("Number of MIME parts %d", size);
 
               try {
                 if (size > 0) {
-                  nlohmann::json::parse(parts[0].body.c_str())
+                  nlohmann::json::parse(
+                      parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                       .get_to(smContextUpdateData);
                 } else {
                   nlohmann::json::parse(msg.c_str())
@@ -202,20 +227,23 @@ void smf_http2_server::start() {
                 }
                 smContextUpdateMessage.setJsonData(smContextUpdateData);
 
-                for (int i = 1; i < size; i++) {
-                  if (parts[i].content_type.compare(
-                          "application/vnd.3gpp.5gnas") == 0) {
+                for (auto it : parts) {
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NAS)) {
                     smContextUpdateMessage.setBinaryDataN1SmMessage(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N1 SM message is set");
-                  } else if (
-                      parts[i].content_type.compare(
-                          "application/vnd.3gpp.ngap") == 0) {
+                  }
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NGAP)) {
                     smContextUpdateMessage.setBinaryDataN2SmInformation(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N2 SM information is set");
                   }
                 }
+
                 this->update_sm_context_handler(
                     smf_ref, smContextUpdateMessage, response);
 
@@ -248,7 +276,7 @@ void smf_http2_server::start() {
                 return;
               }
 
-              std::vector<mime_part> parts = {};
+              std::unordered_map<std::string, oai::utils::mime_part> parts = {};
               sp.get_mime_parts(parts);
               uint8_t size = parts.size();
               Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -257,7 +285,8 @@ void smf_http2_server::start() {
               SmContextReleaseData smContextReleaseData = {};
               try {
                 if (size > 0) {
-                  nlohmann::json::parse(parts[0].body.c_str())
+                  nlohmann::json::parse(
+                      parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
                       .get_to(smContextReleaseData);
                 } else {
                   nlohmann::json::parse(msg.c_str())
@@ -266,11 +295,12 @@ void smf_http2_server::start() {
 
                 smContextReleaseMessage.setJsonData(smContextReleaseData);
 
-                for (int i = 1; i < size; i++) {
-                  if (parts[i].content_type.compare(
-                          "application/vnd.3gpp.ngap") == 0) {
+                for (auto it : parts) {
+                  if (boost::iequals(
+                          it.second.content_type,
+                          oai::utils::MIME_CONTENT_TYPE_NGAP)) {
                     smContextReleaseMessage.setBinaryDataN2SmInformation(
-                        parts[i].body);
+                        it.second.body);
                     Logger::smf_api_server().debug("N2 SM information is set");
                   }
                 }
@@ -307,8 +337,8 @@ void smf_http2_server::start() {
 
   // NFStatusNotify
   server.handle(
-      NNRF_NF_STATUS_NOTIFY_BASE + smf_cfg->sbi_api_version +
-          NNRF_NF_STATUS_SUBSCRIBE_URL,
+      smf_sbi_helper::SmfStatusNotifyBase() +
+          smf_sbi_helper::SmfStatusNotifyPathSubscriptions,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           std::string msg((char*) data, len);
@@ -330,8 +360,7 @@ void smf_http2_server::start() {
 
   // SMF Configuration
   server.handle(
-      NSMF_CUSTOMIZED_API_BASE + smf_cfg->sbi_api_version +
-          NSMF_CUSTOMIZED_API_CONFIGURATION_URL,
+      smf_sbi_helper::SmfConfBase() + smf_sbi_helper::SmfConfPathConfiguration,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           try {
@@ -354,8 +383,8 @@ void smf_http2_server::start() {
       });
   // Event Exposure
   server.handle(
-      NSMF_EVENT_EXPOSURE_API_BASE + smf_cfg->sbi_api_version +
-          NSMF_EVENT_EXPOSURE_SUBSCRIBE_URL,
+      smf_sbi_helper::SmfEventExposureBase() +
+          smf_sbi_helper::SmfEventExposurePathSubscriptions,
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           try {
@@ -384,10 +413,97 @@ void smf_http2_server::start() {
         });
       });
 
+  // SMF Callback (including SM Policy Notification)
+  server.handle(
+      smf_sbi_helper::SmfCallbackBase(),
+      [&](const request& request, const response& response) {
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          if (len > 0) {
+            Logger::smf_api_server().debug("Received a callback");
+            std::string msg((char*) data, len);
+            Logger::smf_api_server().debug(
+                "Message content \n %s", msg.c_str());
+
+            // Verify request's method
+            if (!boost::iequals(request.method(), "POST")) {
+              response.write_head(http_status_code::BAD_REQUEST);
+              response.end();
+              return;
+            }
+
+            std::vector<std::string> split_result;
+            boost::split(
+                split_result, request.uri().path, boost::is_any_of("/"));
+
+            if (split_result.size() < 6) {
+              Logger::smf_api_server().warn("Requested URL is not implemented");
+              response.write_head(
+                  oai::common::sbi::http_status_code::NOT_IMPLEMENTED);
+              response.end();
+              return;
+            }
+
+            std::string scid         = split_result[split_result.size() - 3];
+            std::string callback_api = split_result[split_result.size() - 2];
+            std::string action       = split_result[split_result.size() - 1];
+            Logger::smf_api_server().info(
+                "smf_ref %s, method %s", scid.c_str(), action.c_str());
+
+            // SM Policy Notification: Example of URI:
+            // https://oai-smf::8080/nsmf-callback/1/sm-policy-control-notify/update
+            if (boost::iequals(callback_api, "sm-policy-control-notify")) {
+              try {
+                if (boost::iequals(action, "update")) {
+                  oai::model::pcf::SmPolicyNotification policyNotification = {};
+                  nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
+                  this->modify_sm_context_handler(
+                      scid, policyNotification, response);
+
+                } else if (boost::iequals(action, "terminate")) {
+                  oai::model::pcf::TerminationNotification
+                      terminationNotification = {};
+                  nlohmann::json::parse(msg.c_str())
+                      .get_to(terminationNotification);
+                  this->terminate_policy_notification_handler(
+                      scid, terminationNotification, response);
+                } else {
+                  response.write_head(http_status_code::BAD_REQUEST);
+                  response.end();
+                  return;
+                }
+
+              } catch (nlohmann::detail::exception& e) {
+                Logger::smf_sbi().warn(
+                    "Can not parse the JSON data (error: %s)!", e.what());
+                response.write_head(http_status_code::BAD_REQUEST);
+                response.end();
+                return;
+              } catch (std::exception& e) {
+                Logger::smf_api_server().warn("Error: %s!", e.what());
+                response.write_head(http_status_code::INTERNAL_SERVER_ERROR);
+                response.end();
+                return;
+              }
+            }
+
+            // TODO:
+            response.write_head(http_status_code::BAD_REQUEST);
+            response.end();
+            return;
+          }
+        });
+      });
+
   running_server = true;
-  if (server.listen_and_serve(ec, m_address, std::to_string(m_port))) {
-    Logger::smf_api_server().error("HTTP2 server error: %s", ec.message());
+
+  if (enable_tls) {
+    server.listen_and_serve(ec, tls, m_address, std::to_string(m_port));
+  } else {
+    server.listen_and_serve(ec, m_address, std::to_string(m_port));
   }
+
+  Logger::smf_api_server().error("HTTP2 server status: %s", ec.message());
+
   running_server = false;
   Logger::smf_api_server().info("HTTP2 server fully stopped");
   return;
@@ -408,7 +524,7 @@ void smf_http2_server::create_sm_contexts_handler(
   Logger::smf_api_server().debug(
       "Create a pdu_session_create_sm_context_request message and store the "
       "necessary information");
-  smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextMessage to pdu_session_create_sm_context_request
   xgpp_conv::sm_context_create_from_openapi(
@@ -417,8 +533,8 @@ void smf_http2_server::create_sm_contexts_handler(
   // Set api root to be used as location header in HTTP response
   sm_context_req_msg.set_api_root(
       // m_address + ":" + std::to_string(m_port) +
-      NSMF_PDU_SESSION_BASE + smf_cfg->sbi_api_version +
-      NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
+      smf_sbi_helper::SmfPduSessionBase() +
+      smf_sbi_helper::SmfPduSessionPathSmContexts);
 
   boost::shared_ptr<boost::promise<nlohmann::json>> p =
       boost::make_shared<boost::promise<nlohmann::json>>();
@@ -431,8 +547,8 @@ void smf_http2_server::create_sm_contexts_handler(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_request>(
+  std::shared_ptr<itti_sbi_create_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -485,32 +601,32 @@ void smf_http2_server::create_sm_contexts_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
@@ -556,7 +672,7 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_UpdateSMContext Request from AMF.");
 
-  smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
 
   // Convert from SmContextUpdateMessage to
   // pdu_session_update_sm_context_request
@@ -573,9 +689,9 @@ void smf_http2_server::update_sm_context_handler(
   Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
   m_smf_app->add_promise(promise_id, p);
 
-  // Handle the itti_n11_update_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_update_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_update_sm_context_request>(
+  // Handle the itti_sbi_update_sm_context_request message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 2;
@@ -627,32 +743,32 @@ void smf_http2_server::update_sm_context_handler(
 
     if (n1_sm_msg_is_set and n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           sm_context_response["n2_sm_information"].get<std::string>(),
           json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n1_sm_msg_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else if (n2_sm_info_is_set) {
       mime_parser::create_multipart_related_content(
-          body, json_data.dump(), oai::http::CURL_MIME_BOUNDARY,
+          body, json_data.dump(), oai::http::MIME_BOUNDARY,
           sm_context_response["n2_sm_information"].get<std::string>(),
           multipart_related_content_part_e::NGAP, json_format);
       h.emplace(
           "content-type", header_value{
                               "multipart/related; boundary=" +
-                              std::string(oai::http::CURL_MIME_BOUNDARY)});
+                              std::string(oai::http::MIME_BOUNDARY)});
     } else {
       h.emplace("content-type", header_value{json_format});
       body = json_data.dump().c_str();
@@ -675,7 +791,7 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Handle PDU Session Release SM Context Request.");
 
-  smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
   // Convert from SmContextReleaseMessage to
   // pdu_session_release_sm_context_request
   xgpp_conv::sm_context_release_from_openapi(
@@ -695,8 +811,8 @@ void smf_http2_server::release_sm_context_handler(
   Logger::smf_api_server().info(
       "Received a PDUSession_ReleaseSMContext Request: PDU Session Release "
       "request from AMF.");
-  std::shared_ptr<itti_n11_release_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_release_sm_context_request>(
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id, smf_ref);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->scid         = smf_ref;
@@ -803,8 +919,9 @@ void smf_http2_server::get_configuration_handler(const response& response) {
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find("httpResponseCode") != result.end()) {
-      http_response_code = result["httpResponseCode"].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -872,8 +989,9 @@ void smf_http2_server::update_configuration_handler(
     uint32_t http_response_code = 0;
     nlohmann::json json_data    = {};
 
-    if (result.find("httpResponseCode") != result.end()) {
-      http_response_code = result["httpResponseCode"].get<int>();
+    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+      http_response_code =
+          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
     }
 
     if (http_response_code == 200) {
@@ -902,7 +1020,7 @@ void smf_http2_server::create_event_subscription_handler(
   Logger::smf_api_server().info("Received SmfCreateEventSubscription Request");
 
   header_map h;
-  smf::event_exposure_msg event_exposure = {};
+  oai::app::smf::event_exposure_msg event_exposure = {};
 
   // Convert from NsmfEventExposure to event_exposure_msg
   xgpp_conv::smf_event_exposure_notification_from_openapi(
@@ -924,16 +1042,130 @@ void smf_http2_server::create_event_subscription_handler(
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
     h.emplace(
-        "Location",
-        header_value{
-            m_address + NSMF_EVENT_EXPOSURE_API_BASE +
-            smf_cfg->sbi_api_version + NSMF_EVENT_EXPOSURE_SUBSCRIBE_URL +
-            std::to_string(sub_id)});
+        "Location", header_value{
+                        m_address + smf_sbi_helper::SmfEventExposureBase() +
+                        smf_sbi_helper::SmfEventExposurePathSubscriptions +
+                        std::to_string(sub_id)});
   }
 
   h.emplace("content-type", header_value{"application/json"});
   response.write_head(http_status_code::CREATED, h);
   response.end(json_data.dump().c_str());
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::modify_sm_context_handler(
+    const std::string& scid_str,
+    const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+    const response& response) {
+  Logger::smf_api_server().info(
+      "Received a PCF-initiated SM Policy Association Modification "
+      "(SmPolicyNotification Request)");
+
+  oai::app::smf::pdu_session_update_sm_context_request sm_context_req_msg = {};
+  nlohmann::json sm_policy_notification                                   = {};
+
+  to_json(sm_policy_notification, smPolicyNotification);
+  sm_context_req_msg.set_json_data(sm_policy_notification);
+
+  // Handle the message in smf_app
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f;
+  f = p->get_future();
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
+  m_smf_app->add_promise(promise_id, p);
+
+  // Handle the message in smf_app
+  std::shared_ptr<itti_sbi_update_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_update_sm_context_request>(
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid_str);
+  itti_msg->req                    = sm_context_req_msg;
+  itti_msg->http_version           = 2;
+  itti_msg->session_procedure_type = session_management_procedures_type_e::
+      PDU_SESSION_MODIFICATION_PCF_INITIATED;
+  m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
+
+  // TODO: use wait_for_result from common src
+  boost::future_status status;
+  // wait for timeout or ready
+  status = f.wait_for(boost::chrono::milliseconds(FUTURE_STATUS_TIMEOUT_MS));
+  if (status == boost::future_status::ready) {
+    assert(f.is_ready());
+    assert(f.has_value());
+    assert(!f.has_exception());
+
+    // Wait for the result from UPF and send reply to PCF
+    nlohmann::json policy_notification_response = f.get();
+    Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+
+    uint32_t http_response_code = 0;
+    nlohmann::json json_data    = {};
+    header_map h                = {};
+
+    if (policy_notification_response.find(
+            oai::http::kSbiResponseHttpResponseCode) !=
+        policy_notification_response.end()) {
+      http_response_code =
+          policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
+              .get<int>();
+    }
+
+    if (http_response_code == 200) {
+      response.write_head(http_status_code::OK);
+      response.end();
+
+    } else {
+      // Problem details
+      if (policy_notification_response.find("ProblemDetails") !=
+          policy_notification_response.end()) {
+        json_data = policy_notification_response["ProblemDetails"];
+      }
+      h.emplace("content-type", header_value{"application/problem+json"});
+      response.end(json_data.dump().c_str());
+    }
+  } else {
+    uint16_t http_code = http_status_code::REQUEST_TIMEOUT;
+    response.write_head(http_code);
+    response.end();
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::terminate_policy_notification_handler(
+    const std::string& scid,
+    const oai::model::pcf::TerminationNotification& terminationNotification,
+    const response& response) {
+  Logger::smf_api_server().info(
+      "Received a PCF-initiated SM Policy Association Termination Request "
+      "(TerminationNotification Request)");
+
+  // Send response to the PCF
+  response.write_head(http_status_code::NO_CONTENT);
+  response.end();
+
+  // Process the request in APP
+  oai::app::smf::pdu_session_release_sm_context_request sm_context_req_msg = {};
+  nlohmann::json termination_notification                                  = {};
+
+  to_json(termination_notification, terminationNotification);
+  sm_context_req_msg.set_json_data(termination_notification);
+
+  // Generate ID for this promise (to be used in SMF-APP)
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  Logger::smf_api_server().debug("Promise ID generated %d", promise_id);
+
+  std::shared_ptr<itti_sbi_release_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_release_sm_context_request>(
+          TASK_SMF_SBI, TASK_SMF_APP, promise_id, scid);
+  itti_msg->req          = sm_context_req_msg;
+  itti_msg->http_version = 2;
+  itti_msg->session_procedure_type =
+      session_management_procedures_type_e::PDU_SESSION_RELEASE_PCF_INITIATED;
+  m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
 }
 
 //------------------------------------------------------------------------------

@@ -19,21 +19,13 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event.cpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_event.hpp"
 #include "itti.hpp"
 #include "smf_app.hpp"
 #include "smf_subscription.hpp"
 
-using namespace smf;
-extern smf::smf_app* smf_app_inst;
+using namespace oai::app::smf;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------

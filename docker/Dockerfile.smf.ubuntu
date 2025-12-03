@@ -30,11 +30,12 @@
 # BASE IMAGE
 #---------------------------------------------------------------------
 ARG BASE_IMAGE=ubuntu:jammy
-FROM $BASE_IMAGE as oai-smf-base
+FROM $BASE_IMAGE AS oai-smf-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Paris
 ENV IS_DOCKERFILE=1
+ARG ENABLE_LTTNG=false
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
@@ -59,24 +60,36 @@ RUN ./build_smf --install-deps --force
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-FROM oai-smf-base as oai-smf-builder
+FROM oai-smf-base AS oai-smf-builder
 # Copying source code
 COPY . /openair-smf
 # Building SMF
 WORKDIR /openair-smf/build/scripts
-RUN ldconfig && \
-    ./build_smf --clean --Verbose --build-type Release --jobs && \
+RUN  if [ "$ENABLE_LTTNG" = "true" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        lttng-modules-dkms \
+        liblttng-ust-dev \
+        lttng-tools && \
+        ldconfig && \
+        ./build_smf --clean --Verbose --build-type Release --jobs --lttng; \
+    else \
+        ldconfig && \
+        ./build_smf --clean --Verbose --build-type Release --jobs; \
+    fi && \
     ldd /openair-smf/build/smf/build/smf && \
     mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf
 
-FROM mikefarah/yq:latest as yq-source
 
 #---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
-FROM $BASE_IMAGE as oai-smf
+FROM $BASE_IMAGE AS oai-smf
+ARG TARGETPLATFORM
+ARG VERSION=v4.47.1
+ENV TARGETPLATFORM=${TARGETPLATFORM}
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Paris
+ARG ENABLE_LTTNG=false
 # We install some debug tools for the moment in addition of mandatory libraries
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
@@ -88,6 +101,7 @@ RUN apt-get update && \
       tcpdump \
       iputils-ping \
       bc \
+      wget \
 # Mandatory packages for the NF to run
       libssh-4 \
       openssl \
@@ -108,6 +122,8 @@ RUN apt-get update && \
 # Ubuntu 22 --> boost74
       libboost-thread1.7?.0 \
       libboost-chrono1.7?.0 \
+# lttng
+  && if [ "$ENABLE_LTTNG" = "true" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes liblttng-ust-dev; fi \
   && rm -rf /var/lib/apt/lists/*
 
 # Copying executable and generated libraries
@@ -116,7 +132,15 @@ COPY --from=oai-smf-builder \
     /openair-smf/build/smf/build/oai_smf \
     /openair-smf/scripts/healthcheck.sh \
     ./
-COPY --from=yq-source /usr/bin/yq /usr/bin
+
+RUN echo "Target platform is: ${TARGETPLATFORM}" && \
+    case "${TARGETPLATFORM}" in \
+      "linux/amd64") BINARY="yq_linux_amd64"; ;; \
+      "linux/arm64") BINARY="yq_linux_arm64"; ;; \
+      *) echo "Unsupported platform"; exit 1; ;; \
+    esac && \
+    wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY} -O /usr/bin/yq && \
+    chmod +x /usr/bin/yq
 
 WORKDIR /usr/local/lib/
 COPY --from=oai-smf-builder \
@@ -128,6 +152,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib/libfmt.so \
     /usr/local/lib/libcpr.so.1 \
     /openair-smf/build/smf/build/nas/libNAS.so \
+    /openair-smf/build/smf/build/ngap/libNGAP.so \
     ./
 
 RUN ldconfig && \
@@ -140,8 +165,17 @@ COPY --from=oai-smf-builder /openair-smf/etc/config.yaml .
 
 WORKDIR /openair-smf
 
+ARG GIT_COMMIT
+
+LABEL org.opencontainers.image.authors="OpenAirInterface <contact@openairinterface.org>" \
+      org.opencontainers.image.vendor="OpenAirInterface Software Alliance" \
+      org.opencontainers.image.licenses="OAI Public License, Version 1.1" \
+      org.opencontainers.image.title="OAI SMF" \
+      org.opencontainers.image.description="OpenAirInterface Session Management Function" \
+      org.opencontainers.image.revision="commit:${GIT_COMMIT}"
+
 # expose ports
-EXPOSE 80/tcp 9090/tcp 8805/udp
+EXPOSE 80/tcp 9090/tcp 8805/udp 5342 5343 5344
 # healthcheck
 HEALTHCHECK --interval=10s \
             --timeout=15s \

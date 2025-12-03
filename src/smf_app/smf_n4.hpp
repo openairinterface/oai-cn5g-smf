@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n4.hpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_N4_HPP_SEEN
 #define FILE_SMF_N4_HPP_SEEN
 
@@ -35,7 +28,7 @@
 #include "pfcp.hpp"
 #include "smf_pfcp_association.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 #define TASK_SMF_N4_TRIGGER_HEARTBEAT_REQUEST (0)
 #define TASK_SMF_N4_TIMEOUT_HEARTBEAT_REQUEST (1)
@@ -122,5 +115,5 @@ class smf_n4 : public pfcp::pfcp_l4_stack {
 
   void time_out_itti_event(const uint32_t timer_id);
 };
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif /* FILE_SMF_N4_HPP_SEEN */

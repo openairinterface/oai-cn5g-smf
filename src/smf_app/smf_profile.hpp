@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_profile.hpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2021
- \email: Tien-Thinh.Nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_PROFILE_HPP_SEEN
 #define FILE_SMF_PROFILE_HPP_SEEN
 
@@ -43,9 +35,8 @@
 #include "smf.h"
 #include "3gpp_29.510.h"
 
-namespace smf {
+namespace oai::app::smf {
 
-using namespace std;
 class nf_profile : public std::enable_shared_from_this<nf_profile> {
  public:
   nf_profile()
@@ -357,12 +348,13 @@ class smf_profile : public nf_profile {
     custom_info      = s.custom_info;
     smf_info         = s.smf_info;
     nf_services      = s.nf_services;
+    nf_service_list  = s.nf_service_list;
     return *this;
   }
   // smf_profile(smf_profile &b) = delete;
 
   virtual ~smf_profile() {
-    Logger::smf_app().debug("Delete SMF Profile instance...");
+    // Logger::smf_app().debug("Delete SMF Profile instance...");
   }
 
   /*
@@ -385,6 +377,13 @@ class smf_profile : public nf_profile {
    * @return void:
    */
   void get_nf_services(std::vector<oai::common::sbi::nf_service_t>& n) const;
+
+  /*
+   * Add nf service
+   * @param [snssai_t &] n: nf service
+   * @return void
+   */
+  void add_nf_service_list(const oai::common::sbi::nf_service_t& n);
 
   /*
    * Set custom info
@@ -451,6 +450,7 @@ class smf_profile : public nf_profile {
 
  protected:
   std::vector<oai::common::sbi::nf_service_t> nf_services;
+  std::map<std::string, oai::common::sbi::nf_service_t> nf_service_list;
   nlohmann::json custom_info;  // store extra json data
   oai::common::sbi::smf_info_t smf_info;
 };
@@ -540,6 +540,6 @@ class upf_profile : public nf_profile {
   oai::common::sbi::upf_info_t upf_info;
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif

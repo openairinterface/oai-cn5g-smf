@@ -19,21 +19,12 @@
  *      contact@openairinterface.org
  */
 
-/*! \file logger.hpp
-\brief
-\author Stefan Spettel
-\company OpenAirInterface Software Alliance
-\date 2022
-\email: stefan.spettel@eurecom.fr
-*/
-
 #pragma once
 
 #include "logger_base.hpp"
 
 static const std::string SMF_APP        = "smf_app";
 static const std::string SMF_SBI        = "smf_sbi";
-static const std::string SYSTEM         = "system ";
 static const std::string UDP            = "udp    ";
 static const std::string PFCP           = "pfcp   ";
 static const std::string SMF_N4         = "smf_n4 ";
@@ -44,18 +35,15 @@ static const std::string SMF_API_SERVER = "smf_api";
 static const std::string ITTI           = "itti   ";
 static const std::string ASYNC          = "async  ";
 
-class Logger {
+class Logger : public oai::logger::logger_common {
  public:
   static void init(
       const std::string& name, bool log_stdout, bool log_rot_file) {
-    oai::logger::logger_registry::register_logger(
-        name, LOGGER_COMMON, log_stdout, log_rot_file);
+    oai::logger::logger_common(name, log_stdout, log_rot_file);
     oai::logger::logger_registry::register_logger(
         name, SMF_APP, log_stdout, log_rot_file);
     oai::logger::logger_registry::register_logger(
         name, SMF_SBI, log_stdout, log_rot_file);
-    oai::logger::logger_registry::register_logger(
-        name, SYSTEM, log_stdout, log_rot_file);
     oai::logger::logger_registry::register_logger(
         name, UDP, log_stdout, log_rot_file);
     oai::logger::logger_registry::register_logger(
@@ -81,17 +69,15 @@ class Logger {
   static bool should_log(spdlog::level::level_enum level) {
     return oai::logger::logger_registry::should_log(level);
   }
-
+  static void set_lttng(bool isLttngActive) {
+    oai::logger::logger_registry::set_lttng_is_active(isLttngActive);
+  }
   static const oai::logger::printf_logger& smf_app() {
     return oai::logger::logger_registry::get_logger(SMF_APP);
   }
 
   static const oai::logger::printf_logger& smf_sbi() {
     return oai::logger::logger_registry::get_logger(SMF_SBI);
-  }
-
-  static const oai::logger::printf_logger& system() {
-    return oai::logger::logger_registry::get_logger(SYSTEM);
   }
 
   static const oai::logger::printf_logger& udp() {

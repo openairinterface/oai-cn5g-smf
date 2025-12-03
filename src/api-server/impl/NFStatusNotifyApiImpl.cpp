@@ -38,7 +38,7 @@
 #include "smf_msg.hpp"
 #include "itti_msg_sbi.hpp"
 #include "smf_config.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -50,8 +50,8 @@ using namespace oai::model::smf;
 using namespace oai::model::common;
 
 NFStatusNotifyApiImpl::NFStatusNotifyApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : NFStatusNotifyApi(rtr), m_smf_app(smf_app_inst), m_address(address) {}
 
 void NFStatusNotifyApiImpl::receive_nf_status_notification(

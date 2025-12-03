@@ -37,19 +37,25 @@ void IndividualSubscriptionDocumentApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Delete(
-      *router, base + smf_cfg->sbi_api_version + "/subscriptions/:subId",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::
+                 SmfEventExposurePathSubscriptionsSubscriptionId,
       Routes::bind(
           &IndividualSubscriptionDocumentApi::
               delete_individual_subcription_handler,
           this));
   Routes::Get(
-      *router, base + smf_cfg->sbi_api_version + "/subscriptions/:subId",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::
+                 SmfEventExposurePathSubscriptionsSubscriptionId,
       Routes::bind(
           &IndividualSubscriptionDocumentApi::
               get_individual_subcription_handler,
           this));
   Routes::Put(
-      *router, base + smf_cfg->sbi_api_version + "/subscriptions/:subId",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::
+                 SmfEventExposurePathSubscriptionsSubscriptionId,
       Routes::bind(
           &IndividualSubscriptionDocumentApi::
               replace_individual_subcription_handler,

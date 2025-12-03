@@ -35,10 +35,6 @@ ENV IS_DOCKERFILE=1
 # Copy the entitlements
 COPY ./etc-pki-entitlement /etc/pki/entitlement
 
-# Copy the subscription manager configurations
-COPY ./rhsm-conf /etc/rhsm
-COPY ./rhsm-ca /etc/rhsm/ca
-
 RUN rm -f /etc/rhsm-host && \
     subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms && \
     dnf update -y && \
@@ -81,8 +77,7 @@ RUN ldconfig && \
     ldd /openair-smf/build/smf/build/smf && \
     mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf && \
     # Remove entitlements and Subscription Manager configs
-    rm -rf /etc/pki/entitlement && \
-    rm -rf /etc/rhsm
+    rm -rf /etc/pki/entitlement
 
 FROM mikefarah/yq:latest as yq-source
 
@@ -95,10 +90,8 @@ ENV TZ=Europe/Paris
 # Copy the entitlements
 COPY ./etc-pki-entitlement /etc/pki/entitlement
 # Copy the subscription manager configurations
-COPY ./rhsm-conf /etc/rhsm
-COPY ./rhsm-ca /etc/rhsm/ca
-
-
+COPY --from=oai-smf-builder /etc/rhsm /etc/rhsm
+# We install some debug tools for the moment in addition of mandatory libraries
 RUN rm -f /etc/rhsm-host && \
     microdnf update -y && \
     microdnf install -y \
@@ -137,6 +130,7 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libfmt.so \
     /usr/local/lib64/libyaml-cpp.so.0.* \
     /openair-smf/build/smf/build/nas/libNAS.so \
+    /openair-smf/build/smf/build/ngap/libNGAP.so \
     /usr/local/lib64/libcpr.so.1 \
     /usr/lib64/
 

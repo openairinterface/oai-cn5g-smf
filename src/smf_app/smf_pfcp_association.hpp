@@ -19,12 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_pfcp_association.hpp
- \author  Lionel GAUTHIER
- \date 2019
- \email: lionel.gauthier@eurecom.fr
- */
-
 #ifndef FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 #define FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 
@@ -40,14 +34,14 @@
 #include "itti.hpp"
 #include "smf_profile.hpp"
 #include "SmPolicyDecision.h"
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "UpfInfo.h"
 #include "smf.h"
 #include "smf_config_types.hpp"
 #include "smf_qos_upf_edge.hpp"
 #include "uint_generator.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 const int PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC  = 10;
 const int PFCP_ASSOCIATION_HEARTBEAT_MAX_RETRIES   = 2;
@@ -165,6 +159,7 @@ class upf_graph {
 
   // statistics which are useful for verifying the graph
   unsigned int access_edge_count     = 0;
+  unsigned int qfi_count             = 0;
   unsigned int exit_edge_count       = 0;
   unsigned int total_edge_count      = 0;
   unsigned int associated_edge_count = 0;
@@ -502,6 +497,6 @@ class pfcp_associations {
   bool remove_association(const int32_t& hash_node_id);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif /* FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN */

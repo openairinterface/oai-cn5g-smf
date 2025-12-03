@@ -35,11 +35,11 @@
 #include "SMContextsCollectionApiImpl.h"
 #include "logger.hpp"
 #include "smf_msg.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "3gpp_29.502.h"
 #include <nghttp2/asio_http2_server.h>
 #include "smf_config.hpp"
-#include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "mime_parser.hpp"
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
@@ -48,6 +48,7 @@
 #include <boost/chrono/duration.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include "http_client.hpp"
+#include "SmPolicyNotification.h"
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -56,10 +57,12 @@ namespace smf_server {
 namespace api {
 
 using namespace oai::model::smf;
+using namespace oai::model::pcf;
+using namespace oai::utils;
 
 SMContextsCollectionApiImpl::SMContextsCollectionApiImpl(
-    std::shared_ptr<Pistache::Rest::Router> rtr, smf::smf_app* smf_app_inst,
-    std::string address)
+    std::shared_ptr<Pistache::Rest::Router> rtr,
+    oai::app::smf::smf_app* smf_app_inst, std::string address)
     : SMContextsCollectionApi(rtr),
       m_smf_app(smf_app_inst),
       m_address(address) {}
@@ -74,7 +77,7 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   Logger::smf_api_server().debug(
       "Create a pdu_session_create_sm_context_request message and store the "
       "necessary information");
-  smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
+  oai::app::smf::pdu_session_create_sm_context_request sm_context_req_msg = {};
 
   // convert from SmContextMessage to pdu_session_create_sm_context_request
   xgpp_conv::sm_context_create_from_openapi(
@@ -82,8 +85,8 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
 
   // Set API Root to be used as location header in HTTP response
   sm_context_req_msg.set_api_root(
-      m_address + base + smf_cfg->sbi_api_version +
-      NSMF_PDU_SESSION_SM_CONTEXT_CREATE_URL);
+      m_address + base +
+      oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContexts);
 
   boost::shared_ptr<boost::promise<nlohmann::json> > p =
       boost::make_shared<boost::promise<nlohmann::json> >();
@@ -96,8 +99,8 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
   m_smf_app->add_promise(promise_id, p);
 
   // Handle the pdu_session_create_sm_context_request message in smf_app
-  std::shared_ptr<itti_n11_create_sm_context_request> itti_msg =
-      std::make_shared<itti_n11_create_sm_context_request>(
+  std::shared_ptr<itti_sbi_create_sm_context_request> itti_msg =
+      std::make_shared<itti_sbi_create_sm_context_request>(
           TASK_SMF_SBI, TASK_SMF_APP, promise_id);
   itti_msg->req          = sm_context_req_msg;
   itti_msg->http_version = 1;
@@ -147,14 +150,14 @@ void SMContextsCollectionApiImpl::post_sm_contexts(
     }
 
     if (n1_sm_msg_is_set) {  // add N1 container if available
-      mime_parser::create_multipart_related_content(
-          body, json_data.dump(), http::CURL_MIME_BOUNDARY,
+      oai::utils::mime_parser::create_multipart_related_content(
+          body, json_data.dump(), http::MIME_BOUNDARY,
           sm_context_response["n1_sm_message"].get<std::string>(),
           multipart_related_content_part_e::NAS, json_format);
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(
               "multipart/related; boundary=" +
-              std::string(http::CURL_MIME_BOUNDARY)));
+              std::string(http::MIME_BOUNDARY)));
     } else if (!json_data.empty()) {  // if not, include json data if available
       response.headers().add<Pistache::Http::Header::ContentType>(
           Pistache::Http::Mime::MediaType(json_format));

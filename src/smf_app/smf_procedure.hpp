@@ -19,13 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.hpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_PROCEDURE_HPP_SEEN
 #define FILE_SMF_PROCEDURE_HPP_SEEN
 
@@ -34,17 +27,18 @@
 #include <set>
 
 #include "3gpp_29.244.hpp"
-#include "itti_msg_n11.hpp"
+#include "itti_msg_sbi.hpp"
 #include "itti_msg_n4.hpp"
 #include "itti_msg_n4_restore.hpp"
 #include "itti_msg_nx.hpp"
+#include "itti_msg_sbi.hpp"
 #include "msg_pfcp.hpp"
 #include "smf_msg.hpp"
 #include "uint_generator.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_qos_upf_edge.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_context;
 class smf_pdu_session;
@@ -59,6 +53,10 @@ class smf_procedure {
   }
 
  public:
+  static uint32_t generate_correlation_id() {
+    return static_cast<uint32_t>(
+        oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid());
+  }
   uint64_t trxn_id;
   smf_procedure() { trxn_id = generate_trxn_id(); }
   explicit smf_procedure(uint64_t tx) { trxn_id = tx; }
@@ -66,17 +64,17 @@ class smf_procedure {
   virtual itti_msg_type_t get_procedure_type() { return ITTI_MSG_TYPE_NONE; }
   virtual smf_procedure_code handle_itti_msg(
       itti_n4_session_establishment_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {
+      std::shared_ptr<oai::app::smf::smf_context> pc) {
     return smf_procedure_code::OK;
   }
   virtual smf_procedure_code handle_itti_msg(
       itti_n4_session_modification_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {
+      std::shared_ptr<oai::app::smf::smf_context> pc) {
     return smf_procedure_code::OK;
   }
   virtual smf_procedure_code handle_itti_msg(
       itti_n4_session_deletion_response& resp,
-      std::shared_ptr<smf::smf_context> pc) {
+      std::shared_ptr<oai::app::smf::smf_context> pc) {
     return smf_procedure_code::OK;
   }
 };
@@ -90,6 +88,8 @@ class smf_session_procedure : public smf_procedure {
 
   std::shared_ptr<smf_pdu_session> sps;
 
+  pfcp::create_qer pfcp_create_qer(const std::shared_ptr<qos_upf_edge>& edge);
+
   pfcp::create_far pfcp_create_far(const std::shared_ptr<qos_upf_edge>& edge);
 
   pfcp::create_pdr pfcp_create_pdr(const std::shared_ptr<qos_upf_edge>& edge);
@@ -99,10 +99,16 @@ class smf_session_procedure : public smf_procedure {
   static pfcp::remove_pdr pfcp_remove_pdr(
       const std::shared_ptr<qos_upf_edge>& edge);
 
+  static pfcp::remove_qer pfcp_remove_qer(
+      const std::shared_ptr<qos_upf_edge>& edge);
+
   static pfcp::remove_far pfcp_remove_far(
       const std::shared_ptr<qos_upf_edge>& edge);
 
   pfcp::update_pdr pfcp_update_pdr(const std::shared_ptr<qos_upf_edge>& edge);
+
+  static pfcp::update_qer pfcp_update_qer(
+      const std::shared_ptr<qos_upf_edge>& edge);
 
   static pfcp::update_far pfcp_update_far(
       const std::shared_ptr<qos_upf_edge>& edge);
@@ -118,6 +124,20 @@ class smf_session_procedure : public smf_procedure {
   static pfcp::fteid_t pfcp_prepare_fteid(
       pfcp::fteid_t& fteid, const bool& ftup_supported,
       const oai::config::smf::upf& cfg);
+
+  static bool pfcp_gbr(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::gbr_t& pfcp_gbr);
+
+  static bool pfcp_mbr(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& pcp_mbr);
+
+  static bool pfcp_sdf_filter(
+      const std::shared_ptr<qos_upf_edge>& edge, pfcp::sdf_filter_t& sdf_filter,
+      bool ethernet_sdf_filter = false);
+
+  static bool pfcp_ethernet_packet_filter(
+      const std::shared_ptr<qos_upf_edge>& edge,
+      pfcp::ethernet_packet_filter& ethernet_packet_filter);
 
  protected:
   /**
@@ -189,15 +209,15 @@ class session_create_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Create SM Context Request procedure
-   * @param [itti_n11_create_sm_context_request] req
-   * @param [itti_n11_create_sm_context_response] resp
+   * @param [itti_sbi_create_sm_context_request] req
+   * @param [itti_sbi_create_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_create_sm_context_request>& req,
-      const std::shared_ptr<itti_n11_create_sm_context_response>& resp,
-      std::shared_ptr<smf::smf_context> sc);
+      const std::shared_ptr<itti_sbi_create_sm_context_request>& req,
+      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
+      std::shared_ptr<oai::app::smf::smf_context> sc);
 
   /*
    * Handle N4 Session Establishment Response from UPF
@@ -207,12 +227,12 @@ class session_create_sm_context_procedure : public smf_session_procedure {
    */
   smf_procedure_code handle_itti_msg(
       itti_n4_session_establishment_response& resp,
-      std::shared_ptr<smf::smf_context> sc) override;
+      std::shared_ptr<oai::app::smf::smf_context> sc) override;
 
   std::shared_ptr<itti_n4_session_establishment_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_create_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_create_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_create_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_create_sm_context_response> n11_triggered_pending;
 
   /**
    * Sends a session establishment request, based on current UPF graph
@@ -234,15 +254,15 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Update SM Context Request procedure
-   * @param [itti_n11_update_sm_context_request] req
-   * @param [itti_n11_update_sm_context_response] resp
+   * @param [itti_sbi_update_sm_context_request] req
+   * @param [itti_sbi_update_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_update_sm_context_request>& req,
-      std::shared_ptr<itti_n11_update_sm_context_response> resp,
-      const std::shared_ptr<smf::smf_context>& sc);
+      const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
+      std::shared_ptr<itti_sbi_update_sm_context_response> resp,
+      const std::shared_ptr<oai::app::smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
@@ -252,12 +272,12 @@ class session_update_sm_context_procedure : public smf_session_procedure {
    */
   smf_procedure_code handle_itti_msg(
       itti_n4_session_modification_response& resp,
-      std::shared_ptr<smf::smf_context> sc) override;
+      std::shared_ptr<oai::app::smf::smf_context> sc) override;
 
   std::shared_ptr<itti_n4_session_modification_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_update_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_update_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_update_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
  private:
@@ -269,7 +289,7 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   smf_procedure_code send_n4_session_modification_request(
       const std::vector<pfcp::qfi_t>& list_of_qfis);
 
-  void remove_pdrs_and_fars(
+  void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
 };
 
@@ -286,15 +306,15 @@ class session_release_sm_context_procedure : public smf_session_procedure {
 
   /*
    * Execute N11 Release SM Context Request procedure
-   * @param [itti_n11_release_sm_context_request] req
-   * @param [itti_n11_release_sm_context_response] resp
+   * @param [itti_sbi_release_sm_context_request] req
+   * @param [itti_sbi_release_sm_context_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return
    */
   smf_procedure_code run(
-      const std::shared_ptr<itti_n11_release_sm_context_request>& req,
-      std::shared_ptr<itti_n11_release_sm_context_response> resp,
-      const std::shared_ptr<smf::smf_context>& sc);
+      const std::shared_ptr<itti_sbi_release_sm_context_request>& req,
+      std::shared_ptr<itti_sbi_release_sm_context_response> resp,
+      const std::shared_ptr<oai::app::smf::smf_context>& sc);
 
   /*
    * Handle N4 Session Modification Response from UPF
@@ -304,19 +324,19 @@ class session_release_sm_context_procedure : public smf_session_procedure {
    */
   smf_procedure_code handle_itti_msg(
       itti_n4_session_deletion_response& resp,
-      std::shared_ptr<smf::smf_context> sc) override;
+      std::shared_ptr<oai::app::smf::smf_context> sc) override;
 
   std::shared_ptr<itti_n4_session_deletion_request> n4_triggered;
 
-  std::shared_ptr<itti_n11_release_sm_context_request> n11_trigger;
-  std::shared_ptr<itti_n11_release_sm_context_response> n11_triggered_pending;
+  std::shared_ptr<itti_sbi_release_sm_context_request> n11_trigger;
+  std::shared_ptr<itti_sbi_release_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
  private:
   smf_procedure_code send_n4_session_deletion_request();
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 #include "../smf_app/smf_context.hpp"
 
 #endif

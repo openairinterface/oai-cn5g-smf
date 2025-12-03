@@ -37,7 +37,8 @@ void SubscriptionsCollectionApi::setupRoutes() {
   using namespace Pistache::Rest;
 
   Routes::Post(
-      *router, base + smf_cfg->sbi_api_version + "/subscriptions",
+      *router,
+      base + oai::smf::api::smf_sbi_helper::SmfEventExposurePathSubscriptions,
       Routes::bind(
           &SubscriptionsCollectionApi::create_individual_subcription_handler,
           this));

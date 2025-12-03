@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_event.hpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_EVENT_HPP_SEEN
 #define FILE_SMF_EVENT_HPP_SEEN
 
@@ -36,7 +28,7 @@ namespace bs2 = boost::signals2;
 #include "smf.h"
 #include "smf_event_sig.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 class smf_event {
  public:
   smf_event(){};
@@ -102,5 +94,5 @@ class smf_event {
   ee_qos_monitoring_sig_t ee_qos_monitoring;  // Signal for QoS Monitoring
   ee_flexcn_sig_t ee_flexcn;                  // Signal for FlexCN Event
 };
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif /* FILE_SMF_EVENT_HPP_SEEN */

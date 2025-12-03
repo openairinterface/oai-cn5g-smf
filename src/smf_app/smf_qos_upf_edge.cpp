@@ -19,21 +19,17 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_qos_upf_edge.cpp
- \brief
- \author  Stefan Spettel
- \company phine.tech
- \date    2024
- \email:  stefan.spettel@phine.tech
- */
-
 #include "smf_qos_upf_edge.hpp"
+
+// TODO remove again after putting in model directly
+#include "Helpers.h"
 
 using namespace oai::config::smf;
 using namespace oai::model::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
-using namespace smf;
+using namespace oai::model::common;
+using namespace oai::app::smf;
 
 //------------------------------------------------------------------------------
 std::string upf_selection_criteria::to_string(int level) const {
@@ -218,6 +214,7 @@ bool qos_upf_edge::serves_network(const upf_selection_criteria& criteria) {
   qos_profile          = criteria.qos_profile;
   precedence           = criteria.precedence;
   qfi.qfi              = criteria.qfi;
+  default_qos          = criteria.default_qos;
 
   if (criteria.dnais.empty()) {
     return serves;
@@ -270,6 +267,7 @@ pfcp::redirect_information_t qos_upf_edge::get_pfcp_redirect_information() {
 
 void qos_upf_edge::clear_session() {
   pdr_id         = pfcp::pdr_id_t{};
+  qer_id         = pfcp::qer_id_t{};
   far_id         = pfcp::far_id_t{};
   urr_id         = pfcp::urr_id_t{};
   fteid          = pfcp::fteid_t{};

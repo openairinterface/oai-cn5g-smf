@@ -34,11 +34,12 @@ using namespace oai::model::smf;
 class SMFConfigurationApiImpl
     : public oai::smf_server::api::SMFConfigurationApi {
  private:
-  smf::smf_app* m_smf_app;
+  oai::app::smf::smf_app* m_smf_app;
 
  public:
   SMFConfigurationApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst);
+      std::shared_ptr<Pistache::Rest::Router>,
+      oai::app::smf::smf_app* smf_app_inst);
   ~SMFConfigurationApiImpl() {}
 
   void read_configuration(Pistache::Http::ResponseWriter& response);

@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_n1.hpp
- * \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_N1_HPP_SEEN
 #define FILE_SMF_N1_HPP_SEEN
 
@@ -35,12 +27,11 @@
 #include "smf.h"
 #include "smf_context.hpp"
 #include "smf_msg.hpp"
+#include "Nas5gsmMessage.hpp"
 
-extern "C" {
-#include "nas_message.h"
-}
+using namespace oai::nas;
 
-namespace smf {
+namespace oai::app::smf {
 
 class smf_n1 {
  private:
@@ -48,6 +39,7 @@ class smf_n1 {
   smf_n1(){};
   smf_n1(smf_n1 const&) = delete;
   void operator=(smf_n1 const&) = delete;
+  virtual ~smf_n1(){};
 
  public:
   static smf_n1& get_instance() {
@@ -61,14 +53,14 @@ class smf_n1 {
    * necessary information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_establishment_accept(
       pdu_session_create_sm_context_response& sm_context_res,
-      std::string& nas_msg_str, cause_value_5gsm_e sm_cause);
+      std::string& nas_msg_str, uint8_t sm_cause);
 
   /*
    * Create N1 SM Container: PDU Session Establishment Reject
@@ -76,14 +68,13 @@ class smf_n1 {
    * NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_establishment_reject(
-      pdu_session_msg& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      pdu_session_msg& msg, std::string& nas_msg_str, uint8_t sm_cause);
   /*
    * Create N1 SM Container: PDU Session Modification Command
    * Included in PDU Session Update SM Context Response (PDU Session
@@ -92,14 +83,14 @@ class smf_n1 {
    * information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_modification_command(
       pdu_session_update_sm_context_response& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      uint8_t sm_cause);
 
   /*
    * Create N1 SM Container: PDU Session Modification Command
@@ -109,14 +100,14 @@ class smf_n1 {
    * information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_modification_command(
       pdu_session_modification_network_requested& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      uint8_t sm_cause);
 
   /*
    * Create N1 SM Container: PDU Session Release Reject
@@ -126,18 +117,18 @@ class smf_n1 {
    * information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_release_reject(
       pdu_session_update_sm_context_request& sm_context_res,
-      std::string& nas_msg_str, cause_value_5gsm_e sm_cause);
+      std::string& nas_msg_str, uint8_t sm_cause);
 
   bool create_n1_pdu_session_release_command(
       const std::shared_ptr<pdu_session_msg>& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      uint8_t sm_cause);
   /*
    * Create N1 SM Container: PDU Session Release Command
    * Included in PDU Session Update SM Context Response (PDU Session Release
@@ -146,14 +137,14 @@ class smf_n1 {
    * information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_release_command(
       pdu_session_update_sm_context_response& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      uint8_t sm_cause);
 
   /*
    * Create N1 SM Container: PDU Session Release Command
@@ -163,25 +154,25 @@ class smf_n1 {
    * information for encoding NGAP msg
    * @param [std::string&] ngap_msg_str store the created NGAP message in form
    * of string
-   * @param [cause_value_5gsm_e] sm_cause store NAS Cause
+   * @param [uint8_t] sm_cause store NAS Cause
    * @return boolean: True if the NGAP message has been created successfully,
    * otherwise return false
    *
    */
   bool create_n1_pdu_session_release_command(
       pdu_session_modification_network_requested& msg, std::string& nas_msg_str,
-      cause_value_5gsm_e sm_cause);
+      uint8_t sm_cause);
 
   /*
    * Decode N1 SM Container into the NAS mesasge (using NAS lib)
-   * @param [nas_message_t&] nas_msg Store NAS message after decoded
+   * @param [Nas5gsmMessage&] nas_msg Store NAS message after decoded
    * @param [const std::string&] n1_sm_msg N1 SM Container
    * @return status of the decode process
    */
   int decode_n1_sm_container(
-      nas_message_t& nas_msg, const std::string& n1_sm_msg);
+      std::shared_ptr<Nas5gsmMessage>& nas_msg, const std::string& n1_sm_msg);
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 
 #endif /* FILE_SMF_N1_HPP_SEEN */

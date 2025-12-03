@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_subscription.hpp
- \brief
- \author  Tien-Thinh NGUYEN
- \company Eurecom
- \date 2020
- \email: tien-thinh.nguyen@eurecom.fr
- */
-
 #ifndef FILE_SMF_SUBSCRIPTION_HPP_SEEN
 #define FILE_SMF_SUBSCRIPTION_HPP_SEEN
 
@@ -36,12 +28,12 @@
 #include <utility>
 #include <vector>
 
-#include "3gpp_24.007.h"
+#include "3gpp_24.007.hpp"
 #include "3gpp_29.508.h"
 #include "common_root_types.h"
 #include "itti.hpp"
 
-namespace smf {
+namespace oai::app::smf {
 
 /*
  * Manage the Subscription Info
@@ -53,11 +45,11 @@ class smf_subscription {
  public:
   evsub_id_t sub_id;
   smf_event_t ev_type;
-  supi64_t supi;
+  std::string supi;
   std::string notif_id;
   std::string notif_uri;
   pdu_session_id_t pdu_session_id;
 };
 
-}  // namespace smf
+}  // namespace oai::app::smf
 #endif

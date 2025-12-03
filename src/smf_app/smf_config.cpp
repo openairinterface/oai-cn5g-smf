@@ -19,15 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config.cpp
- \brief
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN, Stefan Spettel
- \company Eurecom, phine.tech
- \date 2023
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr,
- stefan.spettel@phine.tech
- */
-
 #include "smf_config.hpp"
 
 #include <iostream>
@@ -41,8 +32,7 @@
 #include "fqdn.hpp"
 #include "smf_config_types.hpp"
 
-using namespace std;
-using namespace smf;
+using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::config;
 using namespace oai::model::nrf;
@@ -56,7 +46,8 @@ smf_config::smf_config(
       itti() {
   m_used_config_values = {LOG_LEVEL_CONFIG_NAME, REGISTER_NF_CONFIG_NAME,
                           NF_LIST_CONFIG_NAME,   SMF_CONFIG_NAME,
-                          DNNS_CONFIG_NAME,      NF_CONFIG_HTTP_NAME};
+                          DNNS_CONFIG_NAME,      NF_CONFIG_HTTP_NAME,
+                          NF_CONFIG_TLS_NAME};
 
   m_used_sbi_values = {
       SMF_CONFIG_NAME, PCF_CONFIG_NAME, NRF_CONFIG_NAME, AMF_CONFIG_NAME,
@@ -169,6 +160,7 @@ bool smf_config::is_dotted_dnn_handled(
 
 //------------------------------------------------------------------------------
 std::string smf_config::get_default_dnn() {
+  // TODO: Get default DNN from UDM, otherwise from the configuration file
   for (const auto& it : dnns) {
     Logger::smf_app().debug("Default DNN: %s", it.second.dnn.c_str());
     return it.second.dnn;
@@ -176,6 +168,7 @@ std::string smf_config::get_default_dnn() {
   return "default";  // default DNN
 }
 
+//------------------------------------------------------------------------------
 void smf_config::to_smf_config() {
   log_level    = spdlog::level::from_str(config::log_level());
   auto smf_cfg = smf();
@@ -224,11 +217,19 @@ void smf_config::to_smf_config() {
     dnn.ue_pool_range_low.s_addr += be32toh(1);
     dnn.ue_pool_range_high = cfg_dnn.get_ipv4_pool_end();
 
-    logger::logger_registry::get_logger(LOGGER_NAME)
-        .debug(
-            "DNN %s: -- First UE IPv4: %s -- Last UE IPv4: %s", dnn.dnn,
-            conv::toString(dnn.ue_pool_range_low),
-            conv::toString(dnn.ue_pool_range_high));
+    if (dnn.pdu_session_type == pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4 ||
+        dnn.pdu_session_type == pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4V6) {
+      logger::logger_registry::get_logger(LOGGER_NAME)
+          .debug(
+              "DNN %s: -- First UE IPv4: %s -- Last UE IPv4: %s", dnn.dnn,
+              conv::toString(dnn.ue_pool_range_low),
+              conv::toString(dnn.ue_pool_range_high));
+    } else {
+      logger::logger_registry::get_logger(LOGGER_NAME)
+          .debug(
+              "DNN %s: -- PDU Session Type: %s", dnn.dnn,
+              dnn.pdu_session_type.to_string());
+    }
 
     dnn.paa_pool6_prefix     = cfg_dnn.get_ipv6_prefix();
     dnn.paa_pool6_prefix_len = cfg_dnn.get_ipv6_prefix_length();
@@ -236,6 +237,7 @@ void smf_config::to_smf_config() {
   }
 }
 
+//------------------------------------------------------------------------------
 bool smf_config::init() {
   bool success = config::init();
   // we update DNS settings per DNN if user did not set it
@@ -256,10 +258,12 @@ bool smf_config::init() {
   return success;
 }
 
+//------------------------------------------------------------------------------
 std::shared_ptr<smf_config_type> smf_config::smf() const {
   return std::dynamic_pointer_cast<smf_config_type>(get_local());
 }
 
+//------------------------------------------------------------------------------
 void smf_config::update_used_nfs() {
   config::update_used_nfs();
   if (config::register_nrf()) {
@@ -317,7 +321,7 @@ bool smf_config::from_json(nlohmann::json& json_data) {
 }
 
 //------------------------------------------------------------------------------
-const ue_dns& smf_config::get_dns_from_dnn(const string& dnn) {
+const ue_dns& smf_config::get_dns_from_dnn(const std::string& dnn) {
   for (const auto& dnn_cfg : get_dnns()) {
     if (dnn_cfg.get_dnn() == dnn) {
       return dnn_cfg.get_ue_dns();

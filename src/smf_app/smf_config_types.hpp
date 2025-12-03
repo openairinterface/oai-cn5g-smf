@@ -19,21 +19,13 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_config_types.hpp
- * \brief
- \author Stefan Spettel
- \company phine.tech
- \date 2023
- \email: stefan.spettel@phine.tech
- */
-
 #pragma once
 
 #include <regex>
 #include "config.hpp"
 #include "config_types.hpp"
 #include "3gpp_29.571.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 #include "smf.h"
 #include "SmfInfo.h"
 #include "Snssai.h"
@@ -47,15 +39,12 @@ class smf_support_features : public config_type {
  private:
   option_config_value m_local_subscription_infos{};
   option_config_value m_local_pcc_rules{};
-  option_config_value m_external_ausf{};
-  option_config_value m_external_udm{};
   option_config_value m_external_nssf{};
 
  public:
   explicit smf_support_features(
       bool local_subscription_info, bool local_pcc_rules);
-  explicit smf_support_features(
-      bool external_ausf, bool external_udm, bool external_nssf);
+  explicit smf_support_features(bool external_nssf);
 
   void from_yaml(const YAML::Node& node) override;
   nlohmann::json to_json() override;
@@ -72,17 +61,19 @@ class upf : public config_type {
   int_config_value m_port;
   option_config_value m_usage_reporting;
   option_config_value m_dl_pdr_in_session_establishment;
+  option_config_value m_qers;
   string_config_value m_local_n3_ipv4;
   oai::model::nrf::UpfInfo m_upf_info;
   bool m_upf_info_is_set = true;
   pfcp::node_id_t m_node_id;
+  option_config_value m_enable_upf_wo_nf_discovery;
 
   void generate_node_id();
 
  public:
   explicit upf(
       const std::string& host, int port, bool enable_usage_reporting,
-      bool enable_dl_pdr_in_session_establishment,
+      bool enable_qers, bool enable_dl_pdr_in_session_establishment,
       const std::string& local_n3_ip);
 
   void from_yaml(const YAML::Node& node) override;
@@ -99,6 +90,8 @@ class upf : public config_type {
 
   [[nodiscard]] bool enable_usage_reporting() const;
   [[nodiscard]] bool enable_dl_pdr_in_session_establishment() const;
+  [[nodiscard]] bool enable_qers() const;
+  [[nodiscard]] bool enable_upf_wo_nf_discovery() const;
   [[nodiscard]] const std::string& get_local_n3_ip() const;
   [[nodiscard]] const oai::model::nrf::UpfInfo& get_upf_info() const;
   [[nodiscard]] const pfcp::node_id_t& get_node_id() const;
@@ -130,6 +123,23 @@ class ims_config : public config_type {
 
   [[nodiscard]] const in_addr& get_pcscf_v4() const;
   [[nodiscard]] const in6_addr& get_pcscf_v6() const;
+};
+
+class ngap_config_value : public config_type {
+ private:
+  option_config_value m_send_default_qos_characteristics;
+
+ public:
+  explicit ngap_config_value();
+  void from_yaml(const YAML::Node& node) override;
+  nlohmann::json to_json() override;
+  bool from_json(const nlohmann::json& json_data) override;
+
+  [[nodiscard]] std::string to_string(const std::string& indent) const override;
+
+  void validate() override;
+
+  [[nodiscard]] bool send_default_qos_characteristics() const;
 };
 
 class qos_profile_config_value : public config_type {
@@ -205,6 +215,7 @@ class smf_config_type : public nf {
   local_interface m_n4;
 
   int_config_value m_ue_mtu;
+  ngap_config_value m_ngap_config;
 
  public:
   explicit smf_config_type(
@@ -228,6 +239,7 @@ class smf_config_type : public nf {
   [[nodiscard]] std::vector<subscription_info_config>& get_subscription_info();
   [[nodiscard]] const oai::model::nrf::SmfInfo& get_smf_info();
   [[nodiscard]] const local_interface& get_n4() const;
+  [[nodiscard]] ngap_config_value get_ngap() const;
 };
 
 }  // namespace oai::config::smf

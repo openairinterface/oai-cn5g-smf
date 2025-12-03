@@ -19,22 +19,16 @@
  *      contact@openairinterface.org
  */
 
-/*! \file smf_procedure.cpp
- \author  Lionel GAUTHIER, Tien-Thinh NGUYEN
- \company Eurecom
- \date 2019
- \email: lionel.gauthier@eurecom.fr, tien-thinh.nguyen@eurecom.fr
- */
-
 #include "smf_procedure.hpp"
 
 #include <algorithm>  // std::search
 #include <utility>
 
-#include "3gpp_29.244.h"
+#include "3gpp_29.274.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_conversions.hpp"
+#include "smf_3gpp_conversions.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
 #include "itti.hpp"
@@ -45,24 +39,26 @@
 #include "smf_context.hpp"
 #include "smf_pfcp_association.hpp"
 #include "ProblemDetails.h"
-#include "3gpp_24.501.h"
+#include "3gpp_24.501.hpp"
 
 using namespace pfcp;
-using namespace smf;
-using namespace std;
+using namespace oai::app::smf;
 using namespace oai::model::nrf;
 using namespace oai::model::pcf;
+using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
-extern smf::smf_app* smf_app_inst;
+extern oai::app::smf::smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
+//------------------------------------------------------------------------------
 std::string smf_session_procedure::to_string_fteid(const pfcp::fteid_t& fteid) {
   return fmt::format(
       "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
       oai::utils::conv::toString(fteid.ipv4_address));
 }
 
+//------------------------------------------------------------------------------
 pfcp::ue_ip_address_t smf_session_procedure::pfcp_ue_ip_address(
     const std::shared_ptr<qos_upf_edge>& edge) {
   // only used in PDR,so when it is a downlink edge, we are in UL procedure
@@ -125,6 +121,96 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     local_fteid = fteid;
   }
   return local_fteid;
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_gbr(
+    const std::shared_ptr<qos_upf_edge>& edge, pfcp::gbr_t& gbr_pfcp) {
+  gbr_pfcp = {};
+  std::string bitrate;
+  if (edge->uplink) {
+    if (!edge->qos_profile.gbrUlIsSet()) return false;
+    bitrate = edge->qos_profile.getGbrUl();
+  } else {
+    if (!edge->qos_profile.gbrDlIsSet()) return false;
+    bitrate = edge->qos_profile.getGbrDl();
+  }
+
+  uint32_t gbr;
+  if (!parse_bitrate_string_to_unit(bitrate, bitrate_unit_e::KBPS, gbr)) {
+    Logger::smf_app().error(
+        "Cannot parse GBR bitrate for PFCP, use default 10000 Kbit/s");
+    gbr = 10000;
+  }
+  if (edge->uplink) {
+    gbr_pfcp.ul_gbr = gbr;
+  } else {
+    gbr_pfcp.dl_gbr = gbr;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_mbr(
+    const std::shared_ptr<qos_upf_edge>& edge, pfcp::mbr_t& mbr_pfcp) {
+  mbr_pfcp = {};
+  std::string bitrate;
+  if (edge->uplink) {
+    if (!edge->qos_profile.maxbrUlIsSet()) return false;
+    bitrate = edge->qos_profile.getMaxbrUl();
+  } else {
+    if (!edge->qos_profile.maxbrDlIsSet()) return false;
+    bitrate = edge->qos_profile.getMaxbrDl();
+  }
+
+  uint32_t mbr;
+  if (!parse_bitrate_string_to_unit(bitrate, bitrate_unit_e::KBPS, mbr)) {
+    Logger::smf_app().error(
+        "Cannot parse MBR bitrate for PFCP, use default 20000 Kbit/s");
+    mbr = 20000;
+  }
+  if (edge->uplink) {
+    mbr_pfcp.ul_mbr = mbr;
+  } else {
+    mbr_pfcp.dl_mbr = mbr;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+pfcp::create_qer smf_session_procedure::pfcp_create_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  oai::config::smf::upf cfg   = edge->source_upf->get_upf_config();
+  pfcp::create_qer create_qer = {};
+  pfcp::gate_status_t gate_status;
+  pfcp::mbr_t maximum_bitrate;
+  pfcp::gbr_t guaranteed_bitrate;
+
+  // Check if the qer_id in edge is 0, if so, generate a new qer_id using the
+  // session handler and assign it to edge->qer_id. Set the new QER ID in the
+  // create_qer object.
+  if (edge->qer_id.qer_id == 0) {
+    edge->qer_id = sps->get_session_handler()->generate_qer_id();
+  }
+  create_qer.set(edge->qer_id);
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+  } else {
+    gate_status.dl_gate = OPEN;
+  }
+
+  create_qer.set(gate_status);
+
+  if (pfcp_mbr(edge, maximum_bitrate)) {
+    create_qer.set(maximum_bitrate);
+  }
+  if (pfcp_gbr(edge, guaranteed_bitrate)) {
+    create_qer.set(guaranteed_bitrate);
+  }
+  create_qer.set(edge->qfi);
+
+  return create_qer;
 }
 
 //------------------------------------------------------------------------------
@@ -214,11 +300,12 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   pfcp::pdi pdi                 = {};  // packet detection information
   pfcp::outer_header_removal_t outer_header_removal = {};
   // pdi IEs
-  pfcp::source_interface_t source_interface          = {};
-  pfcp::fteid_t local_fteid                          = {};
-  pfcp::sdf_filter_t sdf_filter                      = {};
-  pfcp::application_id_t application_id              = {};
-  pfcp::_3gpp_interface_type_t source_interface_type = {};
+  pfcp::source_interface_t source_interface           = {};
+  pfcp::fteid_t local_fteid                           = {};
+  pfcp::sdf_filter_t sdf_filter                       = {};
+  pfcp::application_id_t application_id               = {};
+  pfcp::_3gpp_interface_type_t source_interface_type  = {};
+  pfcp::ethernet_packet_filter ethernet_packet_filter = {};
 
   // Packet detection information (see Table 7.5.2.2-2: PDI IE within PFCP
   // Session Establishment Request, 3GPP TS 29.244 V16.0.0)  source interface
@@ -267,7 +354,11 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   // UE IP address
-  pdi.set(pfcp_ue_ip_address(edge));
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
+      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
+      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
+    pdi.set(pfcp_ue_ip_address(edge));
+  }
 
   if (edge->type == n3_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N3;
@@ -283,17 +374,43 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     create_pdr.set(outer_header_removal);
     pdi.set(edge->qfi);  // QFI - QoS Flow ID
   }
+
+  // Framed IPv4 Route
+  if (!sps->ipv4_frame_route.empty()) {
+    if (up_features.frrt) {
+      for (const auto& framed_route : sps->ipv4_frame_route) {
+        pdi.set(framed_route);
+        Logger::smf_app().debug(
+            "Framed Route %s is set", framed_route.framed_route);
+      }
+    } else {
+      Logger::smf_app().warn(
+          "Received framed routing information from UDM but UPF does not "
+          "support framed routing.");
+    }
+  }
   // TODO: Traffic Endpoint ID
   // TODO: Application ID
-  // TODO: Ethernet PDU Session Information
-  // TODO: Ethernet Packet Filter
   // TODO: Framed Route Information
   // TODO: Framed-Routing
   // TODO: Framed-IPv6-Route
 
-  if (!edge->uplink && !edge->flow_information.getFlowDescription().empty()) {
-    sdf_filter.fd               = 1;
-    sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+    // Ethernet PDU Session Information
+    if (edge->uplink) {  // For DL PDR
+      pfcp::ethernet_pdu_session_information_t
+          ethernet_pdu_session_information  = {};
+      ethernet_pdu_session_information.ethi = 1;
+      pdi.set(ethernet_pdu_session_information);
+    }
+
+    // Ethernet Packet Filter
+    if (pfcp_ethernet_packet_filter(edge, ethernet_packet_filter)) {
+      pdi.set(ethernet_packet_filter);
+    }
+  }
+
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
     pdi.set(sdf_filter);
   }
 
@@ -310,6 +427,13 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // we take the FAR ID of the associated edge, so either from the same QFI or
   // from the same path for UL CL
   create_pdr.set(edge->associated_edge->far_id);
+
+  // Assign the QER ID from the associated edge to the PDR object. Establish a
+  // relationship between the PDR and a specific QER that dictates how QoS
+  // policies should be enforced for traffic handled by this PDR.
+  if (cfg.enable_qers()) {
+    create_pdr.set(edge->associated_edge->qer_id);
+  }
 
   if (cfg.enable_usage_reporting()) {
     create_pdr.set(edge->urr_id);
@@ -360,23 +484,33 @@ pfcp::create_urr smf_session_procedure::pfcp_create_urr(
 
 //------------------------------------------------------------------------------
 pfcp::remove_pdr smf_session_procedure::pfcp_remove_pdr(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_pdr remove_pdr;
   remove_pdr.set(edge->pdr_id);
   return remove_pdr;
 }
 
 //------------------------------------------------------------------------------
+pfcp::remove_qer smf_session_procedure::pfcp_remove_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  pfcp::remove_qer remove_qer;
+  remove_qer.set(edge->qer_id);
+
+  return remove_qer;
+}
+
+//------------------------------------------------------------------------------
 pfcp::remove_far smf_session_procedure::pfcp_remove_far(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   pfcp::remove_far remove_far;
   remove_far.set(edge->far_id);
 
   return remove_far;
 }
 
+//------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   // TODO some duplicated code from create_pdr
 
   oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
@@ -384,6 +518,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   pfcp::update_pdr update_pdr                       = {};
   pfcp::precedence_t precedence                     = {};
   pfcp::pdi pdi                                     = {};
+  pfcp::sdf_filter_t sdf_filter                     = {};
   pfcp::source_interface_t source_interface         = {};
   pfcp::outer_header_removal_t outer_header_removal = {};
 
@@ -401,6 +536,10 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   }
 
   pdi.set(source_interface);
+
+  if (pfcp_sdf_filter(edge, sdf_filter)) {
+    pdi.set(sdf_filter);
+  }
 
   if (cfg.enable_usage_reporting()) {
     pfcp::urr_id_t urr_id = edge->urr_id;
@@ -424,8 +563,45 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   return update_pdr;
 }
 
+//------------------------------------------------------------------------------
+pfcp::update_qer smf_session_procedure::pfcp_update_qer(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  // Retrieve the existing QER associated with the edge for updating
+  pfcp::update_qer update_qer = {};
+
+  // Retrieve the existing QER ID from the edge
+  pfcp::qer_id_t qer_id = edge->qer_id;
+
+  // Update QER attributes based on edge properties
+  pfcp::gate_status_t gate_status;
+  pfcp::mbr_t maximum_bitrate;
+  pfcp::gbr_t guaranteed_bitrate;
+  // TODO: Update Packet Rate
+  // TODO: Update Reflective QoS
+
+  if (edge->uplink) {
+    gate_status.ul_gate = OPEN;
+  } else {
+    gate_status.dl_gate = OPEN;
+  }
+
+  update_qer.set(qer_id);
+  update_qer.set(gate_status);
+  if (pfcp_mbr(edge, maximum_bitrate)) {
+    update_qer.set(maximum_bitrate);
+  }
+  if (pfcp_gbr(edge, guaranteed_bitrate)) {
+    update_qer.set(guaranteed_bitrate);
+  }
+
+  update_qer.set(edge->qfi);
+
+  return update_qer;
+}
+
+//------------------------------------------------------------------------------
 pfcp::update_far smf_session_procedure::pfcp_update_far(
-    const shared_ptr<qos_upf_edge>& edge) {
+    const std::shared_ptr<qos_upf_edge>& edge) {
   // TODO there is some duplicated code from create_far
   // Update FAR
   pfcp::update_far update_far                                     = {};
@@ -453,8 +629,9 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
   return update_far;
 }
 
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
-    const shared_ptr<qos_upf_edge>& edge,
+    const std::shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
@@ -531,18 +708,21 @@ bool smf_session_procedure::is_qfi_served_in_edges(
         "because of an earlier reject");
     return false;
   }
+  bool found_qfi = false;
   for (const auto& qfi : qfis) {
-    bool found_qfi = false;
     for (const auto& edge : edges) {
-      if (qfi == edge->qfi) found_qfi = true;
-      served_edges.push_back(edge);
+      if (qfi == edge->qfi) {
+        found_qfi = true;
+        served_edges.push_back(edge);
+      }
     }
-    if (!found_qfi) {
-      Logger::smf_app().error(
-          "Requested QFI %d does not exist in PDU session. Cannot modify PFCP "
-          "session");
-      return false;
-    }
+  }
+
+  if (!found_qfi) {
+    Logger::smf_app().error(
+        "Requested QFIs does not exist in PDU session. Cannot modify PFCP "
+        "session");
+    return false;
   }
   return true;
 }
@@ -550,8 +730,8 @@ bool smf_session_procedure::is_qfi_served_in_edges(
 //------------------------------------------------------------------------------
 std::vector<pfcp::qfi_t>
 smf_session_procedure::associate_fteid_with_created_pdrs(
-    const vector<pfcp::created_pdr>& created_pdrs,
-    const vector<std::shared_ptr<qos_upf_edge>>& edges) {
+    const std::vector<pfcp::created_pdr>& created_pdrs,
+    const std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
   // using set to eliminate duplicates (e.g. for UL CL scenario)
   std::set<uint8_t> used_qfis;
   std::vector<pfcp::qfi_t> used_qfis_pfcp;
@@ -561,8 +741,9 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
       for (const auto& edge : edges) {
         if (edge->pdr_id == pdr_id && it.get(edge->fteid)) {
           Logger::smf_app().debug(
-              "Successfully associate PDR %u with %s", edge->pdr_id.rule_id,
-              to_string_fteid(edge->fteid));
+              "Successfully associate PDR %u with %s (QFI: %d)",
+              edge->pdr_id.rule_id, to_string_fteid(edge->fteid),
+              edge->qfi.qfi);
           used_qfis.insert(edge->qfi.qfi);
           sps->get_session_handler()
               ->get_session_graph()
@@ -585,17 +766,161 @@ smf_session_procedure::associate_fteid_with_created_pdrs(
 
 //------------------------------------------------------------------------------
 void smf_session_procedure::check_if_all_qfis_are_handled(
-    const vector<pfcp::qfi_t>& all_qfis_to_check,
-    const vector<pfcp::qfi_t>& handled_qfis) {
+    const std::vector<pfcp::qfi_t>& all_qfis_to_check,
+    const std::vector<pfcp::qfi_t>& handled_qfis) {
   if (all_qfis_to_check.size() != handled_qfis.size()) {
     Logger::smf_app().error(
         "Not all QFIs were handled by UPF, rejecting PDU session");
-    sps->get_session_handler()->set_cause(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED);
+    sps->get_session_handler()->set_cause(k5gsmCauseRequestRejectedUnspecified);
   }
 
   // set the values to be updated in session handler
   sps->get_session_handler()->set_qfis_to_be_updated(handled_qfis);
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_sdf_filter(
+    const std::shared_ptr<qos_upf_edge>& edge, sdf_filter_t& sdf_filter,
+    bool ethernet_sdf_filter) {
+  bool is_uplink_fdir, is_downlink_fdir;
+  if (ethernet_sdf_filter) {
+    if (!edge->flow_information.getEthFlowDescription().fDescIsSet()) {
+      return false;
+    }
+    is_uplink_fdir =
+        session_handler::is_uplink_eth_flow_direction(edge->flow_information);
+    is_downlink_fdir =
+        session_handler::is_downlink_eth_flow_direction(edge->flow_information);
+  } else {
+    is_uplink_fdir =
+        session_handler::is_uplink_flow_direction(edge->flow_information);
+    is_downlink_fdir =
+        session_handler::is_downlink_flow_direction(edge->flow_information);
+  }
+
+  // UL and DL edge is reversed, as it is from UPF point of view
+  bool add_sdf_filter = false;
+  if (is_uplink_fdir && !edge->uplink) {
+    add_sdf_filter = true;
+  }
+  if (is_downlink_fdir && edge->uplink) {
+    add_sdf_filter = true;
+  }
+
+  if (add_sdf_filter) {
+    sdf_filter.fd = 1;
+    if (ethernet_sdf_filter) {
+      sdf_filter.flow_description =
+          edge->flow_information.getEthFlowDescription().getFDesc();
+    } else {
+      sdf_filter.flow_description = edge->flow_information.getFlowDescription();
+    }
+
+    sdf_filter.length_of_flow_description =
+        sdf_filter.flow_description.length();
+    return true;
+  }
+
+  return false;
+}
+
+//------------------------------------------------------------------------------
+bool smf_session_procedure::pfcp_ethernet_packet_filter(
+    const std::shared_ptr<qos_upf_edge>& edge,
+    ethernet_packet_filter& ethernet_packet_filter) {
+  if (!edge->flow_information.ethFlowDescriptionIsSet()) {
+    Logger::smf_app().warn("No Ethernet Flow Description found!");
+    return false;
+  }
+  auto ethFlowDescription = edge->flow_information.getEthFlowDescription();
+
+  // UL and DL edge is reversed, as it is from UPF point of view
+  bool add_eth_filter = false;
+  if (session_handler::is_uplink_eth_flow_direction(edge->flow_information) &&
+      !edge->uplink) {
+    add_eth_filter = true;
+  }
+  if (session_handler::is_downlink_eth_flow_direction(edge->flow_information) &&
+      edge->uplink) {
+    add_eth_filter = true;
+  }
+  if (add_eth_filter) {
+    // TODO: IF BIDIRECTIONAL set Properties && ID (Only ID without Properties &
+    // Filter definition for second direction)
+
+    // Mac Address
+    mac_address_t mac_address = {};
+    bool set_mac_address      = false;
+    // Add source address as single address or range
+    if (ethFlowDescription.sourceMacAddrIsSet()) {
+      mac_address.sour = 1;
+      oai::utils::conv::string_to_uint_mac_address(
+          ethFlowDescription.getSourceMacAddr(), mac_address.source_mac_address,
+          '-');
+      if (ethFlowDescription.srcMacAddrEndIsSet()) {
+        mac_address.usou = 1;
+        oai::utils::conv::string_to_uint_mac_address(
+            ethFlowDescription.getSrcMacAddrEnd(),
+            mac_address.upper_source_mac_address, '-');
+      }
+      set_mac_address = true;
+    } else if (ethFlowDescription.srcMacAddrEndIsSet()) {
+      Logger::smf_app().error(
+          "Source MAC end address (srcMacAddrEnd) is set without a starting "
+          "MAC address "
+          "(sourceMacAddr). MacAddress IE is excluded from Ethernet Packet "
+          "Filter due to invalid config.");
+    }
+
+    // Add dest address as single address or range
+    if (ethFlowDescription.destMacAddrIsSet()) {
+      mac_address.dest = 1;
+      oai::utils::conv::string_to_uint_mac_address(
+          ethFlowDescription.getDestMacAddr(),
+          mac_address.destination_mac_address, '-');
+      if (ethFlowDescription.destMacAddrEndIsSet()) {
+        mac_address.udes = 1;
+        oai::utils::conv::string_to_uint_mac_address(
+            ethFlowDescription.getDestMacAddrEnd(),
+            mac_address.upper_destination_mac_address, '-');
+      }
+      set_mac_address = true;
+    } else if (ethFlowDescription.destMacAddrEndIsSet()) {
+      Logger::smf_app().error(
+          "Destination MAC end address (destMacAddrEnd) is set without a "
+          "starting MAC "
+          "address (destMacAddr). MacAddress IE is excluded from Ethernet "
+          "Packet Filter due to invalid config.");
+    }
+
+    if (set_mac_address) {
+      ethernet_packet_filter.set(mac_address);
+    }
+
+    // EtherType
+    ethertype_t ethertype = {};
+    oai::utils::xgpp_conv::ethType_to_pcfp_ethertype(
+        ethFlowDescription.getEthType(), ethertype);
+    ethernet_packet_filter.set(ethertype);
+
+    // C-TAG and V-TAG
+    if (ethFlowDescription.vlanTagsIsSet()) {
+      Logger::smf_app().warn(
+          "VLAN-TAG is configured for the Ethernet Packet Filter but is not "
+          "yet supported");
+      // TODO: parse VLAN Tags to C-TAGs and V-TAGs
+    }
+
+    // SDF Filter
+    pfcp::sdf_filter_t sdf_filter = {};
+    if (pfcp_sdf_filter(edge, sdf_filter, true)) {
+      ethernet_packet_filter.set(sdf_filter);
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 //------------------------------------------------------------------------------
@@ -671,25 +996,50 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
   oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
 
   //-------------------
+  // IE PDN Type
+  //-------------------
+  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_ETHERNET) {
+    pfcp::pdn_type_t pdn_type = {};
+    oai::utils::xgpp_conv::pdu_session_type_to_pdn_type(
+        sps->pdu_session_type.pdu_session_type, pdn_type);
+    n4_triggered->pfcp_ies.set(pdn_type);
+  }
+
+  //-------------------
   // IE CREATE_URR ( Usage Reporting Rules)
   //-------------------
   if (current_upf->get_upf_config().enable_usage_reporting()) {
     pfcp::create_urr create_urr = pfcp_create_urr(dl_edges[0]);
     n4_triggered->pfcp_ies.set(create_urr);
   }
+
+  //-------------------
+  // IE CREATE_FAR, CREATE_QER and CREATE_PDR
+  //-------------------
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+    }
   }
   for (const auto& dl_edge : dl_edges) {
+    nlohmann::json j = dl_edge->flow_information;
+    Logger::smf_app().info("Create PDR for FlowInfo:\n %s", j.dump());
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
   }
 
   if (upf_cfg.enable_dl_pdr_in_session_establishment()) {
     for (const auto& dl_edge : dl_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      }
     }
     for (const auto& ul_edge : ul_edges) {
       n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+      }
     }
 
     Logger::smf_app().info(
@@ -714,8 +1064,8 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_create_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_create_sm_context_request>& sm_context_req,
-    const std::shared_ptr<itti_n11_create_sm_context_response>& sm_context_resp,
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& sm_context_req,
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& sm_context_resp,
     std::shared_ptr<smf::smf_context> sc) {
   Logger::smf_app().info("Perform a procedure - Create SM Context Request");
   // TODO check if compatible with ongoing procedures if any
@@ -734,9 +1084,23 @@ smf_procedure_code session_create_sm_context_procedure::run(
       sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn(),
       default_qos);
 
-  criteria.qos_profile._5qi           = default_qos._5qi;
-  criteria.qos_profile.arp            = default_qos.arp;
-  criteria.qos_profile.priority_level = default_qos.priority_level;
+  criteria.qos_profile.setR5qi(default_qos._5qi);
+
+  // TODO this conversion should be somewhere else but is only used once so far
+  oai::model::common::Arp arp;
+  oai::model::common::PreemptionVulnerability preempt_vuln;
+  from_json(default_qos.arp.preempt_vuln, preempt_vuln);
+  oai::model::common::PreemptionCapability preempt_cap;
+  from_json(default_qos.arp.preempt_cap, preempt_cap);
+
+  arp.setPreemptCap(preempt_cap);
+  arp.setPreemptVuln(preempt_vuln);
+  arp.setPriorityLevel(default_qos.arp.priority_level);
+
+  criteria.qos_profile.setArp(arp);
+  if (default_qos.priority_level != 0) {
+    criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
 
   // Find PDU session
   std::shared_ptr<smf_context_ref> scf = {};
@@ -813,8 +1177,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   resp.pfcp_ies.get(cause);
   if (cause.cause_value == pfcp::CAUSE_VALUE_REQUEST_ACCEPTED) {
     resp.pfcp_ies.get(sps->up_fseid);
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
   } else {
     // remove QFIs to be handled to
     sps->get_session_handler()->set_qfis_to_be_updated({});
@@ -823,8 +1186,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
         "by UPF",
         n11_trigger->req.get_pdu_session_id());
     // TODO we should have a good cause mapping here
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     // TODO we need to abort all ongoing sessions
     return smf_procedure_code::ERROR;
   }
@@ -903,10 +1265,9 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     sps->get_session_handler()->set_qfis_to_be_updated(all_qfis);
   }
 
-  // TODO we have more than one QoS flow here, to adapt with new QoS framework
   for (const auto& flow :
        sps->get_session_handler()->get_qos_flows_context_updated()) {
-    n11_triggered_pending->res.set_qos_flow_context(flow);
+    n11_triggered_pending->res.add_qos_flow_context(flow);
   }
 
   return smf_procedure_code::OK;
@@ -949,6 +1310,9 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
   for (const auto& dl_edge : dl_edges_to_use) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+    if (upf_cfg.enable_qers()) {
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+    }
   }
 
   for (const auto& ul_edge : ul_edges_to_use) {
@@ -970,8 +1334,8 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_update_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_update_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_update_sm_context_response> sm_context_resp,
+    const std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp,
     const std::shared_ptr<smf::smf_context>& sc) {
   // Handle SM update sm context request
   // The SMF initiates an N4 Session Modification procedure with the UPF. The
@@ -1061,8 +1425,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
   }
 
@@ -1109,11 +1472,17 @@ smf_procedure_code session_update_sm_context_procedure::run(
           // then tell it to UPF with Update FAR
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
+          }
           send_n4 = true;
         } else {
           // handover, but FAR ID is not existing yet, we create new one
           dl_edge->next_hop_fteid = gnb_fteid;
           n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+          if (upf_cfg.enable_qers()) {
+            n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+          }
           send_n4 = true;
         }
       }
@@ -1157,6 +1526,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
       for (const auto& ul_edge : ul_edges_to_update) {
         ul_edge->precedence += 1;
         n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
+        if (upf_cfg.enable_qers()) {
+          n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
+        }
       }
       for (const auto& dl_edge : dl_edges_to_update) {
         dl_edge->precedence += 1;
@@ -1172,9 +1544,15 @@ smf_procedure_code session_update_sm_context_procedure::run(
     case session_management_procedures_type_e::
         PDU_SESSION_RELEASE_AN_INITIATED: {
       Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
-      remove_pdrs_and_fars(ul_edges_to_update);
-      remove_pdrs_and_fars(dl_edges_to_update);
+      remove_pdrs_fars_qers(ul_edges_to_update);
+      remove_pdrs_fars_qers(dl_edges_to_update);
       send_n4 = true;
+    } break;
+
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO:
+      send_n4 = false;
     } break;
 
     default: {
@@ -1214,21 +1592,30 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   pfcp::cause_t cause = {};
   resp.pfcp_ies.get(cause);
 
-  n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-      cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+  n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
-    // TODO: Nsmf_PDUSession_SMContextStatusNotify
-    /*  If the PDU Session establishment is not successful, the SMF informs
-     the AMF by invoking Nsmf_PDUSession_SMContextStatusNotify (Release). The
-     SMF also releases any N4 session(s) created, any PDU Session address if
-     allocated (e.g. IP address) and releases the association with PCF, if
-     any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
-     */
-    // TODO: should we return here with smf_procedure_code::ERROR;
+    // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
+    // is not successful, the SMF informs the AMF by invoking
+    // Nsmf_PDUSession_SMContextStatusNotify (Release). The
+    // SMF also releases any N4 session(s) created, any PDU Session address if
+    // allocated (e.g. IP address) and releases the association with PCF, if
+    // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
+
+    scid_t scid = {};
+    try {
+      scid = std::stoi(n11_trigger->scid);
+    } catch (const std::exception& err) {
+      Logger::smf_app().warn(
+          "SM Context associated with this id %s does not exit!",
+          n11_trigger->scid.c_str());
+    }
+    sc->handle_sm_context_status_change(scid, "RELEASED");
+
+    return smf_procedure_code::ERROR;
+
   } else {
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
   }
 
   // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
@@ -1258,8 +1645,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
   }
 
@@ -1347,6 +1733,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       continue_n4 = false;
     } break;
 
+    case session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      continue_n4 = false;
+      // TODO:
+    } break;
+
     default: {
       Logger::smf_app().error(
           "Update SM Context procedure: Unknown session management type %d",
@@ -1376,14 +1768,17 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 }
 
 //------------------------------------------------------------------------------
-void session_update_sm_context_procedure::remove_pdrs_and_fars(
-    const vector<std::shared_ptr<qos_upf_edge>>& edges) {
+void session_update_sm_context_procedure::remove_pdrs_fars_qers(
+    const std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
   for (const auto& edge : edges) {
     if (edge->pdr_id.rule_id != 0) {
       n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));
     }
     if (edge->far_id.far_id != 0) {
       n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    }
+    if (edge->qer_id.qer_id != 0) {
+      n4_triggered->pfcp_ies.set(pfcp_remove_qer(edge));
     }
     edge->clear_session();
   }
@@ -1423,8 +1818,8 @@ session_release_sm_context_procedure::send_n4_session_deletion_request() {
 
 //------------------------------------------------------------------------------
 smf_procedure_code session_release_sm_context_procedure::run(
-    const std::shared_ptr<itti_n11_release_sm_context_request>& sm_context_req,
-    std::shared_ptr<itti_n11_release_sm_context_response> sm_context_res,
+    const std::shared_ptr<itti_sbi_release_sm_context_request>& sm_context_req,
+    std::shared_ptr<itti_sbi_release_sm_context_response> sm_context_res,
     const std::shared_ptr<smf::smf_context>& sc) {
   Logger::smf_app().info("Release SM Context Request");
   // TODO check if compatible with ongoing procedures if any
@@ -1503,13 +1898,11 @@ smf_procedure_code session_release_sm_context_procedure::handle_itti_msg(
   }
 
   if (cause.cause_value == CAUSE_VALUE_REQUEST_ACCEPTED) {
-    n11_triggered_pending->res.set_cause(
-        static_cast<uint8_t>(cause_value_5gsm_e::CAUSE_255_REQUEST_ACCEPTED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
     Logger::smf_app().info("PDU Session Release SM Context accepted by UPFs");
     return smf_procedure_code::OK;
   } else {
-    n11_triggered_pending->res.set_cause(static_cast<uint8_t>(
-        cause_value_5gsm_e::CAUSE_31_REQUEST_REJECTED_UNSPECIFIED));
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     // We cannot return an error here, because we need to delete all the UPFs
     return smf_procedure_code::ERROR;
   }

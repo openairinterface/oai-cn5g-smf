@@ -55,6 +55,7 @@ namespace api {
 
 using namespace oai::model::common::helpers;
 using namespace oai::model::smf;
+using namespace oai::utils;
 
 IndividualSMContextApi::IndividualSMContextApi(
     std::shared_ptr<Pistache::Rest::Router> rtr) {
@@ -70,15 +71,15 @@ void IndividualSMContextApi::setupRoutes() {
 
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/release",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsRelease,
       Routes::bind(&IndividualSMContextApi::release_sm_context_handler, this));
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/retrieve",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsRetrieve,
       Routes::bind(&IndividualSMContextApi::retrieve_sm_context_handler, this));
   Routes::Post(
       *router,
-      base + smf_cfg->sbi_api_version + "/sm-contexts/:smContextRef/modify",
+      base + oai::smf::api::smf_sbi_helper::SmfPduSessionPathSmContextsModify,
       Routes::bind(&IndividualSMContextApi::update_sm_context_handler, this));
 
   // Default handler, called when a route is not found
@@ -97,13 +98,13 @@ void IndividualSMContextApi::release_sm_context_handler(
   SmContextReleaseMessage smContextReleaseMessage = {};
 
   // Simple parser
-  mime_parser sp = {};
+  oai::utils::mime_parser sp = {};
   if (!sp.parse(request.body())) {
     response.send(Pistache::Http::Code::Bad_Request);
     return;
   }
 
-  std::vector<mime_part> parts = {};
+  std::unordered_map<std::string, oai::utils::mime_part> parts = {};
   sp.get_mime_parts(parts);
   uint8_t size = parts.size();
   Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -113,7 +114,9 @@ void IndividualSMContextApi::release_sm_context_handler(
 
   try {
     if (size > 0) {
-      nlohmann::json::parse(parts[0].body.c_str()).get_to(smContextReleaseData);
+      nlohmann::json::parse(
+          parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
+          .get_to(smContextReleaseData);
     } else {
       nlohmann::json::parse(request.body().c_str())
           .get_to(smContextReleaseData);
@@ -121,9 +124,10 @@ void IndividualSMContextApi::release_sm_context_handler(
 
     smContextReleaseMessage.setJsonData(smContextReleaseData);
 
-    for (int i = 1; i < size; i++) {
-      if (parts[i].content_type.compare("application/vnd.3gpp.ngap") == 0) {
-        smContextReleaseMessage.setBinaryDataN2SmInformation(parts[i].body);
+    for (auto it : parts) {
+      if (boost::iequals(
+              it.second.content_type, oai::utils::MIME_CONTENT_TYPE_NGAP)) {
+        smContextReleaseMessage.setBinaryDataN2SmInformation(it.second.body);
         Logger::smf_api_server().debug("N2 SM information is set");
       }
     }
@@ -182,13 +186,13 @@ void IndividualSMContextApi::update_sm_context_handler(
   SmContextUpdateMessage smContextUpdateMessage = {};
 
   // Simple parser
-  mime_parser sp = {};
+  oai::utils::mime_parser sp = {};
   if (!sp.parse(request.body())) {
     response.send(Pistache::Http::Code::Bad_Request);
     return;
   }
 
-  std::vector<mime_part> parts = {};
+  std::unordered_map<std::string, oai::utils::mime_part> parts = {};
   sp.get_mime_parts(parts);
   uint8_t size = parts.size();
   Logger::smf_api_server().debug("Number of MIME parts %d", size);
@@ -197,20 +201,24 @@ void IndividualSMContextApi::update_sm_context_handler(
   SmContextUpdateData smContextUpdateData = {};
   try {
     if (size > 0) {
-      nlohmann::json::parse(parts[0].body.c_str()).get_to(smContextUpdateData);
+      nlohmann::json::parse(
+          parts[oai::utils::JSON_CONTENT_ID_MIME].body.c_str())
+          .get_to(smContextUpdateData);
     } else {
       nlohmann::json::parse(request.body().c_str()).get_to(smContextUpdateData);
     }
 
     smContextUpdateMessage.setJsonData(smContextUpdateData);
 
-    for (int i = 1; i < size; i++) {
-      if (parts[i].content_type.compare("application/vnd.3gpp.5gnas") == 0) {
-        smContextUpdateMessage.setBinaryDataN1SmMessage(parts[i].body);
+    for (auto it : parts) {
+      if (boost::iequals(
+              it.second.content_type, oai::utils::MIME_CONTENT_TYPE_NAS)) {
+        smContextUpdateMessage.setBinaryDataN1SmMessage(it.second.body);
         Logger::smf_api_server().debug("N1 SM message is set");
-      } else if (
-          parts[i].content_type.compare("application/vnd.3gpp.ngap") == 0) {
-        smContextUpdateMessage.setBinaryDataN2SmInformation(parts[i].body);
+      }
+      if (boost::iequals(
+              it.second.content_type, oai::utils::MIME_CONTENT_TYPE_NGAP)) {
+        smContextUpdateMessage.setBinaryDataN2SmInformation(it.second.body);
         Logger::smf_api_server().debug("N2 SM information is set");
       }
     }

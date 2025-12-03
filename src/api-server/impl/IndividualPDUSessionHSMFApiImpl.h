@@ -68,8 +68,8 @@ class IndividualPDUSessionHSMFApiImpl
     : public oai::smf_server::api::IndividualPDUSessionHSMFApi {
  public:
   IndividualPDUSessionHSMFApiImpl(
-      std::shared_ptr<Pistache::Rest::Router>, smf::smf_app* smf_app_inst,
-      std::string address);
+      std::shared_ptr<Pistache::Rest::Router>,
+      oai::app::smf::smf_app* smf_app_inst, std::string address);
   ~IndividualPDUSessionHSMFApiImpl() {}
 
   void release_pdu_session(
@@ -80,7 +80,7 @@ class IndividualPDUSessionHSMFApiImpl
       Pistache::Http::ResponseWriter& response);
 
  private:
-  smf::smf_app* m_smf_app;
+  oai::app::smf::smf_app* m_smf_app;
   std::string m_address;
 };
 
