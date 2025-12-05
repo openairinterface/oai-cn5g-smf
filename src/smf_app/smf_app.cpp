@@ -1051,6 +1051,8 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // authorization by the external DN
 
   // Step 3. check if the DNN requested is valid
+  std::string nd_dnn = {};
+  if (dotted_to_string(dnn, nd_dnn)) dnn = nd_dnn;
   // Update DNN
   smreq->req.set_dnn(dnn);
   if (not smf_cfg->is_dotted_dnn_handled(dnn, pdu_session_type)) {
