@@ -37,7 +37,7 @@
 All interfaces support both HTTP/1.1 and HTTP/2
 # 3. OAI SMF Feature List #
 
-Based on document **3GPP TS 23.501 v16.0.0 (Section 6.2.2)**.
+Based on document **3GPP TS 23.501 v16.14.0 (Section 6.2.2)**.
 
 | **ID** | **Classification**                                                  | **Status**         | **Comments**                              |
 |--------|---------------------------------------------------------------------|--------------------|-------------------------------------------|
@@ -47,14 +47,20 @@ Based on document **3GPP TS 23.501 v16.0.0 (Section 6.2.2)**.
 | 4      | Respond to ARP requests and/or IPv6 Neighbour Solicitation requests | :x:                |                                           |
 | 5      | Selection of UPF function                                           | :heavy_check_mark: | Local configuration/UPF discovery via NRF |
 | 6      | Configures traffic steering at UPF                                  | :heavy_check_mark: | Based on traffic rules  from PCF          |
-| 7      | Termination of interfaces towards PCFs                              | :heavy_check_mark: | Only supporting traffic rules             |
-| 8      | Lawful intercept                                                    | :x:                |                                           |
-| 8      | Charging data collection and support of charging interfaces         | :x:                |                                           |
-| 10     | Termination of SM parts of NAS messages                             | :heavy_check_mark: |                                           |
-| 11     | Downlink Data Notification                                          | :heavy_check_mark: |                                           |
-| 12     | Determine SSC mode of a session                                     | :heavy_check_mark: | Only support SSC mode 1                   |
-| 13     | Initiator of AN specific SM information, sent via AMF over N2 to AN | :heavy_check_mark: |                                           |
-| 14     | Support for Control Plane CIoT 5GS Optimisation                     | :x:                |                                           |
-| 15     | Support of header compression                                       | :x:                |                                           |
-| 16     | Act as I-SMF in deployments                                         | :x:                |                                           |
-| 17     | Provisioning of external parameters                                 | :x:                |                                           |
+| 7      | 5G VN group management                                              | :x:                |                                           |
+| 8      | Termination of interfaces towards PCFs                              | :heavy_check_mark: | Only supporting traffic rules             |
+| 9      | Lawful intercept                                                    | :x:                |                                           |
+| 10     | Charging data collection and support of charging interfaces         | :x:                |                                           |
+| 11     | Termination of SM parts of NAS messages                             | :heavy_check_mark: |                                           |
+| 12     | Downlink Data Notification                                          | :heavy_check_mark: |                                           |
+| 13     | Determine SSC mode of a session                                     | :heavy_check_mark: | Only support SSC mode 1                   |
+| 14     | Initiator of AN specific SM information, sent via AMF over N2 to AN | :heavy_check_mark: |                                           |
+| 15     | Support for Control Plane CIoT 5GS Optimisation                     | :x:                |                                           |
+| 16     | Support of header compression                                       | :x:                |                                           |
+| 17     | Act as I-SMF in deployments                                         | :x:                |                                           |
+| 18     | Provisioning of external parameters                                 | :x:                |                                           |
+| 19     | Support P-CSCF discovery for IMS services                           | :x:                |                                           |
+| 20     | Act as V-SMF                                                        | :x:                |                                           |
+| 21     | Support for interaction with external DN                            | :x:                |                                           |
+| 22     | Instructs UPF/NG-RAN to perform redundant transmission              | :x:                |                                           |
+|        | on N3/N9 interfaces                                                 |                    |                                           |
