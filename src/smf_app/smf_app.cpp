@@ -2219,7 +2219,7 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.set_nf_priority(1);
   nf_instance_profile.set_nf_capacity(100);
   nf_instance_profile.add_nf_ipv4_addresses(smf_cfg->sbi.addr4);
-  nf_instance_profile.set_fqdn("http://10.100.200.5:8080");
+  nf_instance_profile.set_fqdn("http://192.168.70.175:8080");
 
   // NF services
   // IP Endpoint (common for each service)
@@ -2238,11 +2238,11 @@ void smf_app::generate_smf_profile() {
   nf_service_version_t version   = {};
   version.api_version_in_uri     = "v1";
   version.api_full_version =
-      "https://10.100.200.5:8080/nsmf-pdusession/v1";  // TODO: to be updated
+      "https://192.168.70.175:8080/nsmf-pdusession/v1";  // TODO: to be updated
   nf_service.versions.push_back(version);
   nf_service.scheme            = "https";
   nf_service.nf_service_status = "REGISTERED";
-  nf_service.api_prefix        = "http://10.100.200.5:8080";
+  nf_service.api_prefix        = "http://192.168.70.175:8080";
 
   nf_service.ip_endpoints.push_back(endpoint);
 
@@ -2255,7 +2255,7 @@ void smf_app::generate_smf_profile() {
   nf_service_version_t version_evts   = {};
   version_evts.api_version_in_uri     = "v1";
   version_evts.api_full_version =
-      "http://10.100.200.5:8080/nsmf-pdusession/v1";  // TODO: to be updated
+      "http://192.168.70.175:8080/nsmf-pdusession/v1";  // TODO: to be updated
   nf_service_evts.versions.push_back(version_evts);
   nf_service_evts.scheme            = "http";
   nf_service_evts.nf_service_status = "REGISTERED";
