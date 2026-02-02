@@ -28,7 +28,7 @@
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi9/ubi:latest AS oai-smf-builder
+FROM registry.redhat.io/ubi9/ubi:latest AS oai-smf-builder
 
 ENV IS_DOCKERFILE=1
 
@@ -84,7 +84,7 @@ FROM mikefarah/yq:latest as yq-source
 #---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as oai-smf
+FROM registry.redhat.io/ubi9/ubi-minimal:latest as oai-smf
 ENV TZ=Europe/Paris
 
 # Copy the entitlements
