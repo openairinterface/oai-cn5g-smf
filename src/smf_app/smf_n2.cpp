@@ -1034,8 +1034,6 @@ oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
 
   priority_level_arp.set(15);
 
-  Logger::smf_app().error("THINH!!!!");
-
   auto preemptCapEnumValue =
       qos_flow.qos_profile.getArp().getPreemptCap().getEnumValue();
   if (preemptCapEnumValue ==
