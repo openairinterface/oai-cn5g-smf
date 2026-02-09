@@ -834,7 +834,7 @@ void smf_sbi::subscribe_sdm_subscriptions(
 //------------------------------------------------------------------------------
 void smf_sbi::unsubscribe_sdm_subscriptions(
     const std::shared_ptr<itti_sbi_unsubscribe_sdm_subscriptions>& msg) {
-  Logger::smf_sbi().debug("Subscribe SDM Subscriptions with the UDM");
+  Logger::smf_sbi().debug("Unsubscribe SDM Subscriptions with the UDM");
 
   std::string udm_uri =
       oai::smf::api::smf_sbi_helper::get_udm_sdm_unsubscriptions_uri(

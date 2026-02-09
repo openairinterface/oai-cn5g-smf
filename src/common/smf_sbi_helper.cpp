@@ -77,7 +77,7 @@ std::string smf_sbi_helper::get_udm_sdm_subscriptions_uri(
   return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_url(smf_cfg->enable_tls()) +
-         oai::common::sbi::sbi_helper::UdmSdmBase +
+         oai::common::sbi::sbi_helper::UdmUeCmBase +
          smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_api_version() +
@@ -94,7 +94,7 @@ std::string smf_sbi_helper::get_udm_sdm_unsubscriptions_uri(
   return smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_url(smf_cfg->enable_tls()) +
-         oai::common::sbi::sbi_helper::UdmSdmBase +
+         oai::common::sbi::sbi_helper::UdmUeCmBase +
          smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)
              ->get_sbi()
              .get_api_version() +
