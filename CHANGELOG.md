@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 # RELEASE NOTES: #
 
 ## v2.2.0 -- December 2025 ##
@@ -152,7 +154,7 @@
 
 ## v1.4.0 -- July 2022 ##
 
-* Fix for handling S-NSSAI 
+* Fix for handling S-NSSAI
 * Add support for IMS
 * HTTP/2 support for SBI interface
 * Add usage reporting feature
