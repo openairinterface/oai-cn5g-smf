@@ -1,25 +1,4 @@
-################################################################################
-# Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The OpenAirInterface Software Alliance licenses this file to You under
-# the OAI Public License, Version 1.1  (the "License"); you may not use this file
-# except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.openairinterface.org/?page_id=698
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#-------------------------------------------------------------------------------
-# For more information about the OpenAirInterface (OAI) Software Alliance:
-#      contact@openairinterface.org
-################################################################################
-# Author: laurent THOMAS, Lionel GAUTHIER
-###############################################################################
+# SPDX-License-Identifier: LicenseRef-CSSL-1.0
 
 cmake_minimum_required (VERSION 3.0.2)
 
@@ -332,9 +311,9 @@ IF(STATIC_LINKING)
     SET_TARGET_PROPERTIES(smf PROPERTIES LINK_SEARCH_END_STATIC 1)
     # asan do not support static linking
     SET(ASAN)
-ENDIF(STATIC_LINKING)   
+ENDIF(STATIC_LINKING)
 
-target_link_libraries (smf ${ASAN} 
+target_link_libraries (smf ${ASAN}
     -Wl,--start-group SMF UDP PFCP SMF_API SMF_COMMON_TYPES -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NGAP NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp cpr::cpr)
 
 add_boolean_option(USE_LTTNG  False "Activate the LTTNG tracer, a debugging/monitoring framework" ON)

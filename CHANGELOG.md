@@ -1,6 +1,15 @@
-# RELEASE NOTES: #
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 
-## v2.2.0 -- December 2025 ##
+# RELEASE NOTES:
+
+## v2.2.1 -- March 2026
+
+* Change of license from OAI Public License v1.1 to CSSL v1.0
+* Re-license documentation to the CC-BY-4.0 License
+* Re-license orchestration files (docker compose yaml files, health scripts, openshift build files)
+  and CI-scripts under the MIT License
+
+## v2.2.0 -- December 2025
 
 * Features
   - Ethernet PDU session
@@ -32,7 +41,7 @@
 * Miscellaneous
   - Code refactoring: NAS SM IEs, NGAP IEs
 
-## v2.1.0 -- August 2024 ##
+## v2.1.0 -- August 2024
 
 * Features
   - Use HTTP Request Timeout parameter from Conf file
@@ -57,7 +66,7 @@
   - Move SMF SBI models to common src git submodule
   - HTTP client cpr library refactoring effort
 
-## v2.0.1 -- January 2024 ##
+## v2.0.1 -- January 2024
 
 * Features
   - Add N1/N2 info in the message response to AMF if available
@@ -66,7 +75,7 @@
 * Tech debt
   - Refactor SMF PFCP associations to always use UPF info
 
-## v2.0.0 -- December 2023 ##
+## v2.0.0 -- December 2023
 
 * Features
   - Support YAML configuration file
@@ -95,7 +104,7 @@
   - Published image on Docker-Hub is using now Ubuntu-22 as base image
     * Ubuntu-18 is no longer supported
 
-## v1.5.1 -- May 2023 ##
+## v1.5.1 -- May 2023
 
 * Fix N1N2 Content message
 * Remove ranInfo field in n2infocontainer
@@ -120,7 +129,7 @@
 * Published image on Docker-Hub is using now Ubuntu-20 as base image
   * We will soon obsolete the build system for Ubuntu18.04
 
-## v1.5.0 -- January 2023 ##
+## v1.5.0 -- January 2023
 
 * Feature improvements:
   * PDU SESS EST + Qos Monitoring events exposure
@@ -150,9 +159,9 @@
   * Fixed docker exit by catching SIGTERM
   * release mode does not use libasan anymore --> allocation of 20T virtual memory is no longer done
 
-## v1.4.0 -- July 2022 ##
+## v1.4.0 -- July 2022
 
-* Fix for handling S-NSSAI 
+* Fix for handling S-NSSAI
 * Add support for IMS
 * HTTP/2 support for SBI interface
 * Add usage reporting feature
@@ -162,7 +171,7 @@
 * Reduce image size
 
 
-## v1.3.0 -- January 2022 ##
+## v1.3.0 -- January 2022
 
 * Update NWI from NF profile
 * Update SMF profile
@@ -174,20 +183,20 @@
 * Fix for IE Measurement Period
 * Docker optimization
 
-## v1.2.1 -- October 2021 ##
+## v1.2.1 -- October 2021
 
 * Fix build issue
 * Fix UPF selection
 * Timers handling: T3591/T3952
 
-## v1.2.0 -- September 2021 ##
+## v1.2.0 -- September 2021
 
 * Event Exposure implemented
 * UPF profile update
 * Support for URR query
 * Bug fixes
 
-## v1.1.0 -- July 2021 ##
+## v1.1.0 -- July 2021
 
 * PFCP Release 16 support
 * NRF registration
@@ -198,7 +207,7 @@
 * Bug fixes
 * Full support for Ubuntu18 and RHEL8
 
-## v1.0.0 -- September 2020 ##
+## v1.0.0 -- September 2020
 
 * Initial release, SMF can handle basic PDU session-related procedures e.g., session establishment request, session modification and session release.
 
