@@ -651,8 +651,10 @@ void smf_context::handle_itti_msg(
         // Trigger QoS Monitoring Event report notification
         std::shared_ptr<smf_context> pc = {};
         if (smf_app_inst->seid_2_smf_context(req->seid, pc)) {
-          oai::model::smf::EventNotification ev_notif = {};
-          oai::model::smf::UsageReport ur_model       = {};
+          // TODO:
+          /*
+          oai::_3gpp::model::EventNotification ev_notif = {};
+          oai::_3gpp::model::UsageReport ur_model       = {};
           if (ur.get(vm)) {
             ur_model.setSEndID(req->seid);
             if (ur.get(seqn)) ur_model.seturSeqN(seqn.ur_seqn);
@@ -668,6 +670,7 @@ void smf_context::handle_itti_msg(
             ur_model.setURTrigger(ur.usage_report_trigger.second);
           ev_notif.setUsageReport(ur_model);
           pc->trigger_qos_monitoring(req->seid, ev_notif, 1);
+          */
         } else {
           Logger::smf_app().debug(
               "No SFM context found for SEID " TEID_FMT
@@ -1160,7 +1163,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   if (!include_ue_ip_in_sm_association_estab) {
     bool is_sm_policy_modification = false;
-    oai::model::pcf::SmPolicyUpdateContextData sm_policy_update_context_data =
+    oai::_3gpp::model::SmPolicyUpdateContextData sm_policy_update_context_data =
         {};
     // Set allocated UE IP addr
     switch (sp->pdu_session_type.pdu_session_type) {
@@ -1175,8 +1178,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
         if (inet_ntop(
                 AF_INET6, &paa.ipv6_address, str_addr6, sizeof(str_addr6))) {
           Logger::smf_app().info("Allocated UE IPv6 prefix: %s", str_addr6);
-          std::string ue_ipv6_prefix_str             = std::string(str_addr6);
-          oai::model::common::Ipv6Prefix ipv6_prefix = {};
+          std::string ue_ipv6_prefix_str            = std::string(str_addr6);
+          oai::_3gpp::model::Ipv6Prefix ipv6_prefix = {};
           ipv6_prefix.setIpv6Prefix(ue_ipv6_prefix_str);
           sm_policy_update_context_data.setIpv6AddressPrefix(ipv6_prefix);
         }
@@ -1342,10 +1345,10 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
     // unsubscribes to the modifications of Session Management Subscription data
     // for the corresponding (SUPI, DNN, S-NSSAI of the HPLMN)
-    std::string key                              = {};
-    oai::model::common::Snssai snssai_3gpp_model = snssai.to_model_snssai();
+    std::string key                             = {};
+    oai::_3gpp::model::Snssai snssai_3gpp_model = snssai.to_model_snssai();
     smf_app_inst->get_dnn_snssai_key(dnn, snssai_3gpp_model, key);
-    std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription = {};
+    std::shared_ptr<oai::_3gpp::model::SdmSubscription> sdm_subscription = {};
     get_sdm_subscription(key, sdm_subscription);
     if (sdm_subscription) unsubscribe_sdm_subscriptions(supi, sdm_subscription);
   }
@@ -1702,7 +1705,7 @@ bool smf_context::handle_pdu_session_release_complete(
 
   // SM Policy Association termination
   if (sp->policy_ptr) {
-    oai::model::pcf::SmPolicyDeleteData delete_data;
+    oai::_3gpp::model::SmPolicyDeleteData delete_data;
     // TODO set data such as release cause, usage reports etc
     n7::smf_n7::get_instance().remove_sm_policy_association(
         *sp->policy_ptr, delete_data);
@@ -2272,11 +2275,11 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           // Subscription data for the corresponding (SUPI, DNN, S-NSSAI of the
           // HPLMN)
           std::string key = {};
-          oai::model::common::Snssai snssai_3gpp_model =
+          oai::_3gpp::model::Snssai snssai_3gpp_model =
               sp.get()->get_snssai().to_model_snssai();
           smf_app_inst->get_dnn_snssai_key(
               sp.get()->get_dnn(), snssai_3gpp_model, key);
-          std::shared_ptr<oai::model::udm::SdmSubscription> sdm_subscription =
+          std::shared_ptr<oai::_3gpp::model::SdmSubscription> sdm_subscription =
               {};
           get_sdm_subscription(key, sdm_subscription);
           if (sdm_subscription)
@@ -3214,9 +3217,9 @@ bool smf_context::handle_ho_preparation_request_fail(
   conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
 
   // Prepare SmContextUpdateError
-  oai::model::smf::SmContextUpdateError sm_context    = {};
-  oai::model::common::ProblemDetails problem_details  = {};
-  oai::model::common::RefToBinaryData refToBinaryData = {};
+  oai::_3gpp::model::SmContextUpdateError sm_context   = {};
+  oai::_3gpp::model::ExtProblemDetails problem_details = {};
+  oai::_3gpp::model::RefToBinaryData refToBinaryData   = {};
   Logger::smf_app().warn("Create SmContextCreateError");
   problem_details.setCause(pdu_session_application_error_e2str.at(
       PDU_SESSION_APPLICATION_ERROR_HANDOVER_RESOURCE_ALLOCATION_FAILURE));
@@ -3705,7 +3708,7 @@ void smf_context::handle_ddds(
 
       // DDDS Status
       // TODO: where to get this information in SMF???
-      oai::model::smf::DddStatus ddds = oai::model::smf::DddStatus();
+      oai::_3gpp::model::DddStatus ddds = oai::_3gpp::model::DddStatus();
       ev_notif.set_Ddds(ddds);
       itti_msg->event_notifs.push_back(ev_notif);
     }
@@ -3812,7 +3815,7 @@ void smf_context::trigger_ue_ip_change(
 //------------------------------------------------------------------------------
 void smf_context::handle_qos_monitoring(
     const seid_t& seid,
-    const oai::model::smf::EventNotification& ev_notif_model,
+    const oai::_3gpp::model::EventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   Logger::smf_app().debug(
       "Send request to N11 to trigger QoS Monitoring (Usage Report) Event, "
@@ -3875,7 +3878,7 @@ void smf_context::handle_qos_monitoring(
 //------------------------------------------------------------------------------
 void smf_context::trigger_qos_monitoring(
     const seid_t& seid,
-    const oai::model::smf::EventNotification& ev_notif_model,
+    const oai::_3gpp::model::EventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   event_sub.ee_qos_monitoring(seid, ev_notif_model, http_version);
 }
@@ -4140,7 +4143,7 @@ void smf_context::handle_plmn_change(
       // PLMN
       plmn_t _plmn = {};
       sc->get_plmn(_plmn);
-      oai::model::common::PlmnId plmnid;
+      oai::_3gpp::model::PlmnId plmnid;
       plmnid.setMcc(_plmn.mcc);
       plmnid.setMnc(_plmn.mnc);
       ev_notif.set_PlmnId(plmnid);
@@ -4531,7 +4534,7 @@ void smf_context::send_pdu_session_update_response(
       (pdu_session_id_t) req->req.get_pdu_session_id();
 
   // Set SMF registration info
-  oai::model::udm::SmfRegistration smf_registration = {};
+  oai::_3gpp::model::SmfRegistration smf_registration = {};
   smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
   smf_registration.setPduSessionId(pdu_session_id);
   auto smf_info = smf_cfg->smf()->get_smf_info();
@@ -4860,7 +4863,7 @@ void smf_context::send_pdu_session_release_response(
 //------------------------------------------------------------------------------
 bool smf_context::register_with_udm(
     const std::string& supi, const pdu_session_id_t& pdu_session_id,
-    const oai::model::udm::SmfRegistration& smf_registration) {
+    const oai::_3gpp::model::SmfRegistration& smf_registration) {
   Logger::smf_sbi().debug(
       "Register with the UDM for this PDU Session (ID %d)", pdu_session_id);
 
@@ -4942,7 +4945,8 @@ void smf_context::deregister_with_udm(
 //------------------------------------------------------------------------------
 bool smf_context::add_sdm_subscription(
     const std::string& key,
-    const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
+    const std::shared_ptr<oai::_3gpp::model::SdmSubscription>&
+        sdm_subscription) {
   std::unique_lock lock(
       m_sdm_subscriptions,
       std::defer_lock);  // Do not lock it first
@@ -4956,7 +4960,7 @@ bool smf_context::add_sdm_subscription(
     lock.lock();  // Lock it here
     sdm_subscriptions.insert(
         std::pair<
-            std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>(
+            std::string, std::shared_ptr<oai::_3gpp::model::SdmSubscription>>(
             key, sdm_subscription));
 
     Logger::smf_app().debug(
@@ -4969,7 +4973,8 @@ bool smf_context::add_sdm_subscription(
 //------------------------------------------------------------------------------
 void smf_context::get_sdm_subscription(
     const std::string& key,
-    std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) const {
+    std::shared_ptr<oai::_3gpp::model::SdmSubscription>& sdm_subscription)
+    const {
   std::shared_lock lock(m_sdm_subscriptions);
   if (sdm_subscriptions.count(key) > 0) {
     if (sdm_subscriptions.at(key)) sdm_subscription = sdm_subscriptions.at(key);
@@ -4979,7 +4984,8 @@ void smf_context::get_sdm_subscription(
 //------------------------------------------------------------------------------
 void smf_context::unsubscribe_sdm_subscriptions(
     const std::string& supi,
-    const std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription) {
+    const std::shared_ptr<oai::_3gpp::model::SdmSubscription>&
+        sdm_subscription) {
   if (!sdm_subscription) return;
   nlohmann::json sdm_subscription_json = {};
   to_json(sdm_subscription_json, *sdm_subscription.get());

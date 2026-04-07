@@ -985,11 +985,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   void trigger_qos_monitoring(
       const seid_t& seid,
-      const oai::model::smf::EventNotification& ev_notif_model,
+      const oai::_3gpp::model::EventNotification& ev_notif_model,
       const uint8_t& http_version) const;
   void handle_qos_monitoring(
       const seid_t& seid,
-      const oai::model::smf::EventNotification& ev_notif_model,
+      const oai::_3gpp::model::EventNotification& ev_notif_model,
       const uint8_t& http_version) const;
 
   void trigger_flexcn_event(
@@ -1151,24 +1151,24 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   bool register_with_udm(
       const std::string& supi, const pdu_session_id_t& pdu_session_id,
-      const oai::model::udm::SmfRegistration& smf_registration);
+      const oai::_3gpp::model::SmfRegistration& smf_registration);
 
   void deregister_with_udm(
       const std::string& supi, const pdu_session_id_t& pdu_session_id);
 
   bool add_sdm_subscription(
       const std::string& key,
-      const std::shared_ptr<oai::model::udm::SdmSubscription>&
+      const std::shared_ptr<oai::_3gpp::model::SdmSubscription>&
           sdm_subscription);
 
   void get_sdm_subscription(
       const std::string& key,
-      std::shared_ptr<oai::model::udm::SdmSubscription>& sdm_subscription)
+      std::shared_ptr<oai::_3gpp::model::SdmSubscription>& sdm_subscription)
       const;
 
   void unsubscribe_sdm_subscriptions(
       const std::string& supi,
-      const std::shared_ptr<oai::model::udm::SdmSubscription>&
+      const std::shared_ptr<oai::_3gpp::model::SdmSubscription>&
           sdm_subscription);
 
  private:
@@ -1180,7 +1180,7 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       pdu_sessions;  // Store all PDU Sessions associated with this UE
   mutable std::shared_mutex m_pdu_sessions_mutex;
   // key <-> SDM Subscription
-  std::map<std::string, std::shared_ptr<oai::model::udm::SdmSubscription>>
+  std::map<std::string, std::shared_ptr<oai::_3gpp::model::SdmSubscription>>
       sdm_subscriptions;
   mutable std::shared_mutex m_sdm_subscriptions;
 

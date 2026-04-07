@@ -27,7 +27,7 @@ extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
 namespace oai::smf_server::api {
 
-using namespace oai::model::common::helpers;
+using namespace oai::_3gpp::model::helpers;
 
 SMFConfigurationApi::SMFConfigurationApi(
     std::shared_ptr<Pistache::Rest::Router> rtr) {

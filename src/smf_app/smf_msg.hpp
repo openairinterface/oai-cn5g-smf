@@ -75,7 +75,7 @@ class qos_flow_context_updated {
   void set_ul_fteid(const pfcp::fteid_t& teid);
   void set_dl_fteid(const pfcp::fteid_t& teid);
   void add_qos_rule(const oai::nas::QosRule& rule);
-  void set_qos_profile(const oai::model::pcf::QosData& profile);
+  void set_qos_profile(const oai::_3gpp::model::QosData& profile);
   void set_qos_flow_descriptions(
       const oai::nas::QosFlowDescription& flow_description);
   void get_qos_flow_descriptions(
@@ -88,7 +88,7 @@ class qos_flow_context_updated {
   pfcp::fteid_t dl_fteid;
   std::map<uint8_t, oai::nas::QosRule> qos_rules;
   oai::nas::QosFlowDescription qos_flow_description;
-  oai::model::pcf::QosData qos_profile;
+  oai::_3gpp::model::QosData qos_profile;
   bool to_be_removed;
 };
 
@@ -615,15 +615,15 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
   pdu_session_sm_policy_notificatiion(
       pdu_session_msg_type_t msg_type, std::string supi, pdu_session_id_t pdi,
       std::string dnn, snssai_t snssai,
-      oai::model::pcf::SmPolicyDecision sm_policy_decision)
+      oai::_3gpp::model::SmPolicyDecision sm_policy_decision)
       : pdu_session_msg(msg_type, supi, pdi, dnn, snssai),
         m_sm_policy_decision(sm_policy_decision) {}
   void set_sm_policy_decision(
-      const oai::model::pcf::SmPolicyDecision& sm_policy_decision);
-  oai::model::pcf::SmPolicyDecision get_sm_policy_decision() const;
+      const oai::_3gpp::model::SmPolicyDecision& sm_policy_decision);
+  oai::_3gpp::model::SmPolicyDecision get_sm_policy_decision() const;
 
  private:
-  oai::model::pcf::SmPolicyDecision m_sm_policy_decision;
+  oai::_3gpp::model::SmPolicyDecision m_sm_policy_decision;
 };
 
 class event_exposure_msg {
@@ -706,13 +706,13 @@ class event_notification {
   bool is_re_ipv4_addr_is_set() const;
 
   // m_PlmnId
-  void set_PlmnId(oai::model::common::PlmnId const& value);
-  oai::model::common::PlmnId get_plmnid() const;
+  void set_PlmnId(oai::_3gpp::model::PlmnId const& value);
+  oai::_3gpp::model::PlmnId get_plmnid() const;
   bool is_plmnid_is_set() const;
 
   // ddds change
-  void set_Ddds(oai::model::smf::DddStatus const& value);
-  oai::model::smf::DddStatus get_ddds() const;
+  void set_Ddds(oai::_3gpp::model::DddStatus const& value);
+  oai::_3gpp::model::DddStatus get_ddds() const;
   bool is_ddds_is_set() const;
 
   void set_dnn(std::string const& value);
@@ -760,11 +760,11 @@ class event_notification {
   bool m_re_ipv4_addr_is_set;  // m_ReIpv4AddrIsSet;
 
   // for a PLMN Change
-  oai::model::common::PlmnId m_PlmnId;
+  oai::_3gpp::model::PlmnId m_PlmnId;
   bool m_PlmnIdIsSet;
 
   // for ddds change
-  oai::model::smf::DddStatus m_DddStatus;
+  oai::_3gpp::model::DddStatus m_DddStatus;
   bool m_DddStatusIsSet;
 
   bool m_dnn_is_set;

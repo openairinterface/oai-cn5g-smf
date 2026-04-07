@@ -31,7 +31,7 @@
 
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
-#include "EventSubscription.h"
+#include "SmfEventSubscription.h"
 #include "ExtendedProtocolConfigurationOptions.hpp"
 #include "NgRanTargetId.h"
 #include "PduSessionEstablishmentRequest.hpp"
@@ -43,13 +43,13 @@ using namespace oai::nas;
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_create_from_openapi(
-    const oai::model::smf::SmContextMessage& scd,
+    const oai::_3gpp::model::SmContextMessage& scd,
     oai::app::smf::pdu_session_create_sm_context_request& pcr) {
   Logger::smf_app().debug(
       "Convert SmContextMessage (OpenAPI) to "
       "PDUSession_CreateSMContext");
 
-  oai::model::smf::SmContextCreateData context_data = {};
+  oai::_3gpp::model::SmContextCreateData context_data = {};
   if (scd.jsonDataIsSet()) {
     context_data = scd.getJsonData();
   } else {
@@ -172,13 +172,13 @@ void xgpp_conv::sm_context_create_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_update_from_openapi(
-    const oai::model::smf::SmContextUpdateMessage& scu,
+    const oai::_3gpp::model::SmContextUpdateMessage& scu,
     oai::app::smf::pdu_session_update_sm_context_request& pur) {
   Logger::smf_app().debug(
       "Convert SmContextUpdateMessage (OpenAPI) to "
       "PDUSession_UpdateSMContext");
 
-  oai::model::smf::SmContextUpdateData context_data = scu.getJsonData();
+  oai::_3gpp::model::SmContextUpdateData context_data = scu.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -254,13 +254,15 @@ void xgpp_conv::sm_context_update_from_openapi(
   // For N2 Handover,
   // HO state
   if (context_data.hoStateIsSet()) {
-    std::string state = context_data.getHoState().state;
-    pur.set_ho_state(state);
+    auto state                = context_data.getHoState().getValue();
+    nlohmann::json json_state = {};
+    to_json(json_state, state);
+    pur.set_ho_state(json_state.dump());
   }
   // Target ID
   if (context_data.targetIdIsSet()) {
-    oai::model::smf::NgRanTargetId api_target_id = context_data.getTargetId();
-    ng_ran_target_id_t ran_target_id             = {};
+    oai::_3gpp::model::NgRanTargetId api_target_id = context_data.getTargetId();
+    ng_ran_target_id_t ran_target_id               = {};
     plmn_from_model(
         api_target_id.getTai().getPlmnId(),
         ran_target_id.global_ran_node_id.plmn_id);
@@ -293,13 +295,13 @@ void xgpp_conv::sm_context_update_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::sm_context_release_from_openapi(
-    const oai::model::smf::SmContextReleaseMessage& srm,
+    const oai::_3gpp::model::SmContextReleaseMessage& srm,
     oai::app::smf::pdu_session_release_sm_context_request& prr) {
   Logger::smf_app().debug(
       "Convert SmContextReleaseMessage (OpenAPI) to "
       "PDUSession_ReleaseSMContext");
 
-  oai::model::smf::SmContextReleaseData context_data = srm.getJsonData();
+  oai::_3gpp::model::SmContextReleaseData context_data = srm.getJsonData();
 
   if (context_data.n2SmInfoIsSet()) {
     // N2 SM (for Session establishment)
@@ -324,7 +326,7 @@ void xgpp_conv::sm_context_release_from_openapi(
 
 //------------------------------------------------------------------------------
 void xgpp_conv::smf_event_exposure_notification_from_openapi(
-    const oai::model::smf::NsmfEventExposure& nee,
+    const oai::_3gpp::model::NsmfEventExposure& nee,
     oai::app::smf::event_exposure_msg& eem) {
   Logger::smf_app().debug(
       "Convert NsmfEventExposure (OpenAPI) to "
@@ -348,35 +350,37 @@ void xgpp_conv::smf_event_exposure_notification_from_openapi(
   eem.set_notif_id(nee.getNotifId());    // NotifId
   eem.set_notif_uri(nee.getNotifUri());  // NotifUri
 
-  std::vector<oai::model::smf::EventSubscription> event_subcription_api = {};
-  nee.getEventSubs(event_subcription_api);
+  std::vector<oai::_3gpp::model::SmfEventSubscription> event_subcription_api =
+      {};
+  event_subcription_api = nee.getEventSubs();
 
   std::vector<event_subscription_t> event_subscriptions = {};
   for (auto e : event_subcription_api) {
-    // EventSubscription: TODO
-    event_subscription_t event_subscription = {};
-    uint8_t event_id_enum                   = 0;
-    std::string event_id                    = e.getEvent().get_value();
-    if (event_id.compare("AC_TY_CH") == 0) {
+    // SmfEventSubscription: TODO
+    event_subscription_t event_subscription       = {};
+    SmfEvent_anyOf::eSmfEvent_anyOf event_id_enum = e.getEvent().getEnumValue();
+
+    if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::AC_TY_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_AC_TY_CH;
-    } else if (event_id.compare("UP_PATH_CH") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::UP_PATH_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_UP_PATH_CH;
-    } else if (event_id.compare("PDU_SES_REL") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::PDU_SES_REL) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PDU_SES_REL;
-    } else if (event_id.compare("PLMN_CH") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::PLMN_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PLMN_CH;
-    } else if (event_id.compare("UE_IP_CH") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::UE_IP_CH) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_UE_IP_CH;
-    } else if (event_id.compare("DDDS") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::DDDS) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_DDDS;
-    } else if (event_id.compare("PDU_SES_EST") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::PDU_SES_EST) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_PDUSESEST;
-    } else if (event_id.compare("QOS_MON") == 0) {
+    } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::QOS_MON) {
       event_subscription.smf_event = smf_event_e::SMF_EVENT_QOS_MON;
-    } else if (event_id.compare("FLEXCN") == 0) {
-      event_subscription.smf_event = smf_event_e::SMF_EVENT_FLEXCN;
+      //   } else if (event_id_enum == SmfEvent_anyOf::eSmfEvent_anyOf::FLEXCN)
+      //   {
+      //      event_subscription.smf_event = smf_event_e::SMF_EVENT_FLEXCN;
     } else {
-      Logger::smf_api_server().debug("Unknown SMF Event %s", event_id.c_str());
+      Logger::smf_api_server().debug("Unknown SMF Event");
       break;
     }
 
@@ -408,7 +412,7 @@ void xgpp_conv::sm_context_request_from_nas(
 
   // PDU session type (Optional)
   if (message_type == kPduSessionEstablishmentRequest) {
-    std::optional<PduSessionType> pdu_session_type_opt =
+    std::optional<oai::nas::PduSessionType> pdu_session_type_opt =
         (std::dynamic_pointer_cast<PduSessionEstablishmentRequest>(nas_msg))
             ->GetPduSessionType();
     if (pdu_session_type_opt.has_value()) {
@@ -476,7 +480,7 @@ void xgpp_conv::update_sm_context_response_from_ctx_request(
 }
 
 void xgpp_conv::plmn_from_model(
-    const oai::model::common::PlmnId& plmn_model, plmn_t& plmn) {
+    const oai::_3gpp::model::PlmnId& plmn_model, plmn_t& plmn) {
   plmn.mcc = plmn_model.getMcc();
   plmn.mnc = plmn_model.getMnc();
 }

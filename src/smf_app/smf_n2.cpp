@@ -43,7 +43,7 @@
 #include "utils.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::common;
+using namespace oai::_3gpp::model;
 using namespace oai::ngap;
 extern smf_app* smf_app_inst;
 
@@ -157,8 +157,10 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
         "qos_flow.qos_profile.arp.preempt_cap %s, "
         "qos_flow.qos_profile.arp.preempt_vuln %s",
         qos_flow.qfi.qfi, qos_flow.qos_profile.getArp().getPriorityLevel(),
-        qos_flow.qos_profile.getArp().getPreemptCap().getEnumString(),
-        qos_flow.qos_profile.getArp().getPreemptVuln().getEnumString());
+        helpers::enumToString(
+            qos_flow.qos_profile.getArp().getPreemptCap().getValue()),
+        helpers::enumToString(
+            qos_flow.qos_profile.getArp().getPreemptVuln().getValue()));
 
     i++;
   }
@@ -992,7 +994,7 @@ oai::ngap::QosFlowLevelQosParameters smf_n2::get_qos_flow_level_qos_parameters(
   QosFlowLevelQosParameters qos_flow_level_qos_parameters = {};
 
   // QosCharacteristics
-  QosCharacteristics qos_characteristics             = {};
+  oai::ngap::QosCharacteristics qos_characteristics  = {};
   NonDynamic5qiDescriptor non_dynamic_5qi_descriptor = {};
   FiveQI five_qi                                     = {};
   if (qos_flow.qos_profile.r5qiIsSet())

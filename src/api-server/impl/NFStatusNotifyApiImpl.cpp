@@ -46,8 +46,8 @@ namespace oai {
 namespace smf_server {
 namespace api {
 
-using namespace oai::model::smf;
-using namespace oai::model::common;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 NFStatusNotifyApiImpl::NFStatusNotifyApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr,

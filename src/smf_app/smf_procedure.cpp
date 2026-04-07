@@ -43,8 +43,8 @@
 
 using namespace pfcp;
 using namespace oai::app::smf;
-using namespace oai::model::nrf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
@@ -262,7 +262,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   // we only support URL type redirect information for now
   if (edge->uplink && edge->redirect_information.isRedirectEnabled() &&
       edge->redirect_information.getRedirectAddressType().getEnumValue() ==
-          oai::model::pcf::RedirectAddressType_anyOf::
+          oai::_3gpp::model::RedirectAddressType_anyOf::
               eRedirectAddressType_anyOf::URL) {
     forwarding_parameters.set(edge->get_pfcp_redirect_information());
   }
@@ -1087,10 +1087,10 @@ smf_procedure_code session_create_sm_context_procedure::run(
   criteria.qos_profile.setR5qi(default_qos._5qi);
 
   // TODO this conversion should be somewhere else but is only used once so far
-  oai::model::common::Arp arp;
-  oai::model::common::PreemptionVulnerability preempt_vuln;
+  oai::_3gpp::model::Arp arp;
+  oai::_3gpp::model::PreemptionVulnerability preempt_vuln;
   from_json(default_qos.arp.preempt_vuln, preempt_vuln);
-  oai::model::common::PreemptionCapability preempt_cap;
+  oai::_3gpp::model::PreemptionCapability preempt_cap;
   from_json(default_qos.arp.preempt_cap, preempt_cap);
 
   arp.setPreemptCap(preempt_cap);

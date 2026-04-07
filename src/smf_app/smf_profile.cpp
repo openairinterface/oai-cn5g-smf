@@ -31,7 +31,7 @@
 
 using namespace oai::app::smf;
 using namespace oai::common::sbi;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 

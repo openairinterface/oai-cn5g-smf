@@ -63,7 +63,7 @@ class upf : public config_type {
   option_config_value m_dl_pdr_in_session_establishment;
   option_config_value m_qers;
   string_config_value m_local_n3_ipv4;
-  oai::model::nrf::UpfInfo m_upf_info;
+  oai::_3gpp::model::UpfInfo m_upf_info;
   bool m_upf_info_is_set = true;
   pfcp::node_id_t m_node_id;
   option_config_value m_enable_upf_wo_nf_discovery;
@@ -93,10 +93,10 @@ class upf : public config_type {
   [[nodiscard]] bool enable_qers() const;
   [[nodiscard]] bool enable_upf_wo_nf_discovery() const;
   [[nodiscard]] const std::string& get_local_n3_ip() const;
-  [[nodiscard]] const oai::model::nrf::UpfInfo& get_upf_info() const;
+  [[nodiscard]] const oai::_3gpp::model::UpfInfo& get_upf_info() const;
   [[nodiscard]] const pfcp::node_id_t& get_node_id() const;
   void set_node_id(const pfcp::node_id_t& node_id);
-  void set_upf_info(const oai::model::nrf::UpfInfo& upf_info);
+  void set_upf_info(const oai::_3gpp::model::UpfInfo& upf_info);
 
   void enable_upf_info(bool val);
 };
@@ -179,13 +179,13 @@ class subscription_info_config : public config_type {
   string_config_value m_dnn;
   int_config_value m_ssc_mode;
   qos_profile_config_value m_qos_profile;
-  oai::model::common::Snssai m_snssai;
+  oai::_3gpp::model::Snssai m_snssai;
 
  public:
   explicit subscription_info_config(
       const std::string& dnn, uint8_t ssc_mode,
       const subscribed_default_qos_t& qos, const session_ambr_t& session_ambr,
-      const oai::model::common::Snssai& snssai);
+      const oai::_3gpp::model::Snssai& snssai);
 
   void from_yaml(const YAML::Node& node) override;
   nlohmann::json to_json() override;
@@ -199,7 +199,7 @@ class subscription_info_config : public config_type {
   [[nodiscard]] uint8_t get_ssc_mode() const;
   [[nodiscard]] const subscribed_default_qos_t& get_default_qos() const;
   [[nodiscard]] const session_ambr_t& get_session_ambr() const;
-  [[nodiscard]] const oai::model::common::Snssai& get_single_nssai() const;
+  [[nodiscard]] const oai::_3gpp::model::Snssai& get_single_nssai() const;
 };
 
 class smf_config_type : public nf {
@@ -211,7 +211,7 @@ class smf_config_type : public nf {
   ims_config m_ims_config;
   std::vector<upf> m_upfs;
   std::vector<subscription_info_config> m_subscription_infos;
-  oai::model::nrf::SmfInfo m_smf_info;
+  oai::_3gpp::model::SmfInfo m_smf_info;
   local_interface m_n4;
 
   int_config_value m_ue_mtu;
@@ -237,7 +237,7 @@ class smf_config_type : public nf {
 
   [[nodiscard]] const std::vector<upf>& get_upfs() const;
   [[nodiscard]] std::vector<subscription_info_config>& get_subscription_info();
-  [[nodiscard]] const oai::model::nrf::SmfInfo& get_smf_info();
+  [[nodiscard]] const oai::_3gpp::model::SmfInfo& get_smf_info();
   [[nodiscard]] const local_interface& get_n4() const;
   [[nodiscard]] ngap_config_value get_ngap() const;
 };

@@ -49,7 +49,7 @@ const std::string USE_EXTERNAL_NSSF_CONFIG_VALUE = "use_external_nssf";
 const std::string NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS =
     "send_default_qos_characteristics";
 
-const oai::model::common::Snssai DEFAULT_SNSSAI{1};
+const oai::_3gpp::model::Snssai DEFAULT_SNSSAI{1};
 const session_ambr_t DEFAULT_S_AMBR{"1000Mbps", "1000Mbps"};
 const std::string DEFAULT_DNN  = "default";
 const uint8_t DEFAULT_SSC_MODE = 1;

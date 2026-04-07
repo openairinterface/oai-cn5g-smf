@@ -32,7 +32,7 @@
 #include "smf_config.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
@@ -858,9 +858,8 @@ bool session_handler::is_flow_direction(
        */
     case FlowDirection_anyOf::eFlowDirection_anyOf::
         INVALID_VALUE_OPENAPI_GENERATED:
-    case FlowDirection_anyOf::eFlowDirection_anyOf::NULL_VALUE:
       Logger::smf_app().info(
-          "Flow Direction is UNSPECIFIED or NULL, assume it is "
+          "Flow Direction is UNSPECIFIED, assume it is "
           "BIDIRECTIONAL");
       return true;
   }
