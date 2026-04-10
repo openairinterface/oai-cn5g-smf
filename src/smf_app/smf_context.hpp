@@ -985,11 +985,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
 
   void trigger_qos_monitoring(
       const seid_t& seid,
-      const oai::_3gpp::model::EventNotification& ev_notif_model,
+      const oai::_3gpp::model::SmfEventNotification& ev_notif_model,
       const uint8_t& http_version) const;
   void handle_qos_monitoring(
       const seid_t& seid,
-      const oai::_3gpp::model::EventNotification& ev_notif_model,
+      const oai::_3gpp::model::SmfEventNotification& ev_notif_model,
       const uint8_t& http_version) const;
 
   void trigger_flexcn_event(

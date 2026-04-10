@@ -30,7 +30,8 @@
 #include "3gpp_29.502.h"
 #include "3gpp_commons.h"
 #include "Cause.hpp"
-#include "EventNotification.h"
+#include "SmfEventNotification.h"
+#include "UsageReport.h"
 #include "PduSessionModificationCommandReject.hpp"
 #include "PduSessionModificationRequest.hpp"
 #include "PduSessionResourceSetupResponseTransfer.hpp"
@@ -652,9 +653,8 @@ void smf_context::handle_itti_msg(
         std::shared_ptr<smf_context> pc = {};
         if (smf_app_inst->seid_2_smf_context(req->seid, pc)) {
           // TODO:
-          /*
-          oai::_3gpp::model::EventNotification ev_notif = {};
-          oai::_3gpp::model::UsageReport ur_model       = {};
+          oai::_3gpp::model::SmfEventNotification ev_notif = {};
+          oai::_3gpp::model::UsageReport ur_model          = {};
           if (ur.get(vm)) {
             ur_model.setSEndID(req->seid);
             if (ur.get(seqn)) ur_model.seturSeqN(seqn.ur_seqn);
@@ -668,9 +668,10 @@ void smf_context::handle_itti_msg(
           }
           if (ur.usage_report_trigger.first)
             ur_model.setURTrigger(ur.usage_report_trigger.second);
+
           ev_notif.setUsageReport(ur_model);
           pc->trigger_qos_monitoring(req->seid, ev_notif, 1);
-          */
+
         } else {
           Logger::smf_app().debug(
               "No SFM context found for SEID " TEID_FMT
@@ -3815,7 +3816,7 @@ void smf_context::trigger_ue_ip_change(
 //------------------------------------------------------------------------------
 void smf_context::handle_qos_monitoring(
     const seid_t& seid,
-    const oai::_3gpp::model::EventNotification& ev_notif_model,
+    const oai::_3gpp::model::SmfEventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   Logger::smf_app().debug(
       "Send request to N11 to trigger QoS Monitoring (Usage Report) Event, "
@@ -3878,7 +3879,7 @@ void smf_context::handle_qos_monitoring(
 //------------------------------------------------------------------------------
 void smf_context::trigger_qos_monitoring(
     const seid_t& seid,
-    const oai::_3gpp::model::EventNotification& ev_notif_model,
+    const oai::_3gpp::model::SmfEventNotification& ev_notif_model,
     const uint8_t& http_version) const {
   event_sub.ee_qos_monitoring(seid, ev_notif_model, http_version);
 }
