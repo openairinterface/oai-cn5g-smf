@@ -299,7 +299,7 @@ void upf::validate() {
   m_port.validate();
   m_local_n3_ipv4.validate();
   if (m_upf_info_is_set) {
-    m_upf_info.validate();
+    m_upf_info.validate(false);
   }
 }
 
