@@ -2214,12 +2214,13 @@ void smf_app::generate_smf_profile() {
   if (smf_cfg->http_version == 2) endpoint.port = smf_cfg->sbi_http2_port;
 
   // nsmf-pdusession
-  nf_service_t nf_service        = {};
-  nf_service.service_instance_id = smf_instance_id;
-  nf_service.service_name        = "nsmf-pdusession";
-  nf_service_version_t version   = {};
-  version.api_version_in_uri     = "v1";
-  version.api_full_version       = "1.0.0";  // TODO: to be updated
+  nf_service_t nf_service = {};
+  nf_service.service_name = "nsmf-pdusession";
+  nf_service.service_instance_id =
+      smf_instance_id + "-" + nf_service.service_name;
+  nf_service_version_t version = {};
+  version.api_version_in_uri   = "v1";
+  version.api_full_version     = "1.0.0";  // TODO: to be updated
   nf_service.versions.push_back(version);
   nf_service.scheme            = "http";
   nf_service.nf_service_status = "REGISTERED";
@@ -2228,12 +2229,13 @@ void smf_app::generate_smf_profile() {
   nf_instance_profile.add_nf_service_list(nf_service);
 
   // nsmf-event-exposure
-  nf_service_t nf_service_evts        = {};
-  nf_service_evts.service_instance_id = "nsmf_event-exposure";
-  nf_service_evts.service_name        = "nsmf_event-exposure";
-  nf_service_version_t version_evts   = {};
-  version_evts.api_version_in_uri     = "v1";
-  version_evts.api_full_version       = "1.0.0";  // TODO: to be updated
+  nf_service_t nf_service_evts = {};
+  nf_service_evts.service_name = "nsmf-event-exposure";
+  nf_service_evts.service_instance_id =
+      smf_instance_id + "-" + nf_service_evts.service_name;
+  nf_service_version_t version_evts = {};
+  version_evts.api_version_in_uri   = "v1";
+  version_evts.api_full_version     = "1.0.0";  // TODO: to be updated
   nf_service_evts.versions.push_back(version_evts);
   nf_service_evts.scheme            = "http";
   nf_service_evts.nf_service_status = "REGISTERED";
