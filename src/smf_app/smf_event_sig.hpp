@@ -9,7 +9,7 @@
 #include <string>
 
 #include "3gpp_24.007.hpp"
-#include "EventNotification.h"
+#include "SmfEventNotification.h"
 
 namespace bs2 = boost::signals2;
 
@@ -55,7 +55,7 @@ typedef bs2::signal_type<
 // SEID, Event Notification Model , HTTP version
 // TODO: use SCID and access PDU Session ID (need binding SCIDs - PDUSessID)
 typedef bs2::signal_type<
-    void(seid_t, oai::model::smf::EventNotification, uint8_t),
+    void(seid_t, oai::_3gpp::model::SmfEventNotification, uint8_t),
     bs2::keywords::mutex_type<bs2::dummy_mutex>>::type ee_qos_monitoring_sig_t;
 
 // Signal for FlexCN event (for Event Exposure)

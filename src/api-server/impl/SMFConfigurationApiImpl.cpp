@@ -8,7 +8,7 @@
 
 namespace oai::smf_server::api {
 
-using namespace oai::model::smf;
+using namespace oai::_3gpp::model;
 
 SMFConfigurationApiImpl::SMFConfigurationApiImpl(
     std::shared_ptr<Pistache::Rest::Router> rtr,

@@ -12,7 +12,7 @@
 
 namespace oai::smf_server::api {
 
-using namespace oai::model::smf;
+using namespace oai::_3gpp::model;
 
 class SMFConfigurationApiImpl
     : public oai::smf_server::api::SMFConfigurationApi {

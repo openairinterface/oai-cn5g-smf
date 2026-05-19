@@ -7,8 +7,8 @@
 
 using namespace oai::config::smf;
 using namespace oai::config;
-using namespace oai::model::common;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 smf_support_features::smf_support_features(
     bool local_subscription_info, bool local_pcc_rules) {
@@ -287,7 +287,8 @@ std::string upf::to_string(const std::string& indent) const {
         m_local_n3_ipv4.to_string("")));
   }
   if (m_upf_info_is_set) {
-    out.append(m_upf_info.to_string(3));
+    out.append(
+        m_upf_info.to_string(3));  // TODO: should not modify UpfInfo class
   }
   return out;
 }
@@ -330,7 +331,7 @@ const std::string& upf::get_local_n3_ip() const {
   return m_local_n3_ipv4.get_value();
 }
 
-const oai::model::nrf::UpfInfo& upf::get_upf_info() const {
+const oai::_3gpp::model::UpfInfo& upf::get_upf_info() const {
   return m_upf_info;
 }
 
@@ -338,7 +339,7 @@ void upf::enable_upf_info(bool val) {
   m_upf_info_is_set = val;
 }
 
-void upf::set_upf_info(const oai::model::nrf::UpfInfo& upf_info) {
+void upf::set_upf_info(const oai::_3gpp::model::UpfInfo& upf_info) {
   m_upf_info        = upf_info;
   m_upf_info_is_set = true;
 }
@@ -590,7 +591,8 @@ std::string smf_config_type::to_string(const std::string& indent) const {
       out.append(sub.to_string(inner_indent));
     }
   }
-  out.append(m_smf_info.to_string(1));
+  out.append(m_smf_info.to_string(
+      1));  // TODO: Should not modify SmfInfo class to add indent
 
   return out;
 }

@@ -69,13 +69,13 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
 
   // Fill the content of PDU Session Establishment Accept message
   // PDU Session Type
-  PduSessionType pdu_session_type;
+  oai::nas::PduSessionType pdu_session_type;
   pdu_session_type.SetValue(sm_context_res.get_pdu_session_type());
   pdu_session_estb_accept->SetSelectedPduSessionType(pdu_session_type);
   Logger::smf_n1().debug("PDU Session Type: %d", pdu_session_type.GetValue());
 
   // TODO: Selected SSC mode
-  SscMode ssc_mode;
+  oai::nas::SscMode ssc_mode;
   ssc_mode.Set(true);        // 4 high bits
   ssc_mode.SetSscMode(0x1);  // SSC mode 1 allowed, SSC mode 2/3 not allowed
   pdu_session_estb_accept->SetSelectedSscMode(ssc_mode);

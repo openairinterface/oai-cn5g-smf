@@ -16,8 +16,8 @@
 
 using namespace oai::app::smf;
 using namespace oai::app::smf::n7;
-using namespace oai::model::pcf;
-using namespace oai::model::common;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::common::sbi;
 using namespace oai::http;
 

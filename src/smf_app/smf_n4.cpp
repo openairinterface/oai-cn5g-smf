@@ -7,6 +7,7 @@
 #include <chrono>
 #include <ctime>
 #include <stdexcept>
+#include <cstdlib>
 
 #include "common_defs.h"
 #include "itti.hpp"
@@ -20,6 +21,21 @@ extern itti_mw* itti_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 extern smf_n4* smf_n4_inst;
 
+//------------------------------------------------------------------------------
+static std::string string_to_hex(const std::string& input) {
+  static const char* const lut = "0123456789ABCDEF";
+  size_t len                   = input.length();
+
+  std::string output;
+  output.reserve(2 * len);
+  for (size_t i = 0; i < len; ++i) {
+    const unsigned char c = input[i];
+    output.push_back(lut[c >> 4]);
+    output.push_back(lut[c & 15]);
+  }
+  return output;
+}
+//------------------------------------------------------------------------------
 void smf_n4_task(void*);
 
 //------------------------------------------------------------------------------
@@ -405,6 +421,15 @@ void smf_n4::handle_receive_association_setup_response(
   pfcp_association_setup_response msg_ies_container = {};
   msg.to_core_type(msg_ies_container);
 
+  std::ostringstream oss(std::ostringstream::binary);
+  msg.dump_to(oss);
+
+  std::string bstream = oss.str();
+  Logger::smf_n4().warn(
+      "Received N4 ASSOCIATION SETUP RESPONSE with message content: \n:  %s",
+      bstream.c_str());
+  std::cout << string_to_hex(oss.str()) << std::endl;
+
   handle_receive_message_cb(msg, remote_endpoint, TASK_SMF_N4, error, trxn_id);
   if (!error) {
     if (not msg_ies_container.node_id.first) {
@@ -422,6 +447,14 @@ void smf_n4::handle_receive_association_setup_response(
       return;
     }
     Logger::smf_n4().info("Received N4 ASSOCIATION SETUP RESPONSE");
+    if (msg_ies_container.up_function_features.first) {
+      if (msg_ies_container.up_function_features.second.ftup) {
+        Logger::smf_n4().info(
+            "Received N4 ASSOCIATION SETUP RESPONSE with UP function features, "
+            "FTUP supported");
+      }
+    }
+
     bool restore_n4_sessions = false;
     if (msg_ies_container.up_function_features.first) {
       pfcp_associations::get_instance().add_association(

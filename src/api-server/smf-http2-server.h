@@ -21,8 +21,8 @@
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::model::smf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 class smf_http2_server {
  public:
@@ -61,12 +61,12 @@ class smf_http2_server {
 
   void modify_sm_context_handler(
       const std::string& scid,
-      const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+      const oai::_3gpp::model::SmPolicyNotification& smPolicyNotification,
       const response& response);
 
   void terminate_policy_notification_handler(
       const std::string& scid,
-      const oai::model::pcf::TerminationNotification& terminationNotification,
+      const oai::_3gpp::model::TerminationNotification& terminationNotification,
       const response& response);
 
   void stop();
