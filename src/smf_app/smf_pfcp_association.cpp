@@ -12,8 +12,8 @@
 #include "fqdn.hpp"
 
 using namespace oai::app::smf;
-using namespace oai::model::pcf;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 
 extern itti_mw* itti_inst;
 extern smf_n4* smf_n4_inst;
@@ -94,7 +94,7 @@ const oai::config::smf::upf& pfcp_association::get_upf_config() const {
 
 //------------------------------------------------------------------------------
 bool pfcp_association::serves_network(
-    const oai::model::common::Snssai& snssai, const std::string& dnn) const {
+    const oai::_3gpp::model::Snssai& snssai, const std::string& dnn) const {
   if (get_upf_info().getSNssaiUpfInfoList().empty()) {
     Logger::smf_app().info(
         "UPF does not have SNSSAIs configured, accept any SNSSAI");
@@ -141,7 +141,7 @@ std::shared_ptr<pfcp_association> pfcp_associations::check_association_on_add(
       restore_n4_sessions = true;
     }
     sa->recovery_time_stamp = recovery_time_stamp;
-    if (use_function_features) {
+    if (!use_function_features) {
       sa->function_features = {};
     } else {
       sa->function_features.first  = true;

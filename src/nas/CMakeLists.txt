@@ -8,7 +8,7 @@ include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/common_model)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/bstr)
 

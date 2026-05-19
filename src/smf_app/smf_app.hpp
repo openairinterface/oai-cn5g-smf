@@ -567,13 +567,13 @@ class smf_app {
   /*
    * Handle NF status notification (e.g., when an UPF becomes available)
    * @param [std::shared_ptr<itti_sbi_notification_data>& ] msg: message
-   * @param [oai::model::smf::ProblemDetails& ] problem_details
+   * @param [oai::_3gpp::model::ProblemDetails& ] problem_details
    * @param [uint8_t&] http_code
    * @return true if handle sucessfully, otherwise return false
    */
   bool handle_nf_status_notification(
       std::shared_ptr<itti_sbi_notification_data>& msg,
-      oai::model::common::ProblemDetails& problem_details, uint8_t& http_code);
+      oai::_3gpp::model::ProblemDetails& problem_details, uint8_t& http_code);
 
   /*
    * Handle UPF Discovery response
@@ -769,11 +769,11 @@ class smf_app {
 
   /*
    * Process UPF profile received from NRF
-   * @param [const oai::model::smf::NFProfile] upf_profile: Profile of an UPF
+   * @param [const oai::_3gpp::model::NFProfile] upf_profile: Profile of an UPF
    * Node
    * @return void
    */
-  bool process_upf_profile(const oai::model::smf::NFProfile& upf_profile);
+  bool process_upf_profile(const oai::_3gpp::model::NFProfile& upf_profile);
 
   /*
    * To store a promise of a SBI Server response message to be
@@ -986,12 +986,12 @@ class smf_app {
   /*
    * Get a unique key from <DNN, SNSSAI>
    * @param [const std::string&] dnn: DNN
-   * @param [const oai::model::common::Snssai&] snssai
+   * @param [const oai::_3gpp::model::Snssai&] snssai
    * @param [std::string] key: generated key
    * @return void
    */
   void get_dnn_snssai_key(
-      const std::string& dnn, const oai::model::common::Snssai& snssai,
+      const std::string& dnn, const oai::_3gpp::model::Snssai& snssai,
       std::string& key);
 };
 }  // namespace oai::app::smf

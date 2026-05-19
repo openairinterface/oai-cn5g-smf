@@ -14,7 +14,7 @@
 #include "smf_msg.hpp"
 #include "smf_profile.hpp"
 
-using namespace oai::model::smf;
+using namespace oai::_3gpp::model;
 
 class itti_sbi_msg : public itti_msg {
  public:
@@ -401,7 +401,7 @@ class itti_sbi_update_nf_instance_request : public itti_sbi_msg {
         http_version(1) {}
   const char* get_msg_name() { return "N11_UPDATE_NF_INSTANCE_REQUEST"; };
 
-  std::vector<oai::model::common::PatchItem> patch_items;
+  std::vector<oai::_3gpp::model::PatchItem> patch_items;
   uint8_t http_version;
   std::string smf_instance_id;
 };
@@ -496,7 +496,7 @@ class itti_sbi_notification_data : public itti_sbi_msg {
         notification_msg(i.notification_msg),
         http_version(i.http_version) {}
   const char* get_msg_name() { return "SBI_NOTIFICATION_DATA"; };
-  oai::model::smf::NotificationData notification_msg;
+  oai::_3gpp::model::NotificationData notification_msg;
   uint8_t http_version;
 };
 

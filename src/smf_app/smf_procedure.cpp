@@ -26,8 +26,8 @@
 
 using namespace pfcp;
 using namespace oai::app::smf;
-using namespace oai::model::nrf;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::utils::sdf_conversions;
 
 extern itti_mw* itti_inst;
@@ -245,7 +245,7 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   // we only support URL type redirect information for now
   if (edge->uplink && edge->redirect_information.isRedirectEnabled() &&
       edge->redirect_information.getRedirectAddressType().getEnumValue() ==
-          oai::model::pcf::RedirectAddressType_anyOf::
+          oai::_3gpp::model::RedirectAddressType_anyOf::
               eRedirectAddressType_anyOf::URL) {
     forwarding_parameters.set(edge->get_pfcp_redirect_information());
   }
@@ -330,8 +330,6 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
     // in UPLINK always choose ID
     if (edge->uplink) {
       local_fteid.chid = 0;
-    } else {
-      local_fteid = pfcp_prepare_fteid(edge->fteid, up_features.ftup, cfg);
     }
     pdi.set(local_fteid);
   }
@@ -1055,8 +1053,8 @@ smf_procedure_code session_create_sm_context_procedure::run(
   std::shared_ptr<upf_graph> graph = {};
 
   upf_selection_criteria criteria;
-  criteria.dnn    = sm_context_req->req.get_dnn();
-  criteria.snssai = sm_context_req->req.get_snssai().to_model_snssai();
+  criteria.dnn = sm_context_req->req.get_dnn();
+  xgpp_conv::snssai_to_model(sm_context_req->req.get_snssai(), criteria.snssai);
 
   // get the default QoS profile
   // TODO differentiate between No-PCF default QoS and PCF authorized Qos
@@ -1070,10 +1068,10 @@ smf_procedure_code session_create_sm_context_procedure::run(
   criteria.qos_profile.setR5qi(default_qos._5qi);
 
   // TODO this conversion should be somewhere else but is only used once so far
-  oai::model::common::Arp arp;
-  oai::model::common::PreemptionVulnerability preempt_vuln;
+  oai::_3gpp::model::Arp arp;
+  oai::_3gpp::model::PreemptionVulnerability preempt_vuln;
   from_json(default_qos.arp.preempt_vuln, preempt_vuln);
-  oai::model::common::PreemptionCapability preempt_cap;
+  oai::_3gpp::model::PreemptionCapability preempt_cap;
   from_json(default_qos.arp.preempt_cap, preempt_cap);
 
   arp.setPreemptCap(preempt_cap);
@@ -1240,6 +1238,7 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   auto all_qfis = sps->get_session_handler()->get_all_qfis();
+
   if (up_features.ftup) {
     check_if_all_qfis_are_handled(all_qfis, used_qfis);
   } else {

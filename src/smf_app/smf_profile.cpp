@@ -14,7 +14,7 @@
 
 using namespace oai::app::smf;
 using namespace oai::common::sbi;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
 
@@ -183,8 +183,11 @@ void nf_profile::display() const {
   if (snssais.size() > 0) {
     Logger::smf_app().debug("\tSNSSAIs:");
   }
+
   for (auto s : snssais) {
-    Logger::smf_app().debug("\n%s", s.to_model_snssai().to_string(0));
+    oai::_3gpp::model::Snssai snssai_model = {};
+    xgpp_conv::snssai_to_model(s, snssai_model);
+    Logger::smf_app().debug("\n%s", snssai_model.to_string(0));
   }
   if (!fqdn.empty()) {
     Logger::smf_app().debug("\tFQDN: %s", fqdn.c_str());
@@ -383,7 +386,10 @@ void smf_profile::display() const {
   // we convert to re-use the existing to_string function
   for (const auto& s : smf_info.snssai_smf_info_list) {
     SnssaiSmfInfoItem item;
-    item.setSNssai(s.snssai.to_model_snssai());
+
+    oai::_3gpp::model::Snssai snssai_model = {};
+    xgpp_conv::snssai_to_model(s.snssai, snssai_model);
+    item.setSNssai(snssai_model);
     std::vector<DnnSmfInfoItem> list_of_dnns;
     for (const auto& d : s.dnn_smf_info_list) {
       DnnSmfInfoItem dnn_item;
@@ -562,7 +568,9 @@ void upf_profile::display() const {
   // we convert to re-use the existing to_string function
   for (auto s : upf_info.snssai_upf_info_list) {
     SnssaiUpfInfoItem item;
-    item.setSNssai(s.snssai.to_model_snssai());
+    oai::_3gpp::model::Snssai snssai_model = {};
+    xgpp_conv::snssai_to_model(s.snssai, snssai_model);
+    item.setSNssai(snssai_model);
     std::vector<DnnUpfInfoItem> list_of_dnns;
 
     for (auto d : s.dnn_upf_info_list) {

@@ -85,7 +85,7 @@ class pfcp_association {
     function_features.second = ff;
   };
 
-  [[nodiscard]] oai::model::nrf::UpfInfo get_upf_info() const;
+  [[nodiscard]] oai::_3gpp::model::UpfInfo get_upf_info() const;
 
   size_t operator()(const pfcp_association&) const { return hash_node_id; }
 
@@ -106,7 +106,7 @@ class pfcp_association {
   const oai::config::smf::upf& get_upf_config() const;
 
   bool serves_network(
-      const oai::model::common::Snssai& snssai, const std::string& dnn) const;
+      const oai::_3gpp::model::Snssai& snssai, const std::string& dnn) const;
 
  private:
   oai::config::smf::upf m_upf_cfg;
@@ -299,7 +299,7 @@ class upf_graph {
    * @return std::shared_ptr<upf_graph>
    */
   std::shared_ptr<upf_graph> select_upf_nodes(
-      const oai::model::pcf::SmPolicyDecision& policy_decision,
+      const oai::_3gpp::model::SmPolicyDecision& policy_decision,
       const upf_selection_criteria& criteria);
 
   /**
@@ -472,7 +472,7 @@ class pfcp_associations {
       const upf_selection_criteria& selection_criteria);
 
   std::shared_ptr<upf_graph> select_up_node(
-      const oai::model::pcf::SmPolicyDecision& decision,
+      const oai::_3gpp::model::SmPolicyDecision& decision,
       const upf_selection_criteria& selection_criteria);
 
   bool add_peer_candidate_node(const oai::config::smf::upf& upf_cfg);

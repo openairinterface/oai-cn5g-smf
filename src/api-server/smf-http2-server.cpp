@@ -25,9 +25,9 @@
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
-using namespace oai::model::smf;
-using namespace oai::model::common;
-using namespace oai::model::pcf;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 using namespace oai::common::sbi;
 using namespace oai::smf::api;
@@ -437,13 +437,14 @@ void smf_http2_server::start() {
             if (boost::iequals(callback_api, "sm-policy-control-notify")) {
               try {
                 if (boost::iequals(action, "update")) {
-                  oai::model::pcf::SmPolicyNotification policyNotification = {};
+                  oai::_3gpp::model::SmPolicyNotification policyNotification =
+                      {};
                   nlohmann::json::parse(msg.c_str()).get_to(policyNotification);
                   this->modify_sm_context_handler(
                       scid, policyNotification, response);
 
                 } else if (boost::iequals(action, "terminate")) {
-                  oai::model::pcf::TerminationNotification
+                  oai::_3gpp::model::TerminationNotification
                       terminationNotification = {};
                   nlohmann::json::parse(msg.c_str())
                       .get_to(terminationNotification);
@@ -1039,7 +1040,7 @@ void smf_http2_server::create_event_subscription_handler(
 //------------------------------------------------------------------------------
 void smf_http2_server::modify_sm_context_handler(
     const std::string& scid_str,
-    const oai::model::pcf::SmPolicyNotification& smPolicyNotification,
+    const oai::_3gpp::model::SmPolicyNotification& smPolicyNotification,
     const response& response) {
   Logger::smf_api_server().info(
       "Received a PCF-initiated SM Policy Association Modification "
@@ -1120,7 +1121,7 @@ void smf_http2_server::modify_sm_context_handler(
 //------------------------------------------------------------------------------
 void smf_http2_server::terminate_policy_notification_handler(
     const std::string& scid,
-    const oai::model::pcf::TerminationNotification& terminationNotification,
+    const oai::_3gpp::model::TerminationNotification& terminationNotification,
     const response& response) {
   Logger::smf_api_server().info(
       "Received a PCF-initiated SM Policy Association Termination Request "

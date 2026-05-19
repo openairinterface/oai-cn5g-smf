@@ -20,27 +20,27 @@ const std::string DEFAULT_FLOW_DESCRIPTION =
     "permit out ip from any to assigned";
 
 struct upf_selection_criteria {
-  oai::model::common::Snssai snssai{};
+  oai::_3gpp::model::Snssai snssai{};
   std::string dnn{};
   std::unordered_set<std::string> dnais;
-  oai::model::pcf::QosData qos_profile{};  // QoS profile
+  oai::_3gpp::model::QosData qos_profile{};  // QoS profile
   // we dont use the default QoS model here because it is a subset of this model
   bool default_qos      = true;
   bool generate_new_qfi = true;
   // internal information used and set within graph
-  oai::model::pcf::FlowInformation flow_information =
+  oai::_3gpp::model::FlowInformation flow_information =
       get_default_flow_information();
-  oai::model::pcf::RedirectInformation redirect_information{};
+  oai::_3gpp::model::RedirectInformation redirect_information{};
   unsigned int precedence{};
   uint8_t qfi{};
 
   [[nodiscard]] std::string to_string(int level) const;
 
-  static oai::model::pcf::FlowInformation get_default_flow_information() {
-    oai::model::pcf::FlowInformation flow;
+  static oai::_3gpp::model::FlowInformation get_default_flow_information() {
+    oai::_3gpp::model::FlowInformation flow;
     flow.setFlowDescription(DEFAULT_FLOW_DESCRIPTION);
-    oai::model::pcf::FlowDirectionRm flow_direction;
-    flow_direction.setEnumValue(oai::model::pcf::FlowDirection_anyOf::
+    oai::_3gpp::model::FlowDirectionRm flow_direction;
+    flow_direction.setEnumValue(oai::_3gpp::model::FlowDirection_anyOf::
                                     eFlowDirection_anyOf::BIDIRECTIONAL);
     flow.setFlowDirection(flow_direction);
     flow.setPacketFilterUsage(true);  // so that we send it to UE always
@@ -53,7 +53,7 @@ struct upf_selection_criteria {
  */
 struct dnai_dnn_slice {
   std::string dnai;
-  oai::model::common::Snssai snssai;
+  oai::_3gpp::model::Snssai snssai;
   std::string dnn;
 };
 
@@ -61,9 +61,9 @@ class qos_upf_edge {
  public:
   // General infos, from PCF
   unsigned int precedence{};
-  oai::model::nrf::UPInterfaceType type{};
-  oai::model::pcf::FlowInformation flow_information{};
-  oai::model::pcf::RedirectInformation redirect_information{};
+  oai::_3gpp::model::UPInterfaceType type{};
+  oai::_3gpp::model::FlowInformation flow_information{};
+  oai::_3gpp::model::RedirectInformation redirect_information{};
   std::string correlation_id{};
   // UPF/PFCP specific infos
   pfcp::pdr_id_t pdr_id{};
@@ -86,7 +86,7 @@ class qos_upf_edge {
   pfcp::fteid_t fteid{};
   // for N3 or N9
   pfcp::fteid_t next_hop_fteid{};
-  oai::model::pcf::QosData qos_profile{};
+  oai::_3gpp::model::QosData qos_profile{};
 
   std::shared_ptr<qos_upf_edge> associated_edge{};
   std::shared_ptr<pfcp_association> destination_upf{};
@@ -118,12 +118,12 @@ class qos_upf_edge {
 
  private:
   static std::vector<std::shared_ptr<qos_upf_edge>> create_edges(
-      const oai::model::nrf::UPInterfaceType& type,
+      const oai::_3gpp::model::UPInterfaceType& type,
       const std::shared_ptr<pfcp_association>& this_upf,
       const std::shared_ptr<pfcp_association>& other_upf);
 
   static bool find_upf_edge_from_interface(
-      const oai::model::nrf::InterfaceUpfInfoItem& iface,
+      const oai::_3gpp::model::InterfaceUpfInfoItem& iface,
       const oai::config::smf::upf& other_upf_cfg);
 
   void associate_dnai(const oai::config::smf::upf& upf_cfg);

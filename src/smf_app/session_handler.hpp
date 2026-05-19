@@ -170,13 +170,13 @@ class session_handler {
       const uint16_t& value, const uint8_t& unit);
 
   static bool is_uplink_flow_direction(
-      const oai::model::pcf::FlowInformation& flow_direction);
+      const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_downlink_flow_direction(
-      const oai::model::pcf::FlowInformation& flow_direction);
+      const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_uplink_eth_flow_direction(
-      const oai::model::pcf::FlowInformation& flow_direction);
+      const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_downlink_eth_flow_direction(
-      const oai::model::pcf::FlowInformation& flow_direction);
+      const oai::_3gpp::model::FlowInformation& flow_direction);
 
  private:
   std::shared_ptr<upf_graph> m_session_graph;
@@ -239,14 +239,14 @@ class session_handler {
   std::shared_ptr<qos_upf_edge> get_edge_for_qfi(uint8_t qfi);
 
   static bool is_flow_direction(
-      bool uplink, const oai::model::pcf::FlowInformation& flow_direction);
+      bool uplink, const oai::_3gpp::model::FlowInformation& flow_direction);
 
   static bool is_flow_direction(
       bool uplink,
-      const oai::model::pcf::FlowDirection_anyOf::eFlowDirection_anyOf&
+      const oai::_3gpp::model::FlowDirection_anyOf::eFlowDirection_anyOf&
           flow_direction);
 
-  void set_default_qos_parameters(oai::model::pcf::QosData& qos_data);
+  void set_default_qos_parameters(oai::_3gpp::model::QosData& qos_data);
 
   // Values are from 3GPP TS 23.501 Release 17.6.0 Table 5.7.4-1
   std::map<uint8_t, uint8_t> qos_priority_map = {

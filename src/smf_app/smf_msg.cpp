@@ -43,7 +43,7 @@ void qos_flow_context_updated::add_qos_rule(const oai::nas::QosRule& rule) {
 
 //-----------------------------------------------------------------------------
 void qos_flow_context_updated::set_qos_profile(
-    const oai::model::pcf::QosData& profile) {
+    const oai::_3gpp::model::QosData& profile) {
   qos_profile = profile;
 }
 
@@ -1122,11 +1122,11 @@ smf_event_t event_notification::get_smf_event() const {
 
 //-----------------------------------------------------------------------------
 // ddds change
-void event_notification::set_Ddds(oai::model::smf::DddStatus const& value) {
+void event_notification::set_Ddds(oai::_3gpp::model::DddStatus const& value) {
   m_DddStatus      = value;
   m_DddStatusIsSet = true;
 }
-oai::model::smf::DddStatus event_notification::get_ddds() const {
+oai::_3gpp::model::DddStatus event_notification::get_ddds() const {
   return m_DddStatus;
 }
 
@@ -1198,12 +1198,12 @@ bool event_notification::is_re_ipv4_addr_is_set() const {
 }
 
 // m_PlmnId
-void event_notification::set_PlmnId(oai::model::common::PlmnId const& value) {
+void event_notification::set_PlmnId(oai::_3gpp::model::PlmnId const& value) {
   m_PlmnId      = value;
   m_PlmnIdIsSet = true;
 }
 
-oai::model::common::PlmnId event_notification::get_plmnid() const {
+oai::_3gpp::model::PlmnId event_notification::get_plmnid() const {
   return m_PlmnId;
 }
 

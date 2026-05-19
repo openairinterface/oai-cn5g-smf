@@ -13,8 +13,7 @@ include_directories(${SRC_TOP_DIR}/pfcp)
 include_directories(${SRC_TOP_DIR}/smf)
 include_directories(${SRC_TOP_DIR}/udp)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/udm)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/utils)
@@ -27,8 +26,7 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
-
-include(${BUILD_TOP_DIR}/smf/used_models.cmake)
+include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 
 add_library (SMF STATIC
   smf_app.cpp

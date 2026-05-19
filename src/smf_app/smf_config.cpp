@@ -18,7 +18,7 @@
 using namespace oai::app::smf;
 using namespace oai::config::smf;
 using namespace oai::config;
-using namespace oai::model::nrf;
+using namespace oai::_3gpp::model;
 using namespace oai::utils;
 
 smf_config::smf_config(
@@ -68,9 +68,9 @@ smf_config::smf_config(
   smf->get_subscription_info().push_back(info);
 
   // SMF profile default values
-  oai::model::nrf::SmfInfo smf_info;
-  oai::model::nrf::SnssaiSmfInfoItem info_item;
-  oai::model::nrf::DnnSmfInfoItem dnn_item;
+  oai::_3gpp::model::SmfInfo smf_info;
+  oai::_3gpp::model::SnssaiSmfInfoItem info_item;
+  oai::_3gpp::model::DnnSmfInfoItem dnn_item;
   dnn_item.setDnn(DEFAULT_DNN);
   info_item.setSNssai(DEFAULT_SNSSAI);
   info_item.setDnnSmfInfoList(std::vector{dnn_item});
