@@ -7064,6 +7064,7 @@ class pfcp_session_modification_response : public pfcp_ies_container {
  public:
   static const uint8_t msg_id = PFCP_SESSION_MODIFICATION_RESPONSE;
 
+  std::pair<bool, pfcp::node_id_t> node_id;
   std::pair<bool, pfcp::cause_t> cause;
   std::pair<bool, pfcp::offending_ie_t> offending_ie;
   std::vector<pfcp::created_pdr> created_pdrs;
@@ -7078,7 +7079,8 @@ class pfcp_session_modification_response : public pfcp_ies_container {
   std::pair<bool, pfcp::created_traffic_endpoint> created_traffic_endpoint;
 
   pfcp_session_modification_response()
-      : cause(),
+      : node_id(),
+        cause(),
         offending_ie(),
         created_pdrs(),
         load_control_information(),
@@ -7090,7 +7092,8 @@ class pfcp_session_modification_response : public pfcp_ies_container {
 
   pfcp_session_modification_response(
       const pfcp_session_modification_response& i)
-      : cause(i.cause),
+      : node_id(i.node_id),
+        cause(i.cause),
         offending_ie(i.offending_ie),
         created_pdrs(i.created_pdrs),
         load_control_information(i.load_control_information),
@@ -7105,6 +7108,13 @@ class pfcp_session_modification_response : public pfcp_ies_container {
     return "PFCP_SESSION_MODIFICATION_RESPONSE";
   };
 
+  bool get(pfcp::node_id_t& v) const {
+    if (node_id.first) {
+      v = node_id.second;
+      return true;
+    }
+    return false;
+  }
   bool get(pfcp::cause_t& v) const {
     if (cause.first) {
       v = cause.second;
@@ -7163,6 +7173,10 @@ class pfcp_session_modification_response : public pfcp_ies_container {
     return false;
   }
 
+  void set(const pfcp::node_id_t& v) {
+    node_id.first  = true;
+    node_id.second = v;
+  }
   void set(const pfcp::cause_t& v) {
     cause.first  = true;
     cause.second = v;

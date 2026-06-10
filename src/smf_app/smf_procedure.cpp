@@ -97,14 +97,38 @@ pfcp::fteid_t smf_session_procedure::pfcp_prepare_fteid(
     local_fteid.ch   = 0;
     local_fteid.v4   = 1;
     local_fteid.chid = 0;
-    if (cfg.get_local_n3_ip().empty()) {
+    if (!cfg.get_local_n3_ip().empty()) {
+      // Legacy config: n3_local_ipv4
+      local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
+    } else if (
+        cfg.get_upf_info().interfaceUpfInfoListIsSet() &&
+        !cfg.get_upf_info().getInterfaceUpfInfoList().empty()) {
+      // New config: upf_info.interfaceUpfInfoList
+      bool found_n3_ip = false;
+      for (const auto& iface : cfg.get_upf_info().getInterfaceUpfInfoList()) {
+        if (iface.getInterfaceType().getEnumValue() ==
+                UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3 &&
+            iface.ipv4EndpointAddressesIsSet() &&
+            !iface.getIpv4EndpointAddresses().empty()) {
+          local_fteid.ipv4_address =
+              conv::fromString(iface.getIpv4EndpointAddresses()[0]);
+          found_n3_ip = true;
+          break;
+        }
+      }
+      if (!found_n3_ip) {
+        Logger::smf_app().warn(
+            "The UPF %s does not support F-TEID creation, and no N3 "
+            "ipv4EndpointAddresses found in upf_info. Using UPF hostname",
+            cfg.get_host().c_str());
+        local_fteid.ipv4_address = cfg.get_node_id().u1.ipv4_address;
+      }
+    } else {
       Logger::smf_app().warn(
           "The UPF %s does not support F-TEID creation, but you did not "
           "configure the N3 host IP. We will try with the UPF hostname",
-          cfg.get_host());
+          cfg.get_host().c_str());
       local_fteid.ipv4_address = cfg.get_node_id().u1.ipv4_address;
-    } else {
-      local_fteid.ipv4_address = conv::fromString(cfg.get_local_n3_ip());
     }
     // TODO upon session release, we have to free this F-TEID again
     local_fteid.teid = smf_app_inst->generate_teid();
@@ -721,9 +745,16 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
     pfcp::create_urr create_urr = pfcp_create_urr(dl_edges[0]);
     n4_triggered->pfcp_ies.set(create_urr);
   }
+
+  // Create PDRs and FARs for uplink traffic (UE -> DN)
+  for (const auto& ul_edge : ul_edges) {
+    n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
+  }
   for (const auto& ul_edge : ul_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_far(ul_edge));
   }
+
+  // Create PDRs and FARs for downlink traffic (DN -> UE)
   for (const auto& dl_edge : dl_edges) {
     n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
   }
@@ -896,8 +927,36 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
       default_qos_flow = flow;
     }
   } */
-  std::vector<pfcp::qfi_t> used_qfis =
-      associate_fteid_with_created_pdrs(resp.pfcp_ies.created_pdrs, dl_edges);
+
+  // Combine UL and DL edges for created PDR association
+  std::vector<std::shared_ptr<qos_upf_edge>> all_edges;
+  all_edges.insert(all_edges.end(), ul_edges.begin(), ul_edges.end());
+  all_edges.insert(all_edges.end(), dl_edges.begin(), dl_edges.end());
+
+  std::vector<pfcp::qfi_t> used_qfis;
+  if (!resp.pfcp_ies.created_pdrs.empty()) {
+    used_qfis = associate_fteid_with_created_pdrs(
+        resp.pfcp_ies.created_pdrs, all_edges);
+  } else {
+    // When UPF does not return created PDRs (e.g. UPF does not support
+    // F-TEID creation / FTUP), the SMF has already generated TEIDs locally
+    // in pfcp_prepare_fteid and set them on the edges. Collect QFIs directly
+    // from the edges since the session is already fully configured.
+    Logger::smf_app().debug(
+        "No created PDRs in N4 response, collecting QFIs from edges "
+        "(F-TEIDs were generated locally)");
+    std::set<uint8_t> qfi_set;
+    for (const auto& edge : all_edges) {
+      if (edge->qfi.qfi != 0) {
+        qfi_set.insert(edge->qfi.qfi);
+      }
+    }
+    for (const auto& qfi_val : qfi_set) {
+      pfcp::qfi_t pfcp_qfi;
+      pfcp_qfi.qfi = qfi_val;
+      used_qfis.push_back(pfcp_qfi);
+    }
+  }
 
   UPInterfaceType n9_type;
   n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
