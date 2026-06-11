@@ -255,6 +255,78 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   pfcp::qfi_t default_qfi;  // Default QFI for this session
 
+  // TODO [QOS-FLOW]: Add QoS Flow Management Infrastructure
+  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 3: QoS Flow Management
+  // These members are required for comprehensive QoS flow lifecycle management
+  //
+  // Task 3.8: Session Context Integration
+  //   std::shared_ptr<QosFlowContext> m_qos_flow_context;
+  //   - Map: QFI → smf_qos_flow object
+  //   - Default QoS flow QFI tracking (typically QFI 1)
+  //   - QFI allocation bitmap (64 bits for QFI 0-63)
+  //   - Active flow count and resource utilization
+  //
+  // Required Methods to Add:
+  //   void add_qos_flow(std::shared_ptr<smf_qos_flow> flow);
+  //   - Add new QoS flow to session context
+  //   - Update QFI allocation bitmap
+  //   - Associate flow with PCC rule ID
+  //
+  //   std::shared_ptr<smf_qos_flow> get_qos_flow(uint8_t qfi);
+  //   - Retrieve QoS flow by QFI
+  //   - Return nullptr if flow not found
+  //
+  //   bool modify_qos_flow(uint8_t qfi, const QosData& new_qos);
+  //   - Modify existing QoS flow parameters
+  //   - Validate new parameters against subscription
+  //   - Trigger N4 QER update (Phase 2)
+  //   - Return true on success, false on failure
+  //
+  //   bool remove_qos_flow(uint8_t qfi);
+  //   - Remove QoS flow from session
+  //   - Deallocate QFI back to pool
+  //   - Clean up PCC rule associations
+  //   - Trigger N4 removal (Phase 2)
+  //
+  //   std::vector<std::shared_ptr<smf_qos_flow>> get_all_qos_flows();
+  //   - Return list of all active QoS flows
+  //   - Used for session state reporting
+  //
+  //   size_t get_qos_flow_count() const;
+  //   - Return count of active QoS flows
+  //   - Used for admission control
+  //
+  // Standards:
+  //   - TS 23.501 §5.7.1 (QoS Model - QoS Flows and QFI)
+  //   - TS 23.501 §5.7.1.4 (QoS Flow Identifier assignment)
+  //   - TS 23.501 §5.7.3 & §5.7.4 (5G QoS characteristics and Standardized 5QI mapping)
+  //   - TS 29.502 §5.6.2.2 (QosFlowItem) & TS 38.413 §9.3.1.51 (N2 QoS Flow Parameters)
+  //   - TS 23.502 §4.3.3 (PDU Session Modification - QoS flow procedures)
+  //   - TS 29.244 §8.2.89 & §5.4.4 (QFI IE and QoS Control at UPF)
+  //
+  // TODO [STORAGE]: Add Storage Integration
+  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 4: Storage and Persistence
+  //   std::shared_ptr<SmPolicyDecision> m_current_policy_decision;
+  //   - Store current policy decision from PCF
+  //   - Used for delta computation (Phase 1)
+  //   - Persisted to storage backend [TS 23.501 Annex C]
+  //
+  //   uint32_t m_policy_decision_version;
+  //   - Version number for policy decision
+  //   - Incremented on each update
+  //   - Used for optimistic locking and rollback
+  //
+  // Required Methods for Storage [TS 23.501 §4.2.5, TS 29.500 §6.5.3.1]:
+  //   bool persist_to_storage();
+  //   - Store session state to configured backend (DB/Cache/UDSF)
+  //   - Call storage->store_session_snapshot() [TS 23.501 Annex C]
+  //   - Return true on success
+  //
+  //   bool restore_from_storage();
+  //   - Restore session state from storage on SMF restart
+  //   - Called during SMF restart/recovery [TS 23.502 §4.2.2.2.2]
+  //   - Reconstruct QoS flows and policy decisions
+
   // 5GSM parameters and capabilities
   uint8_t maximum_number_of_supported_packet_filters;
   // TODO: 5GSM Capability (section 9.11.4.1@3GPP TS 24.501 V16.1.0)

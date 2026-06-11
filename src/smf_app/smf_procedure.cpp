@@ -1533,7 +1533,76 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      // TODO:
+      // TODO [N4-MODIFY]: Implement N4 Session Modification Request Building
+      // Reference: ENHANCED_QOS_SUPPORT.md - Phase 2: N4 Session Modification Logic
+      // This is the CRITICAL missing piece - SMF must translate PCF policy into N4 messages
+      //
+      // Task 2.4: Build N4 Session Modification Request
+      //   1. Extract policy_delta from procedure context (set in Phase 1)
+      //   2. Process ADDED PCC rules:
+      //      - Call generate_pdr_from_pcc_rule() for each new rule
+      //      - Call generate_far_from_qos_data() for forwarding
+      //      - Call generate_qer_from_qos_data() for QoS enforcement
+      //      - Add to create_pdr, create_far, create_qer lists
+      //   3. Process MODIFIED PCC rules:
+      //      - Find existing PDR/FAR/QER IDs for the rule
+      //      - Update parameters if flow description changed
+      //      - Add to update_pdr, update_far, update_qer lists
+      //   4. Process REMOVED PCC rules:
+      //      - Identify PDR/FAR/QER IDs for removed rules
+      //      - Add to remove_pdr, remove_far, remove_qer lists
+      //      - Mark QFI for deallocation (Phase 3)
+      //   5. Build PFCP Session Modification Request message
+      //      - Populate all create/update/remove IEs
+      //      - Set session F-SEID (UPF endpoint)
+      //      - Set PFCP sequence number
+      //   6. Set send_n4 = true to trigger transmission
+      //
+      // Task 2.1: Generate PDR from PCC Rule [TS 29.244 §5.2.1A]
+      //   - Extract flow description from PCC rule's flowInfos [TS 29.512 §5.6.2.14]
+      //   - Parse IP filter rules (5-tuple) [TS 29.244 §5.2.1A.2A, TS 29.212 Annex A]
+      //   - Create PDI [TS 29.244 §8.2.2]:
+      //     - Source interface (ACCESS for UL, CORE for DL) [TS 29.244 §8.2.2]
+      //     - Network instance (DNN) [TS 29.244 §8.2.4]
+      //     - UE IP address [TS 29.244 §8.2.62]
+      //     - SDF filter [TS 29.244 §8.2.5]
+      //   - Assign precedence from PCC rule [TS 29.244 §5.4.4, TS 29.244 §8.2.11]
+      //   - Allocate PDR ID [TS 29.244 §8.2.36]
+      //   - Reference FAR ID [TS 29.244 §8.2.74] and QER ID [TS 29.244 §8.2.75]
+      //   - Handle bidirectional flows [TS 29.244 §5.2.1A.3]
+      //
+      // Task 2.2: Generate FAR from QoS Data [TS 29.244 §5.2.3]
+      //   - Determine destination interface [TS 29.244 §8.2.24]:
+      //     - Uplink → CORE; Downlink → ACCESS
+      //   - Configure forwarding parameters [TS 29.244 Table 7.5.2.3-2]:
+      //     - Destination interface [TS 29.244 §8.2.24]
+      //     - Network instance (DNN/N3) [TS 29.244 §8.2.4]
+      //     - Redirect info if applicable [TS 29.512 §5.6.2.13]
+      //   - Setup outer header creation (GTP-U downlink) [TS 29.244 §8.2.56]
+      //   - Allocate TEID for new QoS flows [TS 29.244 §5.5.3]
+      //   - Set transport level marking (DSCP) based on 5QI [TS 29.244 §5.4.13, TS 23.501 §5.8.2.7]
+      //   - Allocate FAR ID [TS 29.244 §8.2.74]
+      //   - Set apply action (FORW/DROP) [TS 29.244 §5.2.3.1, TS 29.244 §8.2.26]
+      //
+      // Task 2.3: Generate QER from QoS Data [TS 29.244 §5.2.5]
+      //   - Extract 5QI, gbrUl/gbrDl, maxbrUl/maxbrDl from QosData [TS 29.512 §5.6.2.8]
+      //   - Map 5QI to QoS characteristics [TS 23.501 §5.7.4]:
+      //     - Resource type (GBR, NON_GBR, DELAY_CRITICAL_GBR)
+      //     - Packet delay budget [TS 23.501 §5.7.3.4, TS 29.244 §8.2.164]
+      //     - Packet error rate [TS 23.501 §5.7.3.5]
+      //   - Allocate QFI [TS 23.501 §5.7.1.4, TS 29.244 §8.2.89]
+      //   - Configure gate status [TS 29.244 §8.2.27]
+      //   - Set MBR [TS 29.244 §8.2.28] and GBR [TS 29.244 §8.2.29]
+      //   - Allocate QER ID [TS 29.244 §8.2.75]
+      //
+      // Standards:
+      //   - TS 29.244 §7.5.4 (PFCP Session Modification)
+      //   - TS 29.244 §5.2.1A (PDR - Packet Detection Rule)
+      //   - TS 29.244 §5.2.3 (FAR - Forwarding Action Rule)
+      //   - TS 29.244 §5.2.5 (QER - QoS Enforcement Rule)
+      //   - TS 23.502 §4.3.3.2 (PDU Session Modification)
+      //
+      // Current implementation (INCOMPLETE - never sends N4):
       send_n4 = false;
     } break;
 
@@ -1717,8 +1786,44 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO [N4-MODIFY]: Implement N4 Response Handling for PCF-initiated updates
+      // Reference: ENHANCED_QOS_SUPPORT.md - Phase 2: N4 Session Modification Logic
+      // This handles the UPF response after N4 Session Modification Request
+      //
+      // Task: Process N4 Session Modification Response
+      //   1. Parse PFCP Session Modification Response from UPF
+      //   2. Check response cause code:
+      //      - If SUCCESS: Update session context with new QoS flows
+      //      - If FAILURE: Rollback policy changes, notify PCF
+      //   3. Update QoS flow state (Phase 3):
+      //      - Transition flows from PENDING_ESTABLISHMENT → ESTABLISHED
+      //      - Transition flows from PENDING_MODIFICATION → ESTABLISHED
+      //      - Transition flows from PENDING_RELEASE → RELEASED
+      //   4. Update PDR/FAR/QER mappings in session context
+      //   5. Build HTTP response for PCF:
+      //      - Success: HTTP 200 OK with updated policy
+      //      - Failure: HTTP 500 with ProblemDetails
+      //   6. For successful modifications:
+      //      - Generate N2 QoS flow setup/modify for RAN
+      //      - Update n11_triggered_pending->res with flow info
+      //      - Set continue_n4 based on next UPF in chain (if any)
+      //   7. Store updated policy decision (Phase 4):
+      //      - Call storage->update_policy_decision()
+      //      - Version the policy for rollback capability
+      //
+      // Error Handling:
+      //   - UPF rejects modification → rollback policy, notify PCF
+      //   - Timeout on N4 response → retry or rollback
+      //   - Partial success → log inconsistency, alert operator
+      //
+      // Standards:
+      //   - TS 29.244 §7.5.4 (PFCP Session Modification Request/Response)
+      //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
+      //   - TS 23.502 §4.3.3 (PDU Session Modification procedures)
+      //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer - N2)
+      //
+      // Current implementation (INCOMPLETE - no response handling):
       continue_n4 = false;
-      // TODO:
     } break;
 
     default: {

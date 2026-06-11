@@ -397,6 +397,12 @@ void smf_http2_server::start() {
       });
 
   // SMF Callback (including SM Policy Notification)
+  // TODO [QOS-BUG]: Fix missing trailing "/" in callback handler pattern
+  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1, Gap Analysis
+  // Current: smf_sbi_helper::SmfCallbackBase()
+  // Should be: smf_sbi_helper::SmfCallbackBase() + "/"
+  // This bug prevents PCF from successfully calling the callback endpoint
+  // Standards: TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
   server.handle(
       smf_sbi_helper::SmfCallbackBase(),
       [&](const request& request, const response& response) {
