@@ -31,7 +31,7 @@
 
 #include <NFStatusNotifyApi.h>
 
-#include <pistache/optional.h>
+#include <optional>
 
 #include "NotificationData.h"
 #include "ProblemDetails.h"

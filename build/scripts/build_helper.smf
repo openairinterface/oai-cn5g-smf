@@ -82,6 +82,9 @@ check_install_smf_deps() {
       "ubuntu22.04")
         specific_packages="libasio-dev libboost-all-dev libasan6"
         ;;
+      "ubuntu24.04")
+        specific_packages="libasio-dev libboost-all-dev libasan8"
+        ;;
     esac
     # removed libspdlog-dev
     PACKAGE_LIST="\
@@ -99,7 +102,8 @@ check_install_smf_deps() {
       libcurl4 \
       net-tools \
       pkg-config \
-      ninja-build"
+      ninja-build \
+      meson"
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
     PACKAGE_LIST="\
       boost-devel \
@@ -115,6 +119,7 @@ check_install_smf_deps() {
       libcurl-devel \
       pkgconfig \
       ninja-build \
+      meson \
       libasan"
   else
     echo_fatal "$OS_DISTRO is not a supported distribution."
@@ -154,6 +159,12 @@ check_install_smf_deps() {
       "ubuntu22.04")
         # not sure about 0.7.0
         #$SUDO $INSTALLER install $OPTION libyaml-cpp0.7 libyaml-cpp-dev
+        install_libyaml_cpp_from_git $1 $2
+        ret=$?;[[ $ret -ne 0 ]] && return $ret
+        ;;
+      "ubuntu24.04")
+        # probably 0.8.0
+        #$SUDO $INSTALLER install $OPTION libyaml-cpp0.8 libyaml-cpp-dev
         install_libyaml_cpp_from_git $1 $2
         ret=$?;[[ $ret -ne 0 ]] && return $ret
         ;;
