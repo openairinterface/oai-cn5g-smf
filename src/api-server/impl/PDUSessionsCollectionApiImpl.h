@@ -31,7 +31,7 @@
 
 #include <PDUSessionsCollectionApi.h>
 
-#include <pistache/optional.h>
+#include <optional>
 
 #include "PduSessionCreateData.h"
 #include "PduSessionCreateError.h"

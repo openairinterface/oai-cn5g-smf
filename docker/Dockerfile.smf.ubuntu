@@ -6,14 +6,15 @@
 #
 # Dockerfile for the Open-Air-Interface SMF service
 #   Valid for Ubuntu-20.04 (focal),
-#             Ubuntu-22.04 (jammy)
+#             Ubuntu-22.04 (jammy),
+#             Ubuntu-24.04 (noble)
 #
 #---------------------------------------------------------------------
 
 #---------------------------------------------------------------------
 # BASE IMAGE
 #---------------------------------------------------------------------
-ARG BASE_IMAGE=ubuntu:jammy
+ARG BASE_IMAGE=ubuntu:noble
 FROM $BASE_IMAGE AS oai-smf-base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -93,10 +94,12 @@ RUN apt-get update && \
       netbase \
 # Ubuntu 20 --> libasan5
 # Ubuntu 22 --> libasan6
+# Ubuntu 24 --> libasan8
 #      libasan? \
       libgssapi-krb5-2 \
 # Ubuntu 20 --> libldap-2.4-2
 # Ubuntu 22 --> libldap-2.5-0
+# Ubuntu 24 --> libldap-2.6-7
       libldap-2.?-? \
       libsctp1 \
       librtmp1 \
@@ -104,8 +107,9 @@ RUN apt-get update && \
       libcurl?-gnutls \
 # Ubuntu 20 --> boost71
 # Ubuntu 22 --> boost74
-      libboost-thread1.7?.0 \
-      libboost-chrono1.7?.0 \
+# Ubuntu 24 --> boost83
+      libboost-thread1.83.0 \
+      libboost-chrono1.83.0 \
 # lttng
   && if [ "$ENABLE_LTTNG" = "true" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes liblttng-ust-dev; fi \
   && rm -rf /var/lib/apt/lists/*
@@ -132,9 +136,9 @@ COPY --from=oai-smf-builder \
     /usr/local/lib/libnghttp2.so.14 \
     /usr/local/lib/libnghttp2_asio.so.1 \
     /usr/local/lib/libyaml-cpp.so.0.? \
-    /usr/local/lib/libpistache.so \
+    /usr/local/lib/libpistache.so* \
     /usr/local/lib/libfmt.so \
-    /usr/local/lib/libcpr.so.1 \
+    /usr/local/lib/libcpr.so.1* \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /openair-smf/build/smf/build/ngap/libNGAP.so \
     ./
@@ -151,7 +155,7 @@ WORKDIR /openair-smf
 
 ARG GIT_COMMIT
 
-LABEL org.opencontainers.image.authors="OpenAirInterface <contact@openairinterface.org>" \
+LABEL org.opencontainers.image.authors="OpenAirInterface <oaicicdteam@openairinterface.org>" \
       org.opencontainers.image.vendor="OpenAirInterface Software Alliance" \
       org.opencontainers.image.licenses="Collaborative Standards Software License v1.0" \
       org.opencontainers.image.title="OAI SMF" \
