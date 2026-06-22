@@ -599,7 +599,7 @@ class itti_n4_session_failure_indication : public itti_n4_msg {
  public:
   itti_n4_session_failure_indication(
       const task_id_t origin, const task_id_t destination)
-      : itti_n4_msg(N4_SESSION_REPORT_RESPONSE, origin, destination) {}
+      : itti_n4_msg(N4_SESSION_FAILURE_INDICATION, origin, destination) {}
   itti_n4_session_failure_indication(
       const itti_n4_session_failure_indication& i)
       : itti_n4_msg(i) {

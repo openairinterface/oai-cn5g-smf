@@ -154,6 +154,13 @@ void smf_n4_task(void* args_p) {
         }
         break;
 
+      case N4_SESSION_FAILURE_INDICATION:
+        if (itti_n4_session_failure_indication* m =
+                dynamic_cast<itti_n4_session_failure_indication*>(msg)) {
+          smf_n4_inst->send_n4_msg(std::ref(*m));
+        }
+        break;
+
       case TIME_OUT:
         if (itti_msg_timeout* to = dynamic_cast<itti_msg_timeout*>(msg)) {
           Logger::smf_n4().info("TIME-OUT event timer id %d", to->timer_id);
@@ -780,6 +787,14 @@ void smf_n4::send_n4_msg(itti_n4_session_modification_request& i) {
 
 //------------------------------------------------------------------------------
 void smf_n4::send_n4_msg(itti_n4_session_deletion_request& i) {
+  send_request(i.r_endpoint, i.seid, i.pfcp_ies, TASK_SMF_N4, i.trxn_id);
+}
+
+//------------------------------------------------------------------------------
+void smf_n4::send_n4_msg(itti_n4_session_failure_indication& i) {
+  // Paging failure: send a PFCP Session Modification Request (carried in
+  // pfcp_ies, populated with an Update FAR / Apply Action by the build site in
+  // smf_app.cpp) so the UPF stops buffering / discards the buffered DL data.
   send_request(i.r_endpoint, i.seid, i.pfcp_ies, TASK_SMF_N4, i.trxn_id);
 }
 

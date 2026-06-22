@@ -514,12 +514,63 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
 bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     pdu_session_report_response& msg, n2_sm_info_type_e ngap_info_type,
     std::string& ngap_msg_str) {
-  Logger::smf_n2().debug(
-      "Create N2 SM Information: NGAP PDU Session Resource Setup Request "
-      "Transfer IE");
-  // TODO:
-  Logger::smf_n2().warn("This function has not been implemented!");
+  Logger::smf_n2().info(
+      "Create N2 SM Info: PDU Session Resource Setup Request Transfer "
+      "(paging)");
 
+  // 1. Pull QoS flows from the report-response message. Use the "updated" map
+  //    (NOT get_all_qos_flow_context_created); it is populated via
+  //    add_qos_flow_context_updated() in the DDN handler.
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  msg.get_all_qos_flow_context_updateds(qos_flows);
+  if (qos_flows.empty()) {
+    Logger::smf_n2().warn("No QoS flow context for paging N2 SM info");
+    return false;
+  }
+
+  // 2. Delegate to the existing worker overload. pdu_session_report_response
+  //    IS-A pdu_session_sm_context_response, so upcasting works. The worker
+  //    fills AMBR, UL NG-U TNL (from ul_fteid), PDU session type, and the QoS
+  //    Flow Setup Request List. It hard-returns false if the SUPI cannot be
+  //    resolved; log the SUPI so a reviewer can confirm the lookup.
+  Logger::smf_n2().debug(
+      "Paging N2 SM info: SUPI %s, SUPI->smf_context lookup %s",
+      msg.get_supi().c_str(),
+      smf_app_inst->is_supi_2_smf_context(msg.get_supi()) ? "OK" : "FAILED");
+
+  PduSessionResourceSetupRequestTransfer transfer = {};
+  std::shared_ptr<pdu_session_sm_context_response> msg_ptr =
+      std::make_shared<pdu_session_report_response>(msg);
+  if (!create_n2_pdu_session_resource_setup_request_transfer(
+          msg_ptr, qos_flows, ngap_info_type, transfer)) {
+    Logger::smf_n2().warn(
+        "Couldn't fill NGAP PDU Session Resource Setup Request Transfer "
+        "contents (paging)");
+    return false;
+  }
+
+  // 3. Encode to buffer (same pattern as the sibling wrapper above).
+  auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
+  if (buffer == nullptr) {
+    Logger::smf_n2().error("Error when allocating buffer!");
+    return false;
+  }
+
+  int encoded_size = 0;
+  transfer.encode2NewBuffer(buffer, encoded_size);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Resource Setup Request Transfer encode failed "
+        "(encode size %d)",
+        encoded_size);
+    delete[] buffer;
+    return false;
+  }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "N2 SM Buffer Data:", buffer, encoded_size);
+  ngap_msg_str = std::string((char*) buffer, encoded_size);
+  delete[] buffer;
   return true;
 }
 

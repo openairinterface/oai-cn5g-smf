@@ -226,6 +226,43 @@ class itti_sbi_n1n2_message_transfer_response_status : public itti_sbi_msg {
 };
 
 //-----------------------------------------------------------------------------
+// N1N2 Message Transfer Failure Notification callback (TS 29.518
+// §5.2.2.3.1). Posted to TASK_SMF_APP by the HTTP/2 server when the AMF
+// reports a paging failure on the n1n2FailureTxfNotifURI. Handled on
+// TASK_SMF_APP so paging-state mutations stay on a single task.
+class itti_sbi_n1n2_message_transfer_failure_notification
+    : public itti_sbi_msg {
+ public:
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(
+            N11_SESSION_N1N2_MESSAGE_TRANSFER_FAILURE_NOTIFICATION, orig, dest),
+        ue_id(),
+        cause(),
+        n1n2_msg_data_uri() {}
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const itti_sbi_n1n2_message_transfer_failure_notification& i)
+      : itti_sbi_msg(i),
+        ue_id(i.ue_id),
+        cause(i.cause),
+        n1n2_msg_data_uri(i.n1n2_msg_data_uri) {}
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const itti_sbi_n1n2_message_transfer_failure_notification& i,
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        ue_id(i.ue_id),
+        cause(i.cause),
+        n1n2_msg_data_uri(i.n1n2_msg_data_uri) {}
+  const char* get_msg_name() {
+    return "N11_SESSION_N1N2_MESSAGE_TRANSFER_FAILURE_NOTIFICATION";
+  };
+
+  std::string ue_id;              // SUPI from the callback URI :ueId
+  std::string cause;              // failure cause from the callback body
+  std::string n1n2_msg_data_uri;  // n1n2MsgDataUri from the callback body
+};
+
+//-----------------------------------------------------------------------------
 class itti_sbi_release_sm_context_request : public itti_sbi_msg {
  public:
   itti_sbi_release_sm_context_request(

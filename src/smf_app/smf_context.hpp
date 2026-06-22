@@ -34,6 +34,19 @@ using namespace boost::placeholders;
 
 namespace oai::app::smf {
 
+// Paging-progress state of a PDU session (network-triggered service request /
+// paging). This is distinct from the 5GSM pdu_session_status state machine and
+// from the upCnx_state N3-tunnel state machine: it tracks only whether a
+// N1N2MessageTransfer paging request is outstanding so duplicate Downlink Data
+// Notifications can be suppressed (see plan T6 / D3, per-PDU-session
+// granularity).
+enum class paging_state_e {
+  NONE = 0,       // no paging outstanding
+  PENDING,        // 202 ATTEMPTING_TO_REACH_UE — paging in progress
+  ASYNC_PENDING,  // 202 WAITING_FOR_ASYNCHRONOUS_TRANSFER
+  FAILED          // 409 paging-restriction / 504 UE-not-reachable / fail cb
+};
+
 class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
  public:
   smf_pdu_session() : m_pdu_session_mutex() { clear(); }
@@ -61,6 +74,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     maximum_number_of_supported_packet_filters = 0;
     number_retransmission_T3591                = 0;
     number_retransmission_T3592                = 0;
+    paging_state                               = paging_state_e::NONE;
+    n1n2_location_uri                          = {};
   }
 
   void clear() {
@@ -85,6 +100,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     timer_T3592                 = ITTI_INVALID_TIMER_ID;
     number_retransmission_T3591 = 0;
     number_retransmission_T3592 = 0;
+    paging_state                = paging_state_e::NONE;
+    n1n2_location_uri           = {};
   }
 
   smf_pdu_session(smf_pdu_session& b) = delete;
@@ -147,6 +164,20 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return ho_state_e: current state of this PDU Session
    */
   ho_state_e get_ho_state() const;
+
+  /*
+   * Set the paging-progress state of this PDU session (T6).
+   * @param [const paging_state_e&] state: new paging state
+   * @return void
+   */
+  void set_paging_state(const paging_state_e& state);
+
+  /*
+   * Get the paging-progress state of this PDU session (T6).
+   * @param void
+   * @return paging_state_e: current paging state
+   */
+  paging_state_e get_paging_state() const;
 
   // deallocate_ressources is for releasing related-resources prior to the
   // deletion of objects since shared_ptr is actually heavy used for handling
@@ -249,6 +280,9 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
   ho_state_e ho_state;
+  paging_state_e paging_state;  // network-triggered paging progress (T6)
+  std::string
+      n1n2_location_uri;  // Location header from a 202 N1N2MessageTransfer
   timer_id_t timer_T3590;
   timer_id_t timer_T3591;
   timer_id_t timer_T3592;

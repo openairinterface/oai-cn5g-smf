@@ -68,6 +68,18 @@ class session_handler {
   bool qfi_exists(const pfcp::qfi_t& qfi);
 
   /**
+   * Resolve the QFI of the N3 (access) edge whose PDR ID matches the one
+   * reported in a PFCP Downlink Data Report. Used by the Network-Triggered
+   * Service Request (paging) trigger to map the reporting PDR ID to its QoS
+   * flow. Encapsulates the lock-guarded session-graph access edge lookup.
+   * @param pdr_id PDR ID reported in the DDR
+   * @param qfi [out] QFI of the matching access edge (untouched on miss)
+   * @return true if a matching access edge with a valid (non-zero) QFI is
+   *         found, false otherwise (no graph / no access edges / no match)
+   */
+  bool get_qfi_for_pdr_id(const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi);
+
+  /**
    * Creates a list of JSON representations of all QoS flows
    * @return
    */

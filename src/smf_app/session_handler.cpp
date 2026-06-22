@@ -655,6 +655,42 @@ std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
 }
 
 //------------------------------------------------------------------------------
+bool session_handler::get_qfi_for_pdr_id(
+    const pfcp::pdr_id_t& pdr_id, pfcp::qfi_t& qfi) {
+  if (!has_session_graph()) {
+    Logger::smf_app().error(
+        "Cannot resolve QFI for PDR ID %u: UPF graph does not exist",
+        pdr_id.rule_id);
+    return false;
+  }
+
+  auto n3_edges = m_session_graph->get_access_edges();
+  if (n3_edges.empty()) {
+    Logger::smf_app().error(
+        "Cannot resolve QFI for PDR ID %u: no access edges in UPF graph",
+        pdr_id.rule_id);
+    return false;
+  }
+
+  for (const auto& edge : n3_edges) {
+    if (edge && edge->pdr_id.rule_id == pdr_id.rule_id) {
+      if (edge->qfi.qfi == 0) {
+        Logger::smf_app().error(
+            "Access edge for PDR ID %u carries an invalid (zero) QFI",
+            pdr_id.rule_id);
+        return false;
+      }
+      qfi = edge->qfi;
+      return true;
+    }
+  }
+
+  Logger::smf_app().error(
+      "No access edge matches PDR ID %u; cannot resolve QFI", pdr_id.rule_id);
+  return false;
+}
+
+//------------------------------------------------------------------------------
 void session_handler::deallocate_resources() {
   for (const auto& edge : m_session_graph->get_access_edges()) {
     release_pdr_id(edge->pdr_id);

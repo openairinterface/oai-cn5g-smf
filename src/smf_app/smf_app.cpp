@@ -232,6 +232,15 @@ void smf_app_task(void*) {
         }
         break;
 
+      case N11_SESSION_N1N2_MESSAGE_TRANSFER_FAILURE_NOTIFICATION:
+        if (itti_sbi_n1n2_message_transfer_failure_notification* m =
+                dynamic_cast<
+                    itti_sbi_n1n2_message_transfer_failure_notification*>(
+                    msg)) {
+          smf_app_inst->handle_itti_msg(std::ref(*m));
+        }
+        break;
+
       case N11_SESSION_CREATE_SM_CONTEXT_RESPONSE:
         if (itti_sbi_create_sm_context_response* m =
                 dynamic_cast<itti_sbi_create_sm_context_response*>(msg)) {
@@ -614,85 +623,87 @@ void smf_app::handle_itti_msg(
       Logger::smf_app().debug(
           "Got response from AMF (response code %d) with cause %s",
           m.response_code, m.cause.c_str());
-      if ((m.response_code != http_status_code::OK) and
-          (m.response_code != http_status_code::ACCEPTED)) {
-        Logger::smf_app().debug("Send failure indication to UPF");
-        // TODO: to be completed
-        pfcp::node_id_t up_node_id = {};
-        // Get UPF node
-        std::shared_ptr<smf_context_ref> scf = {};
-        if (smf_app_inst->is_scid_2_smf_context(m.scid)) {
-          scf = scid_2_smf_context(m.scid);
-          // up_node_id = scf.get()->upf_node_id;
-        } else {
-          Logger::smf_app().warn(
-              "SM Context associated with this id " SCID_FMT " does not exit!",
-              m.scid);
-          return;
-        }
 
-        std::shared_ptr<smf_context> sc = {};
-        if (is_supi_2_smf_context(scf.get()->supi)) {
-          Logger::smf_app().debug(
-              "Update SMF context with SUPI %s", scf.get()->supi);
-          sc = supi_2_smf_context(scf.get()->supi);
-        }
+      // Resolve the SMF context / PDU session via SEID (T7): the SBI client
+      // does not set scid (defaults to 0), so a scid-keyed lookup always
+      // misses. The SEID is carried on the response-status ITTI message.
+      std::shared_ptr<smf_context> sc = {};
+      if (!smf_app_inst->seid_2_smf_context(m.seid, sc) || sc == nullptr) {
+        Logger::smf_app().warn(
+            "SM Context associated with SEID " SEID_FMT " does not exist!",
+            m.seid);
+        return;
+      }
+      std::shared_ptr<smf_pdu_session> sp = {};
+      if (!sc.get()->find_pdu_session_from_seid(m.seid, sp) || sp == nullptr) {
+        Logger::smf_app().warn("PDU session context does not exist!");
+        return;
+      }
 
-        if (sc.get() == nullptr) {
-          Logger::smf_app().warn(
-              "SM Context associated with this id " SCID_FMT " does not exit!",
-              m.scid);
-          return;
-        }
-
-        std::shared_ptr<smf_pdu_session> sp = {};
-        if (!sc.get()->find_pdu_session(scf.get()->pdu_session_id, sp)) {
-          Logger::smf_app().warn("PDU session context does not exist!");
-          return;
-        }
-
-        // TODO when is this triggered and what should we do in that case?
-
-        std::shared_ptr<upf_graph> graph =
-            sp->get_session_handler()->get_session_graph();
-        if (!graph) {
-          Logger::smf_app().warn("PDU sessions graph does not exist!");
-          return;
-        }
-        std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
-        std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
-        std::shared_ptr<pfcp_association> current_upf;
-        // TODO what is exactly happening here or should happen?
-        // and why is this not in the procedure?
-        graph->start_asynch_dfs_procedure(true);
-        graph->dfs_next_upf(dl_edges, ul_edges, current_upf);
-
-        if (!current_upf) {
-          Logger::smf_app().warn("Could not select UPF in graph!");
-          return;
-        }
-
-        up_node_id = current_upf->node_id;
-
-        std::shared_ptr<itti_n4_session_failure_indication>
-            itti_n4_failure_indication =
-                std::make_shared<itti_n4_session_failure_indication>(
-                    TASK_SMF_APP, TASK_SMF_N4);
-
-        itti_n4_failure_indication->seid    = m.seid;
-        itti_n4_failure_indication->trxn_id = m.trxn_id;
-        itti_n4_failure_indication->r_endpoint =
-            endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
-
+      // Cause-string literals confirmed against the serialized enum values in
+      // src/oai-cn5g-common-src/model/N1N2MessageTransferCause_anyOf.cpp
+      // (to_json): N1_N2_TRANSFER_INITIATED (l.76), ATTEMPTING_TO_REACH_UE
+      // (l.72), WAITING_FOR_ASYNCHRONOUS_TRANSFER (l.80),
+      // REJECTION_DUE_TO_PAGING_RESTRICTION (l.108),
+      // UE_NOT_REACHABLE_FOR_SESSION (l.96),
+      // TEMPORARY_REJECT_REGISTRATION_ONGOING (l.100),
+      // TEMPORARY_REJECT_HANDOVER_ONGOING (l.104).
+      if (m.response_code == http_status_code::OK) {  // 200
+        // N1_N2_TRANSFER_INITIATED: the UE was CM-CONNECTED; the AMF forwarded
+        // the N2 message directly, no paging needed. Ensure paging state is not
+        // left PENDING. No UPF action.
         Logger::smf_app().info(
-            "Sending ITTI message %s to task TASK_SMF_N4",
-            itti_n4_failure_indication->get_msg_name());
-        int ret = itti_inst->send_msg(itti_n4_failure_indication);
-        if (RETURNok != ret) {
-          Logger::smf_app().error(
-              "Could not send ITTI message %s to task TASK_SMF_N4",
-              itti_n4_failure_indication->get_msg_name());
-          return;
+            "N1N2 paging: UE CM-CONNECTED (200 %s); no paging needed",
+            m.cause.c_str());
+        sp->set_paging_state(paging_state_e::NONE);
+      } else if (m.response_code == http_status_code::ACCEPTED) {  // 202
+        if (m.cause == "WAITING_FOR_ASYNCHRONOUS_TRANSFER") {
+          Logger::smf_app().info(
+              "N1N2 paging: WAITING_FOR_ASYNCHRONOUS_TRANSFER; entering "
+              "ASYNC_PENDING");
+          sp->set_paging_state(paging_state_e::ASYNC_PENDING);
+        } else {
+          // ATTEMPTING_TO_REACH_UE (default for 202): paging in progress.
+          Logger::smf_app().info(
+              "N1N2 paging: ATTEMPTING_TO_REACH_UE (202); entering "
+              "PAGING_PENDING");
+          sp->set_paging_state(paging_state_e::PENDING);
+        }
+        // 202 is NOT a failure: do NOT stop UPF buffering. The UPF keeps
+        // buffering until the UE responds (UpdateSMContext) or the failure
+        // callback fires.
+      } else {  // 4xx / 5xx
+        if (m.cause == "REJECTION_DUE_TO_PAGING_RESTRICTION" ||
+            m.cause == "UE_NOT_REACHABLE_FOR_SESSION" ||
+            m.response_code == http_status_code::GATEWAY_TIMEOUT /* 504 */) {
+          // Paging failed definitively: drive the UPF to stop buffering and
+          // mark the PDU session paging state FAILED.
+          Logger::smf_app().info(
+              "N1N2 paging failed (code %d cause %s); stopping UPF buffering",
+              m.response_code, m.cause.c_str());
+          sp->set_paging_state(paging_state_e::FAILED);
+          trigger_n4_stop_buffering(
+              sp->get_session_handler()->get_session_graph(), m.seid,
+              m.trxn_id);
+        } else if (
+            m.cause == "TEMPORARY_REJECT_REGISTRATION_ONGOING" ||
+            m.cause == "TEMPORARY_REJECT_HANDOVER_ONGOING") {
+          // Temporary reject: full guard-timer retry toward a new AMF is out of
+          // scope (plan §1.4). Leave UPF buffering; retry deferred.
+          Logger::smf_app().warn(
+              "N1N2 paging temporarily rejected (%s); retry deferred (out of "
+              "scope), leaving UPF buffering",
+              m.cause.c_str());
+        } else {
+          // Unknown 4xx/5xx: conservative failure handling — stop buffering.
+          Logger::smf_app().warn(
+              "N1N2 paging: unhandled response (code %d cause %s); stopping "
+              "UPF buffering conservatively",
+              m.response_code, m.cause.c_str());
+          sp->set_paging_state(paging_state_e::FAILED);
+          trigger_n4_stop_buffering(
+              sp->get_session_handler()->get_session_graph(), m.seid,
+              m.trxn_id);
         }
       }
     } break;
@@ -701,6 +712,159 @@ void smf_app::handle_itti_msg(
       Logger::smf_app().warn(
           "Unknown procedure type %d", (int) m.procedure_type);
     }
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_itti_msg(
+    itti_sbi_n1n2_message_transfer_failure_notification& m) {
+  // Runs on TASK_SMF_APP (the HTTP/2 server posted this ITTI message rather
+  // than calling smf_app inline), so mutating paging_state here is safe.
+  Logger::smf_app().info(
+      "Received N1N2 Message Transfer Failure Notification for UE %s (cause "
+      "%s, n1n2MsgDataUri %s)",
+      m.ue_id.c_str(), m.cause.c_str(), m.n1n2_msg_data_uri.c_str());
+
+  // Resolve the SMF context by SUPI (the callback URI :ueId). The callback
+  // body carries no PDU session id, so iterate the UE's PDU sessions and act
+  // on those currently waiting on a page (PENDING / ASYNC_PENDING).
+  if (!is_supi_2_smf_context(m.ue_id)) {
+    Logger::smf_app().warn(
+        "N1N2 paging failure: no SMF context for UE %s; nothing to do",
+        m.ue_id.c_str());
+    return;
+  }
+  std::shared_ptr<smf_context> sc = supi_2_smf_context(m.ue_id);
+  if (sc == nullptr) {
+    Logger::smf_app().warn(
+        "N1N2 paging failure: SMF context for UE %s is null; nothing to do",
+        m.ue_id.c_str());
+    return;
+  }
+
+  std::map<pdu_session_id_t, std::shared_ptr<smf_pdu_session>> sessions = {};
+  sc->get_pdu_sessions(sessions);
+
+  bool acted = false;
+  for (const auto& it : sessions) {
+    std::shared_ptr<smf_pdu_session> sp = it.second;
+    if (sp == nullptr) continue;
+    const paging_state_e state = sp->get_paging_state();
+    if (state != paging_state_e::PENDING &&
+        state != paging_state_e::ASYNC_PENDING) {
+      continue;
+    }
+    Logger::smf_app().info(
+        "N1N2 paging FAILED for UE %s PDU session %u; marking FAILED and "
+        "stopping UPF buffering",
+        m.ue_id.c_str(), sp->get_pdu_session_id());
+    sp->set_paging_state(paging_state_e::FAILED);
+    // Reuse the shared stop-buffering helper (U5/T6). Source the session graph
+    // from the PDU session's handler and the SEID from the PDU session, exactly
+    // as the 409/504 response branch does (it used m.seid + the same graph
+    // accessor). The callback carries no PFCP transaction id; pass 0 (the PFCP
+    // layer only uses it to correlate the modification response, which is not
+    // required to stop buffering).
+    trigger_n4_stop_buffering(
+        sp->get_session_handler()->get_session_graph(), sp->seid, 0);
+    acted = true;
+  }
+
+  if (!acted) {
+    Logger::smf_app().info(
+        "N1N2 paging failure for UE %s: no PDU session was awaiting paging "
+        "(PENDING/ASYNC_PENDING); nothing to do",
+        m.ue_id.c_str());
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_app::trigger_n4_stop_buffering(
+    const std::shared_ptr<upf_graph>& graph, const uint64_t seid,
+    const uint64_t trxn_id) {
+  if (!graph) {
+    Logger::smf_app().warn("PDU sessions graph does not exist!");
+    return;
+  }
+
+  // Select the UPF node (same DFS pattern the procedures use).
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
+  std::shared_ptr<pfcp_association> current_upf;
+  graph->start_asynch_dfs_procedure(true);
+  graph->dfs_next_upf(dl_edges, ul_edges, current_upf);
+  if (!current_upf) {
+    Logger::smf_app().warn("Could not select UPF in graph!");
+    return;
+  }
+  pfcp::node_id_t up_node_id = current_upf->node_id;
+
+  std::shared_ptr<itti_n4_session_failure_indication>
+      itti_n4_failure_indication =
+          std::make_shared<itti_n4_session_failure_indication>(
+              TASK_SMF_APP, TASK_SMF_N4);
+  itti_n4_failure_indication->seid    = seid;
+  itti_n4_failure_indication->trxn_id = trxn_id;
+  itti_n4_failure_indication->r_endpoint =
+      endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
+
+  // Populate the PFCP Session Modification Request with an Update FAR that
+  // stops the UPF from buffering the downlink data for this session. TS
+  // 29.244 defines no "PFCP Session Failure Indication" message, so the
+  // on-wire action is a Session Modification Request updating the DL FAR.
+  //
+  // Source the DL FAR ID from the access (N3) edge of the session graph
+  // (qos_upf_edge::far_id), the same graph used to resolve the QFI in the
+  // DDN handler. If no FAR ID can be resolved, do NOT send a malformed
+  // modification.
+  //
+  // Repo buffering convention (validated against the establishment path):
+  // the DL FAR is CREATED with apply_action.drop=1, forw=0 to BEGIN
+  // buffering (smf_procedure.cpp:226-231) and flipped to forw=1 to resume
+  // forwarding (smf_session_procedure::pfcp_update_far,
+  // smf_procedure.cpp:584-610). There is NO BAR used for buffering here.
+  // For paging-failure discard we re-assert drop=1, forw=0. NOTE: because
+  // the DL FAR may already hold drop=1, this Update FAR may be a no-op
+  // re-assert; verify on a PFCP capture that the UPF actually flushes /
+  // discards the buffered DL data.
+  bool far_id_found        = false;
+  pfcp::far_id_t dl_far_id = {};
+  for (const auto& edge : graph->get_access_edges()) {
+    if (edge) {
+      dl_far_id    = edge->far_id;
+      far_id_found = true;
+      Logger::smf_app().info(
+          "Paging failure: selected DL FAR ID %u (PDR ID %u) for "
+          "stop-buffering Update FAR",
+          edge->far_id.far_id, edge->pdr_id.rule_id);
+      break;
+    }
+  }
+
+  if (!far_id_found) {
+    Logger::smf_app().error(
+        "Paging failure: could not resolve a DL FAR ID from the session "
+        "graph; not sending the stop-buffering modification");
+    return;
+  }
+
+  pfcp::update_far update_far       = {};
+  pfcp::apply_action_t apply_action = {};
+  apply_action.drop = 1;  // discard / stop buffering downlink data
+  apply_action.forw = 0;
+  update_far.set(dl_far_id);
+  update_far.set(apply_action);
+  itti_n4_failure_indication->pfcp_ies.set(update_far);
+
+  Logger::smf_app().info(
+      "Sending ITTI message %s to task TASK_SMF_N4",
+      itti_n4_failure_indication->get_msg_name());
+  int ret = itti_inst->send_msg(itti_n4_failure_indication);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        itti_n4_failure_indication->get_msg_name());
+    return;
   }
 }
 
