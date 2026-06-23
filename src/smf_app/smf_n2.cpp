@@ -398,7 +398,14 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   pdu_session_resource_modify_request_transfer.setQosFlowAddOrModifyRequestList(
       qos_flow_list);
 
-  // TODO: QoS Flow to Release List (Optional)
+  // TODO [N11-AMF-UPDATE]: QoS Flow to Release List — REQUIRED for PCF-initiated flow removal
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2: N2 NGAP Message Completeness
+  // Task 4.2: Build list of QFIs to release from the Phase 1 policy delta removed-rule list
+  //   Encode using QosFlowToReleaseList IE [TS 38.413 §9.3.1.8]
+  //   Required to signal RAN to tear down GBR radio bearers [TS 23.502 §4.3.3]
+  // TODO [N11-AMF-UPDATE]: Alternative QoS Profile per QoS flow item
+  // Task 4.2: Encode alternative GFBR/MFBR profiles when RAN requests them
+  //   [TS 23.501 §5.7.1.2a, TS 38.413 §9.3.1.51]
   // TODO: Additional UL NG-U UP TNL Information (Optional)
   // TODO: Common Network Instance (Optional)
   // TODO: Additional Redundant UL NG-U UP TNL Information (Optional)
@@ -592,7 +599,9 @@ bool smf_n2::create_n2_path_switch_request_ack(
   // TODO: Additional NG-U UP TNL Information
   // TODO: Redundant UL NG-U UP TNL Information
   // TODO: Additional Redundant NG-U UP TNL Information
-  // TODO: QoS Flow Parameters List
+  // TODO [N11-AMF-UPDATE]: QoS Flow Parameters List — required for Xn-based handover QoS continuity
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2
+  // Task 4.2: Encode updated QoS flow parameters after path switch [TS 38.413 §9.3.4.7, TS 23.502 §4.9.1.2]
 
   // Encode
   uint8_t buffer[BUF_LEN];  // TODO: get actual message length
@@ -655,13 +664,17 @@ bool smf_n2::create_n2_handover_command_transfer(
   handover_command_transfer.setDlForwardingUpTnlInformation(
       dl_forwarding_up_tnl_information);
 
-  // TODO: QoS Flow to be Forwarded List
+  // TODO [N11-AMF-UPDATE]: QoS Flow to be Forwarded List — required for N2-based handover data continuity
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2
+  // Task 4.2: Identify QoS flows needing data forwarding during handover [TS 38.413 §9.3.4.5]
+  // TODO [N11-AMF-UPDATE]: QoS Flow Failed to Setup List — relay RAN rejection back to SMF for rollback
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.7
+  // Task 4.7: Report flows not established on target cell [TS 38.413 §9.3.4.5, §8.6.2.2]
   // TODO: Data Forwarding Response DRB List (Optional)
   // TODO: Additional DL Forwarding UP TNL Information (Optional)
   // TODO: UL Forwarding UP TNL Information (Optional)
   // TODO: Additional UL Forwarding UP TNL Information (Optional)
   // TODO: Data Forwarding Response E-RAB List (Optional)
-  // TODO: QoS Flow Failed to Setup List (Optional)
 
   // Encode
   uint8_t buffer[BUF_LEN];  // TODO: get actual message length
