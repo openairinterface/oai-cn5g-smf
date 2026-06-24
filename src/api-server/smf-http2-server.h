@@ -71,8 +71,6 @@ class smf_http2_server {
       const response& response);
 
   // N1N2 Message Transfer Failure Notification callback (from AMF).
-  // Posts an ITTI message to TASK_SMF_APP (paging-state mutations must run on
-  // TASK_SMF_APP) and replies 204 No Content. Does NOT call smf_app inline.
   void n1n2_message_transfer_failure_handler(
       const std::string& ue_id,
       const oai::_3gpp::model::N1N2MsgTxfrFailureNotification& notif,

@@ -529,12 +529,11 @@ void smf_context::handle_itti_msg(
               return;
             }
 
-            // Dedup guard (T6 / D3, per-PDU-session): if a paging request is
-            // already outstanding for this PDU session, suppress a new
-            // N1N2MessageTransfer. This runs AFTER the N4 Session Report
-            // Response/ACK above (the UPF still expects its ACK) and BEFORE
-            // building/sending the SBI request. Avoids re-paging at the same
-            // priority while paging is ongoing (TS 23.502 §4.2.3.3).
+            // If a paging request is already outstanding for this PDU session,
+            // suppress a new N1N2MessageTransfer. This runs AFTER the N4
+            // Session Report Response/ACK above (the UPF still expects its ACK)
+            // and BEFORE building/sending the SBI request. Avoids re-paging at
+            // the same priority while paging is ongoing (TS 23.502 §4.2.3.3).
             paging_state_e ps = sp->get_paging_state();
             if (ps == paging_state_e::PENDING ||
                 ps == paging_state_e::ASYNC_PENDING) {
@@ -566,17 +565,17 @@ void smf_context::handle_itti_msg(
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
             session_report_msg.set_trxn_id(req->trxn_id);
-            // Correction 2: set the PDU session id on the report message so the
+            // Set the PDU session id on the report message so the
             // AMF can map the N1N2MessageTransfer to a real PDU session.
             session_report_msg.set_pdu_session_id(sp->get_pdu_session_id());
 
-            // T1 (Route B): derive the QFI from the reporting PDR ID via the
+            // Derive the QFI from the reporting PDR ID via the
             // session graph's N3 access edges (each edge carries both pdr_id
             // and qfi). The handler used QFI=0 before, so the QoS flow was
             // always empty/invalid.
             if (!sp->get_session_handler()->get_qfi_for_pdr_id(pdr_id, qfi) ||
                 qfi.qfi == 0) {
-              // MISS-CHECK (Correction 1): do NOT key off cause_value (the miss
+              // Do NOT key off cause_value (the miss
               // path returns a fresh object with cause_value==0). The N4 report
               // response/ACK was already sent above; do not build an invalid
               // N1N2MessageTransfer.
@@ -589,9 +588,6 @@ void smf_context::handle_itti_msg(
 
             qos_flow_context_updated qcu =
                 sp->get_session_handler()->get_qos_flow_context_updated(qfi);
-            // get_qos_flow_context_updated returns BY VALUE; on a miss it
-            // returns a default-constructed object. Validate it actually
-            // carries a tunnel endpoint rather than relying on cause_value.
             if (qcu.ul_fteid.teid == 0) {
               Logger::smf_app().error(
                   "DDN: QoS flow context has no FTEID for QFI %u; aborting "
@@ -605,7 +601,7 @@ void smf_context::handle_itti_msg(
             // Transfer IE
             std::string n2_sm_info     = {};
             std::string n2_sm_info_hex = {};
-            // U8 (T2 carry-forward): guard the empty N2 part. The encoder now
+            // Guard the empty N2 part. The encoder now
             // returns a bool; abort the paging trigger if it fails or yields an
             // empty NGAP part rather than sending an N1N2MessageTransfer with
             // an empty N2 SM info. The N4 Session Report Response/ACK was
@@ -629,7 +625,7 @@ void smf_context::handle_itti_msg(
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
                 oai::utils::N1N2_MESSAGE_CLASS;
-            // T3: lowercase "pduSessionId" to match the OpenAPI schema
+            // Lowercase "pduSessionId" to match the OpenAPI schema
             // (TS 29.518 N2SmInformation.pduSessionId is camelCase).
             json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
                 session_report_msg.get_pdu_session_id();
@@ -643,10 +639,10 @@ void smf_context::handle_itti_msg(
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
                 session_report_msg.get_snssai().sd;
 
-            // T3: top-level pduSessionId (mirror the establishment path).
+            // Top-level pduSessionId (mirror the establishment path).
             json_data["pduSessionId"] = session_report_msg.get_pdu_session_id();
 
-            // T4: n1n2FailureTxfNotifURI so the AMF can report paging failure.
+            // N1N2FailureTxfNotifURI so the AMF can report paging failure.
             // Built like the establishment path but using SmfCallbackBase() to
             // match the route the SMF HTTP server actually registers (U7):
             // <sbi-url>/nsmf-callback/<ver>/callback/
@@ -664,13 +660,13 @@ void smf_context::handle_itti_msg(
             Logger::smf_app().debug(
                 "DDN: n1n2FailureTxfNotifURI = %s", callback_uri.c_str());
 
-            // T10: paging priority indication. No operator paging-policy config
+            // Paging priority indication. No operator paging-policy config
             // exists today; 0 = highest paging priority (TS 23.501 §5.6.3).
             // TODO(ppi): source from DNN/operator paging policy config when
             // available.
             json_data["ppi"] = 0;
 
-            // T10: ARP from the resolved QoS flow context's QosData profile so
+            // ARP from the resolved QoS flow context's QosData profile so
             // the AMF can set the NGAP PagingPriority.
             if (qcu.qos_profile.arpIsSet()) {
               nlohmann::json arp_json      = {};
@@ -2398,7 +2394,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               "UE-Triggered Service Request, processing N2 SM Information");
           // The UE has responded to paging with AN tunnel info and the user
           // plane is being reactivated. Clear any outstanding paging state so
-          // the dedup guard (T6) cannot permanently wedge future paging for
+          // the dedup guard cannot permanently wedge future paging for
           // this PDU session.
           if (sp->get_paging_state() != paging_state_e::NONE) {
             Logger::smf_app().info(
@@ -4607,7 +4603,7 @@ void smf_context::send_pdu_session_create_response(
         fmr_format_str);
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
-        oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+        oai::smf::api::smf_sbi_helper::SmfCallbackBase() +
         fmt::format(fmr_format_str, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }

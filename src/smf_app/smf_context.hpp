@@ -166,14 +166,14 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   ho_state_e get_ho_state() const;
 
   /*
-   * Set the paging-progress state of this PDU session (T6).
+   * Set the paging-progress state of this PDU session.
    * @param [const paging_state_e&] state: new paging state
    * @return void
    */
   void set_paging_state(const paging_state_e& state);
 
   /*
-   * Get the paging-progress state of this PDU session (T6).
+   * Get the paging-progress state of this PDU session.
    * @param void
    * @return paging_state_e: current paging state
    */
@@ -280,7 +280,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
   ho_state_e ho_state;
-  paging_state_e paging_state;  // network-triggered paging progress (T6)
+  paging_state_e paging_state;  // network-triggered paging progress
   std::string
       n1n2_location_uri;  // Location header from a 202 N1N2MessageTransfer
   timer_id_t timer_T3590;

@@ -518,7 +518,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
       "Create N2 SM Info: PDU Session Resource Setup Request Transfer "
       "(paging)");
 
-  // 1. Pull QoS flows from the report-response message. Use the "updated" map
+  // Pull QoS flows from the report-response message. Use the "updated" map
   //    (NOT get_all_qos_flow_context_created); it is populated via
   //    add_qos_flow_context_updated() in the DDN handler.
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
@@ -528,7 +528,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // 2. Delegate to the existing worker overload. pdu_session_report_response
+  // Delegate to the existing worker overload. pdu_session_report_response
   //    IS-A pdu_session_sm_context_response, so upcasting works. The worker
   //    fills AMBR, UL NG-U TNL (from ul_fteid), PDU session type, and the QoS
   //    Flow Setup Request List. It hard-returns false if the SUPI cannot be
@@ -549,7 +549,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // 3. Encode to buffer (same pattern as the sibling wrapper above).
+  // Encode to buffer
   auto buffer = new (std::nothrow) uint8_t[BUF_LEN]();
   if (buffer == nullptr) {
     Logger::smf_n2().error("Error when allocating buffer!");

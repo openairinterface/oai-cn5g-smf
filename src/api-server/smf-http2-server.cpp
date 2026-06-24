@@ -473,13 +473,10 @@ void smf_http2_server::start() {
             }
 
             // N1N2 Message Transfer Failure Notification (from AMF). URI:
-            // /nsmf-callback/<ver>/callback/N1N2MsgTxfrFailureNotification/<ueId>
-            // callback_api == split_result[size-2] ==
-            //   "N1N2MsgTxfrFailureNotification"; ue_id == action ==
-            //   split_result[size-1] (NOT scid/[size-3]).
+            // /nsmf-callback/<ver>/N1N2MsgTxfrFailureNotification/<ueId>
             else if (boost::iequals(
                          callback_api, "N1N2MsgTxfrFailureNotification")) {
-              std::string ue_id = action;  // [size-1]
+              std::string ue_id = split_result[split_result.size() - 1];
               try {
                 oai::_3gpp::model::N1N2MsgTxfrFailureNotification notif = {};
                 nlohmann::json::parse(msg.c_str()).get_to(notif);
@@ -1187,20 +1184,12 @@ void smf_http2_server::n1n2_message_transfer_failure_handler(
       "(ueId %s)",
       ue_id.c_str());
 
-  // Convert the model cause enum to its canonical 3GPP string via to_json, so
-  // the TASK_SMF_APP handler sees the same string literals used elsewhere
-  // (e.g. "UE_NOT_REACHABLE_FOR_SESSION").
-  nlohmann::json j_cause = notif.getCause();
-  std::string cause      = j_cause.get<std::string>();
-
-  // Fire-and-forget: POST a new ITTI message to TASK_SMF_APP. All paging-state
-  // mutations must happen on TASK_SMF_APP, so we do NOT call any smf_app method
-  // inline on this HTTP-server thread.
+  // Process in SMF APP
   auto itti_msg =
       std::make_shared<itti_sbi_n1n2_message_transfer_failure_notification>(
           TASK_SMF_SBI, TASK_SMF_APP);
   itti_msg->ue_id             = ue_id;
-  itti_msg->cause             = cause;
+  itti_msg->cause             = notif.getCause().getEnumValue();
   itti_msg->n1n2_msg_data_uri = notif.getN1n2MsgDataUri();
 
   int rc = itti_inst->send_msg(itti_msg);

@@ -621,10 +621,9 @@ void smf_app::handle_itti_msg(
     case session_management_procedures_type_e::
         SERVICE_REQUEST_NETWORK_TRIGGERED: {
       Logger::smf_app().debug(
-          "Got response from AMF (response code %d) with cause %s",
-          m.response_code, m.cause.c_str());
+          "Got response from AMF (response code %d)", m.response_code);
 
-      // Resolve the SMF context / PDU session via SEID (T7): the SBI client
+      // Resolve the SMF context / PDU session via SEID: the SBI client
       // does not set scid (defaults to 0), so a scid-keyed lookup always
       // misses. The SEID is carried on the response-status ITTI message.
       std::shared_ptr<smf_context> sc = {};
@@ -640,15 +639,7 @@ void smf_app::handle_itti_msg(
         return;
       }
 
-      // Cause-string literals confirmed against the serialized enum values in
-      // src/oai-cn5g-common-src/model/N1N2MessageTransferCause_anyOf.cpp
-      // (to_json): N1_N2_TRANSFER_INITIATED (l.76), ATTEMPTING_TO_REACH_UE
-      // (l.72), WAITING_FOR_ASYNCHRONOUS_TRANSFER (l.80),
-      // REJECTION_DUE_TO_PAGING_RESTRICTION (l.108),
-      // UE_NOT_REACHABLE_FOR_SESSION (l.96),
-      // TEMPORARY_REJECT_REGISTRATION_ONGOING (l.100),
-      // TEMPORARY_REJECT_HANDOVER_ONGOING (l.104).
-      if (m.response_code == http_status_code::OK) {  // 200
+      if (m.response_code == http_status_code::OK) {
         // N1_N2_TRANSFER_INITIATED: the UE was CM-CONNECTED; the AMF forwarded
         // the N2 message directly, no paging needed. Ensure paging state is not
         // left PENDING. No UPF action.
@@ -656,8 +647,10 @@ void smf_app::handle_itti_msg(
             "N1N2 paging: UE CM-CONNECTED (200 %s); no paging needed",
             m.cause.c_str());
         sp->set_paging_state(paging_state_e::NONE);
-      } else if (m.response_code == http_status_code::ACCEPTED) {  // 202
-        if (m.cause == "WAITING_FOR_ASYNCHRONOUS_TRANSFER") {
+      } else if (m.response_code == http_status_code::ACCEPTED) {
+        if (m.cause ==
+            N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf::
+                WAITING_FOR_ASYNCHRONOUS_TRANSFER) {
           Logger::smf_app().info(
               "N1N2 paging: WAITING_FOR_ASYNCHRONOUS_TRANSFER; entering "
               "ASYNC_PENDING");
@@ -673,8 +666,12 @@ void smf_app::handle_itti_msg(
         // buffering until the UE responds (UpdateSMContext) or the failure
         // callback fires.
       } else {  // 4xx / 5xx
-        if (m.cause == "REJECTION_DUE_TO_PAGING_RESTRICTION" ||
-            m.cause == "UE_NOT_REACHABLE_FOR_SESSION" ||
+        if (m.cause == N1N2MessageTransferCause_anyOf::
+                           eN1N2MessageTransferCause_anyOf::
+                               REJECTION_DUE_TO_PAGING_RESTRICTION ||
+            m.cause == N1N2MessageTransferCause_anyOf::
+                           eN1N2MessageTransferCause_anyOf::
+                               UE_NOT_REACHABLE_FOR_SESSION ||
             m.response_code == http_status_code::GATEWAY_TIMEOUT /* 504 */) {
           // Paging failed definitively: drive the UPF to stop buffering and
           // mark the PDU session paging state FAILED.
@@ -686,20 +683,23 @@ void smf_app::handle_itti_msg(
               sp->get_session_handler()->get_session_graph(), m.seid,
               m.trxn_id);
         } else if (
-            m.cause == "TEMPORARY_REJECT_REGISTRATION_ONGOING" ||
-            m.cause == "TEMPORARY_REJECT_HANDOVER_ONGOING") {
+            m.cause == N1N2MessageTransferCause_anyOf::
+                           eN1N2MessageTransferCause_anyOf::
+                               TEMPORARY_REJECT_REGISTRATION_ONGOING ||
+            m.cause == N1N2MessageTransferCause_anyOf::
+                           eN1N2MessageTransferCause_anyOf::
+                               TEMPORARY_REJECT_HANDOVER_ONGOING) {
           // Temporary reject: full guard-timer retry toward a new AMF is out of
           // scope (plan §1.4). Leave UPF buffering; retry deferred.
           Logger::smf_app().warn(
-              "N1N2 paging temporarily rejected (%s); retry deferred (out of "
-              "scope), leaving UPF buffering",
-              m.cause.c_str());
+              "N1N2 paging temporarily rejected; retry deferred (out of "
+              "scope), leaving UPF buffering");
         } else {
           // Unknown 4xx/5xx: conservative failure handling — stop buffering.
           Logger::smf_app().warn(
-              "N1N2 paging: unhandled response (code %d cause %s); stopping "
+              "N1N2 paging: unhandled response (code %d); stopping "
               "UPF buffering conservatively",
-              m.response_code, m.cause.c_str());
+              m.response_code);
           sp->set_paging_state(paging_state_e::FAILED);
           trigger_n4_stop_buffering(
               sp->get_session_handler()->get_session_graph(), m.seid,
@@ -718,16 +718,12 @@ void smf_app::handle_itti_msg(
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(
     itti_sbi_n1n2_message_transfer_failure_notification& m) {
-  // Runs on TASK_SMF_APP (the HTTP/2 server posted this ITTI message rather
-  // than calling smf_app inline), so mutating paging_state here is safe.
   Logger::smf_app().info(
-      "Received N1N2 Message Transfer Failure Notification for UE %s (cause "
-      "%s, n1n2MsgDataUri %s)",
-      m.ue_id.c_str(), m.cause.c_str(), m.n1n2_msg_data_uri.c_str());
+      "Received N1N2 Message Transfer Failure Notification for UE %s, "
+      "n1n2MsgDataUri %s)",
+      m.ue_id.c_str(), m.n1n2_msg_data_uri.c_str());
 
-  // Resolve the SMF context by SUPI (the callback URI :ueId). The callback
-  // body carries no PDU session id, so iterate the UE's PDU sessions and act
-  // on those currently waiting on a page (PENDING / ASYNC_PENDING).
+  // Resolve the SMF context by SUPI
   if (!is_supi_2_smf_context(m.ue_id)) {
     Logger::smf_app().warn(
         "N1N2 paging failure: no SMF context for UE %s; nothing to do",
@@ -735,13 +731,6 @@ void smf_app::handle_itti_msg(
     return;
   }
   std::shared_ptr<smf_context> sc = supi_2_smf_context(m.ue_id);
-  if (sc == nullptr) {
-    Logger::smf_app().warn(
-        "N1N2 paging failure: SMF context for UE %s is null; nothing to do",
-        m.ue_id.c_str());
-    return;
-  }
-
   std::map<pdu_session_id_t, std::shared_ptr<smf_pdu_session>> sessions = {};
   sc->get_pdu_sessions(sessions);
 
@@ -759,12 +748,6 @@ void smf_app::handle_itti_msg(
         "stopping UPF buffering",
         m.ue_id.c_str(), sp->get_pdu_session_id());
     sp->set_paging_state(paging_state_e::FAILED);
-    // Reuse the shared stop-buffering helper (U5/T6). Source the session graph
-    // from the PDU session's handler and the SEID from the PDU session, exactly
-    // as the 409/504 response branch does (it used m.seid + the same graph
-    // accessor). The callback carries no PFCP transaction id; pass 0 (the PFCP
-    // layer only uses it to correlate the modification response, which is not
-    // required to stop buffering).
     trigger_n4_stop_buffering(
         sp->get_session_handler()->get_session_graph(), sp->seid, 0);
     acted = true;
@@ -812,21 +795,6 @@ void smf_app::trigger_n4_stop_buffering(
   // stops the UPF from buffering the downlink data for this session. TS
   // 29.244 defines no "PFCP Session Failure Indication" message, so the
   // on-wire action is a Session Modification Request updating the DL FAR.
-  //
-  // Source the DL FAR ID from the access (N3) edge of the session graph
-  // (qos_upf_edge::far_id), the same graph used to resolve the QFI in the
-  // DDN handler. If no FAR ID can be resolved, do NOT send a malformed
-  // modification.
-  //
-  // Repo buffering convention (validated against the establishment path):
-  // the DL FAR is CREATED with apply_action.drop=1, forw=0 to BEGIN
-  // buffering (smf_procedure.cpp:226-231) and flipped to forw=1 to resume
-  // forwarding (smf_session_procedure::pfcp_update_far,
-  // smf_procedure.cpp:584-610). There is NO BAR used for buffering here.
-  // For paging-failure discard we re-assert drop=1, forw=0. NOTE: because
-  // the DL FAR may already hold drop=1, this Update FAR may be a no-op
-  // re-assert; verify on a PFCP capture that the UPF actually flushes /
-  // discards the buffered DL data.
   bool far_id_found        = false;
   pfcp::far_id_t dl_far_id = {};
   for (const auto& edge : graph->get_access_edges()) {

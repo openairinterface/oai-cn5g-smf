@@ -362,9 +362,7 @@ class smf_app {
 
   /*
    * Handle ITTI message from the AMF's N1N2 Message Transfer Failure
-   * Notification callback (TS 29.518 §5.2.2.3.1). Runs on TASK_SMF_APP. Marks
-   * the affected PDU session(s) PAGING_FAILED and drives the UPF to stop
-   * buffering by reusing trigger_n4_stop_buffering().
+   * Notification callback (TS 29.518 §5.2.2.3.1).
    * @param [itti_sbi_n1n2_message_transfer_failure_notification&] m
    * @return void
    */
@@ -373,10 +371,7 @@ class smf_app {
   /*
    * Drive the UPF to stop buffering downlink data for a PDU session by sending
    * a PFCP Session Modification Request carrying an Update FAR (Apply Action =
-   * DROP) for the session's DL buffering FAR. Used on the paging-failure path
-   * (T6 409/504 branch) and reusable by the T9 failure-callback path. TS 29.244
-   * defines no "PFCP Session Failure Indication" message, so the on-wire action
-   * is a Session Modification Request updating the DL FAR.
+   * DROP) for the session's DL buffering FAR.
    * @param [const std::shared_ptr<upf_graph>&] graph: the PDU session graph
    * @param [const uint64_t] seid: SMF SEID of the PFCP session
    * @param [const uint64_t] trxn_id: transaction id to correlate the modify
