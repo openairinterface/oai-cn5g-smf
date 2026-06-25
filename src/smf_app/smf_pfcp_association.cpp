@@ -726,6 +726,15 @@ void upf_graph::add_upf_graph_edge(
 }
 
 //------------------------------------------------------------------------------
+void upf_graph::add_qos_flow_edge(
+    const std::shared_ptr<pfcp_association>& node,
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  // [QOS-MOCK] thin public wrapper over the private single-direction add; see
+  // the header for the rationale and the Phase 3 TODO.
+  add_upf_graph_edge(node, edge);
+}
+
+//------------------------------------------------------------------------------
 void upf_graph::add_upf_graph_node(
     const std::shared_ptr<pfcp_association>& node) {
   std::unique_lock lock_graph(graph_mutex);

@@ -390,7 +390,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
   // TODO [N11-AMF-UPDATE]: Complete missing N1 NAS-SM PDU Session Modification Command IEs
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1: N1 NAS-SM Message Completeness
+  // Reference: Phase 4.1: N1 NAS-SM Message Completeness
   //   - RQ timer value: encode Reflective QoS timer when active [TS 24.501 §9.11.4.24, TS 23.501 §5.7.2.3]
   //   - AlwaysonPDUSessionIndication: include when session is always-on [TS 24.501 §9.11.4.3]
   // Standards: TS 24.501 §8.3.5 (PDU Session Modification Command)
@@ -405,11 +405,11 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
   // TODO [N11-AMF-UPDATE]: MappedEPSBearerContexts IE — required for N26 EPS interworking handover
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Reference: Phase 4.1
   // Task 4.1: Map 5G QoS flows to EPS EBI and TFTs [TS 24.501 §9.11.4.5, TS 23.502 §4.11]
 
   // TODO [N11-AMF-UPDATE]: Authorized QoS Flow Descriptions IE — must encode per-flow operation code
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Reference: Phase 4.1
   // Task 4.1: For each flow in the PCF policy delta encode: QFI, operation code (CREATE/MODIFY/DELETE),
   //           5QI, and GBR/MBR; derive from Phase 1 delta, not just existing session state
   //           [TS 24.501 §9.11.4.12, TS 23.502 §4.3.3.2 step 5b]
@@ -528,7 +528,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
   // TODO [N11-AMF-UPDATE]: Complete missing N1 NAS-SM PDU Session Modification Command IEs
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1: N1 NAS-SM Message Completeness
+  // Reference: Phase 4.1: N1 NAS-SM Message Completeness
   //   - RQ timer value: encode Reflective QoS timer when active [TS 24.501 §9.11.4.24, TS 23.501 §5.7.2.3]
   //   - AlwaysonPDUSessionIndication: include when session is always-on [TS 24.501 §9.11.4.3]
   // Standards: TS 24.501 §8.3.5 (PDU Session Modification Command)
@@ -539,29 +539,58 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   std::vector<oai::nas::QosRule> qos_rule_list =
       sp->get_session_handler()->get_qos_rules();
 
+  // TODO [N11-AMF-UPDATE]: Authorized QoS Rules IE — encode per-rule operation
+  // code (CREATE / MODIFY / DELETE)
+  // Reference: Phase 4.1 (N1 NAS-SM Message Completeness)
+  //   - For each rule in the PCF policy delta encode the right operation code:
+  //     CREATE for added rules, MODIFY for changed ones, DELETE for removed ones
+  //   - Derive from the Phase 1 policy delta, not just the existing session
+  //     state
+  // Standards: TS 24.501 §9.11.4.13 (QoS rules), §8.3.5 (PDU Session
+  //            Modification Command)
+  //
+  // [QOS-MOCK] Append DELETE-operation QoS rules for the flows being released
+  // by the PCF-initiated modification (carried via the policy delta's
+  // to_remove → session handler). In the real implementation these come from
+  // the removed PCC rules in the policy delta.
+  // TODO [QOS-MOCK-REMOVE]: derive the released flows from the real delta.
+  std::vector<::oai::app::smf::qos_flow_context_updated> released_flows =
+      sp->get_session_handler()->get_qos_flows_to_be_released();
+  for (const auto& rf : released_flows) {
+    for (const auto& it : rf.qos_rules) {
+      qos_rule_list.push_back(it.second);
+    }
+  }
+
   oai::nas::QosRules qos_rules = {};
   qos_rules.Set(qos_rule_list);
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
   // TODO [N11-AMF-UPDATE]: MappedEPSBearerContexts IE — required for N26 EPS interworking handover
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Reference: Phase 4.1
   // Task 4.1: Map 5G QoS flows to EPS EBI and TFTs [TS 24.501 §9.11.4.5, TS 23.502 §4.11]
 
   // TODO [N11-AMF-UPDATE]: Authorized QoS Flow Descriptions IE — must encode per-flow operation code
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Reference: Phase 4.1
   // Task 4.1: For each flow in the PCF policy delta encode: QFI, operation code (CREATE/MODIFY/DELETE),
   //           5QI, and GBR/MBR; derive from Phase 1 delta, not just existing session state
   //           [TS 24.501 §9.11.4.12, TS 23.502 §4.3.3.2 step 5b]
   std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
+  if (smf_app_inst->is_supi_2_smf_context(supi) and
+      (!qos_flows.empty() or !released_flows.empty())) {
     oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
     std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qf.get_qos_flow_descriptions();
       qos_flow_description_list.push_back(qos_flow_description);
+    }
+    // [QOS-MOCK] Append DELETE-operation QoS flow descriptions for the released
+    // flows so the UE is told to remove them (same policy-delta source).
+    for (const auto& rf : released_flows) {
+      qos_flow_description_list.push_back(rf.get_qos_flow_descriptions());
     }
     qos_flow_descriptions.Set(qos_flow_description_list);
     pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(

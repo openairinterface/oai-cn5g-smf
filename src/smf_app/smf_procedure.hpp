@@ -235,13 +235,17 @@ struct qos_flow_change {
   unsigned int precedence{};
 };
 
-// [QOS-MOCK] Result of reconciling the PCF policy against the session: the set
-// of QoS flows to install (to_add) and the QFIs whose rules must be removed
-// (to_remove). This struct is intended to survive into the real implementation;
-// only the body of compute_policy_delta() that fills it is mocked.
+// [QOS-MOCK] Result of reconciling the PCF policy against the session: the QoS
+// flows to install (to_add → Create), to reconfigure in place (to_modify →
+// Update), and to release (to_remove → Remove). Splitting modify from add/
+// remove keeps the forwarding identity (F-TEID / UE-IP bindings) of unchanged
+// and reconfigured flows stable instead of tearing the pipeline down. This
+// struct is intended to survive into the real implementation; only the body of
+// compute_policy_delta() that fills it is mocked.
 struct policy_delta {
-  std::vector<qos_flow_change> to_add;
-  std::vector<pfcp::qfi_t> to_remove;
+  std::vector<qos_flow_change> to_add;     // new QoS flows  → Create PDR/FAR/QER
+  std::vector<qos_flow_change> to_modify;  // changed flows  → Update QER/FAR/PDR
+  std::vector<pfcp::qfi_t> to_remove;      // deleted flows  → Remove PDR/FAR/QER
 };
 
 //------------------------------------------------------------------------------
@@ -283,10 +287,11 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
-  // [QOS-MOCK] QFIs installed by the PCF-initiated N4 modification, carried from
-  // run() to handle_itti_msg() so the N11/N2 leg advertises exactly the flow(s)
-  // we installed on the UPF (not the QFIs from the incoming request).
-  std::vector<pfcp::qfi_t> pcf_mock_qfis;
+  // [QOS-MOCK] Policy delta computed in run() and carried to handle_itti_msg()
+  // so the single source of truth (to_add / to_remove) drives N4, N1 and N2.
+  // In the real implementation this would be the delta from compute_policy_delta
+  // (or the per-session QoS-flow state); see compute_policy_delta().
+  policy_delta pcf_policy_delta;
 
  private:
   /**

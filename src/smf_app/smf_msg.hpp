@@ -606,7 +606,7 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
   oai::_3gpp::model::SmPolicyDecision get_sm_policy_decision() const;
 
   // TODO [PCF-POLICY]: Add helper methods for parsing SM Policy Decision
-  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1, Task 1.2-1.4
+  // Reference: Phase 1, Task 1.2-1.4
   // These methods encapsulate policy parsing logic for better modularity
   //
   // Task 1.2: PCC Rule Parsing [TS 29.512 §5.6.2.6]

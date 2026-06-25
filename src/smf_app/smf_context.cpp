@@ -1667,7 +1667,7 @@ bool smf_context::handle_pdu_session_release_complete(
   // Extended Protocol Configuration Options
 
   // TODO [N11-AMF-UPDATE]: Implement Nsmf_PDUSession_SMContextStatusNotify to AMF
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.8: N11 SMContextStatusNotify
+  // Reference: Phase 4.8: N11 SMContextStatusNotify
   // Task 4.8: Notify AMF that the SM context for this PDU Session is released
   //   - Populate SmContextStatusNotification with resourceStatus = "RELEASED" [TS 29.502 §5.6.2.5]
   //   - Retrieve AMF SM context notification URI from session context [TS 29.502 §5.6.1.2]
@@ -2579,7 +2579,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED) {
     // TODO [PCF-POLICY]: Implement PCF Policy Decision Processing
-    // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1: PCF Policy Decision Processing
+    // Reference: Phase 1: PCF Policy Decision Processing
     // Task 1.1: Extract smPolicyDecision from JSON request data
     //   - Call extract_sm_policy_decision(smreq->req)
     //   - Parse JSON: smreq->req.get_json_data(json_data)
@@ -4641,6 +4641,15 @@ void smf_context::send_pdu_session_update_response(
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
   // Register with the UDM
+  // TODO [PCF-POLICY]: Build the PCF UpdateNotify response without blocking
+  // Reference: Phase 1, Task 1.9 (Error Handling /
+  //            response to PCF) and Phase 2 (N4 response → build HTTP response)
+  //   - Respond to the PCF Npcf_SMPolicyControl_UpdateNotify promptly (200/204)
+  //     without serializing the response behind unrelated SBI round-trips
+  //   - Decide the correct UDM interaction for a policy update (per TS 23.502
+  //     §4.3.3 no new Nudm_UECM registration is expected for a modification)
+  // Standards: TS 29.512 §4.2.3.2 (UpdateNotify), TS 29.503 §5.2 (Nudm_UECM)
+  //
   // [QOS-MOCK] Skip UDM UECM (re)registration for PCF-initiated modification.
   // register_with_udm() blocks the response thread on a synchronous UDM
   // round-trip (queued on the SBI task behind the N1N2MessageTransfer call),
@@ -4792,6 +4801,19 @@ void smf_context::send_pdu_session_update_response(
 
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+        // TODO [PCF-POLICY]: Build the PCF-initiated SM Policy Association
+        // Modification response
+        // Reference: Phase 1, Task 1.9 (Error
+        //            Handling) and the PCF-initiated response path
+        //   - Acknowledge the Npcf_SMPolicyControl_UpdateNotify per outcome:
+        //     200 OK when applied; 4xx ProblemDetails when (partly) rejected
+        //   - Reflect accepted vs rejected PCC rules from the Phase 1 delta
+        //   - Maintain the current policy on validation failure (no partial
+        //     apply for a rejected rule)
+        // Standards:
+        //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
+        //   - TS 29.512 §4.2.3.16 / §4.2.3.26 (error reporting / status codes)
+        //
         // [QOS-MOCK] Acknowledge the PCF-initiated SM Policy Association
         // Modification (Npcf_SMPolicyControl_UpdateNotify) with 200 OK
         // [TS 29.512 §4.2.3.2]. The N1 (UE) and N2 (RAN) payloads are NOT
@@ -4961,7 +4983,7 @@ void smf_context::send_pdu_session_release_response(
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
         // TODO [PCF-POLICY]: Implement PCF-initiated Session Release/Termination
-        // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1 (Error Handling section)
+        // Reference: Phase 1 (Error Handling section)
         // Note: This is DIFFERENT from modification - handles TerminationNotification
         //
         // Task: Handle PCF TerminationNotification
