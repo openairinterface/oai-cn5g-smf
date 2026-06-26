@@ -575,10 +575,6 @@ void smf_context::handle_itti_msg(
             // always empty/invalid.
             if (!sp->get_session_handler()->get_qfi_for_pdr_id(pdr_id, qfi) ||
                 qfi.qfi == 0) {
-              // Do NOT key off cause_value (the miss
-              // path returns a fresh object with cause_value==0). The N4 report
-              // response/ACK was already sent above; do not build an invalid
-              // N1N2MessageTransfer.
               Logger::smf_app().error(
                   "DDN: could not find a valid QFI for PDR ID %u; aborting "
                   "paging trigger",
@@ -625,8 +621,6 @@ void smf_context::handle_itti_msg(
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
                 oai::utils::N1N2_MESSAGE_CLASS;
-            // Lowercase "pduSessionId" to match the OpenAPI schema
-            // (TS 29.518 N2SmInformation.pduSessionId is camelCase).
             json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
@@ -639,14 +633,11 @@ void smf_context::handle_itti_msg(
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
                 session_report_msg.get_snssai().sd;
 
-            // Top-level pduSessionId (mirror the establishment path).
+            // Top-level pduSessionId
             json_data["pduSessionId"] = session_report_msg.get_pdu_session_id();
 
             // N1N2FailureTxfNotifURI so the AMF can report paging failure.
-            // Built like the establishment path but using SmfCallbackBase() to
-            // match the route the SMF HTTP server actually registers (U7):
-            // <sbi-url>/nsmf-callback/<ver>/callback/
-            //   N1N2MsgTxfrFailureNotification/<supi>
+            // <sbi-url>/nsmf-callback/<ver>/N1N2MsgTxfrFailureNotification/<supi>
             std::string fmr_format_str = {};
             oai::smf::api::smf_sbi_helper::get_fmt_format_form(
                 oai::smf::api::smf_sbi_helper::
@@ -671,7 +662,7 @@ void smf_context::handle_itti_msg(
             if (qcu.qos_profile.arpIsSet()) {
               nlohmann::json arp_json      = {};
               oai::_3gpp::model::Arp arp_v = qcu.qos_profile.getArp();
-              to_json(arp_json, arp_v);  // ADL: friend in oai::_3gpp::model
+              to_json(arp_json, arp_v);
               json_data["arp"] = arp_json;
             } else {
               json_data["arp"]["priorityLevel"] = 8;  // lowest non-critical

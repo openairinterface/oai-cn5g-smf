@@ -690,7 +690,7 @@ void smf_app::handle_itti_msg(
                            eN1N2MessageTransferCause_anyOf::
                                TEMPORARY_REJECT_HANDOVER_ONGOING) {
           // Temporary reject: full guard-timer retry toward a new AMF is out of
-          // scope (plan §1.4). Leave UPF buffering; retry deferred.
+          // scope.
           Logger::smf_app().warn(
               "N1N2 paging temporarily rejected; retry deferred (out of "
               "scope), leaving UPF buffering");

@@ -38,8 +38,7 @@ namespace oai::app::smf {
 // paging). This is distinct from the 5GSM pdu_session_status state machine and
 // from the upCnx_state N3-tunnel state machine: it tracks only whether a
 // N1N2MessageTransfer paging request is outstanding so duplicate Downlink Data
-// Notifications can be suppressed (see plan T6 / D3, per-PDU-session
-// granularity).
+// Notifications can be suppressed.
 enum class paging_state_e {
   NONE = 0,       // no paging outstanding
   PENDING,        // 202 ATTEMPTING_TO_REACH_UE — paging in progress

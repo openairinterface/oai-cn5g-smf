@@ -528,11 +528,6 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // Delegate to the existing worker overload. pdu_session_report_response
-  //    IS-A pdu_session_sm_context_response, so upcasting works. The worker
-  //    fills AMBR, UL NG-U TNL (from ul_fteid), PDU session type, and the QoS
-  //    Flow Setup Request List. It hard-returns false if the SUPI cannot be
-  //    resolved; log the SUPI so a reviewer can confirm the lookup.
   Logger::smf_n2().debug(
       "Paging N2 SM info: SUPI %s, SUPI->smf_context lookup %s",
       msg.get_supi().c_str(),
