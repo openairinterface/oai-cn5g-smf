@@ -14,6 +14,7 @@
 #include "SmContextUpdateMessage.h"
 #include "SmPolicyNotification.h"
 #include "SmPolicyDecision.h"
+#include "N1N2MsgTxfrFailureNotification.h"
 #include "smf.h"
 #include "smf_app.hpp"
 #include "uint_generator.hpp"
@@ -67,6 +68,12 @@ class smf_http2_server {
   void terminate_policy_notification_handler(
       const std::string& scid,
       const oai::_3gpp::model::TerminationNotification& terminationNotification,
+      const response& response);
+
+  // N1N2 Message Transfer Failure Notification callback (from AMF).
+  void n1n2_message_transfer_failure_handler(
+      const std::string& ue_id,
+      const oai::_3gpp::model::N1N2MsgTxfrFailureNotification& notif,
       const response& response);
 
   void stop();

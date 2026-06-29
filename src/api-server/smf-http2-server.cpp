@@ -14,6 +14,7 @@
 #include "3gpp_29.502.h"
 #include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
+#include "itti.hpp"
 #include "itti_msg_sbi.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
@@ -33,6 +34,7 @@ using namespace oai::common::sbi;
 using namespace oai::smf::api;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
+extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {
@@ -465,6 +467,26 @@ void smf_http2_server::start() {
               } catch (std::exception& e) {
                 Logger::smf_api_server().warn("Error: %s!", e.what());
                 response.write_head(http_status_code::INTERNAL_SERVER_ERROR);
+                response.end();
+                return;
+              }
+            }
+
+            // N1N2 Message Transfer Failure Notification (from AMF). URI:
+            // /nsmf-callback/<ver>/N1N2MsgTxfrFailureNotification/<ueId>
+            else if (boost::iequals(
+                         callback_api, "N1N2MsgTxfrFailureNotification")) {
+              std::string ue_id = split_result[split_result.size() - 1];
+              try {
+                oai::_3gpp::model::N1N2MsgTxfrFailureNotification notif = {};
+                nlohmann::json::parse(msg.c_str()).get_to(notif);
+                this->n1n2_message_transfer_failure_handler(
+                    ue_id, notif, response);
+                return;
+              } catch (nlohmann::detail::exception& e) {
+                Logger::smf_sbi().warn(
+                    "Can not parse the JSON data (error: %s)!", e.what());
+                response.write_head(http_status_code::BAD_REQUEST);
                 response.end();
                 return;
               }
@@ -1150,6 +1172,35 @@ void smf_http2_server::terminate_policy_notification_handler(
   itti_msg->session_procedure_type =
       session_management_procedures_type_e::PDU_SESSION_RELEASE_PCF_INITIATED;
   m_smf_app->handle_pdu_session_release_sm_context_request(itti_msg);
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::n1n2_message_transfer_failure_handler(
+    const std::string& ue_id,
+    const oai::_3gpp::model::N1N2MsgTxfrFailureNotification& notif,
+    const response& response) {
+  Logger::smf_api_server().info(
+      "Received an N1N2 Message Transfer Failure Notification from the AMF "
+      "(ueId %s)",
+      ue_id.c_str());
+
+  // Process in SMF APP
+  auto itti_msg =
+      std::make_shared<itti_sbi_n1n2_message_transfer_failure_notification>(
+          TASK_SMF_SBI, TASK_SMF_APP);
+  itti_msg->ue_id             = ue_id;
+  itti_msg->cause             = notif.getCause().getEnumValue();
+  itti_msg->n1n2_msg_data_uri = notif.getN1n2MsgDataUri();
+
+  int rc = itti_inst->send_msg(itti_msg);
+  if (rc != RETURNok) {
+    Logger::smf_api_server().error(
+        "Could not send ITTI N1N2 failure notification to TASK_SMF_APP");
+  }
+
+  // Per TS 29.518: respond 204 No Content to the callback.
+  response.write_head(oai::common::sbi::http_status_code::NO_CONTENT);
+  response.end();
 }
 
 //------------------------------------------------------------------------------

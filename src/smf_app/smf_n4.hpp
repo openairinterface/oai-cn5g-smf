@@ -62,6 +62,7 @@ class smf_n4 : public pfcp::pfcp_l4_stack {
   void send_n4_msg(itti_n4_session_modification_request& s);
   void send_n4_msg(itti_n4_session_deletion_request& s);
   void send_n4_msg(itti_n4_session_report_response& s);
+  void send_n4_msg(itti_n4_session_failure_indication& s);
   void send_association_setup_request(itti_n4_association_setup_request& i);
 
   void send_heartbeat_request(std::shared_ptr<pfcp_association>& a);

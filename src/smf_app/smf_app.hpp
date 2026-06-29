@@ -281,9 +281,9 @@ class smf_app {
       protocol_configuration_options_t& pco_resp,
       protocol_configuration_options_ids_t& pco_ids);
 
-  /*
+  /**
    * Handle ITTI message (N4 Session Establishment Response)
-   * @param [itti_n4_session_modification_response&] sne
+   * @param [itti_n4_session_establishment_response&] sne
    * @return void
    */
   void handle_itti_msg(itti_n4_session_establishment_response& sne);
@@ -359,6 +359,27 @@ class smf_app {
    * @return void
    */
   void handle_itti_msg(itti_sbi_n1n2_message_transfer_response_status& snm);
+
+  /*
+   * Handle ITTI message from the AMF's N1N2 Message Transfer Failure
+   * Notification callback (TS 29.518 §5.2.2.3.1).
+   * @param [itti_sbi_n1n2_message_transfer_failure_notification&] m
+   * @return void
+   */
+  void handle_itti_msg(itti_sbi_n1n2_message_transfer_failure_notification& m);
+
+  /*
+   * Indicate the UPF to stop buffering downlink data for a PDU session by
+   * sending a PFCP Session Modification Request carrying an Update FAR (Apply
+   * Action = DROP) for the session's DL buffering FAR.
+   * @param [const std::shared_ptr<upf_graph>&] graph: the PDU session graph
+   * @param [const uint64_t] seid: SMF SEID of the PFCP session
+   * @param [const uint64_t] trxn_id: transaction id to correlate the modify
+   * @return void
+   */
+  void trigger_n4_stop_buffering(
+      const std::shared_ptr<upf_graph>& graph, const uint64_t seid,
+      const uint64_t trxn_id);
 
   /*
    * Handle ITTI message from N11 (NFRegiser Response)

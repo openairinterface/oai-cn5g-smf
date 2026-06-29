@@ -13,6 +13,7 @@
 #include "pistache/http.h"
 #include "smf_msg.hpp"
 #include "smf_profile.hpp"
+#include "N1N2MessageTransferCause_anyOf.h"
 
 using namespace oai::_3gpp::model;
 
@@ -206,7 +207,10 @@ class itti_sbi_n1n2_message_transfer_response_status : public itti_sbi_msg {
   };
   void set_scid(scid_t id) { scid = id; };
   void set_response_code(int16_t code) { response_code = code; };
-  void set_cause(std::string c) { cause = c; };
+  void set_cause(
+      N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf c) {
+    cause = c;
+  };
   void set_msg_type(uint8_t type) { msg_type = type; };
   void set_procedure_type(session_management_procedures_type_e type) {
     procedure_type = type;
@@ -218,11 +222,45 @@ class itti_sbi_n1n2_message_transfer_response_status : public itti_sbi_msg {
 
   scid_t scid;  // SM Context ID
   int16_t response_code;
-  std::string cause;
+  N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf cause;
   uint8_t msg_type;
   session_management_procedures_type_e procedure_type;
   seid_t seid;
   uint64_t trxn_id;
+};
+
+//-----------------------------------------------------------------------------
+class itti_sbi_n1n2_message_transfer_failure_notification
+    : public itti_sbi_msg {
+ public:
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(
+            N11_SESSION_N1N2_MESSAGE_TRANSFER_FAILURE_NOTIFICATION, orig, dest),
+        ue_id(),
+        cause(),
+        n1n2_msg_data_uri() {}
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const itti_sbi_n1n2_message_transfer_failure_notification& i)
+      : itti_sbi_msg(i),
+        ue_id(i.ue_id),
+        cause(i.cause),
+        n1n2_msg_data_uri(i.n1n2_msg_data_uri) {}
+  itti_sbi_n1n2_message_transfer_failure_notification(
+      const itti_sbi_n1n2_message_transfer_failure_notification& i,
+      const task_id_t orig, const task_id_t dest)
+      : itti_sbi_msg(i, orig, dest),
+        ue_id(i.ue_id),
+        cause(i.cause),
+        n1n2_msg_data_uri(i.n1n2_msg_data_uri) {}
+  const char* get_msg_name() {
+    return "N11_SESSION_N1N2_MESSAGE_TRANSFER_FAILURE_NOTIFICATION";
+  };
+
+  std::string ue_id;  // SUPI from the callback URI :ueId
+  N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf
+      cause;                      // failure cause from the callback body
+  std::string n1n2_msg_data_uri;  // n1n2MsgDataUri from the callback body
 };
 
 //-----------------------------------------------------------------------------

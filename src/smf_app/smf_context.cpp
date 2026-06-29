@@ -12,6 +12,7 @@
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
 #include "3gpp_commons.h"
+#include "Arp.h"
 #include "Cause.hpp"
 #include "SmfEventNotification.h"
 #include "UsageReport.h"
@@ -248,6 +249,19 @@ void smf_pdu_session::set_ho_state(const ho_state_e& state) {
 ho_state_e smf_pdu_session::get_ho_state() const {
   std::shared_lock lock(m_pdu_session_mutex);
   return ho_state;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::set_paging_state(const paging_state_e& state) {
+  Logger::smf_app().info("Set paging state to %d", static_cast<int>(state));
+  std::unique_lock lock(m_pdu_session_mutex);
+  paging_state = state;
+}
+
+//------------------------------------------------------------------------------
+paging_state_e smf_pdu_session::get_paging_state() const {
+  std::shared_lock lock(m_pdu_session_mutex);
+  return paging_state;
 }
 
 //------------------------------------------------------------------------------
@@ -515,6 +529,21 @@ void smf_context::handle_itti_msg(
               return;
             }
 
+            // If a paging request is already outstanding for this PDU session,
+            // suppress a new N1N2MessageTransfer. This runs AFTER the N4
+            // Session Report Response/ACK above (the UPF still expects its ACK)
+            // and BEFORE building/sending the SBI request. Avoids re-paging at
+            // the same priority while paging is ongoing (TS 23.502 §4.2.3.3).
+            paging_state_e ps = sp->get_paging_state();
+            if (ps == paging_state_e::PENDING ||
+                ps == paging_state_e::ASYNC_PENDING) {
+              Logger::smf_app().info(
+                  "Paging already pending for PDU session %u; suppressing "
+                  "duplicate N1N2MessageTransfer",
+                  sp->get_pdu_session_id());
+              return;  // N4 ACK already sent to the UPF above
+            }
+
             // Step 2. Send N1N2MessageTranfer to AMF
             pdu_session_report_response session_report_msg = {};
             // set the required IEs
@@ -536,19 +565,47 @@ void smf_context::handle_itti_msg(
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
             session_report_msg.set_trxn_id(req->trxn_id);
+            session_report_msg.set_pdu_session_id(sp->get_pdu_session_id());
+
+            // Derive the QFI from the reporting PDR ID via the
+            // session graph's N3 access edges (each edge carries both pdr_id
+            // and qfi). The handler used QFI=0 before, so the QoS flow was
+            // always empty/invalid.
+            if (!sp->get_session_handler()->get_qfi_for_pdr_id(pdr_id, qfi) ||
+                qfi.qfi == 0) {
+              Logger::smf_app().error(
+                  "Could not find a valid QFI for PDR ID %u; aborting "
+                  "paging trigger",
+                  pdr_id.rule_id);
+              return;
+            }
 
             qos_flow_context_updated qcu =
                 sp->get_session_handler()->get_qos_flow_context_updated(qfi);
+            if (qcu.ul_fteid.teid == 0) {
+              Logger::smf_app().error(
+                  "Could not find a valid FTEID for QFI %u; aborting "
+                  "paging trigger",
+                  qfi.qfi);
+              return;
+            }
             session_report_msg.add_qos_flow_context_updated(qcu);
 
             // Create N2 SM Information: PDU Session Resource Setup Request
             // Transfer IE
             std::string n2_sm_info     = {};
             std::string n2_sm_info_hex = {};
-            smf_n2::get_instance()
-                .create_n2_pdu_session_resource_setup_request_transfer(
-                    session_report_msg, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-                    n2_sm_info);
+            bool n2_ok =
+                smf_n2::get_instance()
+                    .create_n2_pdu_session_resource_setup_request_transfer(
+                        session_report_msg,
+                        n2_sm_info_type_e::PDU_RES_SETUP_REQ, n2_sm_info);
+            if (!n2_ok || n2_sm_info.empty()) {
+              Logger::smf_app().error(
+                  "Failed to build a non-empty N2 SM info (PDU Session "
+                  "Resource Setup Request Transfer); aborting paging trigger");
+              return;
+            }
 
             conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
             session_report_msg.set_n2_sm_information(n2_sm_info_hex);
@@ -557,7 +614,7 @@ void smf_context::handle_itti_msg(
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
                 oai::utils::N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+            json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
             json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
@@ -568,6 +625,42 @@ void smf_context::handle_itti_msg(
                 session_report_msg.get_snssai().sst;
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
                 session_report_msg.get_snssai().sd;
+            json_data["pduSessionId"] =
+                session_report_msg.get_pdu_session_id();  // Pdu session ID
+
+            // N1N2FailureTxfNotifURI so the AMF can report paging failure.
+            // <sbi-url>/nsmf-callback/<ver>/N1N2MsgTxfrFailureNotification/<supi>
+            std::string fmr_format_str = {};
+            oai::smf::api::smf_sbi_helper::get_fmt_format_form(
+                oai::smf::api::smf_sbi_helper::
+                    SmfCallbackPathN1N2MessageTransferFailure,
+                fmr_format_str);
+            std::string callback_uri =
+                smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
+                oai::smf::api::smf_sbi_helper::SmfCallbackBase() +
+                fmt::format(fmr_format_str, supi);
+            json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
+            Logger::smf_app().debug(
+                "DDN: n1n2FailureTxfNotifURI = %s", callback_uri.c_str());
+
+            // Paging priority indication
+            json_data["ppi"] = 0;
+
+            // ARP from the resolved QoS flow context's QosData profile so
+            // the AMF can set the NGAP PagingPriority.
+            if (qcu.qos_profile.arpIsSet()) {
+              nlohmann::json arp_json      = {};
+              oai::_3gpp::model::Arp arp_v = qcu.qos_profile.getArp();
+              to_json(arp_json, arp_v);
+              json_data["arp"] = arp_json;
+            } else {
+              json_data["arp"]["priorityLevel"] = 8;  // lowest non-critical
+              json_data["arp"]["preemptCap"]    = "NOT_PREEMPT";
+              json_data["arp"]["preemptVuln"]   = "NOT_PREEMPTABLE";
+              Logger::smf_app().warn(
+                  "QoS flow has no ARP configured; using default "
+                  "priorityLevel=8 for paging");
+            }
 
             session_report_msg.set_json_data(json_data);
 
@@ -2279,6 +2372,16 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               SERVICE_REQUEST_UE_TRIGGERED_STEP2;
           Logger::smf_app().info(
               "UE-Triggered Service Request, processing N2 SM Information");
+          // The UE has responded to paging with AN tunnel info and the user
+          // plane is being reactivated. Clear any outstanding paging state so
+          // the dedup guard cannot permanently wedge future paging for
+          // this PDU session.
+          if (sp->get_paging_state() != paging_state_e::NONE) {
+            Logger::smf_app().info(
+                "UE responded; clearing paging state for PDU session %u",
+                sp->get_pdu_session_id());
+            sp->set_paging_state(paging_state_e::NONE);
+          }
         } else {
           procedure_type = session_management_procedures_type_e::
               PDU_SESSION_ESTABLISHMENT_UE_REQUESTED;
@@ -4480,7 +4583,7 @@ void smf_context::send_pdu_session_create_response(
         fmr_format_str);
     std::string callback_uri =
         smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
-        oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+        oai::smf::api::smf_sbi_helper::SmfCallbackBase() +
         fmt::format(fmr_format_str, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }

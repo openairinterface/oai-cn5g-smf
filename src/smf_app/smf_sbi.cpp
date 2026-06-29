@@ -213,7 +213,17 @@ void smf_sbi::send_n1n2_message_transfer_request(
   itti_msg->set_scid(sm_context_res->scid);
   itti_msg->set_procedure_type(session_management_procedures_type_e::
                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
-  itti_msg->set_cause(response_data_json["cause"]);
+  N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf cause = {};
+  try {
+    from_json(response_data_json["cause"], cause);
+  } catch (std::exception& e) {
+    Logger::smf_sbi().warn(
+        "Could not get the cause from the response, using default value");
+    cause = N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf::
+        REJECTION_DUE_TO_PAGING_RESTRICTION;
+  }
+  itti_msg->set_cause(cause);
+
   if (sm_context_res->res.get_cause() == k5gsmCauseRequestAccepted) {
     itti_msg->set_msg_type(kPduSessionEstablishmentAccept);
   } else {
@@ -321,7 +331,16 @@ void smf_sbi::send_n1n2_message_transfer_request(
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
   itti_msg->set_procedure_type(
       session_management_procedures_type_e::SERVICE_REQUEST_NETWORK_TRIGGERED);
-  itti_msg->set_cause(response_data_json["cause"]);
+  N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf cause = {};
+  try {
+    from_json(response_data_json["cause"], cause);
+  } catch (std::exception& e) {
+    Logger::smf_sbi().warn(
+        "Could not get the cause from the response, using default value");
+    cause = N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf::
+        REJECTION_DUE_TO_PAGING_RESTRICTION;
+  }
+  itti_msg->set_cause(cause);
   itti_msg->set_seid(report_msg->res.get_seid());
   itti_msg->set_trxn_id(report_msg->res.get_trxn_id());
 
