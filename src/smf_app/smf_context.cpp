@@ -565,8 +565,6 @@ void smf_context::handle_itti_msg(
             // seid and trxn_id to be used in Failure indication
             session_report_msg.set_seid(req->seid);
             session_report_msg.set_trxn_id(req->trxn_id);
-            // Set the PDU session id on the report message so the
-            // AMF can map the N1N2MessageTransfer to a real PDU session.
             session_report_msg.set_pdu_session_id(sp->get_pdu_session_id());
 
             // Derive the QFI from the reporting PDR ID via the
@@ -576,7 +574,7 @@ void smf_context::handle_itti_msg(
             if (!sp->get_session_handler()->get_qfi_for_pdr_id(pdr_id, qfi) ||
                 qfi.qfi == 0) {
               Logger::smf_app().error(
-                  "DDN: could not find a valid QFI for PDR ID %u; aborting "
+                  "Could not find a valid QFI for PDR ID %u; aborting "
                   "paging trigger",
                   pdr_id.rule_id);
               return;
@@ -586,7 +584,7 @@ void smf_context::handle_itti_msg(
                 sp->get_session_handler()->get_qos_flow_context_updated(qfi);
             if (qcu.ul_fteid.teid == 0) {
               Logger::smf_app().error(
-                  "DDN: QoS flow context has no FTEID for QFI %u; aborting "
+                  "Could not find a valid FTEID for QFI %u; aborting "
                   "paging trigger",
                   qfi.qfi);
               return;
@@ -597,11 +595,6 @@ void smf_context::handle_itti_msg(
             // Transfer IE
             std::string n2_sm_info     = {};
             std::string n2_sm_info_hex = {};
-            // Guard the empty N2 part. The encoder now
-            // returns a bool; abort the paging trigger if it fails or yields an
-            // empty NGAP part rather than sending an N1N2MessageTransfer with
-            // an empty N2 SM info. The N4 Session Report Response/ACK was
-            // already sent to the UPF above.
             bool n2_ok =
                 smf_n2::get_instance()
                     .create_n2_pdu_session_resource_setup_request_transfer(
@@ -609,7 +602,7 @@ void smf_context::handle_itti_msg(
                         n2_sm_info_type_e::PDU_RES_SETUP_REQ, n2_sm_info);
             if (!n2_ok || n2_sm_info.empty()) {
               Logger::smf_app().error(
-                  "DDN: failed to build a non-empty N2 SM info (PDU Session "
+                  "Failed to build a non-empty N2 SM info (PDU Session "
                   "Resource Setup Request Transfer); aborting paging trigger");
               return;
             }
@@ -632,9 +625,8 @@ void smf_context::handle_itti_msg(
                 session_report_msg.get_snssai().sst;
             json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
                 session_report_msg.get_snssai().sd;
-
-            // Top-level pduSessionId
-            json_data["pduSessionId"] = session_report_msg.get_pdu_session_id();
+            json_data["pduSessionId"] =
+                session_report_msg.get_pdu_session_id();  // Pdu session ID
 
             // N1N2FailureTxfNotifURI so the AMF can report paging failure.
             // <sbi-url>/nsmf-callback/<ver>/N1N2MsgTxfrFailureNotification/<supi>
@@ -651,10 +643,7 @@ void smf_context::handle_itti_msg(
             Logger::smf_app().debug(
                 "DDN: n1n2FailureTxfNotifURI = %s", callback_uri.c_str());
 
-            // Paging priority indication. No operator paging-policy config
-            // exists today; 0 = highest paging priority (TS 23.501 §5.6.3).
-            // TODO(ppi): source from DNN/operator paging policy config when
-            // available.
+            // Paging priority indication
             json_data["ppi"] = 0;
 
             // ARP from the resolved QoS flow context's QosData profile so
@@ -669,7 +658,7 @@ void smf_context::handle_itti_msg(
               json_data["arp"]["preemptCap"]    = "NOT_PREEMPT";
               json_data["arp"]["preemptVuln"]   = "NOT_PREEMPTABLE";
               Logger::smf_app().warn(
-                  "DDN: QoS flow has no ARP configured; using default "
+                  "QoS flow has no ARP configured; using default "
                   "priorityLevel=8 for paging");
             }
 

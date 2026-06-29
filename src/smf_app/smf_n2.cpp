@@ -520,7 +520,7 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
 
   // Pull QoS flows from the report-response message. Use the "updated" map
   //    (NOT get_all_qos_flow_context_created); it is populated via
-  //    add_qos_flow_context_updated() in the DDN handler.
+  //    add_qos_flow_context_updated().
   std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
   msg.get_all_qos_flow_context_updateds(qos_flows);
   if (qos_flows.empty()) {

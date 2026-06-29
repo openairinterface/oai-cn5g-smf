@@ -662,9 +662,8 @@ void smf_app::handle_itti_msg(
               "PAGING_PENDING");
           sp->set_paging_state(paging_state_e::PENDING);
         }
-        // 202 is NOT a failure: do NOT stop UPF buffering. The UPF keeps
-        // buffering until the UE responds (UpdateSMContext) or the failure
-        // callback fires.
+        // Do NOT stop UPF buffering. The UPF keeps buffering until the UE
+        // responds (UpdateSMContext) or the failure callback fires.
       } else {  // 4xx / 5xx
         if (m.cause == N1N2MessageTransferCause_anyOf::
                            eN1N2MessageTransferCause_anyOf::
@@ -673,7 +672,7 @@ void smf_app::handle_itti_msg(
                            eN1N2MessageTransferCause_anyOf::
                                UE_NOT_REACHABLE_FOR_SESSION ||
             m.response_code == http_status_code::GATEWAY_TIMEOUT /* 504 */) {
-          // Paging failed definitively: drive the UPF to stop buffering and
+          // Paging failed definitively: Indicate the UPF to stop buffering and
           // mark the PDU session paging state FAILED.
           Logger::smf_app().info(
               "N1N2 paging failed (code %d cause %s); stopping UPF buffering",
@@ -689,8 +688,7 @@ void smf_app::handle_itti_msg(
             m.cause == N1N2MessageTransferCause_anyOf::
                            eN1N2MessageTransferCause_anyOf::
                                TEMPORARY_REJECT_HANDOVER_ONGOING) {
-          // Temporary reject: full guard-timer retry toward a new AMF is out of
-          // scope.
+          // TODO: Temporary reject: retry toward a new AMF
           Logger::smf_app().warn(
               "N1N2 paging temporarily rejected; retry deferred (out of "
               "scope), leaving UPF buffering");
