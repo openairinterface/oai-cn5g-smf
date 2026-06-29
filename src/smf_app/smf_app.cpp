@@ -644,8 +644,7 @@ void smf_app::handle_itti_msg(
         // the N2 message directly, no paging needed. Ensure paging state is not
         // left PENDING. No UPF action.
         Logger::smf_app().info(
-            "N1N2 paging: UE CM-CONNECTED (200 %s); no paging needed",
-            m.cause.c_str());
+            "N1N2 paging: UE CM-CONNECTED; no paging needed");
         sp->set_paging_state(paging_state_e::NONE);
       } else if (m.response_code == http_status_code::ACCEPTED) {
         if (m.cause ==
@@ -675,8 +674,8 @@ void smf_app::handle_itti_msg(
           // Paging failed definitively: Indicate the UPF to stop buffering and
           // mark the PDU session paging state FAILED.
           Logger::smf_app().info(
-              "N1N2 paging failed (code %d cause %s); stopping UPF buffering",
-              m.response_code, m.cause.c_str());
+              "N1N2 paging failed (code %d); stopping UPF buffering",
+              m.response_code);
           sp->set_paging_state(paging_state_e::FAILED);
           trigger_n4_stop_buffering(
               sp->get_session_handler()->get_session_graph(), m.seid,
