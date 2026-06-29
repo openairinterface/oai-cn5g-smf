@@ -215,7 +215,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
   N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf cause = {};
   try {
-    from_json(cause, response_data_json["cause"]);
+    from_json(response_data_json["cause"], cause);
   } catch (std::exception& e) {
     Logger::smf_sbi().warn(
         "Could not get the cause from the response, using default value");
@@ -333,7 +333,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
       session_management_procedures_type_e::SERVICE_REQUEST_NETWORK_TRIGGERED);
   N1N2MessageTransferCause_anyOf::eN1N2MessageTransferCause_anyOf cause = {};
   try {
-    from_json(cause, response_data_json["cause"]);
+    from_json(response_data_json["cause"], cause);
   } catch (std::exception& e) {
     Logger::smf_sbi().warn(
         "Could not get the cause from the response, using default value");
