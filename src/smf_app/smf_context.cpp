@@ -1094,10 +1094,19 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   session_ambr_t session_ambr = {};
   get_session_ambr(session_ambr, snssai, smreq->req.get_dnn());
 
+  // Get Access Type (AN Type) from the request
+  // AN Type is provided by AMF in the Create SM Context Request
+  std::string an_type_str = {};
+  smreq->req.get_an_type(an_type_str);
+  std::optional<std::string> an_type_opt = std::nullopt;
+  if (!an_type_str.empty()) {
+    an_type_opt = std::make_optional<std::string>(an_type_str);
+  }
+
   sp->policy_ptr->set_context(
       smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
       smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(),
-      default_qos, session_ambr, paa_opt);
+      default_qos, session_ambr, paa_opt, an_type_opt);
 
   sp->policy_ptr->id = smreq->scid;
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
