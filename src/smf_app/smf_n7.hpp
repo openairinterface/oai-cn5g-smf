@@ -56,7 +56,7 @@ struct policy_association {
       const pdu_session_type_t& pdu_session_type,
       const subscribed_default_qos_t& default_qos,
       const session_ambr_t& session_ambr,
-      cconst std::optional<paa_t> paa          = std::nullopt,
+      const std::optional<paa_t> paa           = std::nullopt,
       const std::optional<std::string> an_type = std::nullopt) {
     oai::_3gpp::model::Snssai snssai_model = {};
     xgpp_conv::snssai_to_model(snssai, snssai_model);
@@ -83,7 +83,7 @@ struct policy_association {
     // AccessType indicates the access technology type (3GPP_ACCESS,
     // NON_3GPP_ACCESS, etc.)
     if (an_type.has_value()) {
-      oai::model::common::AccessType access_type_model = {};
+      oai::_3gpp::model::AccessType access_type_model = {};
       // Convert AN Type string to AccessType model
       // AN Type values: "3GPP_ACCESS", "NON_3GPP_ACCESS"
       from_json(an_type.value(), access_type_model);
