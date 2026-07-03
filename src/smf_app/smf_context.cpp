@@ -557,7 +557,7 @@ void smf_context::handle_itti_msg(
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
                 oai::utils::N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+            json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
             json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
@@ -1666,8 +1666,15 @@ bool smf_context::handle_pdu_session_release_complete(
   // 5GSM Cause
   // Extended Protocol Configuration Options
 
-  // TODO: SMF invokes Nsmf_PDUSession_SMContextStatusNotify to notify AMF
-  // that the SM context for this PDU Session is released
+  // TODO [N11-AMF-UPDATE]: Implement Nsmf_PDUSession_SMContextStatusNotify to AMF
+  // Reference: Phase 4.8: N11 SMContextStatusNotify
+  // Task 4.8: Notify AMF that the SM context for this PDU Session is released
+  //   - Populate SmContextStatusNotification with resourceStatus = "RELEASED" [TS 29.502 §5.6.2.5]
+  //   - Retrieve AMF SM context notification URI from session context [TS 29.502 §5.6.1.2]
+  //   - Call smf_sbi::send_sm_context_status_notification() (stub exists at smf_sbi.cpp:337)
+  //   - Handle AMF response (200 OK expected; log on error)
+  //   - Clear AMF SM context binding after successful notification
+  // Standards: TS 23.502 §4.3.4 step 10, TS 29.502 §5.6.2.5
   scid_t scid = {};
   try {
     scid = std::stoi(sm_context_request.get()->scid);
@@ -1682,7 +1689,9 @@ bool smf_context::handle_pdu_session_release_complete(
   std::string status = "RELEASED";
   event_sub.sm_context_status(scid, status);
 
-  // TODO: Notify AMF that the SM context for this PDU session is released
+  // TODO [N11-AMF-UPDATE]: Call smf_sbi::send_sm_context_status_notification() here
+  // Task 4.8: The function exists at smf_sbi.cpp:337 but is never invoked for PDU session release
+  //   Wire it here after triggering the release event [TS 29.502 §5.6.2.5]
   if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     Logger::smf_app().debug(
         "Signal the PDU Session Release Event notification");
@@ -2569,11 +2578,101 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   if (smreq->session_procedure_type ==
       session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED) {
-    // Process the request -> update UPF if necesssary
-    // TODO:
-    // example:
+    // TODO [PCF-POLICY]: Implement PCF Policy Decision Processing
+    // Reference: Phase 1: PCF Policy Decision Processing
+    // Task 1.1: Extract smPolicyDecision from JSON request data
+    //   - Call extract_sm_policy_decision(smreq->req)
+    //   - Parse JSON: smreq->req.get_json_data(json_data)
+    //   - Extract pccRules, qosDecs, traffContDecs from json_data["smPolicyDecision"]
+    //
+    // Task 1.5: Compute policy delta to identify changes
+    //   - Call compute_policy_delta(current_policy, new_policy)
+    //   - Identify: added/modified/removed PCC rules
+    //   - Identify: added/modified/removed QoS data entries
+    //   - Identify: added/modified/removed traffic control entries
+    //
+    // Task 1.6: Validate policy decision against subscription limits
+    //   - Call validate_policy_decision(delta, subscription_profile)
+    //   - Check cumulative bandwidth against subscription limits
+    //   - Verify PCC rule precedence uniqueness
+    //   - Validate 5QI values are supported
+    //   - Check network slice resource availability
+    //
+    // Task 1.7: Determine if UPF update is required
+    //   - If PCC rules changed → update_upf = true
+    //   - If QoS data changed → update_upf = true
+    //   - If traffic control changed → update_upf = true
+    //   - If only non-flow parameters changed → update_upf = false
+    //   - Store policy_delta in procedure context for N4 building
+    //
+    // Standards:
+    //   - TS 29.512 §4.2.3.2 (PCF-initiated SM Policy Association Modification)
+    //   - TS 29.512 §5.6.2.4 (SmPolicyDecision data structure)
+    //   - TS 29.512 §5.6.2.6 (PccRule data structure)
+    //   - TS 29.512 §5.6.2.8 (QosData data structure)
+    //   - TS 29.512 §4.2.3.26 (Error reporting and validation)
+    //   - TS 23.503 §6.1.3.6 (Policy Control - QoS authorization and enforcement)
+    //
+    // [QOS-MOCK] Phase 1 — PCF Policy Decision Processing (mock; no business
+    // logic). Mocks the [PCF-POLICY] TODO tasks above:
+    //   - Task 1.1 (Extract smPolicyDecision): done for real — parsed into the
+    //     oai::_3gpp::model::SmPolicyDecision model object.
+    //   - Task 1.5 (Compute policy delta): MOCKED — every rule/QoS entry is
+    //     treated as "added"; no diff against a stored current policy.
+    //   - Task 1.6 (Validate policy decision): MOCKED — skipped, assumed valid.
+    //   - Task 1.7 (Determine UPF update): MOCKED — always update_upf = true
+    //     when QoS flows exist; no QFI allocation. The policy is mapped onto the
+    //     session's existing QoS flow(s) so the rest of the end-to-end
+    //     signalling (N4 → N11) exercises real code paths.
+    nlohmann::json policy_json = {};
+    smreq->req.get_json_data(policy_json);
+
+    if (policy_json.find("smPolicyDecision") != policy_json.end()) {
+      try {
+        oai::_3gpp::model::SmPolicyDecision sm_policy_decision = {};
+        from_json(policy_json["smPolicyDecision"], sm_policy_decision);
+
+        for (const auto& it : sm_policy_decision.getPccRules()) {
+          Logger::smf_app().info(
+              "[QOS-MOCK] PCF PCC rule '%s' (precedence %d)",
+              it.second.getPccRuleId().c_str(), it.second.getPrecedence());
+        }
+        for (const auto& it : sm_policy_decision.getQosDecs()) {
+          Logger::smf_app().info(
+              "[QOS-MOCK] PCF QoS data '%s': 5QI=%d, ARP priority=%d",
+              it.second.getQosId().c_str(), it.second.getR5qi(),
+              it.second.getArp().getPriorityLevel());
+        }
+      } catch (const std::exception& e) {
+        Logger::smf_app().warn(
+            "[QOS-MOCK] Failed to parse smPolicyDecision: %s", e.what());
+      }
+    } else {
+      Logger::smf_app().warn(
+          "[QOS-MOCK] PCF UpdateNotify without smPolicyDecision; proceeding "
+          "with mock QoS-flow mapping anyway");
+    }
+
+    // MOCK: map the PCF policy onto the session's existing QoS flow(s). A real
+    // implementation would allocate a QFI per new QoS data entry and build the
+    // flow from the parsed parameters (see the Phase 2/3 TODOs below).
+    std::vector<pfcp::qfi_t> qfis_to_update =
+        sp->get_session_handler()->get_all_qfis();
+    sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
+    for (const auto& qfi : qfis_to_update) {
+      smreq->req.add_qfi(qfi.qfi);
+    }
+    Logger::smf_app().info(
+        "[QOS-MOCK] PCF-initiated modification will update %zu QoS flow(s)",
+        qfis_to_update.size());
+
+    // Drive the existing update procedure as a PCF-initiated modification so
+    // the PCF_INITIATED switch-cases in session_update_sm_context_procedure are
+    // reached.
+    procedure_type = session_management_procedures_type_e::
+        PDU_SESSION_MODIFICATION_PCF_INITIATED;
     pdu_session_release_procedure = false;
-    update_upf                    = false;
+    update_upf                    = !qfis_to_update.empty();
   }
 
   // Step 5. Create a procedure for update SM context and let the procedure
@@ -2876,7 +2975,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // N2SM
   json_data["n2InfoContainer"]["n2InformationClass"] =
       oai::utils::N1N2_MESSAGE_CLASS;
-  json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+  json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
       itti_msg->msg.get_pdu_session_id();
   // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
   json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
@@ -4542,7 +4641,30 @@ void smf_context::send_pdu_session_update_response(
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
   // Register with the UDM
-  register_with_udm(supi, pdu_session_id, smf_registration);
+  // TODO [PCF-POLICY]: Build the PCF UpdateNotify response without blocking
+  // Reference: Phase 1, Task 1.9 (Error Handling /
+  //            response to PCF) and Phase 2 (N4 response → build HTTP response)
+  //   - Respond to the PCF Npcf_SMPolicyControl_UpdateNotify promptly (200/204)
+  //     without serializing the response behind unrelated SBI round-trips
+  //   - Decide the correct UDM interaction for a policy update (per TS 23.502
+  //     §4.3.3 no new Nudm_UECM registration is expected for a modification)
+  // Standards: TS 29.512 §4.2.3.2 (UpdateNotify), TS 29.503 §5.2 (Nudm_UECM)
+  //
+  // [QOS-MOCK] Skip UDM UECM (re)registration for PCF-initiated modification.
+  // register_with_udm() blocks the response thread on a synchronous UDM
+  // round-trip (queued on the SBI task behind the N1N2MessageTransfer call),
+  // which pushes the PCF UpdateNotify response past the API server's promise
+  // wait (FUTURE_STATUS_TIMEOUT_MS) and makes the endpoint return an error.
+  // UDM UECM registration is an establishment concern, not a policy-update one.
+  // TODO [QOS-MOCK-REMOVE]: When PCF-initiated session handling is implemented
+  // for real, define the correct (if any) UDM interaction for policy updates
+  // (per TS 23.502 §4.3.3 no new UECM registration is expected) and remove this
+  // guard along with the establishment-oriented reuse of this function.
+  if (session_procedure_type !=
+      session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    register_with_udm(supi, pdu_session_id, smf_registration);
+  }
 
   // Process the response
   if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
@@ -4675,6 +4797,40 @@ void smf_context::send_pdu_session_update_response(
 
         // Set HO State to prepared
         sps->set_ho_state(ho_state_e::HO_STATE_PREPARED);
+      } break;
+
+      case session_management_procedures_type_e::
+          PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+        // TODO [PCF-POLICY]: Build the PCF-initiated SM Policy Association
+        // Modification response
+        // Reference: Phase 1, Task 1.9 (Error
+        //            Handling) and the PCF-initiated response path
+        //   - Acknowledge the Npcf_SMPolicyControl_UpdateNotify per outcome:
+        //     200 OK when applied; 4xx ProblemDetails when (partly) rejected
+        //   - Reflect accepted vs rejected PCC rules from the Phase 1 delta
+        //   - Maintain the current policy on validation failure (no partial
+        //     apply for a rejected rule)
+        // Standards:
+        //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
+        //   - TS 29.512 §4.2.3.16 / §4.2.3.26 (error reporting / status codes)
+        //
+        // [QOS-MOCK] Acknowledge the PCF-initiated SM Policy Association
+        // Modification (Npcf_SMPolicyControl_UpdateNotify) with 200 OK
+        // [TS 29.512 §4.2.3.2]. The N1 (UE) and N2 (RAN) payloads are NOT
+        // carried in this response — they are delivered to the AMF separately
+        // via the N1N2MessageTransfer triggered from the N4 response handler.
+        // The PCF callback handler only checks for the 200 status, so no
+        // SmContextUpdatedData body is required here.
+        // TODO [QOS-MOCK-REMOVE]: Replace with the real PCF response handling:
+        //   - reflect accepted vs rejected PCC rules from the Phase 1 policy
+        //     delta;
+        //   - on partial failure, return ProblemDetails with the appropriate
+        //     status (e.g. 403) instead of an unconditional 200
+        //     [TS 29.512 §4.2.3.26].
+        Logger::smf_app().info(
+            "PDU Session Modification PCF-initiated: acknowledging PCF "
+            "UpdateNotify with 200 OK");
+        resp->res.set_http_code(http_status_code::OK);
       } break;
 
       default: {
@@ -4826,7 +4982,31 @@ void smf_context::send_pdu_session_release_response(
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
-        // TODO: To be completed
+        // TODO [PCF-POLICY]: Implement PCF-initiated Session Release/Termination
+        // Reference: Phase 1 (Error Handling section)
+        // Note: This is DIFFERENT from modification - handles TerminationNotification
+        //
+        // Task: Handle PCF TerminationNotification
+        //   1. Extract termination reason from PCF request:
+        //      - Parse TerminationNotification from JSON
+        //      - Reason codes: UE_TERMINATION, REALLOCATION_OF_CREDIT, etc.
+        //   2. Clean up policy associations:
+        //      - Remove SM Policy Association from PCF
+        //      - Cleanup app-session to SM-policy binding
+        //      - Delete stored policy decisions (Phase 4)
+        //   3. Trigger PDU session release procedure:
+        //      - Follow normal session release flow
+        //      - Release all QoS flows (Phase 3)
+        //      - Send N4 Session Deletion to UPF
+        //      - Send N2 Session Release to RAN
+        //   4. Respond to PCF:
+        //      - HTTP 204 No Content on success
+        //      - HTTP 500 on internal error
+        //
+        // Standards:
+        //   - TS 29.514 §4.2.5.3 (Termination Notification)
+        //   - TS 29.512 §4.2.4 (SM Policy Association Termination)
+        //   - TS 23.502 §4.3.4 (PDU Session Release)
       } break;
 
       default: {

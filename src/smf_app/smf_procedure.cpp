@@ -16,6 +16,7 @@
 #include "conversions.hpp"
 #include "itti.hpp"
 #include "itti_msg_n4_restore.hpp"
+#include "itti_msg_nx.hpp"
 #include "logger.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -23,6 +24,9 @@
 #include "smf_pfcp_association.hpp"
 #include "ProblemDetails.h"
 #include "3gpp_24.501.hpp"
+#include "Arp.h"
+#include "PreemptionCapability_anyOf.h"
+#include "PreemptionVulnerability_anyOf.h"
 
 using namespace pfcp;
 using namespace oai::app::smf;
@@ -1315,6 +1319,328 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 }
 
 //------------------------------------------------------------------------------
+policy_delta session_update_sm_context_procedure::compute_policy_delta(
+    const SmPolicyDecision& current, const SmPolicyDecision& requested) {
+  // TODO [PCF-POLICY]: Implement Policy Delta Computation
+  // Reference: Phase 1, Task 1.5 (Policy Delta
+  //            Computation) and Task 1.7 (Determine UPF update requirement)
+  //   1. Compare the new SmPolicyDecision with the current session policy
+  //   2. Identify added / modified / removed PCC rules
+  //   3. Identify added / modified / removed QoS data entries
+  //   4. Identify added / modified / removed traffic control entries
+  //   5. Allocate a QFI per new QoS data entry (Phase 2 Task 2.6 / Phase 3)
+  //   6. Produce the delta consumed by N4 (Phase 2) and N1/N2 (Phase 4)
+  // Standards:
+  //   - TS 29.512 §4.2.6.1 (PCC rule provisioning / removal, NULL = removed)
+  //   - TS 29.512 §5.6.2.4 (SmPolicyDecision), §5.6.2.6 (PccRule),
+  //     §5.6.2.8 (QosData)
+  //
+  // [QOS-MOCK] This helper is the future home of the real policy reconciliation
+  // (diff current vs requested SmPolicyDecision). For now it IGNORES both
+  // arguments and returns a fixed delta that exercises all three operations
+  // WITHOUT tearing the pipeline down (UPF analysis: prefer Update over
+  // remove+create-all):
+  //   - to_modify: reconfigure the QoS of one existing flow in place (Update),
+  //   - to_add:    add one genuinely new GBR flow (QFI 5, 5QI 1) (Create),
+  //   - to_remove: release one other existing flow (Remove).
+  // TODO [QOS-MOCK-REMOVE]: replace the body with a real diff of `current` vs
+  //   `requested` (added/modified/removed PCC rules + QoS data) and a real QFI
+  //   allocator instead of the fixed QFI 5.
+  (void) current;
+  (void) requested;
+
+  policy_delta delta = {};
+
+  constexpr uint8_t kMockNewQfi = 5;
+
+  // Hardcoded ARP shared by the mock flows (MAY_PREEMPT / NOT_PREEMPTABLE).
+  Arp arp = {};
+  arp.setPriorityLevel(3);
+  PreemptionCapability preempt_cap = {};
+  preempt_cap.setEnumValue(
+      PreemptionCapability_anyOf::ePreemptionCapability_anyOf::MAY_PREEMPT);
+  arp.setPreemptCap(preempt_cap);
+  PreemptionVulnerability preempt_vuln = {};
+  preempt_vuln.setEnumValue(PreemptionVulnerability_anyOf::
+                                ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
+  arp.setPreemptVuln(preempt_vuln);
+
+  std::vector<pfcp::qfi_t> current_qfis =
+      sps->get_session_handler()->get_all_qfis();
+
+  // ADD: one genuinely new GBR flow (QFI 5). Skipped if QFI 5 already exists
+  // (e.g. a repeated UpdateNotify) so we don't create a duplicate QFI.
+  bool new_qfi_exists = false;
+  for (const auto& q : current_qfis)
+    if (q.qfi == kMockNewQfi) new_qfi_exists = true;
+
+  if (!new_qfi_exists) {
+    qos_flow_change add = {};
+    add.qfi             = kMockNewQfi;
+    add.precedence      = 50;
+    add.qos_profile.setQosId("mock-gbr-qos-5qi-1");
+    add.qos_profile.setR5qi(1);  // GBR 5QI
+    add.qos_profile.setArp(arp);
+    add.qos_profile.setPriorityLevel(20);
+    add.qos_profile.setGbrUl("512 Kbps");
+    add.qos_profile.setGbrDl("512 Kbps");
+    add.qos_profile.setMaxbrUl("5 Mbps");
+    add.qos_profile.setMaxbrDl("5 Mbps");
+    // [QOS-MOCK] Hardcoded SDF filter for the new flow, built directly.
+    // flowDirection = BIDIRECTIONAL and packetFilterUsage = true are required
+    // for the rule to be signalled to the UE on N1.
+    FlowDirectionRm flow_direction = {};
+    flow_direction.setEnumValue(
+        FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL);
+    add.flow_information.setFlowDescription(
+        "permit out ip from any to assigned 5000");
+    add.flow_information.setFlowDirection(flow_direction);
+    add.flow_information.setPacketFilterUsage(true);
+    delta.to_add.push_back(add);
+  }
+
+  // MODIFY: reconfigure the QoS of the first existing flow (Update QER). Use a
+  // GBR profile with distinct bitrates so the Update QER carries a visibly
+  // different MFBR/GFBR than the added flow.
+  for (const auto& q : current_qfis) {
+    if (q.qfi == kMockNewQfi) continue;  // don't "modify" our own added flow
+    qos_flow_change mod = {};
+    mod.qfi             = q.qfi;
+    mod.precedence      = 40;
+    mod.qos_profile.setQosId("mock-gbr-qos-modified");
+    mod.qos_profile.setR5qi(2);  // GBR 5QI
+    mod.qos_profile.setArp(arp);
+    mod.qos_profile.setPriorityLevel(40);
+    mod.qos_profile.setGbrUl("1 Mbps");
+    mod.qos_profile.setGbrDl("1 Mbps");
+    mod.qos_profile.setMaxbrUl("8 Mbps");
+    mod.qos_profile.setMaxbrDl("8 Mbps");
+    mod.flow_information = upf_selection_criteria::get_default_flow_information();
+    delta.to_modify.push_back(mod);
+    break;  // modify just one flow for the mock
+  }
+
+  // REMOVE: release one other existing flow (the last one), if there is a flow
+  // distinct from the one we modify. Never removes the only/default flow.
+  for (auto it = current_qfis.rbegin(); it != current_qfis.rend(); ++it) {
+    if (it->qfi == kMockNewQfi) continue;
+    if (!delta.to_modify.empty() && it->qfi == delta.to_modify.front().qfi)
+      continue;  // don't remove the flow we just modified
+    delta.to_remove.push_back(*it);
+    break;  // remove just one flow for the mock
+  }
+
+  return delta;
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code
+session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
+    const policy_delta& delta) {
+  // TODO [N4-MODIFY]: Translate the policy delta into an N4 Session Modification
+  // Reference: Phase 2: N4 Session Modification Logic
+  //   - Task 2.1: generate_pdr_from_pcc_rule() — PDI (SDF filter, UE IP, source
+  //     interface), precedence, PDR ID, FAR/QER references
+  //   - Task 2.2: generate_far_from_qos_data() — destination interface,
+  //     forwarding params, outer header creation / TEID, apply action
+  //   - Task 2.3: generate_qer_from_qos_data() — 5QI→characteristics, QFI,
+  //     gate status, GBR/MBR, QER ID
+  //   - Task 2.4: build the PFCP Session Modification Request — create the
+  //     to_add rules, update modified rules, remove the to_remove rules
+  //   - Task 2.5/2.6: PDR/FAR/QER lifecycle + QFI allocation/deallocation
+  // Standards:
+  //   - TS 29.244 §7.5.4 (PFCP Session Modification), §5.2.1A (PDR),
+  //     §5.2.3 (FAR), §5.2.5 (QER); TS 23.502 §4.3.3.2 (PDU Session Modification)
+  //
+  // [QOS-MOCK] Apply the delta in place: Update QER for modified flows, Remove
+  // one released flow, and Create one genuinely new flow. Update/Remove keep
+  // the forwarding identity (F-TEID/UE-IP bindings) of the surviving flows
+  // stable, so the pipeline is never emptied (the dangerous transient). The
+  // created flow uses fresh non-colliding rule IDs and complete IEs (real UE
+  // IP, a fresh N3 UL TEID, and the gNB OHC reused from an existing flow).
+  std::shared_ptr<pfcp_association> current_upf = {};
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges{};
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
+
+  if (get_current_upf(dl_edges, ul_edges, current_upf) !=
+      smf_procedure_code::OK) {
+    return smf_procedure_code::ERROR;
+  }
+
+  oai::config::smf::upf upf_cfg = current_upf->get_upf_config();
+  std::shared_ptr<upf_graph> graph =
+      sps->get_session_handler()->get_session_graph();
+
+  n4_triggered = std::make_shared<itti_n4_session_modification_request>(
+      TASK_SMF_APP, TASK_SMF_N4);
+  n4_triggered->seid    = sps->up_fseid.seid;
+  n4_triggered->trxn_id = this->trxn_id;
+  n4_triggered->r_endpoint =
+      endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
+
+  // all edges (both directions) for convenience
+  std::vector<std::shared_ptr<qos_upf_edge>> all_edges = dl_edges;
+  all_edges.insert(all_edges.end(), ul_edges.begin(), ul_edges.end());
+
+  UPInterfaceType n3_type = {};
+  n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
+
+  // --- Modify phase: Update QER in place (no teardown) --------------------
+  // TODO [QOS-FLOW]: Implement QoS Flow Modification
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 3, Task 3.3 (QoS Flow
+  //            Modification); N4 encoding is Phase 2 (Update QER/FAR/PDR)
+  //   1. Compare new vs existing QoS parameters for the flow (5QI/GBR/MBR/ARP)
+  //   2. Validate the change against subscription limits
+  //   3. Update the smf_qos_flow state (PENDING_MODIFICATION → ESTABLISHED)
+  //   4. Emit Update QER (and Update FAR/PDR only if forwarding/filter changed)
+  // Standards:
+  //   - TS 29.244 §7.5.4.5 (Update QER), §7.5.4.2/.3 (Update PDR/FAR)
+  //   - TS 23.502 §4.3.3.3 (QoS flow modification)
+  //
+  // [QOS-MOCK] Reconfigure the QoS of existing flows by updating their QER
+  // (MBR/GBR/gate) while keeping their PDR/FAR IDs, N3 F-TEID and UE-IP bindings
+  // untouched. The new QoS values come from the (mock) delta, not real PCF data.
+  for (const auto& change : delta.to_modify) {
+    for (const auto& edge : all_edges) {
+      if (edge->qfi.qfi != change.qfi) continue;
+      edge->qos_profile = change.qos_profile;  // new QoS → reflected in N2 too
+      if (edge->qer_id.qer_id != 0)
+        n4_triggered->pfcp_ies.set(pfcp_update_qer(edge));
+      // Pure QoS reconfiguration: PDI/forwarding unchanged → no Update PDR/FAR.
+    }
+  }
+
+  // --- Remove phase: release one flow -------------------------------------
+  // TODO [QOS-FLOW]: Implement QoS Flow Release
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 3, Task 3.4 (QoS Flow Release);
+  //            N4 encoding is Phase 2 (Remove PDR/FAR/QER)
+  //   1. Identify the PDR/FAR/QER IDs for the flows removed by the policy delta
+  //   2. Transition the smf_qos_flow state to PENDING_RELEASE → RELEASED
+  //   3. Emit Remove PDR/FAR/QER and deallocate the QFI back to the pool
+  // Standards:
+  //   - TS 29.244 §7.5.4.6/.7/.9 (Remove PDR/FAR/QER)
+  //   - TS 23.502 §4.3.3.4 (QoS flow release)
+  //
+  // [QOS-MOCK] Capture the release descriptors (N1 DELETE rule + flow
+  // description, N2 QoS Flow To Release List) BEFORE removing, then emit the
+  // Remove IEs. Only the flows in to_remove are torn down; the rest of the
+  // pipeline is untouched. QFIs are not deallocated (no QFI allocator).
+  std::vector<qos_flow_context_updated> released_flows = {};
+  for (const auto& qfi : delta.to_remove) {
+    released_flows.push_back(
+        sps->get_session_handler()->build_release_flow(qfi));
+  }
+  sps->get_session_handler()->set_qos_flows_to_be_released(released_flows);
+
+  std::set<uint8_t> remove_set = {};
+  for (const auto& qfi : delta.to_remove) remove_set.insert(qfi.qfi);
+  for (const auto& edge : all_edges) {
+    if (remove_set.count(edge->qfi.qfi) == 0) continue;
+    if (edge->pdr_id.rule_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));
+    if (edge->far_id.far_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    if (edge->qer_id.qer_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_qer(edge));
+  }
+
+  // --- Add phase: install a genuinely new flow ----------------------------
+  // TODO [QOS-FLOW]: Implement QoS Flow Creation
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 3, Task 3.2 (QoS Flow Creation
+  //            from QoS Data) + Task 3.5 (QFI allocation); N4 encoding is
+  //            Phase 2 Tasks 2.1-2.3 (generate PDR/FAR/QER)
+  //   1. Allocate a QFI from the per-session pool [TS 23.501 §5.7.1.4]
+  //   2. Create the smf_qos_flow from the PCF QoS data (5QI/ARP/GBR/MBR)
+  //   3. Generate the PDR (PDI/SDF), FAR (forwarding + outer header creation /
+  //      DL TEID from the N2 response) and QER (gate/MBR/GBR) for the flow
+  //   4. Add the flow/edge to the session graph and QoS-flow context
+  // Standards:
+  //   - TS 29.244 §7.5.4.1 (Create PDR/FAR/QER), §5.2.1A/§5.2.3/§5.2.5
+  //   - TS 23.501 §5.7.1 (QoS model); TS 23.502 §4.3.3 (QoS flow establishment)
+  //
+  // [QOS-MOCK] CAVEATS (mock):
+  //   * The new flow's edges are CLONED from an existing DL/UL pair so they
+  //     inherit the real UPF, interface type, UE-IP context and gNB endpoint;
+  //     a real implementation would build the edge from the PCF QoS data and a
+  //     QFI allocator (Phase 3 QoS Flow Management).
+  //   * The new UL N3 F-TEID is a fresh SMF-allocated TEID on the UPF's N3 IP
+  //     (concrete, not UPF-CHOOSE) so the N4 Create and the N2 UL TNL stay
+  //     consistent without waiting for the Create-PDR response.
+  //   * The new DL FAR Outer Header Creation reuses an existing flow's gNB
+  //     F-TEID (same gNB tunnel) — a real per-flow gNB DL TEID would arrive in
+  //     the N2 PDU Session Resource Modify Response (out of mock scope).
+  // TODO [QOS-MOCK-REMOVE]: replace cloning + reused gNB tunnel + concrete TEID
+  //   with real Phase 2/3 flow creation (QFI allocation, generated PDR/FAR/QER
+  //   from the policy, DL TEID from the N2 response).
+  for (const auto& change : delta.to_add) {
+    if (dl_edges.empty() || !dl_edges[0]->associated_edge) {
+      Logger::smf_app().error(
+          "[QOS-MOCK] No DL/UL edge pair available to clone the new QoS flow");
+      continue;
+    }
+    std::shared_ptr<qos_upf_edge> new_dl =
+        std::make_shared<qos_upf_edge>(*dl_edges[0]);
+    std::shared_ptr<qos_upf_edge> new_ul =
+        std::make_shared<qos_upf_edge>(*dl_edges[0]->associated_edge);
+    new_dl->associated_edge = new_ul;
+    new_ul->associated_edge = new_dl;
+
+    for (const auto& edge : {new_dl, new_ul}) {
+      edge->qfi.qfi          = change.qfi;
+      edge->qos_profile      = change.qos_profile;
+      edge->flow_information = change.flow_information;
+      edge->precedence       = change.precedence;
+      edge->default_qos      = false;
+      // Fresh rule IDs (generators never reuse non-released IDs → no collision
+      // with the Remove list above).
+      edge->pdr_id      = pfcp::pdr_id_t{};
+      edge->far_id      = pfcp::far_id_t{};
+      edge->qer_id      = pfcp::qer_id_t{};
+      edge->urr_id      = pfcp::urr_id_t{};
+      edge->qos_rule_id = 0;
+      // Fresh N3 UL TEID on the access (N3) edge; keep the cloned gNB
+      // next_hop_fteid for the DL OHC.
+      if (edge->type == n3_type && !edge->fteid.is_zero()) {
+        edge->fteid.teid = smf_app_inst->generate_teid();
+      }
+    }
+
+    // Make the new flow discoverable by QFI (get_access_edges/get_edge_for_qfi)
+    // so the N1/N2 builders advertise it like any other flow.
+    if (graph) {
+      graph->add_qos_flow_edge(current_upf, new_dl);
+      graph->add_qos_flow_edge(current_upf, new_ul);
+    }
+
+    // Create the full flow (same order as establishment / the modification
+    // path): UL side FAR+QER -> DL PDR, then DL side FAR+QER -> UL PDR.
+    n4_triggered->pfcp_ies.set(pfcp_create_far(new_ul));
+    if (upf_cfg.enable_qers())
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(new_ul));
+    n4_triggered->pfcp_ies.set(pfcp_create_pdr(new_dl));
+
+    n4_triggered->pfcp_ies.set(pfcp_create_far(new_dl));
+    if (upf_cfg.enable_qers())
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(new_dl));
+    n4_triggered->pfcp_ies.set(pfcp_create_pdr(new_ul));
+  }
+
+  Logger::smf_app().info(
+      "[QOS-MOCK] PCF-initiated N4 Session Modification: modify %zu, add %zu, "
+      "remove %zu QoS flow(s)",
+      delta.to_modify.size(), delta.to_add.size(), delta.to_remove.size());
+
+  int ret = itti_inst->send_msg(n4_triggered);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        n4_triggered->get_msg_name());
+    return smf_procedure_code::ERROR;
+  }
+  return smf_procedure_code::OK;
+}
+
+//------------------------------------------------------------------------------
 smf_procedure_code session_update_sm_context_procedure::run(
     const std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_req,
     std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp,
@@ -1533,9 +1859,115 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      // TODO:
-      send_n4 = false;
-    } break;
+      // TODO [N4-MODIFY]: Implement N4 Session Modification Request Building
+      // Reference: Phase 2: N4 Session Modification Logic
+      // This is the CRITICAL missing piece - SMF must translate PCF policy into N4 messages
+      //
+      // Task 2.4: Build N4 Session Modification Request
+      //   1. Extract policy_delta from procedure context (set in Phase 1)
+      //   2. Process ADDED PCC rules:
+      //      - Call generate_pdr_from_pcc_rule() for each new rule
+      //      - Call generate_far_from_qos_data() for forwarding
+      //      - Call generate_qer_from_qos_data() for QoS enforcement
+      //      - Add to create_pdr, create_far, create_qer lists
+      //   3. Process MODIFIED PCC rules:
+      //      - Find existing PDR/FAR/QER IDs for the rule
+      //      - Update parameters if flow description changed
+      //      - Add to update_pdr, update_far, update_qer lists
+      //   4. Process REMOVED PCC rules:
+      //      - Identify PDR/FAR/QER IDs for removed rules
+      //      - Add to remove_pdr, remove_far, remove_qer lists
+      //      - Mark QFI for deallocation (Phase 3)
+      //   5. Build PFCP Session Modification Request message
+      //      - Populate all create/update/remove IEs
+      //      - Set session F-SEID (UPF endpoint)
+      //      - Set PFCP sequence number
+      //   6. Set send_n4 = true to trigger transmission
+      //
+      // Task 2.1: Generate PDR from PCC Rule [TS 29.244 §5.2.1A]
+      //   - Extract flow description from PCC rule's flowInfos [TS 29.512 §5.6.2.14]
+      //   - Parse IP filter rules (5-tuple) [TS 29.244 §5.2.1A.2A, TS 29.212 Annex A]
+      //   - Create PDI [TS 29.244 §8.2.2]:
+      //     - Source interface (ACCESS for UL, CORE for DL) [TS 29.244 §8.2.2]
+      //     - Network instance (DNN) [TS 29.244 §8.2.4]
+      //     - UE IP address [TS 29.244 §8.2.62]
+      //     - SDF filter [TS 29.244 §8.2.5]
+      //   - Assign precedence from PCC rule [TS 29.244 §5.4.4, TS 29.244 §8.2.11]
+      //   - Allocate PDR ID [TS 29.244 §8.2.36]
+      //   - Reference FAR ID [TS 29.244 §8.2.74] and QER ID [TS 29.244 §8.2.75]
+      //   - Handle bidirectional flows [TS 29.244 §5.2.1A.3]
+      //
+      // Task 2.2: Generate FAR from QoS Data [TS 29.244 §5.2.3]
+      //   - Determine destination interface [TS 29.244 §8.2.24]:
+      //     - Uplink → CORE; Downlink → ACCESS
+      //   - Configure forwarding parameters [TS 29.244 Table 7.5.2.3-2]:
+      //     - Destination interface [TS 29.244 §8.2.24]
+      //     - Network instance (DNN/N3) [TS 29.244 §8.2.4]
+      //     - Redirect info if applicable [TS 29.512 §5.6.2.13]
+      //   - Setup outer header creation (GTP-U downlink) [TS 29.244 §8.2.56]
+      //   - Allocate TEID for new QoS flows [TS 29.244 §5.5.3]
+      //   - Set transport level marking (DSCP) based on 5QI [TS 29.244 §5.4.13, TS 23.501 §5.8.2.7]
+      //   - Allocate FAR ID [TS 29.244 §8.2.74]
+      //   - Set apply action (FORW/DROP) [TS 29.244 §5.2.3.1, TS 29.244 §8.2.26]
+      //
+      // Task 2.3: Generate QER from QoS Data [TS 29.244 §5.2.5]
+      //   - Extract 5QI, gbrUl/gbrDl, maxbrUl/maxbrDl from QosData [TS 29.512 §5.6.2.8]
+      //   - Map 5QI to QoS characteristics [TS 23.501 §5.7.4]:
+      //     - Resource type (GBR, NON_GBR, DELAY_CRITICAL_GBR)
+      //     - Packet delay budget [TS 23.501 §5.7.3.4, TS 29.244 §8.2.164]
+      //     - Packet error rate [TS 23.501 §5.7.3.5]
+      //   - Allocate QFI [TS 23.501 §5.7.1.4, TS 29.244 §8.2.89]
+      //   - Configure gate status [TS 29.244 §8.2.27]
+      //   - Set MBR [TS 29.244 §8.2.28] and GBR [TS 29.244 §8.2.29]
+      //   - Allocate QER ID [TS 29.244 §8.2.75]
+      //
+      // Standards:
+      //   - TS 29.244 §7.5.4 (PFCP Session Modification)
+      //   - TS 29.244 §5.2.1A (PDR - Packet Detection Rule)
+      //   - TS 29.244 §5.2.3 (FAR - Forwarding Action Rule)
+      //   - TS 29.244 §5.2.5 (QER - QoS Enforcement Rule)
+      //   - TS 23.502 §4.3.3.2 (PDU Session Modification)
+      //
+      // [QOS-MOCK] Phase 2 — translate the PCF policy into an N4 Session
+      // Modification. Instead of re-sending the existing flows (which changes
+      // nothing on the UPF), compute a (mocked) policy delta and apply it:
+      // remove all existing QoS flows and install one hardcoded GBR flow, so
+      // the UPF sees a real, observable change.
+      //
+      // Mocks the [N4-MODIFY] TODO tasks above:
+      //   - Task 2.4 (Build N4 Session Modification Request): done for real via
+      //     send_n4_pcf_initiated_modification() (real remove + create IEs).
+      //   - Tasks 2.1/2.2/2.3 (generate PDR/FAR/QER from the PCC rule / QoS
+      //     data / flow descriptions): the QoS values come from
+      //     compute_policy_delta()'s hardcoded rule, not the parsed policy.
+      // CAVEAT: reuses/mutates session-graph edges — see the full caveat list
+      //   in send_n4_pcf_initiated_modification().
+      // TODO [QOS-MOCK-REMOVE]: drive the delta from the real parsed policy.
+
+      // The real flow would pass the session's current policy and the policy
+      // parsed in Phase 1; the mock ignores both arguments. Store the delta on
+      // the procedure so handle_itti_msg() drives N1/N2 from the same source.
+      pcf_policy_delta =
+          compute_policy_delta(SmPolicyDecision{}, SmPolicyDecision{});
+
+      // Advertise on the N11/N2 leg the flow(s) we add and modify on the UPF
+      // (released flows are carried separately via the release machinery), not
+      // the QFIs from the incoming PCF request.
+      std::vector<pfcp::qfi_t> updated_qfis = {};
+      for (const auto& change : pcf_policy_delta.to_add) {
+        pfcp::qfi_t q = {};
+        q.qfi         = change.qfi;
+        updated_qfis.push_back(q);
+      }
+      for (const auto& change : pcf_policy_delta.to_modify) {
+        pfcp::qfi_t q = {};
+        q.qfi         = change.qfi;
+        updated_qfis.push_back(q);
+      }
+      sps->get_session_handler()->set_qfis_to_be_updated(updated_qfis);
+
+      return send_n4_pcf_initiated_modification(pcf_policy_delta);
+    }
 
     default: {
       Logger::smf_app().error(
@@ -1717,8 +2149,129 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // TODO [N4-MODIFY]: Implement N4 Response Handling for PCF-initiated updates
+      // Reference: Phase 2: N4 Session Modification Logic
+      // This handles the UPF response after N4 Session Modification Request
+      //
+      // Task: Process N4 Session Modification Response
+      //   1. Parse PFCP Session Modification Response from UPF
+      //   2. Check response cause code:
+      //      - If SUCCESS: Update session context with new QoS flows
+      //      - If FAILURE: Rollback policy changes, notify PCF
+      //   3. Update QoS flow state (Phase 3):
+      //      - Transition flows from PENDING_ESTABLISHMENT → ESTABLISHED
+      //      - Transition flows from PENDING_MODIFICATION → ESTABLISHED
+      //      - Transition flows from PENDING_RELEASE → RELEASED
+      //   4. Update PDR/FAR/QER mappings in session context
+      //   5. Build HTTP response for PCF:
+      //      - Success: HTTP 200 OK with updated policy
+      //      - Failure: HTTP 500 with ProblemDetails
+      //   6. For successful modifications:
+      //      - Generate N2 QoS flow setup/modify for RAN
+      //      - Update n11_triggered_pending->res with flow info
+      //      - Set continue_n4 based on next UPF in chain (if any)
+      //   7. Store updated policy decision (Phase 4):
+      //      - Call storage->update_policy_decision()
+      //      - Version the policy for rollback capability
+      //
+      // Error Handling:
+      //   - UPF rejects modification → rollback policy, notify PCF
+      //   - Timeout on N4 response → retry or rollback
+      //   - Partial success → log inconsistency, alert operator
+      //
+      // Standards:
+      //   - TS 29.244 §7.5.4 (PFCP Session Modification Request/Response)
+      //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
+      //   - TS 23.502 §4.3.3 (PDU Session Modification procedures)
+      //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer - N2)
+      //
+      // [QOS-MOCK] Phase 2 response — N4 Session Modification Response handling.
+      // Mocks the [N4-MODIFY] N4-response TODO task above:
+      //   - Cause check / success path: done for real (cause validated at the
+      //     top of this method as REQUEST_ACCEPTED). The QoS flow context(s) are
+      //     appended to n11_triggered_pending->res by the common code after this
+      //     switch (the HTTP 200 reply to the PCF).
+      //   - QoS-flow state transitions, PDR/FAR/QER remapping, failure rollback
+      //     and PCF notification: MOCKED — not implemented.
       continue_n4 = false;
-      // TODO:
+
+      // [QOS-MOCK] Phase 4 — N11 AMF update. Mocks the [N11-AMF-UPDATE] TODO
+      // tasks below:
+      //   - Task 4.6 (Invoke N1N2MessageTransfer): done for real, reusing the
+      //     network-requested modification path —
+      //     create_n1_pdu_session_modification_command(),
+      //     create_n2_pdu_session_resource_modify_request_transfer() and
+      //     smf_sbi::send_n1n2_message_transfer_request() all run with real
+      //     model objects and the real ITTI signalling.
+      //   - Task 4.3 (UE CM state check): MOCKED — UE assumed CM-CONNECTED.
+      //   - Tasks 4.4/4.5 (paging assistance data / UE-AMBR for CM-IDLE):
+      //     MOCKED — the CM-IDLE paging branch is not built.
+      //   - Task 4.7 (AMF/RAN rejection handling): MOCKED — response assumed
+      //     accepted; no rollback.
+      {
+        std::shared_ptr<itti_nx_trigger_pdu_session_modification> n1n2_trigger =
+            std::make_shared<itti_nx_trigger_pdu_session_modification>(
+                TASK_SMF_APP, TASK_SMF_SBI);
+        n1n2_trigger->http_version = n11_trigger->http_version;
+        n1n2_trigger->msg.set_supi(sc->get_supi());
+        n1n2_trigger->msg.set_dnn(sps->get_dnn());
+        n1n2_trigger->msg.set_pdu_session_id(sps->get_pdu_session_id());
+        n1n2_trigger->msg.set_snssai(sps->get_snssai());
+        // [QOS-MOCK] Advertise the QFI(s) we added and modified on the UPF (the
+        // delta's to_add + to_modify), not the QFIs from the incoming PCF
+        // request. The released flows (to_remove) ride through the session
+        // handler's get_qos_flows_to_be_released() and become the N1 DELETE
+        // rules / N2 QoS Flow To Release List inside the builders.
+        for (const auto& change : pcf_policy_delta.to_add) {
+          n1n2_trigger->msg.add_qfi(change.qfi);
+        }
+        for (const auto& change : pcf_policy_delta.to_modify) {
+          n1n2_trigger->msg.add_qfi(change.qfi);
+        }
+        Logger::smf_app().info(
+            "[QOS-MOCK] PCF-initiated: triggering N1N2MessageTransfer to AMF "
+            "for %zu QoS flow(s)",
+            list_of_qfis_to_be_modified.size());
+        sc->handle_pdu_session_modification_network_requested(n1n2_trigger);
+      }
+
+      // TODO [N11-AMF-UPDATE]: Trigger N11 N1N2MessageTransfer to AMF after UPF confirms N4 update
+      // Reference: Phase 4.6: N11 N1N2MessageTransfer Invocation
+      // The N11 infrastructure in smf_sbi.cpp is already implemented but never called here.
+      //
+      // Task 4.3: Check UE CM state (CM-IDLE vs CM-CONNECTED) [TS 23.501 §5.3.2]
+      //   - CM-CONNECTED → generate N1 + N2, invoke N1N2MessageTransfer
+      //   - CM-IDLE       → build paging assistance data only, defer N1/N2
+      //
+      // Task 4.4: Build paging assistance data for CM-IDLE UE [TS 23.501 §5.4.3.1, §5.4.3.2]
+      //   - Extract 5QI and ARP from highest-priority new/modified QoS flow in policy delta
+      //   - Derive Paging Policy Indicator (PPI) from DSCP marking
+      //   - Include 5QI, ARP, PPI in SmContextUpdatedData sent to AMF [TS 29.502 §5.6.2.2]
+      //   - AMF selects paging strategy and Paging Priority for N2 Paging [TS 23.501 §5.4.3.3]
+      //
+      // Task 4.5: Include UE-AMBR in SmContextUpdatedData [TS 23.501 §5.6.2]
+      //   - Retrieve subscribed UE-AMBR from session context / UDM subscription data
+      //   - AMF forwards it to RAN in PDU SESSION RESOURCE MODIFY REQUEST [TS 38.413 §8.2.3]
+      //
+      // Task 4.6: Generate N1 + N2 and invoke N1N2MessageTransfer [TS 23.502 §4.3.3.2 step 5b]
+      //   - N1: call smf_n1::create_n1_pdu_session_modification_command() [TS 24.501 §8.3.5]
+      //   - N2: call smf_n2::create_n2_pdu_session_resource_modify_request_transfer() [TS 38.413 §9.3.4.3]
+      //   - Populate n11_triggered_pending->res with N1/N2 payloads + UE-AMBR
+      //   - Call smf_sbi::send_n1n2_message_transfer_request()
+      //   - AMF encapsulates N1 → DL NAS TRANSPORT for UE [TS 38.413 §8.2.1.2]
+      //   - AMF encapsulates N2 → PDU SESSION RESOURCE MODIFY REQUEST for RAN [TS 38.413 §8.2.3.2]
+      //
+      // Task 4.7: Handle AMF/RAN rejection [TS 38.413 §8.6.2.2]
+      //   - Parse N1N2MessageTransfer response for QoS Flow Failed to Resume List
+      //   - If RAN rejects: rollback policy, notify PCF via N7 [TS 29.512 §4.2.6.1]
+      //   - If UE rejects: parse NAS PDU Session Modification Reject cause [TS 24.501 §8.3.6]
+      //   - If AMF cannot reach UE: trigger paging retry [TS 23.502 §4.2.3.3]
+      //
+      // Standards:
+      //   - TS 23.501 §5.6.2 (AMF as transparent relay for N1/N2 SM information)
+      //   - TS 23.501 §5.4.3 (Paging assistance data for CM-IDLE UE)
+      //   - TS 38.413 §8.2.3.2 (PDU SESSION RESOURCE MODIFY REQUEST)
+      //   - TS 38.413 §8.6.2.2 (QoS Flow Failed to Resume List)
     } break;
 
     default: {

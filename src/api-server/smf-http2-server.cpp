@@ -398,7 +398,7 @@ void smf_http2_server::start() {
 
   // SMF Callback (including SM Policy Notification)
   server.handle(
-      smf_sbi_helper::SmfCallbackBase(),
+      smf_sbi_helper::SmfCallbackBase() + "/",
       [&](const request& request, const response& response) {
         request.on_data([&](const uint8_t* data, std::size_t len) {
           if (len > 0) {

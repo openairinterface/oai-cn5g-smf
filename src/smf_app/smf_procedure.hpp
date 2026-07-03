@@ -225,6 +225,30 @@ class session_create_sm_context_procedure : public smf_session_procedure {
 };
 
 //------------------------------------------------------------------------------
+// [QOS-MOCK] One QoS flow to install on the UPF, produced by the (mocked)
+// policy-delta computation. In the real implementation these fields are derived
+// from the PCF QoS data; in the mock they are hardcoded.
+struct qos_flow_change {
+  uint8_t qfi{};                                          // QoS Flow Identifier
+  oai::_3gpp::model::QosData qos_profile{};               // 5QI, ARP, GBR/MBR
+  oai::_3gpp::model::FlowInformation flow_information{};  // SDF filter
+  unsigned int precedence{};
+};
+
+// [QOS-MOCK] Result of reconciling the PCF policy against the session: the QoS
+// flows to install (to_add → Create), to reconfigure in place (to_modify →
+// Update), and to release (to_remove → Remove). Splitting modify from add/
+// remove keeps the forwarding identity (F-TEID / UE-IP bindings) of unchanged
+// and reconfigured flows stable instead of tearing the pipeline down. This
+// struct is intended to survive into the real implementation; only the body of
+// compute_policy_delta() that fills it is mocked.
+struct policy_delta {
+  std::vector<qos_flow_change> to_add;     // new QoS flows  → Create PDR/FAR/QER
+  std::vector<qos_flow_change> to_modify;  // changed flows  → Update QER/FAR/PDR
+  std::vector<pfcp::qfi_t> to_remove;      // deleted flows  → Remove PDR/FAR/QER
+};
+
+//------------------------------------------------------------------------------
 class session_update_sm_context_procedure : public smf_session_procedure {
  public:
   explicit session_update_sm_context_procedure(
@@ -263,6 +287,12 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
+  // [QOS-MOCK] Policy delta computed in run() and carried to handle_itti_msg()
+  // so the single source of truth (to_add / to_remove) drives N4, N1 and N2.
+  // In the real implementation this would be the delta from compute_policy_delta
+  // (or the per-session QoS-flow state); see compute_policy_delta().
+  policy_delta pcf_policy_delta;
+
  private:
   /**
    * Sends a session modification request, based on the graph
@@ -274,6 +304,29 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
+
+  /**
+   * [QOS-MOCK] Compute the policy delta to apply to the UPF for a PCF-initiated
+   * modification. The real implementation will diff the current vs requested
+   * SmPolicyDecision; the mock IGNORES the arguments and returns a hardcoded
+   * delta: remove every QoS flow currently on the session and add one fixed GBR
+   * flow (QFI 5, 5QI 1). Same result on every invocation.
+   * TODO [QOS-MOCK-REMOVE]: replace the body with a real current-vs-requested
+   * diff (added/modified/removed PCC rules + QoS data) and a real QFI allocator.
+   */
+  policy_delta compute_policy_delta(
+      const oai::_3gpp::model::SmPolicyDecision& current,
+      const oai::_3gpp::model::SmPolicyDecision& requested);
+
+  /**
+   * [QOS-MOCK] Build and send a single N4 Session Modification Request that
+   * removes the rules for delta.to_remove and installs delta.to_add. Used only
+   * by the PCF-initiated path.
+   * TODO [QOS-MOCK-REMOVE]: once the delta is real, this can become the generic
+   * delta -> N4 translator (add/modify/remove) instead of remove-all/add-one.
+   */
+  smf_procedure_code send_n4_pcf_initiated_modification(
+      const policy_delta& delta);
 };
 
 //------------------------------------------------------------------------------
