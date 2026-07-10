@@ -332,6 +332,36 @@ void smf_pdu_session::add_ipv4_frame_route(
 }
 
 //------------------------------------------------------------------------------
+void smf_pdu_session::set_amf_addr(const std::string& addr) {
+  amf_addr = addr;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::get_amf_addr(std::string& addr) const {
+  addr = amf_addr;
+}
+
+//------------------------------------------------------------------------------
+std::string smf_pdu_session::get_amf_addr() const {
+  return amf_addr;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::set_amf_status_uri(const std::string& status_uri) {
+  amf_status_uri = status_uri;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::get_amf_status_uri(std::string& status_uri) const {
+  status_uri = amf_status_uri;
+}
+
+//------------------------------------------------------------------------------
+std::string smf_pdu_session::get_amf_status_uri() const {
+  return amf_status_uri;
+}
+
+//------------------------------------------------------------------------------
 void session_management_subscription::insert_dnn_configuration(
     const std::string& dnn,
     std::shared_ptr<dnn_configuration_t>& dnn_configuration) {
@@ -412,7 +442,7 @@ void smf_context::handle_itti_msg(
       std::shared_ptr<session_create_sm_context_procedure> proc_session_create =
           std::static_pointer_cast<session_create_sm_context_procedure>(proc);
       send_pdu_session_create_response(
-          proc_session_create->n11_triggered_pending);
+          proc_session_create->n11_triggered_pending, proc_session_create->sps);
       remove_procedure(proc.get());
     }
   } else {
@@ -529,7 +559,7 @@ void smf_context::handle_itti_msg(
                     ->get_sbi()
                     .get_api_version();
             std::string url =
-                get_amf_addr() +
+                sp->get_amf_addr() +
                 oai::smf::api::smf_sbi_helper::
                     get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
             session_report_msg.set_amf_url(url);
@@ -1067,11 +1097,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   // Store AMF callback URI and subscribe to the status notification: AMF will
   // be notified when SM context changes
   std::string amf_status_uri = smreq->req.get_sm_context_status_uri();
-  set_amf_status_uri(amf_status_uri);
+  sp->set_amf_status_uri(amf_status_uri);
 
   // Get and Store AMF Addr if available
   std::string amf_addr_str = get_amf_addr_from_amf_status_uri(amf_status_uri);
-  set_amf_addr(amf_addr_str);
+  sp->set_amf_addr(amf_addr_str);
 
   // Create SM Policy Association with PCF or local PCC rules
   // According to 3GPP TS 23.502 (Section 4.3.2.2.1), The purpose of this step
@@ -1301,7 +1331,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                   ->get_sbi()
                                   .get_api_version();
-    std::string url = get_amf_addr() +
+    std::string url = sp->get_amf_addr() +
                       oai::smf::api::smf_sbi_helper::
                           get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
     sm_context_resp_pending->res.set_amf_url(url);
@@ -2859,7 +2889,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   std::string api_version = smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
                                 ->get_sbi()
                                 .get_api_version();
-  std::string url = get_amf_addr() +
+  std::string url = sp->get_amf_addr() +
                     oai::smf::api::smf_sbi_helper::
                         get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   itti_msg->msg.set_amf_url(url);
@@ -3579,7 +3609,7 @@ void smf_context::handle_sm_context_status_change(
           TASK_SMF_APP, TASK_SMF_SBI);
   itti_msg->scid              = scid;
   itti_msg->sm_context_status = status;
-  itti_msg->amf_status_uri    = get_amf_status_uri();
+  itti_msg->amf_status_uri    = sp->get_amf_status_uri();
 
   int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
@@ -3960,7 +3990,7 @@ void smf_context::handle_flexcn_event(
       cj["snssai"]["sst"] = sp->get_snssai().sst;
       cj["snssai"]["sd"]  = sp->get_snssai().sd;
       cj["dnn"]           = sp->get_dnn();       // DNN
-      cj["amf_addr"]      = sc->get_amf_addr();  // Serving AMF addr
+      cj["amf_addr"]      = sp->get_amf_addr();  // Serving AMF addr
 
       cj["qos_flow"] = sp->get_session_handler()->create_qos_flows_json();
 
@@ -4301,36 +4331,6 @@ std::string smf_context::get_amf_addr_from_amf_status_uri(
 }
 
 //------------------------------------------------------------------------------
-void smf_context::set_amf_addr(const std::string& addr) {
-  amf_addr = addr;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_amf_addr(std::string& addr) const {
-  addr = amf_addr;
-}
-
-//------------------------------------------------------------------------------
-std::string smf_context::get_amf_addr() const {
-  return amf_addr;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::set_amf_status_uri(const std::string& status_uri) {
-  amf_status_uri = status_uri;
-}
-
-//------------------------------------------------------------------------------
-void smf_context::get_amf_status_uri(std::string& status_uri) const {
-  status_uri = amf_status_uri;
-}
-
-//------------------------------------------------------------------------------
-std::string smf_context::get_amf_status_uri() const {
-  return amf_status_uri;
-}
-
-//------------------------------------------------------------------------------
 void smf_context::set_target_amf(const std::string& amf) {
   target_amf = amf;
 }
@@ -4388,7 +4388,8 @@ void smf_context::send_pdu_session_establishment_response_reject(
 
 //------------------------------------------------------------------------------
 void smf_context::send_pdu_session_create_response(
-    const std::shared_ptr<itti_sbi_create_sm_context_response>& resp) {
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
+    const std::shared_ptr<smf_pdu_session>& sps) {
   // fill content for N1N2MessageTransfer (including N1, N2 SM)
   // Create N1 SM container & N2 SM Information
   std::string n1_sm_msg      = {};
@@ -4440,7 +4441,7 @@ void smf_context::send_pdu_session_create_response(
   // Fill N1N2MesasgeTransferRequestData
   // get SUPI and put into URL
   std::string supi = resp->res.get_supi();
-  std::string url  = get_amf_addr() +
+  std::string url  = sps->get_amf_addr() +
                     oai::smf::api::smf_sbi_helper::
                         get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
   resp->res.set_amf_url(url);

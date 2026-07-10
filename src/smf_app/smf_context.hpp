@@ -46,6 +46,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     ipv6_address                       = in6addr_any;
     released                           = false;
     dnn                                = {};
+    amf_addr                           = {};
+    amf_status_uri                     = {};
     snssai                             = {};
     pdu_session_type                   = {};
     seid                               = 0;
@@ -72,6 +74,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     pdu_session_id      = 0;
     dnn                 = {};
     snssai              = {};
+    amf_addr            = {};
+    amf_status_uri      = {};
     pdu_session_type    = {};
     ipv4_frame_route.clear();
     seid                        = 0;
@@ -210,6 +214,48 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    */
   void set_snssai(const snssai_t s);
 
+  /*
+   * Set AMF Addr of the serving AMF
+   * @param [const std::string&] addr: AMF Addr in string representation
+   * @return void
+   */
+  void set_amf_addr(const std::string& addr);
+
+  /*
+   * Get AMF Addr of the serving AMF (in string representation)
+   * @param [std::string&] addr: store AMF IP Addr
+   * @return void
+   */
+  void get_amf_addr(std::string& addr) const;
+
+  /*
+   * Get AMF Addr of the serving AMF (in string representation)
+   * @param void
+   * @return string: AMF IP Addr
+   */
+  std::string get_amf_addr() const;
+
+  /*
+   * Set the URI of AMF for receiving context status update
+   * @param [const std::string&] status_uri: AMF's URI
+   * @return void
+   */
+  void set_amf_status_uri(const std::string& status_uri);
+
+  /*
+   * Get the URI of AMF for receiving context status update
+   * @param [std::string&] status_uri: AMF's URI
+   * @return void
+   */
+  void get_amf_status_uri(std::string& status_uri) const;
+
+  /*
+   * Get the URI of AMF for receiving context status update
+   * @param void
+   * @return string
+   */
+  std::string get_amf_status_uri() const;
+
   void set_pending_n11_msg(const std::shared_ptr<itti_sbi_msg>& msg);
   void get_pending_n11_msg(std::shared_ptr<itti_sbi_msg>& msg) const;
   void set_number_retransmission_T3591(const uint8_t& n);
@@ -275,6 +321,9 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   std::shared_ptr<itti_sbi_msg> pending_n11_msg;
   uint8_t number_retransmission_T3591;
   uint8_t number_retransmission_T3592;
+
+  std::string amf_status_uri;
+  std::string amf_addr;
 };
 
 class session_management_subscription {
@@ -330,10 +379,8 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
         event_sub(),
         plmn(),
         m_sdm_subscriptions() {
-    amf_id         = {};
-    amf_addr       = {};
-    amf_status_uri = {};
-    target_amf     = {};
+    amf_id     = {};
+    target_amf = {};
     // Subscribe to SM Context Status Change
     sm_context_status_connection =
         event_sub.subscribe_sm_context_status(boost::bind(
@@ -998,53 +1045,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::shared_ptr<oai::nas::Nas5gsmMessage>& nas_message);
 
   /*
-   * Set AMF Addr of the serving AMF
-   * @param [const std::string&] addr: AMF Addr in string representation
-   * @return void
-   */
-  void set_amf_addr(const std::string& addr);
-
-  /*
-   * Get AMF Addr of the serving AMF (in string representation)
-   * @param [std::string&] addr: store AMF IP Addr
-   * @return void
-   */
-  void get_amf_addr(std::string& addr) const;
-
-  /*
-   * Get AMF Addr of the serving AMF (in string representation)
-   * @param void
-   * @return string: AMF IP Addr
-   */
-  std::string get_amf_addr() const;
-
-  /*
    * Get AMF Addr from the AMF Status URI (in string representation)
    * @param [const std::string&] status_uri: AMF's URI
    * @return string: AMF IP Addr
    */
   std::string get_amf_addr_from_amf_status_uri(const std::string& status_uri);
-
-  /*
-   * Set the URI of AMF for receiving context status update
-   * @param [const std::string&] status_uri: AMF's URI
-   * @return void
-   */
-  void set_amf_status_uri(const std::string& status_uri);
-
-  /*
-   * Get the URI of AMF for receiving context status update
-   * @param [std::string&] status_uri: AMF's URI
-   * @return void
-   */
-  void get_amf_status_uri(std::string& status_uri) const;
-
-  /*
-   * Get the URI of AMF for receiving context status update
-   * @param void
-   * @return string
-   */
-  std::string get_amf_status_uri() const;
 
   /*
    * Set target AMF in case of HO
@@ -1107,9 +1112,11 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   /**
    * Send a PDU session Create Response, based on the content of resp.
    * @param resp
+   * @param sps: PDU Session
    */
   void send_pdu_session_create_response(
-      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp);
+      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
+      const std::shared_ptr<smf_pdu_session>& sps);
 
   /**
    * Create a PDU session UPDATE response, based on the content of resp
@@ -1171,8 +1178,6 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
   plmn_t plmn;
 
   std::string amf_id;
-  std::string amf_addr;
-  std::string amf_status_uri;
   std::string target_amf;  // targetServingNfId
 
   // Big recursive lock
