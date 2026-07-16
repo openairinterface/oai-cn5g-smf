@@ -342,7 +342,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   if (edge->type == n3_type) {
-    source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N3;
+    source_interface_type.interface_type_value =
+        pfcp::_3GPP_INTERFACE_TYPE_N3_FOR_DATA_FORWARDING;
   } else if (edge->type == n9_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
   }
