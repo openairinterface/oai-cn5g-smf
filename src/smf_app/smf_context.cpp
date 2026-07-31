@@ -147,7 +147,7 @@ void smf_pdu_session::get_paa(paa_t& paa) {
 void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
   m_session_handler->deallocate_resources();
 
-  if (ipv4) {
+  if (ipv4 && !dnn.empty()) {
     paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
   }
   clear();
@@ -2249,6 +2249,10 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           // TODO:
           return false;
         }
+
+        // clear the resources including addresses allocated to this Session and
+        // associated QoS flows
+        sp->deallocate_ressources(dnn);
 
         // display info
         Logger::smf_app().info("SMF context: \n %s", toString().c_str());
@@ -4821,6 +4825,9 @@ void smf_context::send_pdu_session_release_response(
       case session_management_procedures_type_e::
           PDU_SESSION_RELEASE_AMF_INITIATED: {
         Logger::smf_app().info("PDU Session Release AMF-initiated");
+        // clear the resources including addresses allocated to this Session and
+        // associated QoS flows
+        sps->deallocate_ressources(resp->res.get_dnn());
         // TODO: To be completed
       } break;
 
@@ -4838,10 +4845,6 @@ void smf_context::send_pdu_session_release_response(
   } else {
     resp->res.set_http_code(http_status_code::NOT_ACCEPTABLE);
   }
-
-  // clear the resources including addresses allocated to this Session and
-  // associated QoS flows
-  sps->deallocate_ressources(resp->res.get_dnn());
 
   // send ITTI message to SMF_APP interface to trigger the response towards
   // AMFs
