@@ -75,13 +75,13 @@ The following files include contributions from Sprint and are licensed under Apa
 
 Credits for file generated via ASN1C:
 
-Files: src/oai-cn5g-common-src/ngap/{libngap, libngap_ies}/*
+Files: src/common-src/ngap/{libngap, libngap_ies}/*
 Source: https://github.com/mouse07410/asn1c
 Author: Lev Walkin <vlm@lionet.info>
 
 Credits for file generated via openapi-generator.tech:
 
-Files: src/oai-cn5g-common-src/model/*
+Files: src/common-src/model/*
 Source: https://openapi-generator.tech/
 NOTE: Files were also edited manually to fix auto-generated errors
 
