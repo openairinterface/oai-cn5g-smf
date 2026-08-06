@@ -247,6 +247,29 @@ class upf_graph {
       const std::shared_ptr<pfcp_association>& association_to_add);
 
   /**
+   * TODO [QOS-FLOW]: Implement QoS Flow / session-graph integration
+   * Reference: OAI_SMF_Gap_Analysis.md - Phase 3, Task 3.8 (Session Context
+   *            Integration: add_qos_flow / QosFlowContext) and Task 3.2 (QoS
+   *            Flow Creation)
+   *   - Add a new QoS flow to the session's QoS-flow context and UPF graph as
+   *     part of real flow creation (with QFI allocation and PDR/FAR/QER
+   *     bookkeeping), not as a standalone edge insertion
+   * Standards: TS 23.501 §5.7.1 (QoS model), §5.7.1.5 (flow ↔ rule mapping)
+   *
+   * [QOS-MOCK] Add a single QoS-flow edge to an existing UPF node in the graph.
+   * Thin public wrapper over add_upf_graph_edge(), used by the mock to install
+   * a genuinely new QoS flow (new QFI) mid-session so it is discoverable by
+   * get_access_edges()/get_edge_for_qfi() for the N1/N2 path.
+   * TODO [QOS-MOCK-REMOVE]: replace with proper Phase 3 flow creation (edge
+   * built from policy + QFI allocator + graph bookkeeping), not this shortcut.
+   * @param node the UPF the edge belongs to
+   * @param edge the edge to add
+   */
+  void add_qos_flow_edge(
+      const std::shared_ptr<pfcp_association>& node,
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  /**
    * @brief Get Association from an UPF node id hash
    * @param association_hash
    * @return shared_ptr to an association, may be null

@@ -399,7 +399,7 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       qos_flow_list);
 
   // TODO [N11-AMF-UPDATE]: QoS Flow to Release List — REQUIRED for PCF-initiated flow removal
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2: N2 NGAP Message Completeness
+  // Reference: Phase 4.2: N2 NGAP Message Completeness
   // Task 4.2: Build list of QFIs to release from the Phase 1 policy delta removed-rule list
   //   Encode using QosFlowToReleaseList IE [TS 38.413 §9.3.1.8]
   //   Required to signal RAN to tear down GBR radio bearers [TS 23.502 §4.3.3]
@@ -538,36 +538,107 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
       "Create N2 SM Information: NGAP PDU Session Resource Modify Request "
       "Transfer IE");
 
+  // TODO [N11-AMF-UPDATE]: Complete the N2 PDU Session Resource Modify Request
+  // Transfer for PCF-initiated updates
+  // Reference: Phase 4.2 (N2 NGAP Message Completeness)
+  //   - QoS Flow Add/Modify Request List from the added/modified policy flows
+  //   - QoS Flow To Release List from the removed PCC rules [TS 38.413 §9.3.1.8]
+  //   - Alternative QoS Profile per QoS flow item when requested by the RAN
+  //     [TS 23.501 §5.7.1.2a, TS 38.413 §9.3.1.51]
+  // Standards: TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer)
+  //
   // [QOS-MOCK] Build the N2 PDU Session Resource Modify Request Transfer from
-  // the session's existing QoS flow(s) carried in the network-requested
-  // message. This adapts the input into a pdu_session_update_sm_context_response
-  // and delegates to the real (implemented) overload above, so the NGAP IEs are
-  // genuinely encoded. The QoS profiles come from the established session flows
-  // (not from the PCF policy delta), and the QoS Flow To Release List and
-  // Alternative QoS Profile IEs are not produced.
-  // TODO [QOS-MOCK-REMOVE]: Implement the real PCF-initiated N2 transfer:
-  //   - derive QoS Flow Add/Modify items from the Phase 1 policy delta QoS data;
-  //   - build the QoS Flow To Release List from the removed PCC rules
-  //     [TS 38.413 §9.3.1.8] and the Alternative QoS Profile when requested
-  //     [TS 23.501 §5.7.1.2a].
-  //   See OAI_SMF_Gap_Analysis.md - Phase 4.2 (N2 NGAP Message Completeness).
+  // the PCF policy delta, driven by the same source as N4/N1:
+  //   - to_add: the new QoS flow(s) carried in the network-requested message →
+  //     QoS Flow Add/Modify Request List (+ UL TNL + Session-AMBR), produced by
+  //     the real core builder below;
+  //   - to_remove: the released flow(s) from the session handler
+  //     (get_qos_flows_to_be_released()) → QoS Flow To Release List.
+  // The added flow's QoS profile comes from the (mock) session edge state.
+  // TODO [QOS-MOCK-REMOVE]: derive the Add/Modify items and the Release List
+  //   from the real Phase 1 policy delta, and add the Alternative QoS Profile
+  //   when the RAN requests it [TS 23.501 §5.7.1.2a]. See Gap Analysis Phase 4.2.
   pdu_session_update_sm_context_response sm_context_res = {};
   sm_context_res.set_supi(msg.get_supi());
   sm_context_res.set_snssai(msg.get_snssai());
   sm_context_res.set_dnn(msg.get_dnn());
   sm_context_res.set_pdu_session_id(msg.get_pdu_session_id());
 
-  std::vector<pfcp::qfi_t> qfis = {};
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  std::vector<pfcp::qfi_t> qfis                         = {};
   msg.get_qfis(qfis);
   for (const auto& qfi : qfis) {
     qos_flow_context_updated qos_flow = {};
     if (msg.get_qos_flow_context_updated(qfi, qos_flow)) {
       sm_context_res.add_qos_flow_context_updated(qos_flow);
+      qos_flows[qfi.qfi] = qos_flow;
     }
   }
 
-  return create_n2_pdu_session_resource_modify_request_transfer(
-      sm_context_res, ngap_info_type, ngap_msg_str);
+  if (qos_flows.empty()) {
+    Logger::smf_n2().error(
+        "No QoS flow to add for the PCF-initiated N2 Modify Request Transfer");
+    return false;
+  }
+
+  // Add/Modify side via the real core builder (Session-AMBR, UL TNL Modify
+  // List, QoS Flow Add/Modify Request List).
+  auto sm_context_response =
+      std::make_shared<pdu_session_update_sm_context_response>(sm_context_res);
+  PduSessionResourceModifyRequestTransfer transfer = {};
+  if (!create_n2_pdu_session_resource_modify_request_transfer(
+          sm_context_response, qos_flows, ngap_info_type, transfer)) {
+    Logger::smf_n2().warn(
+        "Couldn't fill NGAP PDU Session Resource Modify Request Transfer "
+        "contents");
+    return false;
+  }
+
+  // [QOS-MOCK] QoS Flow To Release List, from the released flows (delta
+  // to_remove) stashed on the session handler during the N4 step.
+  std::shared_ptr<smf_context> sc     = {};
+  std::shared_ptr<smf_pdu_session> sp = {};
+  if (smf_app_inst->is_supi_2_smf_context(msg.get_supi())) {
+    sc = smf_app_inst->supi_2_smf_context(msg.get_supi());
+    if (sc->find_pdu_session(msg.get_pdu_session_id(), sp) && sp) {
+      std::vector<qos_flow_context_updated> released_flows =
+          sp->get_session_handler()->get_qos_flows_to_be_released();
+      if (!released_flows.empty()) {
+        QosFlowListWithCause release_list = {};
+        for (const auto& rf : released_flows) {
+          QosFlowWithCauseItem item = {};
+          QosFlowIdentifier qfi_id  = {};
+          qfi_id.set(rf.qfi.qfi);
+          // Qualify: both oai::ngap::Cause and oai::_3gpp::model::Cause are in
+          // scope here (two using-namespace directives) → unqualified is
+          // ambiguous.
+          oai::ngap::Cause cause = {};
+          cause.set(
+              Ngap_CauseRadioNetwork_release_due_to_5gc_generated_reason,
+              Ngap_Cause_PR_radioNetwork);
+          item.set(qfi_id, cause);
+          release_list.addItem(item);
+        }
+        transfer.setQosFlowToReleaseList(release_list);
+        Logger::smf_n2().info(
+            "[QOS-MOCK] N2 QoS Flow To Release List built with %zu flow(s)",
+            released_flows.size());
+      }
+    }
+  }
+
+  // Encode
+  uint8_t buffer[BUF_LEN];  // TODO: get actual message length
+  int encoded_size = transfer.encode(buffer, BUF_LEN);
+  if (encoded_size < 0) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Resource Modify Request Transfer encode failed "
+        "(encode size %d)",
+        encoded_size);
+    return false;
+  }
+  ngap_msg_str = std::string((char*) buffer, encoded_size);
+  return true;
 }
 
 //------------------------------------------------------------------------------
@@ -627,7 +698,7 @@ bool smf_n2::create_n2_path_switch_request_ack(
   // TODO: Redundant UL NG-U UP TNL Information
   // TODO: Additional Redundant NG-U UP TNL Information
   // TODO [N11-AMF-UPDATE]: QoS Flow Parameters List — required for Xn-based handover QoS continuity
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2
+  // Reference: Phase 4.2
   // Task 4.2: Encode updated QoS flow parameters after path switch [TS 38.413 §9.3.4.7, TS 23.502 §4.9.1.2]
 
   // Encode
@@ -692,10 +763,10 @@ bool smf_n2::create_n2_handover_command_transfer(
       dl_forwarding_up_tnl_information);
 
   // TODO [N11-AMF-UPDATE]: QoS Flow to be Forwarded List — required for N2-based handover data continuity
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.2
+  // Reference: Phase 4.2
   // Task 4.2: Identify QoS flows needing data forwarding during handover [TS 38.413 §9.3.4.5]
   // TODO [N11-AMF-UPDATE]: QoS Flow Failed to Setup List — relay RAN rejection back to SMF for rollback
-  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.7
+  // Reference: Phase 4.7
   // Task 4.7: Report flows not established on target cell [TS 38.413 §9.3.4.5, §8.6.2.2]
   // TODO: Data Forwarding Response DRB List (Optional)
   // TODO: Additional DL Forwarding UP TNL Information (Optional)

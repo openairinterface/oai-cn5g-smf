@@ -55,6 +55,26 @@ class session_handler {
   void set_qfis_to_be_updated(const std::vector<pfcp::qfi_t>& qfis);
 
   /**
+   * [QOS-MOCK] Build a "release" qos_flow_context_updated for a QFI being
+   * removed: a DELETE-operation NAS QoS rule (using the QFI's current
+   * qos_rule_id) and a DELETE-operation QoS flow description, with
+   * to_be_removed = true. Must be called BEFORE the edge is mutated/removed so
+   * the qos_rule_id is still valid.
+   * TODO [QOS-MOCK-REMOVE]: in the real implementation the released flows come
+   * from the policy delta's removed PCC rules, not a per-QFI lookup here.
+   */
+  qos_flow_context_updated build_release_flow(const pfcp::qfi_t& qfi);
+
+  /**
+   * [QOS-MOCK] Store/return the QoS flows to be released towards N1 (DELETE QoS
+   * rules + flow descriptions) and N2 (QoS Flow To Release List). Populated in
+   * the PCF-initiated N4 step, consumed by the N1/N2 builders.
+   */
+  void set_qos_flows_to_be_released(
+      const std::vector<qos_flow_context_updated>& flows);
+  std::vector<qos_flow_context_updated> get_qos_flows_to_be_released();
+
+  /**
    *
    * @return all qfis of the session
    */
@@ -181,6 +201,8 @@ class session_handler {
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
+  // [QOS-MOCK] QoS flows to be released towards N1/N2 (PCF-initiated removal).
+  std::vector<qos_flow_context_updated> m_qos_flows_to_be_released;
   uint8_t m_cause_value = k5gsmCauseRequestAccepted;  // for NGAP cause
   pdu_session_type_e m_pdu_session_type;
   oai::utils::uint_generator<uint32_t> m_qos_rule_id_generator;

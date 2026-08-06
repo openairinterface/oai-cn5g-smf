@@ -309,7 +309,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   pfcp::qfi_t default_qfi;  // Default QFI for this session
 
   // TODO [QOS-FLOW]: Add QoS Flow Management Infrastructure
-  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 3: QoS Flow Management
+  // Reference: Phase 3: QoS Flow Management
   // These members are required for comprehensive QoS flow lifecycle management
   //
   // Task 3.8: Session Context Integration
@@ -358,7 +358,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   //   - TS 29.244 §8.2.89 & §5.4.4 (QFI IE and QoS Control at UPF)
   //
   // TODO [STORAGE]: Add Storage Integration
-  // Reference: ENHANCED_QOS_SUPPORT.md - Phase 4: Storage and Persistence
+  // Reference: Phase 4: Storage and Persistence
   //   std::shared_ptr<SmPolicyDecision> m_current_policy_decision;
   //   - Store current policy decision from PCF
   //   - Used for delta computation (Phase 1)
