@@ -11,6 +11,7 @@
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
+#include "3gpp_29.512.h"
 #include "3gpp_commons.h"
 #include "Cause.hpp"
 #include "SmfEventNotification.h"
@@ -46,6 +47,7 @@
 #include "smf_paa_dynamic.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_procedure.hpp"
+#include "smf_policy_manager.hpp"
 #include "smf_sbi.hpp"
 #include "string.hpp"
 #include "utils.hpp"
@@ -2118,10 +2120,19 @@ bool smf_context::handle_an_release(
 //-------------------------------------------------------------------------------------
 bool smf_context::handle_pdu_session_update_sm_context_request(
     std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
-  Logger::smf_app().info(
-      "Handle a PDU Session Update SM Context Request message from an AMF "
-      "(HTTP version %d)",
-      smreq->http_version);
+  if (smreq->session_procedure_type ==
+      session_management_procedures_type_e::
+      PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    Logger::smf_app().info(
+            "Handle a PCF initiated PDU Session Update"
+            "(HTTP version %d)",
+            smreq->http_version);
+  } else {
+    Logger::smf_app().info(
+            "Handle a PDU Session Update SM Context Request message from an AMF "
+            "(HTTP version %d)",
+            smreq->http_version);
+  }
   pdu_session_update_sm_context_request sm_context_req_msg = smreq->req;
   std::string n1_sm_msg                                    = {};
   std::string n1_sm_msg_hex                                = {};
@@ -2662,69 +2673,106 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     //   - TS 29.512 §5.6.2.4 (SmPolicyDecision data structure)
     //   - TS 29.512 §5.6.2.6 (PccRule data structure)
     //   - TS 29.512 §5.6.2.8 (QosData data structure)
-    //   - TS 29.512 §4.2.3.26 (Error reporting and validation)
-    //   - TS 23.503 §6.1.3.6 (Policy Control - QoS authorization and enforcement)
-    //
-    // [QOS-MOCK] Phase 1 — PCF Policy Decision Processing (mock; no business
-    // logic). Mocks the [PCF-POLICY] TODO tasks above:
-    //   - Task 1.1 (Extract smPolicyDecision): done for real — parsed into the
-    //     oai::_3gpp::model::SmPolicyDecision model object.
-    //   - Task 1.5 (Compute policy delta): MOCKED — every rule/QoS entry is
-    //     treated as "added"; no diff against a stored current policy.
-    //   - Task 1.6 (Validate policy decision): MOCKED — skipped, assumed valid.
-    //   - Task 1.7 (Determine UPF update): MOCKED — always update_upf = true
-    //     when QoS flows exist; no QFI allocation. The policy is mapped onto the
-    //     session's existing QoS flow(s) so the rest of the end-to-end
-    //     signalling (N4 → N11) exercises real code paths.
+    // TODO: Think of moving the SM Association Modification handling to a separate function.
+    //  For that we would have to also move the update UPF proceture to a helper class so that
+    //  we can reuse it in the SM Policy Association Modification handling. For now, we will keep it here.
+
     nlohmann::json policy_json = {};
     smreq->req.get_json_data(policy_json);
 
-    if (policy_json.find("smPolicyDecision") != policy_json.end()) {
-      try {
-        oai::_3gpp::model::SmPolicyDecision sm_policy_decision = {};
-        from_json(policy_json["smPolicyDecision"], sm_policy_decision);
+    // Task 1.1: Parse the SmPolicyDecision from PCF notification
+    oai::_3gpp::model::SmPolicyDecision new_policy_decision = {};
+    bool policy_parsed =
+        smf_policy_manager::parse_policy_decision(policy_json, new_policy_decision);
 
-        for (const auto& it : sm_policy_decision.getPccRules()) {
-          Logger::smf_app().info(
-              "[QOS-MOCK] PCF PCC rule '%s' (precedence %d)",
-              it.second.getPccRuleId().c_str(), it.second.getPrecedence());
+    if (policy_parsed) {
+      // Task 1.5: Compute policy delta against current session policy
+      // TODO: Retrieve stored current policy from session context
+      // For now, use empty policy as baseline (treats all rules as new)
+      oai::_3gpp::model::SmPolicyDecision current_policy = {};
+      // current_policy = sp->get_stored_policy_decision();  // Future: retrieve from session
+
+      smf_policy_delta policy_delta =
+          smf_policy_manager::compute_delta(current_policy, new_policy_decision);
+
+      // Task 1.6: Validate policy decision
+      smf_policy_report validation_result =
+          smf_policy_manager::validate_policy(new_policy_decision);
+
+      // Check if there are any validation failures
+      if (!validation_result.rule_reports.empty()) {
+        // Check if ALL rules failed validation
+        if (new_policy_decision.pccRulesIsSet() && new_policy_decision.getPccRules().size() == validation_result.effected_rule_ids.size()) {
+          Logger::smf_app().error(
+              "PCF policy decision validation failed for ALL rules, rejecting update");
+          smf_app_inst->trigger_sm_policy_update_notify_error_response(
+              http_status_code::BAD_REQUEST,
+              smf_server_application_error_e::RULE_PERMANENT_ERROR,
+              validation_result.rule_reports,
+              validation_result.session_rule_reports,
+              smreq->pid);
+          return true;
+        } else {
+          // Partial failure - some rules failed but not all
+          // TODO: log and continue with the valid rules. When the UPF response comes
+          //  and we are sending the 200, we have to add the validation_result.rule_reports to the response
+          Logger::smf_app().warn(
+              "PCF policy decision has %zu failed rule(s), but not all rules failed. "
+              "Continuing with valid rules.",
+              validation_result.effected_rule_ids.size());
         }
-        for (const auto& it : sm_policy_decision.getQosDecs()) {
-          Logger::smf_app().info(
-              "[QOS-MOCK] PCF QoS data '%s': 5QI=%d, ARP priority=%d",
-              it.second.getQosId().c_str(), it.second.getR5qi(),
-              it.second.getArp().getPriorityLevel());
+      }
+
+      // Task 1.7: Determine if UPF update is required
+      if (policy_delta.requires_upf_update()) {
+        Logger::smf_app().info(
+            "PCF policy delta requires UPF update: %s",
+            policy_delta.to_string().c_str());
+
+        // Extract QoS flows from the new policy
+        std::vector<pcf_qos_flow> new_flows =
+            smf_policy_manager::extract_qos_flows(new_policy_decision);
+
+        Logger::smf_app().info(
+            "Extracted %zu QoS flow(s) from PCF policy", new_flows.size());
+
+        // Store the new policy decision in session for future delta computation
+        // TODO: sp->store_policy_decision(new_policy_decision);
+
+        // For now, map onto existing QoS flows (transition from mock)
+        // TODO: Implement proper QFI allocation for new flows
+        std::vector<pfcp::qfi_t> qfis_to_update =
+            sp->get_session_handler()->get_all_qfis();
+        sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
+        for (const auto& qfi : qfis_to_update) {
+          smreq->req.add_qfi(qfi.qfi);
         }
-      } catch (const std::exception& e) {
-        Logger::smf_app().warn(
-            "[QOS-MOCK] Failed to parse smPolicyDecision: %s", e.what());
+
+        update_upf = true;
+      } else {
+        Logger::smf_app().info(
+            "PCF policy delta does not require UPF update (no QoS changes)");
+        update_upf = false;
       }
     } else {
       Logger::smf_app().warn(
-          "[QOS-MOCK] PCF UpdateNotify without smPolicyDecision; proceeding "
-          "with mock QoS-flow mapping anyway");
+          "PCF UpdateNotify without valid smPolicyDecision; "
+          "proceeding with existing QoS flows");
+
+      // Fallback: update existing flows without policy changes
+      std::vector<pfcp::qfi_t> qfis_to_update =
+          sp->get_session_handler()->get_all_qfis();
+      sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
+      for (const auto& qfi : qfis_to_update) {
+        smreq->req.add_qfi(qfi.qfi);
+      }
+      update_upf = !qfis_to_update.empty();
     }
 
-    // MOCK: map the PCF policy onto the session's existing QoS flow(s). A real
-    // implementation would allocate a QFI per new QoS data entry and build the
-    // flow from the parsed parameters (see the Phase 2/3 TODOs below).
-    std::vector<pfcp::qfi_t> qfis_to_update =
-        sp->get_session_handler()->get_all_qfis();
-    sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
-    for (const auto& qfi : qfis_to_update) {
-      smreq->req.add_qfi(qfi.qfi);
-    }
-    Logger::smf_app().info(
-        "[QOS-MOCK] PCF-initiated modification will update %zu QoS flow(s)",
-        qfis_to_update.size());
-
-    // Drive the existing update procedure as a PCF-initiated modification so
-    // the PCF_INITIATED switch-cases in session_update_sm_context_procedure are
-    // reached.
+    // Set procedure type for PCF-initiated modification path
     procedure_type = session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED;
     pdu_session_release_procedure = false;
-    update_upf                    = !qfis_to_update.empty();
   }
 
   // Step 5. Create a procedure for update SM context and let the procedure
