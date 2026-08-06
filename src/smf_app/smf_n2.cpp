@@ -537,10 +537,37 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
   Logger::smf_n2().debug(
       "Create N2 SM Information: NGAP PDU Session Resource Modify Request "
       "Transfer IE");
-  // TODO:
-  Logger::smf_n2().warn("This function has not been implemented!");
 
-  return true;
+  // [QOS-MOCK] Build the N2 PDU Session Resource Modify Request Transfer from
+  // the session's existing QoS flow(s) carried in the network-requested
+  // message. This adapts the input into a pdu_session_update_sm_context_response
+  // and delegates to the real (implemented) overload above, so the NGAP IEs are
+  // genuinely encoded. The QoS profiles come from the established session flows
+  // (not from the PCF policy delta), and the QoS Flow To Release List and
+  // Alternative QoS Profile IEs are not produced.
+  // TODO [QOS-MOCK-REMOVE]: Implement the real PCF-initiated N2 transfer:
+  //   - derive QoS Flow Add/Modify items from the Phase 1 policy delta QoS data;
+  //   - build the QoS Flow To Release List from the removed PCC rules
+  //     [TS 38.413 §9.3.1.8] and the Alternative QoS Profile when requested
+  //     [TS 23.501 §5.7.1.2a].
+  //   See OAI_SMF_Gap_Analysis.md - Phase 4.2 (N2 NGAP Message Completeness).
+  pdu_session_update_sm_context_response sm_context_res = {};
+  sm_context_res.set_supi(msg.get_supi());
+  sm_context_res.set_snssai(msg.get_snssai());
+  sm_context_res.set_dnn(msg.get_dnn());
+  sm_context_res.set_pdu_session_id(msg.get_pdu_session_id());
+
+  std::vector<pfcp::qfi_t> qfis = {};
+  msg.get_qfis(qfis);
+  for (const auto& qfi : qfis) {
+    qos_flow_context_updated qos_flow = {};
+    if (msg.get_qos_flow_context_updated(qfi, qos_flow)) {
+      sm_context_res.add_qos_flow_context_updated(qos_flow);
+    }
+  }
+
+  return create_n2_pdu_session_resource_modify_request_transfer(
+      sm_context_res, ngap_info_type, ngap_msg_str);
 }
 
 //------------------------------------------------------------------------------
