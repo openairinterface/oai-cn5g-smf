@@ -250,6 +250,7 @@ class smf_policy_manager {
    */
   static smf_policy_report validate_policy(
       const oai::_3gpp::model::SmPolicyDecision& policy,
+      const smf_policy_delta& delta,
       const std::optional<std::string>& subscription_max_ul = std::nullopt,
       const std::optional<std::string>& subscription_max_dl = std::nullopt);
 

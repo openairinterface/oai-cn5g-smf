@@ -2692,8 +2692,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(current_policy, new_policy_decision);
 
       // Task 1.6: Validate policy decision
-      smf_policy_report validation_result =
-          smf_policy_manager::validate_policy(new_policy_decision);
+      smf_policy_report validation_result = smf_policy_manager::validate_policy(new_policy_decision, policy_delta_smf);
 
       // Check if there are any validation failures
       if (!validation_result.rule_reports.empty() && new_policy_decision.pccRulesIsSet()) {
@@ -2726,7 +2725,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             policy_delta_smf.to_string().c_str());
 
         // Store the new policy decision in session for future delta computation
-        // TODO: sp->store_policy_decision(new_policy_decision);
+        // TODO: new_policy_decision can be partial or the change only:
+        // Therefore new decision has to be constructed like the delta
         sp->policy_ptr->decision = new_policy_decision;
         // TODO: Also store last delta, for rollback
 
