@@ -1174,7 +1174,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
   // Handle PDU Session Update SM Context Request (section 4.3.2@3GPP TS 23.502)
   Logger::smf_app().info(
-      "Handle a PDU Session Update SM Context Request from an AMF (HTTP "
+      "Handle a PDU Session Update SM Context Request (HTTP "
       "version %d)",
       smreq->http_version);
 

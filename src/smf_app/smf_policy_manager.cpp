@@ -217,12 +217,12 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
       }
 
       // Use the first referenced QoS data
-      const std::string& qos_ref = pcc_rule.getRefQosData()[0];
-      auto qos_it = qos_decs.find(qos_ref);
+      auto qos_refs = pcc_rule.getRefQosData()[0];
+      auto qos_it = qos_decs.find(qos_refs);
       if (qos_it == qos_decs.end()) {
         Logger::smf_app().warn(
             "PCC rule '%s' references unknown QoS data '%s'",
-            change.rule_id.c_str(), qos_ref.c_str());
+            change.rule_id.c_str(), qos_refs.c_str());
         continue;
       }
       if (!pcc_rule.flowInfosIsSet() || pcc_rule.getFlowInfos().empty()) {
@@ -237,7 +237,7 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         flow_change.qfi = 0;  // QFI will be allocated when applying to graph
         flow_change.pcc_rule_id = change.rule_id;
         flow_change.qos_profile = qos_it->second;
-        flow_change.precedence = pcc_rule.getPrecedence();
+        flow_change.precedence = pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
         flow_change.flow_information = flow_info;
         upf_delta.to_add.push_back(flow_change);
       }
