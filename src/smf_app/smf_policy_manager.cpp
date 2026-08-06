@@ -24,91 +24,6 @@ using namespace oai::app::smf;
 using namespace oai::_3gpp::model;
 
 //------------------------------------------------------------------------------
-oai::_3gpp::model::QosData pcf_qos_flow::to_qos_data() const {
-  oai::_3gpp::model::QosData qos_data;
-  qos_data.setQosId(qos_data_id);
-  qos_data.setR5qi(fiveqi);
-  qos_data.setPriorityLevel(priority_level);
-
-  Arp arp;
-  arp.setPriorityLevel(arp_priority);
-
-  PreemptionCapability preempt_cap;
-  preempt_cap.setEnumValue(
-      arp_preempt_cap
-          ? PreemptionCapability_anyOf::ePreemptionCapability_anyOf::MAY_PREEMPT
-          : PreemptionCapability_anyOf::ePreemptionCapability_anyOf::
-                NOT_PREEMPT);
-  arp.setPreemptCap(preempt_cap);
-
-  PreemptionVulnerability preempt_vuln;
-  preempt_vuln.setEnumValue(
-      arp_preempt_vuln ? PreemptionVulnerability_anyOf::
-                             ePreemptionVulnerability_anyOf::PREEMPTABLE
-                       : PreemptionVulnerability_anyOf::
-                             ePreemptionVulnerability_anyOf::NOT_PREEMPTABLE);
-  arp.setPreemptVuln(preempt_vuln);
-
-  qos_data.setArp(arp);
-
-  if (gbr_ul.has_value()) {
-    qos_data.setGbrUl(gbr_ul.value());
-  }
-  if (gbr_dl.has_value()) {
-    qos_data.setGbrDl(gbr_dl.value());
-  }
-  if (maxbr_ul.has_value()) {
-    qos_data.setMaxbrUl(maxbr_ul.value());
-  }
-  if (maxbr_dl.has_value()) {
-    qos_data.setMaxbrDl(maxbr_dl.value());
-  }
-
-  return qos_data;
-}
-
-//------------------------------------------------------------------------------
-pcf_qos_flow pcf_qos_flow::from_qos_data(
-    const oai::_3gpp::model::QosData& qos_data, const std::string& qos_id) {
-  pcf_qos_flow flow;
-  flow.qos_data_id = qos_id;
-  flow.fiveqi = qos_data.getR5qi();
-
-  if (qos_data.priorityLevelIsSet()) {
-    flow.priority_level = qos_data.getPriorityLevel();
-  }
-
-  if (qos_data.arpIsSet()) {
-    const auto& arp = qos_data.getArp();
-    flow.arp_priority = arp.getPriorityLevel();
-
-    flow.arp_preempt_cap =
-        arp.getPreemptCap().getEnumValue() ==
-        PreemptionCapability_anyOf::ePreemptionCapability_anyOf::MAY_PREEMPT;
-
-    flow.arp_preempt_vuln =
-        arp.getPreemptVuln().getEnumValue() ==
-        PreemptionVulnerability_anyOf::ePreemptionVulnerability_anyOf::
-            PREEMPTABLE;
-  }
-
-  if (qos_data.gbrUlIsSet()) {
-    flow.gbr_ul = qos_data.getGbrUl();
-  }
-  if (qos_data.gbrDlIsSet()) {
-    flow.gbr_dl = qos_data.getGbrDl();
-  }
-  if (qos_data.maxbrUlIsSet()) {
-    flow.maxbr_ul = qos_data.getMaxbrUl();
-  }
-  if (qos_data.maxbrDlIsSet()) {
-    flow.maxbr_dl = qos_data.getMaxbrDl();
-  }
-
-  return flow;
-}
-
-//------------------------------------------------------------------------------
 std::string smf_policy_delta::to_string() const {
   std::stringstream ss;
   ss << "Policy Delta: ";
@@ -180,7 +95,7 @@ smf_policy_delta smf_policy_manager::compute_delta(
       Logger::smf_app().debug(
           "Policy delta: PCC rule '%s' ADDED (precedence %d)",
           rule_id.c_str(), new_rule.getPrecedence());
-    } else if (!pcc_rules_equal(current_it->second, new_rule)) {
+    } else if (current_it->second !=  new_rule) {
       // Existing rule changed - MODIFIED
       pcc_rule_change change;
       change.type = policy_change_type::MODIFIED;
@@ -239,7 +154,7 @@ smf_policy_delta smf_policy_manager::compute_delta(
           "Policy delta: QoS data '%s' ADDED (5QI=%d, ARP=%d)",
           qos_id.c_str(), new_qos.getR5qi(),
           new_qos.arpIsSet() ? new_qos.getArp().getPriorityLevel() : 0);
-    } else if (!qos_data_equal(current_it->second, new_qos)) {
+    } else if (current_it->second != new_qos) {
       // Existing QoS data changed - MODIFIED
       qos_data_change change;
       change.type = policy_change_type::MODIFIED;
@@ -275,76 +190,129 @@ smf_policy_delta smf_policy_manager::compute_delta(
 }
 
 //------------------------------------------------------------------------------
-std::vector<pcf_qos_flow> smf_policy_manager::extract_qos_flows(
-    const SmPolicyDecision& policy) {
-  std::vector<pcf_qos_flow> flows;
+policy_delta smf_policy_manager::convert_to_upf_delta(
+    const smf_policy_delta& delta,
+    const SmPolicyDecision& new_policy,
+    std::map<std::string, uint8_t>& rule_to_qfi_map) {
 
-  if (!policy.pccRulesIsSet() || !policy.qosDecsIsSet()) {
-    Logger::smf_app().debug(
-        "Policy has no PCC rules or QoS data, no flows to extract");
-    return flows;
+  policy_delta upf_delta = {};
+
+  // Get QoS data from new policy for looking up parameters
+  std::map<std::string, QosData> qos_decs;
+  if (new_policy.qosDecsIsSet()) {
+    qos_decs = new_policy.getQosDecs();
   }
 
-  const auto& pcc_rules = policy.getPccRules();
-  const auto& qos_decs = policy.getQosDecs();
+  for (const auto& change : delta.pcc_rule_changes) {
+    // Process ADDED PCC rules -> to_add
+    if (change.type == policy_change_type::ADDED  && change.new_rule.has_value()) {
 
-  for (const auto& [rule_id, pcc_rule] : pcc_rules) {
-    if (!pcc_rule.refQosDataIsSet()) {
-      Logger::smf_app().debug(
-          "PCC rule '%s' has no refQosData, skipping", rule_id.c_str());
-      continue;
-    }
+    const auto& pcc_rule = change.new_rule.value();
 
-    // A PCC rule can reference multiple QoS data entries
-    for (const auto& qos_ref : pcc_rule.getRefQosData()) {
+      // Get QoS data referenced by this PCC rule
+      if (!pcc_rule.refQosDataIsSet() || pcc_rule.getRefQosData().empty()) {
+        Logger::smf_app().warn(
+            "PCC rule '%s' has no refQosData, skipping", change.rule_id.c_str());
+        continue;
+      }
+
+      // Use the first referenced QoS data
+      const std::string& qos_ref = pcc_rule.getRefQosData()[0];
       auto qos_it = qos_decs.find(qos_ref);
       if (qos_it == qos_decs.end()) {
         Logger::smf_app().warn(
             "PCC rule '%s' references unknown QoS data '%s'",
-            rule_id.c_str(), qos_ref.c_str());
+            change.rule_id.c_str(), qos_ref.c_str());
+        continue;
+      }
+      if (!pcc_rule.flowInfosIsSet() || pcc_rule.getFlowInfos().empty()) {
+        Logger::smf_app().warn("PCC rule '%s' has no flow information, skipping", change.rule_id.c_str());
         continue;
       }
 
-      pcf_qos_flow flow = pcf_qos_flow::from_qos_data(qos_it->second, qos_ref);
-      flow.pcc_rule_id = rule_id;
-      flow.precedence = pcc_rule.getPrecedence();
-
-      // Extract flow descriptions from PCC rule
-      if (pcc_rule.flowInfosIsSet()) {
-        flow.flow_descriptions = pcc_rule.getFlowInfos();
+      const auto& flow_infos = pcc_rule.getFlowInfos();
+      for (const auto& flow_info : flow_infos) {
+        // Build qos_flow_change for to_add
+        qos_flow_change flow_change = {};
+        flow_change.qfi = 0;  // QFI will be allocated when applying to graph
+        flow_change.pcc_rule_id = change.rule_id;
+        flow_change.qos_profile = qos_it->second;
+        flow_change.precedence = pcc_rule.getPrecedence();
+        flow_change.flow_information = flow_info;
+        upf_delta.to_add.push_back(flow_change);
+      }
+      Logger::smf_app().debug(
+          "convert_to_upf_delta: Added %zu flows for rule '%s' (5QI=%d)",
+          flow_infos.size(), change.rule_id.c_str(), qos_it->second.getR5qi());
+    }
+    // Process MODIFIED PCC rules -> to_modify
+    if (change.type == policy_change_type::MODIFIED && change.new_rule.has_value()) {
+      // Find the existing QFI for this rule
+      auto qfi_it = rule_to_qfi_map.find(change.rule_id);
+      if (qfi_it == rule_to_qfi_map.end()) {
+        Logger::smf_app().warn(
+            "Modified PCC rule '%s' has no allocated QFI, treating as add",
+            change.rule_id.c_str());
+        // TODO: Could treat as add here
+        continue;
       }
 
-      // Check if this is the default rule
-      if (qos_it->second.defQosFlowIndicationIsSet() &&
-          qos_it->second.isDefQosFlowIndication()) {
-        flow.is_default = true;
+      const auto& pcc_rule = change.new_rule.value();
+
+      // Get QoS data
+      if (!pcc_rule.refQosDataIsSet() || pcc_rule.getRefQosData().empty()) {
+        continue;
+      }
+      const std::string& qos_ref = pcc_rule.getRefQosData()[0];
+      auto qos_it = qos_decs.find(qos_ref);
+      if (qos_it == qos_decs.end()) {
+        continue;
       }
 
-      flows.push_back(flow);
+      qos_flow_change flow_change = {};
+      flow_change.qfi = qfi_it->second;
+      flow_change.pcc_rule_id = change.rule_id;
+      flow_change.qos_profile = qos_it->second;
+      flow_change.precedence = pcc_rule.getPrecedence();
+
+      if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
+        flow_change.flow_information = pcc_rule.getFlowInfos()[0];
+      }
+
+      upf_delta.to_modify.push_back(flow_change);
+      Logger::smf_app().debug(
+          "convert_to_upf_delta: Modified flow QFI=%d for rule '%s'",
+          qfi_it->second, change.rule_id.c_str());
+    }
+
+    // Process REMOVED PCC rules -> to_remove
+    if (change.type == policy_change_type::REMOVED) {
+      auto qfi_it = rule_to_qfi_map.find(change.rule_id);
+      if (qfi_it == rule_to_qfi_map.end()) {
+        Logger::smf_app().warn(
+            "Removed PCC rule '%s' has no allocated QFI", change.rule_id.c_str());
+        continue;
+      }
+
+      pfcp::qfi_t qfi_to_remove = {};
+      qfi_to_remove.qfi = qfi_it->second;
+      upf_delta.to_remove.push_back(qfi_to_remove);
+
+      // Remove from map
+      rule_to_qfi_map.erase(qfi_it);
 
       Logger::smf_app().debug(
-          "Extracted QoS flow: PCC rule '%s' -> QoS '%s' (5QI=%d, prec=%d)",
-          rule_id.c_str(), qos_ref.c_str(), flow.fiveqi, flow.precedence);
+          "convert_to_upf_delta: Removed flow QFI=%d for rule '%s'",
+          qfi_to_remove.qfi, change.rule_id.c_str());
     }
   }
 
-  return flows;
-}
+  Logger::smf_app().info(
+      "convert_to_upf_delta: %zu to_add, %zu to_modify, %zu to_remove",
+      upf_delta.to_add.size(), upf_delta.to_modify.size(),
+      upf_delta.to_remove.size());
 
-//------------------------------------------------------------------------------
-uint8_t smf_policy_manager::allocate_qfi(
-    const std::set<uint8_t>& allocated_qfis) {
-  // QFI range is 0-63 (6 bits), but 0 is often reserved
-  // TS 23.501 §5.7.1.4: QFI uniquely identifies a QoS flow within a PDU session
-  for (uint8_t qfi = 1; qfi <= 63; ++qfi) {
-    if (allocated_qfis.find(qfi) == allocated_qfis.end()) {
-      Logger::smf_app().debug("Allocated QFI %d", qfi);
-      return qfi;
-    }
-  }
-
-  Logger::smf_app().error("QFI pool exhausted, cannot allocate new QFI");
-  return 0;  // Indicates allocation failure
+  return upf_delta;
 }
 
 //------------------------------------------------------------------------------
@@ -518,66 +486,6 @@ std::string smf_policy_manager::get_5qi_resource_type(int32_t fiveqi) {
     default:
       return "NON_GBR";
   }
-}
-
-//------------------------------------------------------------------------------
-bool smf_policy_manager::pcc_rules_equal(
-    const PccRule& a, const PccRule& b) {
-  // Compare key fields that affect UPF configuration
-  if (a.getPrecedence() != b.getPrecedence()) return false;
-
-  // Compare refQosData
-  if (a.refQosDataIsSet() != b.refQosDataIsSet()) return false;
-  if (a.refQosDataIsSet() && a.getRefQosData() != b.getRefQosData())
-    return false;
-
-  // Compare flow infos (SDF filters)
-  if (a.flowInfosIsSet() != b.flowInfosIsSet()) return false;
-  if (a.flowInfosIsSet()) {
-    const auto& a_flows = a.getFlowInfos();
-    const auto& b_flows = b.getFlowInfos();
-    if (a_flows.size() != b_flows.size()) return false;
-
-    // Simple comparison - could be made more sophisticated
-    for (size_t i = 0; i < a_flows.size(); ++i) {
-      if (a_flows[i].flowDescriptionIsSet() !=
-          b_flows[i].flowDescriptionIsSet())
-        return false;
-      if (a_flows[i].flowDescriptionIsSet() &&
-          a_flows[i].getFlowDescription() != b_flows[i].getFlowDescription())
-        return false;
-    }
-  }
-
-  return true;
-}
-
-//------------------------------------------------------------------------------
-bool smf_policy_manager::qos_data_equal(const QosData& a, const QosData& b) {
-  // Compare key QoS parameters that affect UPF configuration
-  if (a.getR5qi() != b.getR5qi()) return false;
-
-  // Compare ARP
-  if (a.arpIsSet() != b.arpIsSet()) return false;
-  if (a.arpIsSet()) {
-    if (a.getArp().getPriorityLevel() != b.getArp().getPriorityLevel())
-      return false;
-  }
-
-  // Compare bitrates
-  if (a.gbrUlIsSet() != b.gbrUlIsSet()) return false;
-  if (a.gbrUlIsSet() && a.getGbrUl() != b.getGbrUl()) return false;
-
-  if (a.gbrDlIsSet() != b.gbrDlIsSet()) return false;
-  if (a.gbrDlIsSet() && a.getGbrDl() != b.getGbrDl()) return false;
-
-  if (a.maxbrUlIsSet() != b.maxbrUlIsSet()) return false;
-  if (a.maxbrUlIsSet() && a.getMaxbrUl() != b.getMaxbrUl()) return false;
-
-  if (a.maxbrDlIsSet() != b.maxbrDlIsSet()) return false;
-  if (a.maxbrDlIsSet() && a.getMaxbrDl() != b.getMaxbrDl()) return false;
-
-  return true;
 }
 
 
