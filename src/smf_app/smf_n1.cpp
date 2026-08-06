@@ -389,8 +389,12 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
-  // TODO: RQ timer value
-  // TODO: AlwaysonPDUSessionIndication
+  // TODO [N11-AMF-UPDATE]: Complete missing N1 NAS-SM PDU Session Modification Command IEs
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1: N1 NAS-SM Message Completeness
+  //   - RQ timer value: encode Reflective QoS timer when active [TS 24.501 §9.11.4.24, TS 23.501 §5.7.2.3]
+  //   - AlwaysonPDUSessionIndication: include when session is always-on [TS 24.501 §9.11.4.3]
+  // Standards: TS 24.501 §8.3.5 (PDU Session Modification Command)
+  //            TS 23.501 §8.2.2.3 (NAS-SM transparent relay via AMF)
 
   // Authorized QoS rules
   // Get the authorized QoS Rules
@@ -400,9 +404,15 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   qos_rules.Set(qos_rule_list);
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
-  // TODO: MappedEPSBearerContexts
+  // TODO [N11-AMF-UPDATE]: MappedEPSBearerContexts IE — required for N26 EPS interworking handover
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Task 4.1: Map 5G QoS flows to EPS EBI and TFTs [TS 24.501 §9.11.4.5, TS 23.502 §4.11]
 
-  // TODO: Authorized QoS Flow Descriptions
+  // TODO [N11-AMF-UPDATE]: Authorized QoS Flow Descriptions IE — must encode per-flow operation code
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Task 4.1: For each flow in the PCF policy delta encode: QFI, operation code (CREATE/MODIFY/DELETE),
+  //           5QI, and GBR/MBR; derive from Phase 1 delta, not just existing session state
+  //           [TS 24.501 §9.11.4.12, TS 23.502 §4.3.3.2 step 5b]
   std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
@@ -517,8 +527,12 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   sc->get_session_ambr(session_ambr, msg.get_snssai(), msg.get_dnn());
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
-  // TODO: RQ timer value
-  // TODO: AlwaysonPDUSessionIndication
+  // TODO [N11-AMF-UPDATE]: Complete missing N1 NAS-SM PDU Session Modification Command IEs
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1: N1 NAS-SM Message Completeness
+  //   - RQ timer value: encode Reflective QoS timer when active [TS 24.501 §9.11.4.24, TS 23.501 §5.7.2.3]
+  //   - AlwaysonPDUSessionIndication: include when session is always-on [TS 24.501 §9.11.4.3]
+  // Standards: TS 24.501 §8.3.5 (PDU Session Modification Command)
+  //            TS 23.501 §8.2.2.3 (NAS-SM transparent relay via AMF)
 
   // Authorized QoS rules
   // Get the authorized QoS Rules
@@ -529,9 +543,15 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   qos_rules.Set(qos_rule_list);
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
-  // TODO: MappedEPSBearerContexts
+  // TODO [N11-AMF-UPDATE]: MappedEPSBearerContexts IE — required for N26 EPS interworking handover
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Task 4.1: Map 5G QoS flows to EPS EBI and TFTs [TS 24.501 §9.11.4.5, TS 23.502 §4.11]
 
-  // TODO: Authorized QoS Flow Descriptions
+  // TODO [N11-AMF-UPDATE]: Authorized QoS Flow Descriptions IE — must encode per-flow operation code
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.1
+  // Task 4.1: For each flow in the PCF policy delta encode: QFI, operation code (CREATE/MODIFY/DELETE),
+  //           5QI, and GBR/MBR; derive from Phase 1 delta, not just existing session state
+  //           [TS 24.501 §9.11.4.12, TS 23.502 §4.3.3.2 step 5b]
   std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 

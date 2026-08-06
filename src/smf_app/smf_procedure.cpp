@@ -1825,6 +1825,44 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       //
       // Current implementation (INCOMPLETE - no response handling):
       continue_n4 = false;
+
+      // TODO [N11-AMF-UPDATE]: Trigger N11 N1N2MessageTransfer to AMF after UPF confirms N4 update
+      // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.6: N11 N1N2MessageTransfer Invocation
+      // The N11 infrastructure in smf_sbi.cpp is already implemented but never called here.
+      //
+      // Task 4.3: Check UE CM state (CM-IDLE vs CM-CONNECTED) [TS 23.501 §5.3.2]
+      //   - CM-CONNECTED → generate N1 + N2, invoke N1N2MessageTransfer
+      //   - CM-IDLE       → build paging assistance data only, defer N1/N2
+      //
+      // Task 4.4: Build paging assistance data for CM-IDLE UE [TS 23.501 §5.4.3.1, §5.4.3.2]
+      //   - Extract 5QI and ARP from highest-priority new/modified QoS flow in policy delta
+      //   - Derive Paging Policy Indicator (PPI) from DSCP marking
+      //   - Include 5QI, ARP, PPI in SmContextUpdatedData sent to AMF [TS 29.502 §5.6.2.2]
+      //   - AMF selects paging strategy and Paging Priority for N2 Paging [TS 23.501 §5.4.3.3]
+      //
+      // Task 4.5: Include UE-AMBR in SmContextUpdatedData [TS 23.501 §5.6.2]
+      //   - Retrieve subscribed UE-AMBR from session context / UDM subscription data
+      //   - AMF forwards it to RAN in PDU SESSION RESOURCE MODIFY REQUEST [TS 38.413 §8.2.3]
+      //
+      // Task 4.6: Generate N1 + N2 and invoke N1N2MessageTransfer [TS 23.502 §4.3.3.2 step 5b]
+      //   - N1: call smf_n1::create_n1_pdu_session_modification_command() [TS 24.501 §8.3.5]
+      //   - N2: call smf_n2::create_n2_pdu_session_resource_modify_request_transfer() [TS 38.413 §9.3.4.3]
+      //   - Populate n11_triggered_pending->res with N1/N2 payloads + UE-AMBR
+      //   - Call smf_sbi::send_n1n2_message_transfer_request()
+      //   - AMF encapsulates N1 → DL NAS TRANSPORT for UE [TS 38.413 §8.2.1.2]
+      //   - AMF encapsulates N2 → PDU SESSION RESOURCE MODIFY REQUEST for RAN [TS 38.413 §8.2.3.2]
+      //
+      // Task 4.7: Handle AMF/RAN rejection [TS 38.413 §8.6.2.2]
+      //   - Parse N1N2MessageTransfer response for QoS Flow Failed to Resume List
+      //   - If RAN rejects: rollback policy, notify PCF via N7 [TS 29.512 §4.2.6.1]
+      //   - If UE rejects: parse NAS PDU Session Modification Reject cause [TS 24.501 §8.3.6]
+      //   - If AMF cannot reach UE: trigger paging retry [TS 23.502 §4.2.3.3]
+      //
+      // Standards:
+      //   - TS 23.501 §5.6.2 (AMF as transparent relay for N1/N2 SM information)
+      //   - TS 23.501 §5.4.3 (Paging assistance data for CM-IDLE UE)
+      //   - TS 38.413 §8.2.3.2 (PDU SESSION RESOURCE MODIFY REQUEST)
+      //   - TS 38.413 §8.6.2.2 (QoS Flow Failed to Resume List)
     } break;
 
     default: {
