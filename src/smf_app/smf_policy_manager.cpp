@@ -19,6 +19,7 @@
 #include "FailureCode.h"
 #include "FailureCode_anyOf.h"
 #include "SessionRuleReport.h"
+#include "sdf_conversions.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::_3gpp::model;
@@ -112,6 +113,7 @@ smf_policy_delta smf_policy_manager::compute_delta(
   }
 
   // Find removed PCC rules (in current but not in requested)
+  //TODO: only remove if the key is mapped to null value
   for (const auto& [rule_id, old_rule] : current_rules) {
     if (requested_rules.find(rule_id) == requested_rules.end()) {
       pcc_rule_change change;
@@ -318,6 +320,7 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
 //------------------------------------------------------------------------------
 smf_policy_report smf_policy_manager::validate_policy(
     const SmPolicyDecision& policy,
+    const smf_policy_delta& delta,
     const std::optional<std::string>& subscription_max_ul,
     const std::optional<std::string>& subscription_max_dl) {
 
@@ -347,8 +350,25 @@ smf_policy_report smf_policy_manager::validate_policy(
     }
   }
 
+  // Prepare subscription max values
+  uint32_t sub_max_ul = 0, sub_max_dl = 0;
+  if (subscription_max_ul.has_value() || subscription_max_dl.has_value()) {
+    // Compare against subscription limits
+    if (subscription_max_ul.has_value()) {
+      utils::sdf_conversions::parse_bitrate_string_to_unit(
+          subscription_max_ul.value(), utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_ul);
+    }
+    if (subscription_max_dl.has_value()) {
+      utils::sdf_conversions::parse_bitrate_string_to_unit(
+          subscription_max_dl.value(), utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_dl);
+    }
+  }
+
   // Validate QoS data and create RuleReports for failures
   if (policy.qosDecsIsSet()) {
+    uint64_t total_mbr_ul = 0, total_mbr_dl = 0;
+    std::vector<std::string> mod_pcc_rules;
+    std::vector<std::string> add_pcc_rules;
     const auto& qos_decs = policy.getQosDecs();
     for (const auto& [qos_id, qos_data] : qos_decs) {
       bool qos_valid         = true;
@@ -403,26 +423,51 @@ smf_policy_report smf_policy_manager::validate_policy(
       }
     }
 
+    // TODO: Session AMBR verification
+    // Calculate what is occupied by current functions
+    // Verify each modification if it will still within the limit
+    // Verify each additional rule if it is still within the limit
+
+
     // Create a RuleReport for the failed PCC rules
     if (!unique_failed_pcc_rules.empty()) {
-      RuleReport rule_report;
+      std::vector<std::string> inactive_failed_rules;
+      std::vector<std::string> active_failed_rules;
 
-      std::vector<std::string> failed_vector(unique_failed_pcc_rules.begin(), unique_failed_pcc_rules.end());
-      rule_report.setPccRuleIds(failed_vector);
+      for (const auto& pcc_rule_id : unique_failed_pcc_rules) {
+        if (delta.modified_pcc_rules.count(pcc_rule_id) > 0) {
+          active_failed_rules.push_back(pcc_rule_id);
+        } else {
+          inactive_failed_rules.push_back(pcc_rule_id);
+        }
+      }
 
-      // Set rule status to INACTIVE
-      RuleStatus rule_status;
-      rule_status.setEnumValue(
-              RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
-      rule_report.setRuleStatus(rule_status);
-
-      // Set failure code to UNSUCC_QOS_VAL
       FailureCode failure_code;
       failure_code.setEnumValue(
               FailureCode_anyOf::eFailureCode_anyOf::UNSUCC_QOS_VAL);
-      rule_report.setFailureCode(failure_code);
 
-      result.rule_reports.push_back(rule_report);
+      if (!inactive_failed_rules.empty()) {
+        RuleReport rule_report_inactive;
+        rule_report_inactive.setPccRuleIds(inactive_failed_rules);
+        RuleStatus rule_status_inactive;
+        rule_status_inactive.setEnumValue(
+                RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
+        rule_report_inactive.setRuleStatus(rule_status_inactive);
+        rule_report_inactive.setFailureCode(failure_code);
+        result.rule_reports.push_back(rule_report_inactive);
+      }
+
+      if (!active_failed_rules.empty()) {
+        RuleReport rule_report_active;
+        rule_report_active.setPccRuleIds(active_failed_rules);
+        RuleStatus rule_status_active;
+        rule_status_active.setEnumValue(
+                RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
+        rule_report_active.setRuleStatus(rule_status_active);
+        rule_report_active.setFailureCode(failure_code);
+        result.rule_reports.push_back(rule_report_active);
+      }
+
       result.effected_rule_ids.insert(unique_failed_pcc_rules.begin(), unique_failed_pcc_rules.end());
 
       Logger::smf_app().warn(
@@ -430,10 +475,6 @@ smf_policy_report smf_policy_manager::validate_policy(
               unique_failed_pcc_rules.size());
     }
   }
-
-  // TODO: Add bandwidth validation against subscription limits
-  (void) subscription_max_ul;
-  (void) subscription_max_dl;
 
   return result;
 }
