@@ -2621,9 +2621,42 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   if (smreq->session_procedure_type ==
       session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED) {
-    // Process the request -> update UPF if necesssary
-    // TODO:
-    // example:
+    // TODO [PCF-POLICY]: Implement PCF Policy Decision Processing
+    // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1: PCF Policy Decision Processing
+    // Task 1.1: Extract smPolicyDecision from JSON request data
+    //   - Call extract_sm_policy_decision(smreq->req)
+    //   - Parse JSON: smreq->req.get_json_data(json_data)
+    //   - Extract pccRules, qosDecs, traffContDecs from json_data["smPolicyDecision"]
+    //
+    // Task 1.5: Compute policy delta to identify changes
+    //   - Call compute_policy_delta(current_policy, new_policy)
+    //   - Identify: added/modified/removed PCC rules
+    //   - Identify: added/modified/removed QoS data entries
+    //   - Identify: added/modified/removed traffic control entries
+    //
+    // Task 1.6: Validate policy decision against subscription limits
+    //   - Call validate_policy_decision(delta, subscription_profile)
+    //   - Check cumulative bandwidth against subscription limits
+    //   - Verify PCC rule precedence uniqueness
+    //   - Validate 5QI values are supported
+    //   - Check network slice resource availability
+    //
+    // Task 1.7: Determine if UPF update is required
+    //   - If PCC rules changed → update_upf = true
+    //   - If QoS data changed → update_upf = true
+    //   - If traffic control changed → update_upf = true
+    //   - If only non-flow parameters changed → update_upf = false
+    //   - Store policy_delta in procedure context for N4 building
+    //
+    // Standards:
+    //   - TS 29.512 §4.2.3.2 (PCF-initiated SM Policy Association Modification)
+    //   - TS 29.512 §5.6.2.4 (SmPolicyDecision data structure)
+    //   - TS 29.512 §5.6.2.6 (PccRule data structure)
+    //   - TS 29.512 §5.6.2.8 (QosData data structure)
+    //   - TS 29.512 §4.2.3.26 (Error reporting and validation)
+    //   - TS 23.503 §6.1.3.6 (Policy Control - QoS authorization and enforcement)
+    //
+    // Current implementation (INCOMPLETE - always sets update_upf = false):
     pdu_session_release_procedure = false;
     update_upf                    = false;
   }
@@ -4863,7 +4896,31 @@ void smf_context::send_pdu_session_release_response(
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
-        // TODO: To be completed
+        // TODO [PCF-POLICY]: Implement PCF-initiated Session Release/Termination
+        // Reference: ENHANCED_QOS_SUPPORT.md - Phase 1 (Error Handling section)
+        // Note: This is DIFFERENT from modification - handles TerminationNotification
+        //
+        // Task: Handle PCF TerminationNotification
+        //   1. Extract termination reason from PCF request:
+        //      - Parse TerminationNotification from JSON
+        //      - Reason codes: UE_TERMINATION, REALLOCATION_OF_CREDIT, etc.
+        //   2. Clean up policy associations:
+        //      - Remove SM Policy Association from PCF
+        //      - Cleanup app-session to SM-policy binding
+        //      - Delete stored policy decisions (Phase 4)
+        //   3. Trigger PDU session release procedure:
+        //      - Follow normal session release flow
+        //      - Release all QoS flows (Phase 3)
+        //      - Send N4 Session Deletion to UPF
+        //      - Send N2 Session Release to RAN
+        //   4. Respond to PCF:
+        //      - HTTP 204 No Content on success
+        //      - HTTP 500 on internal error
+        //
+        // Standards:
+        //   - TS 29.514 §4.2.5.3 (Termination Notification)
+        //   - TS 29.512 §4.2.4 (SM Policy Association Termination)
+        //   - TS 23.502 §4.3.4 (PDU Session Release)
       } break;
 
       case session_management_procedures_type_e::DEREGISTRATION_UE_INITIATED: {
