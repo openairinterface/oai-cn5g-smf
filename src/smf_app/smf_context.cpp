@@ -490,7 +490,8 @@ void smf_context::handle_itti_msg(
           proc_session_update->n11_trigger,
           proc_session_update->n11_triggered_pending,
           proc_session_update->session_procedure_type,
-          proc_session_update->sps);
+          proc_session_update->sps,
+          proc_session_update->validation_report);
       remove_procedure(proc.get());
     }
   } else {
@@ -2141,6 +2142,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   bool update_upf                                          = false;
   bool pdu_session_release_procedure                       = false;
   std::optional<policy_delta> policy_delta;
+  smf_policy_report validation_report;
   session_management_procedures_type_e procedure_type(
       session_management_procedures_type_e::
           PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
@@ -2709,12 +2711,42 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           return true;
         } else {
           // Partial failure - some rules failed but not all
-          // TODO: log and continue with the valid rules. When the UPF response comes
-          //  and we are sending the 200, we have to add the validation_result.rule_reports to the response
+          validation_report = validation_result;
           Logger::smf_app().warn(
               "PCF policy decision has %zu failed rule(s), but not all rules failed. "
               "Continuing with valid rules.",
               validation_result.effected_rule_ids.size());
+
+          // Remove failed rules from new_policy_decision so only valid rules go to UPF
+          if (new_policy_decision.pccRulesIsSet()) {
+            auto pcc_rules = new_policy_decision.getPccRules();
+            for (const auto& failed_rule_id : validation_result.effected_rule_ids) {
+              pcc_rules.erase(failed_rule_id);
+            }
+            new_policy_decision.setPccRules(pcc_rules);
+
+            Logger::smf_app().info(
+                "Removed %zu failed rule(s) from policy decision, %zu valid rules remain",
+                validation_result.effected_rule_ids.size(), pcc_rules.size());
+          }
+
+          // Remove failed rules from the delta
+          auto remove_failed_from_changes = [&](std::vector<pcc_rule_change>& changes) {
+            changes.erase(
+                std::remove_if(changes.begin(), changes.end(),
+                    [&](const pcc_rule_change& c) {
+                      return validation_result.effected_rule_ids.count(c.rule_id) > 0;
+                    }),
+                changes.end());
+          };
+          remove_failed_from_changes(policy_delta_smf.pcc_rule_changes);
+
+          // Also update the quick-access sets
+          for (const auto& failed_rule_id : validation_result.effected_rule_ids) {
+            policy_delta_smf.added_pcc_rules.erase(failed_rule_id);
+            policy_delta_smf.modified_pcc_rules.erase(failed_rule_id);
+            policy_delta_smf.removed_pcc_rules.erase(failed_rule_id);
+          }
         }
       }
 
@@ -2801,6 +2833,9 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       proc->session_procedure_type         = procedure_type;
       if (policy_delta) {
         proc->policy_delta_upf = std::move(*policy_delta);
+      }
+      if (!validation_report.all_rules_valid()) {
+        proc->validation_report = std::move(validation_report);
       }
 
       insert_procedure(sproc);
@@ -4703,7 +4738,8 @@ void smf_context::send_pdu_session_update_response(
     const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
     const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
     const session_management_procedures_type_e& session_procedure_type,
-    const std::shared_ptr<smf_pdu_session>& sps) {
+    const std::shared_ptr<smf_pdu_session>& sps,
+    const smf_policy_report& validation_report) {
   std::string n1_sm_msg      = {};
   std::string n1_sm_msg_hex  = {};
   std::string n2_sm_info     = {};
@@ -4895,35 +4931,47 @@ void smf_context::send_pdu_session_update_response(
 
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-        // TODO [PCF-POLICY]: Build the PCF-initiated SM Policy Association
-        // Modification response
-        // Reference: Phase 1, Task 1.9 (Error
-        //            Handling) and the PCF-initiated response path
-        //   - Acknowledge the Npcf_SMPolicyControl_UpdateNotify per outcome:
-        //     200 OK when applied; 4xx ProblemDetails when (partly) rejected
-        //   - Reflect accepted vs rejected PCC rules from the Phase 1 delta
-        //   - Maintain the current policy on validation failure (no partial
-        //     apply for a rejected rule)
-        // Standards:
-        //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
-        //   - TS 29.512 §4.2.3.16 / §4.2.3.26 (error reporting / status codes)
-        //
-        // [QOS-MOCK] Acknowledge the PCF-initiated SM Policy Association
-        // Modification (Npcf_SMPolicyControl_UpdateNotify) with 200 OK
-        // [TS 29.512 §4.2.3.2]. The N1 (UE) and N2 (RAN) payloads are NOT
-        // carried in this response — they are delivered to the AMF separately
-        // via the N1N2MessageTransfer triggered from the N4 response handler.
-        // The PCF callback handler only checks for the 200 status, so no
-        // SmContextUpdatedData body is required here.
-        // TODO [QOS-MOCK-REMOVE]: Replace with the real PCF response handling:
-        //   - reflect accepted vs rejected PCC rules from the Phase 1 policy
-        //     delta;
-        //   - on partial failure, return ProblemDetails with the appropriate
-        //     status (e.g. 403) instead of an unconditional 200
-        //     [TS 29.512 §4.2.3.26].
+        // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
+        // Modification. On partial validation failure, include rule reports
+        // in the response per TS 29.512 §5.6.2.26 (PartialSuccessReport).
         Logger::smf_app().info(
             "PDU Session Modification PCF-initiated: acknowledging PCF "
             "UpdateNotify with 200 OK");
+
+        // Check if we have any validation failures to report
+        if (!validation_report.all_rules_valid()) {
+          // Build response with partial success report (rule reports)
+          // per TS 29.512 §5.6.2.26 (PartialSuccessReport)
+          nlohmann::json json_data = {};
+
+          // Include rule reports for failed PCC rules
+          if (!validation_report.rule_reports.empty()) {
+            nlohmann::json rule_reports_json = nlohmann::json::array();
+            for (const auto& rule_report : validation_report.rule_reports) {
+              nlohmann::json report_json;
+              to_json(report_json, rule_report);
+              rule_reports_json.push_back(report_json);
+            }
+            json_data["ruleReports"] = rule_reports_json;
+            Logger::smf_app().warn(
+                "PCF UpdateNotify response includes %zu failed PCC rule report(s)",
+                validation_report.rule_reports.size());
+          }
+
+          // Include session rule reports if any
+          if (!validation_report.session_rule_reports.empty()) {
+            nlohmann::json sess_rule_reports_json = nlohmann::json::array();
+            for (const auto& sess_report : validation_report.session_rule_reports) {
+              nlohmann::json report_json;
+              to_json(report_json, sess_report);
+              sess_rule_reports_json.push_back(report_json);
+            }
+            json_data["sessRuleReports"] = sess_rule_reports_json;
+          }
+
+          resp->res.set_json_data(json_data);
+        }
+
         resp->res.set_http_code(http_status_code::OK);
       } break;
 
