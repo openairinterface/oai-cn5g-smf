@@ -605,7 +605,7 @@ void smf_context::handle_itti_msg(
             nlohmann::json json_data = {};
             json_data["n2InfoContainer"]["n2InformationClass"] =
                 oai::utils::N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+            json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
                 session_report_msg.get_pdu_session_id();
             // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
             json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
@@ -3030,7 +3030,7 @@ void smf_context::handle_pdu_session_modification_network_requested(
   // N2SM
   json_data["n2InfoContainer"]["n2InformationClass"] =
       oai::utils::N1N2_MESSAGE_CLASS;
-  json_data["n2InfoContainer"]["smInfo"]["PduSessionId"] =
+  json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
       itti_msg->msg.get_pdu_session_id();
   // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
   json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
