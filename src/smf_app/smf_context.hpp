@@ -1201,12 +1201,14 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * Create a PDU session UPDATE response, based on the content of resp
    * @param resp
    * @pram session_procedure_type The session procedure type of this reply
+   * @param validation_report Optional validation report for partial failures (PCF-initiated)
    */
   void send_pdu_session_update_response(
       const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
       const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
-      const std::shared_ptr<smf_pdu_session>& sps);
+      const std::shared_ptr<smf_pdu_session>& sps,
+      const smf_policy_report& validation_report = {});
 
   /**
    * Create a PDU session Release response, based on the content of resp

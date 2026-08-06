@@ -265,6 +265,7 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   session_management_procedures_type_e session_procedure_type;
 
   policy_delta policy_delta_upf;
+  smf_policy_report validation_report;
 
  private:
   /**
