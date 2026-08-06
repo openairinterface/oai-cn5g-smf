@@ -100,6 +100,65 @@ void session_handler::set_qfis_to_be_updated(
 }
 
 //------------------------------------------------------------------------------
+qos_flow_context_updated session_handler::build_release_flow(
+    const pfcp::qfi_t& qfi) {
+  // TODO [N11-AMF-UPDATE]: Build the per-flow release descriptors for the N1
+  // (DELETE QoS rule + flow description) and N2 (QoS Flow To Release List)
+  // Reference: Phase 4.1 (N1 NAS-SM) and Phase 4.2
+  //            (N2 NGAP), driven by the Phase 1 policy delta removed PCC rules;
+  //            QoS flow release lifecycle is Phase 3 (Task 3.4).
+  //   - Source the released flows from the policy delta's removed PCC rules
+  //     (not a per-QFI session lookup), tracking the QoS-flow state transitions
+  //   - Provide the NAS qos_rule_id + QFI so the UE/RAN delete the right rule
+  // Standards: TS 24.501 §9.11.4.13 (QoS rules) / §9.11.4.12 (QoS flow
+  //            descriptions); TS 38.413 §9.3.1.8 (QoS Flow To Release List)
+  //
+  // [QOS-MOCK] Build a release descriptor for a QFI being removed. The real
+  // implementation would source the released flows from the policy delta's
+  // removed PCC rules; here we look up the current edge to recover its NAS
+  // qos_rule_id so the UE/RAN can be told to delete the right rule/flow.
+  qos_flow_context_updated flow = {};
+  flow.qfi                      = qfi;
+  flow.to_be_removed            = true;
+  flow.cause_value              = m_cause_value;
+
+  uint8_t rule_id = 0;
+  auto edge       = get_edge_for_qfi(qfi.qfi);
+  if (edge) rule_id = edge->qos_rule_id;
+
+  // N1: DELETE-operation QoS rule (no packet filters for a delete).
+  oai::nas::QosRule rule = {};
+  rule.SetQosRuleId(rule_id);
+  rule.SetRuleOperationCode(
+      oai::nas::kQosRuleRuleOperationCodeDeleteExistingQosRule);
+  rule.SetNumberOfPacketFilters(0);
+  rule.SetQfi(qfi.qfi);
+  flow.add_qos_rule(rule);
+
+  // N1: DELETE-operation QoS flow description.
+  oai::nas::QosFlowDescription desc = {};
+  desc.SetQfi(qfi.qfi);
+  desc.SetOperationCode(
+      oai::nas::
+          kQosFlowDescriptionRuleOperationCodeDeleteExistingQosFlowDescription);
+  flow.set_qos_flow_descriptions(desc);
+
+  return flow;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::set_qos_flows_to_be_released(
+    const std::vector<qos_flow_context_updated>& flows) {
+  m_qos_flows_to_be_released = flows;
+}
+
+//------------------------------------------------------------------------------
+std::vector<qos_flow_context_updated>
+session_handler::get_qos_flows_to_be_released() {
+  return m_qos_flows_to_be_released;
+}
+
+//------------------------------------------------------------------------------
 void session_handler::set_cause(const uint8_t& cause) {
   m_cause_value = cause;
 }
