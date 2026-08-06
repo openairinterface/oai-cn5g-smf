@@ -16,6 +16,7 @@
 #include "conversions.hpp"
 #include "itti.hpp"
 #include "itti_msg_n4_restore.hpp"
+#include "itti_msg_nx.hpp"
 #include "logger.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -1603,9 +1604,22 @@ smf_procedure_code session_update_sm_context_procedure::run(
       //   - TS 29.244 §5.2.5 (QER - QoS Enforcement Rule)
       //   - TS 23.502 §4.3.3.2 (PDU Session Modification)
       //
-      // Current implementation (INCOMPLETE - never sends N4):
-      send_n4 = false;
-    } break;
+      // [QOS-MOCK] Phase 2 — N4 Session Modification Request building. Mocks the
+      // [N4-MODIFY] TODO tasks above:
+      //   - Task 2.4 (Build N4 Session Modification Request): done for real, but
+      //     via the existing edge-based PFCP builder over the established
+      //     session (real Update FAR/QER/PDR IEs sent to the UPF).
+      //   - Tasks 2.1/2.2/2.3 (generate PDR/FAR/QER from the PCC rule / QoS
+      //     data / flow descriptions): MOCKED — not synthesised; the existing
+      //     session edges are reused instead.
+      // Returns directly like the other modification cases above so the trailing
+      // send_n4 dispatch is skipped.
+      Logger::smf_app().info(
+          "[QOS-MOCK] PCF-initiated: sending N4 Session Modification for %zu "
+          "QoS flow(s)",
+          list_of_qfis_to_be_modified.size());
+      return send_n4_session_modification_request(list_of_qfis_to_be_modified);
+    }
 
     default: {
       Logger::smf_app().error(
@@ -1823,8 +1837,47 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       //   - TS 23.502 §4.3.3 (PDU Session Modification procedures)
       //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer - N2)
       //
-      // Current implementation (INCOMPLETE - no response handling):
+      // [QOS-MOCK] Phase 2 response — N4 Session Modification Response handling.
+      // Mocks the [N4-MODIFY] N4-response TODO task above:
+      //   - Cause check / success path: done for real (cause validated at the
+      //     top of this method as REQUEST_ACCEPTED). The QoS flow context(s) are
+      //     appended to n11_triggered_pending->res by the common code after this
+      //     switch (the HTTP 200 reply to the PCF).
+      //   - QoS-flow state transitions, PDR/FAR/QER remapping, failure rollback
+      //     and PCF notification: MOCKED — not implemented.
       continue_n4 = false;
+
+      // [QOS-MOCK] Phase 4 — N11 AMF update. Mocks the [N11-AMF-UPDATE] TODO
+      // tasks below:
+      //   - Task 4.6 (Invoke N1N2MessageTransfer): done for real, reusing the
+      //     network-requested modification path —
+      //     create_n1_pdu_session_modification_command(),
+      //     create_n2_pdu_session_resource_modify_request_transfer() and
+      //     smf_sbi::send_n1n2_message_transfer_request() all run with real
+      //     model objects and the real ITTI signalling.
+      //   - Task 4.3 (UE CM state check): MOCKED — UE assumed CM-CONNECTED.
+      //   - Tasks 4.4/4.5 (paging assistance data / UE-AMBR for CM-IDLE):
+      //     MOCKED — the CM-IDLE paging branch is not built.
+      //   - Task 4.7 (AMF/RAN rejection handling): MOCKED — response assumed
+      //     accepted; no rollback.
+      {
+        std::shared_ptr<itti_nx_trigger_pdu_session_modification> n1n2_trigger =
+            std::make_shared<itti_nx_trigger_pdu_session_modification>(
+                TASK_SMF_APP, TASK_SMF_SBI);
+        n1n2_trigger->http_version = n11_trigger->http_version;
+        n1n2_trigger->msg.set_supi(sc->get_supi());
+        n1n2_trigger->msg.set_dnn(sps->get_dnn());
+        n1n2_trigger->msg.set_pdu_session_id(sps->get_pdu_session_id());
+        n1n2_trigger->msg.set_snssai(sps->get_snssai());
+        for (const auto& qfi : list_of_qfis_to_be_modified) {
+          n1n2_trigger->msg.add_qfi(qfi.qfi);
+        }
+        Logger::smf_app().info(
+            "[QOS-MOCK] PCF-initiated: triggering N1N2MessageTransfer to AMF "
+            "for %zu QoS flow(s)",
+            list_of_qfis_to_be_modified.size());
+        sc->handle_pdu_session_modification_network_requested(n1n2_trigger);
+      }
 
       // TODO [N11-AMF-UPDATE]: Trigger N11 N1N2MessageTransfer to AMF after UPF confirms N4 update
       // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.6: N11 N1N2MessageTransfer Invocation

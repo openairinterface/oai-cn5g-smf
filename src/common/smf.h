@@ -66,6 +66,9 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
      "N2_HO_PREPARATION_PHASE_STEP1",
      "N2_HO_PREPARATION_PHASE_STEP2",
      "N2_HO_EXECUTION_PHASE",
+     "N2_HO_CANCELLATION_PHASE",
+     "PDU_SESSION_MODIFICATION_PCF_INITIATED",
+     "PDU_SESSION_RELEASE_PCF_INITIATED",
      "PDU_SESSION_TEST"
 
 };
