@@ -1085,30 +1085,30 @@ void smf_http2_server::modify_sm_context_handler(
     // Wait for the result from UPF and send reply to PCF
     nlohmann::json policy_notification_response = f.get();
     Logger::smf_api_server().debug("Got result for promise ID %d", promise_id);
+    Logger::smf_api_server().debug(
+        "Json data %s", policy_notification_response.dump().c_str());
 
-    uint32_t http_response_code = 0;
+    uint32_t http_response_code = http_status_code::OK;
     nlohmann::json json_data    = {};
     header_map h                = {};
 
-    if (policy_notification_response.find(
-            oai::http::kSbiResponseHttpResponseCode) !=
+    if (policy_notification_response.find("http_code") !=
         policy_notification_response.end()) {
       http_response_code =
-          policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
-              .get<int>();
+          policy_notification_response["http_code"].get<int>();
     }
 
-    if (http_response_code == 200) {
-      response.write_head(http_status_code::OK);
+    if (http_response_code == static_cast<uint32_t>(http_status_code::NO_CONTENT)) {
+      response.write_head(http_status_code::NO_CONTENT);
       response.end();
-
     } else {
-      // Problem details
-      if (policy_notification_response.find("ProblemDetails") !=
+      // Error response - extract json_data which contains the SmContextUpdateError
+      if (policy_notification_response.find("json_data") !=
           policy_notification_response.end()) {
-        json_data = policy_notification_response["ProblemDetails"];
+        json_data = policy_notification_response["json_data"];
       }
       h.emplace("content-type", header_value{"application/problem+json"});
+      response.write_head(http_response_code, h);
       response.end(json_data.dump().c_str());
     }
   } else {
