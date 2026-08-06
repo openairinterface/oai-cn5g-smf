@@ -1714,8 +1714,15 @@ bool smf_context::handle_pdu_session_release_complete(
   // 5GSM Cause
   // Extended Protocol Configuration Options
 
-  // TODO: SMF invokes Nsmf_PDUSession_SMContextStatusNotify to notify AMF
-  // that the SM context for this PDU Session is released
+  // TODO [N11-AMF-UPDATE]: Implement Nsmf_PDUSession_SMContextStatusNotify to AMF
+  // Reference: OAI_SMF_Gap_Analysis.md - Phase 4.8: N11 SMContextStatusNotify
+  // Task 4.8: Notify AMF that the SM context for this PDU Session is released
+  //   - Populate SmContextStatusNotification with resourceStatus = "RELEASED" [TS 29.502 §5.6.2.5]
+  //   - Retrieve AMF SM context notification URI from session context [TS 29.502 §5.6.1.2]
+  //   - Call smf_sbi::send_sm_context_status_notification() (stub exists at smf_sbi.cpp:337)
+  //   - Handle AMF response (200 OK expected; log on error)
+  //   - Clear AMF SM context binding after successful notification
+  // Standards: TS 23.502 §4.3.4 step 10, TS 29.502 §5.6.2.5
   scid_t scid = {};
   try {
     scid = std::stoi(sm_context_request.get()->scid);
@@ -1730,7 +1737,9 @@ bool smf_context::handle_pdu_session_release_complete(
   std::string status = "RELEASED";
   event_sub.sm_context_status(scid, status);
 
-  // TODO: Notify AMF that the SM context for this PDU session is released
+  // TODO [N11-AMF-UPDATE]: Call smf_sbi::send_sm_context_status_notification() here
+  // Task 4.8: The function exists at smf_sbi.cpp:337 but is never invoked for PDU session release
+  //   Wire it here after triggering the release event [TS 29.502 §5.6.2.5]
   if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     Logger::smf_app().debug(
         "Signal the PDU Session Release Event notification");
