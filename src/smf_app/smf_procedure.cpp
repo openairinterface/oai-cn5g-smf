@@ -696,6 +696,7 @@ bool smf_session_procedure::is_qfi_served_in_edges(
   }
   bool found_qfi = false;
   for (const auto& qfi : qfis) {
+    Logger::smf_app().debug("Checking if QFI %d is served in edges", qfi.qfi);
     for (const auto& edge : edges) {
       if (qfi == edge->qfi) {
         found_qfi = true;
@@ -1473,29 +1474,21 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
   for (const auto& change : delta.to_add) {
     if (dl_edges.empty() || !dl_edges[0]->associated_edge) {
       Logger::smf_app().error(
-          "[QOS-MOCK] No DL/UL edge pair available to clone the new QoS flow");
+          "No DL/UL edge pair available to clone the new QoS flow");
       continue;
     }
 
     // Allocate QFI if not already assigned
-    uint8_t qfi_to_use = change.qfi;
-    if (qfi_to_use == 0 && graph) {
-      qfi_to_use = graph->generate_qfi();
-      if (qfi_to_use == 0 || qfi_to_use > 63) {
-        graph->release_qfi(qfi_to_use);  // release invalid QFI
-        Logger::smf_app().error("QFI pool exhausted, cannot add flow for rule '%s'",
-            change.pcc_rule_id.c_str());
-        continue;
-      }
-      // Register the PCC rule to QFI mapping
-      graph->register_pcc_rule_qfi(change.pcc_rule_id, qfi_to_use);
-      Logger::smf_app().debug("Allocated QFI=%d for PCC rule '%s'",
-          qfi_to_use, change.pcc_rule_id.c_str());
-
-      qfi_t q = {};
-      q.qfi    = qfi_to_use;
-      qfis_to_update.push_back(q);
+    if (change.qfi == 0 ) {
+      Logger::smf_app().error("QFI pool exhausted, cannot add flow for rule '%s'",
+          change.pcc_rule_id.c_str());
+      continue;
     }
+    qfi_t q = {};
+    q.qfi    = change.qfi;
+    qfis_to_update.push_back(q);
+    n11_trigger->req.add_qfi(change.qfi);
+
 
     std::shared_ptr<qos_upf_edge> new_dl =
         std::make_shared<qos_upf_edge>(*dl_edges[0]);
@@ -1505,7 +1498,7 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
     new_ul->associated_edge = new_dl;
 
     for (const auto& edge : {new_dl, new_ul}) {
-      edge->qfi.qfi          = qfi_to_use;
+      edge->qfi.qfi          = change.qfi;
       edge->qos_profile      = change.qos_profile;
       edge->flow_information = change.flow_information;
       edge->precedence       = change.precedence;
@@ -1529,6 +1522,7 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
     if (graph) {
       graph->add_qos_flow_edge(current_upf, new_dl);
       graph->add_qos_flow_edge(current_upf, new_ul);
+      graph->add_to_current_edges_cache(new_dl, new_ul);
     }
 
     // Create the full flow (same order as establishment / the modification
@@ -1645,11 +1639,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
   sps->get_session_handler()->set_qfis_to_be_updated(
       list_of_qfis_to_be_modified);
-
-  if (!is_qfi_served_in_edges(
+  if (!list_of_qfis_to_be_modified.empty() && (!is_qfi_served_in_edges(
           list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
       !is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update)) {
+          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update))) {
     // TODO check on NAS, maybe can reject some QFIs and accept others?
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "

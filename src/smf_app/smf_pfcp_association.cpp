@@ -1481,3 +1481,11 @@ uint8_t upf_graph::get_qfi_for_pcc_rule_id(const std::string& pcc_rule_id) const
 std::map<std::string, uint8_t> upf_graph::get_pcc_rule_to_qfi_map() const {
   return pcc_rule_id_to_qfi_;
 }
+
+void upf_graph::add_to_current_edges_cache(
+    const std::shared_ptr<qos_upf_edge>& dl_edge,
+    const std::shared_ptr<qos_upf_edge>& ul_edge) {
+  std::unique_lock lock(graph_mutex);
+  current_edges_dl_asynch.push_back(dl_edge);
+  current_edges_ul_asynch.push_back(ul_edge);
+}

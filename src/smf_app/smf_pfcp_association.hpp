@@ -433,6 +433,10 @@ class upf_graph {
   void update_next_hop_fteid(
       const std::shared_ptr<qos_upf_edge>& src_edge,
       const pfcp::fteid_t& fteid);
+
+  void add_to_current_edges_cache(
+    const std::shared_ptr<qos_upf_edge>& dl_edge,
+    const std::shared_ptr<qos_upf_edge>& ul_edge);
 };
 
 class pfcp_associations {

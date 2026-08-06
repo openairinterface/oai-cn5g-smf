@@ -2687,9 +2687,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         smf_policy_manager::parse_policy_decision(policy_json, new_policy_decision);
 
     if (policy_parsed) {
-      // TODO: Retrieve stored current policy from session context
-      SmPolicyDecision current_policy = {};
-      // current_policy = sp->get_stored_policy_decision();  // Future: retrieve from session
+      SmPolicyDecision current_policy = sp->policy_ptr ? sp->policy_ptr->decision : SmPolicyDecision{};
 
       smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(current_policy, new_policy_decision);
 
@@ -2729,21 +2727,54 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
         // Store the new policy decision in session for future delta computation
         // TODO: sp->store_policy_decision(new_policy_decision);
+        sp->policy_ptr->decision = new_policy_decision;
         // TODO: Also store last delta, for rollback
 
         // Get rule_to_qfi_map from session's UPF graph
         std::map<std::string, uint8_t> rule_to_qfi_map;
-        auto session_graph = sp->get_session_handler()->get_session_graph();
-        if (session_graph) {
+        if (sp && sp->get_session_handler() && sp->get_session_handler()->get_session_graph()) {
+          auto session_graph = sp->get_session_handler()->get_session_graph();
           rule_to_qfi_map = session_graph->get_pcc_rule_to_qfi_map();
+
+          // Advertise on the N11/N2 leg the flow(s) we add and modify on the UPF
+          // (released flows are carried separately via the release machinery)
+          policy_delta = std::make_optional(smf_policy_manager::convert_to_upf_delta(
+              policy_delta_smf, new_policy_decision, rule_to_qfi_map));
+
+          for (auto& change : policy_delta->to_add) {
+            // Allocate QFI if not already assigned
+            uint8_t qfi_to_use = change.qfi;
+            if (qfi_to_use == 0 && session_graph) {
+              qfi_to_use = session_graph->generate_qfi();
+              if (qfi_to_use == 0 || qfi_to_use > 63) {
+                session_graph->release_qfi(qfi_to_use);  // release invalid QFI
+                Logger::smf_app().error("QFI pool exhausted, cannot add flow for rule '%s'",
+                    change.pcc_rule_id.c_str());
+                continue;
+              }
+              change.qfi = qfi_to_use;
+              // Register the PCC rule to QFI mapping
+              session_graph->register_pcc_rule_qfi(change.pcc_rule_id, qfi_to_use);
+              Logger::smf_app().debug("Allocated QFI=%d for PCC rule '%s'",
+                  qfi_to_use, change.pcc_rule_id.c_str());
+            }
+          }
+
+          for (const auto& qfi : policy_delta->to_remove) {
+            smreq->req.add_qfi(qfi.qfi);
+          }
+
+          for (const auto& change: policy_delta->to_modify) {
+            smreq->req.add_qfi(change.qfi);
+          }
+
+          Logger::smf_app().info("Added QFIs to request: %zu to remove, %zu to modify", policy_delta->to_remove.size(), policy_delta->to_modify.size());
+
+          update_upf = true;
+        } else {
+          Logger::smf_app().warn("Session graph not available, cannot determine rule to QFI mapping. UPF update may be incomplete.");
+          update_upf = false;
         }
-
-        // Advertise on the N11/N2 leg the flow(s) we add and modify on the UPF
-        // (released flows are carried separately via the release machinery)
-        policy_delta = std::make_optional(smf_policy_manager::convert_to_upf_delta(
-            policy_delta_smf, new_policy_decision, rule_to_qfi_map));
-
-        update_upf = true;
       } else {
         Logger::smf_app().info(
             "PCF policy delta does not require UPF update (no QoS changes)");
