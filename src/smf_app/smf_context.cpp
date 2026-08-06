@@ -2140,6 +2140,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   std::string n2_sm_info_hex                               = {};
   bool update_upf                                          = false;
   bool pdu_session_release_procedure                       = false;
+  std::optional<policy_delta> policy_delta;
   session_management_procedures_type_e procedure_type(
       session_management_procedures_type_e::
           PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
@@ -2681,28 +2682,25 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     smreq->req.get_json_data(policy_json);
 
     // Task 1.1: Parse the SmPolicyDecision from PCF notification
-    oai::_3gpp::model::SmPolicyDecision new_policy_decision = {};
+    SmPolicyDecision new_policy_decision = {};
     bool policy_parsed =
         smf_policy_manager::parse_policy_decision(policy_json, new_policy_decision);
 
     if (policy_parsed) {
-      // Task 1.5: Compute policy delta against current session policy
       // TODO: Retrieve stored current policy from session context
-      // For now, use empty policy as baseline (treats all rules as new)
-      oai::_3gpp::model::SmPolicyDecision current_policy = {};
+      SmPolicyDecision current_policy = {};
       // current_policy = sp->get_stored_policy_decision();  // Future: retrieve from session
 
-      smf_policy_delta policy_delta =
-          smf_policy_manager::compute_delta(current_policy, new_policy_decision);
+      smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(current_policy, new_policy_decision);
 
       // Task 1.6: Validate policy decision
       smf_policy_report validation_result =
           smf_policy_manager::validate_policy(new_policy_decision);
 
       // Check if there are any validation failures
-      if (!validation_result.rule_reports.empty()) {
+      if (!validation_result.rule_reports.empty() && new_policy_decision.pccRulesIsSet()) {
         // Check if ALL rules failed validation
-        if (new_policy_decision.pccRulesIsSet() && new_policy_decision.getPccRules().size() == validation_result.effected_rule_ids.size()) {
+        if (new_policy_decision.getPccRules().size() == validation_result.effected_rule_ids.size()) {
           Logger::smf_app().error(
               "PCF policy decision validation failed for ALL rules, rejecting update");
           smf_app_inst->trigger_sm_policy_update_notify_error_response(
@@ -2724,29 +2722,26 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       }
 
       // Task 1.7: Determine if UPF update is required
-      if (policy_delta.requires_upf_update()) {
+      if (policy_delta_smf.requires_upf_update()) {
         Logger::smf_app().info(
             "PCF policy delta requires UPF update: %s",
-            policy_delta.to_string().c_str());
-
-        // Extract QoS flows from the new policy
-        std::vector<pcf_qos_flow> new_flows =
-            smf_policy_manager::extract_qos_flows(new_policy_decision);
-
-        Logger::smf_app().info(
-            "Extracted %zu QoS flow(s) from PCF policy", new_flows.size());
+            policy_delta_smf.to_string().c_str());
 
         // Store the new policy decision in session for future delta computation
         // TODO: sp->store_policy_decision(new_policy_decision);
+        // TODO: Also store last delta, for rollback
 
-        // For now, map onto existing QoS flows (transition from mock)
-        // TODO: Implement proper QFI allocation for new flows
-        std::vector<pfcp::qfi_t> qfis_to_update =
-            sp->get_session_handler()->get_all_qfis();
-        sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
-        for (const auto& qfi : qfis_to_update) {
-          smreq->req.add_qfi(qfi.qfi);
+        // Get rule_to_qfi_map from session's UPF graph
+        std::map<std::string, uint8_t> rule_to_qfi_map;
+        auto session_graph = sp->get_session_handler()->get_session_graph();
+        if (session_graph) {
+          rule_to_qfi_map = session_graph->get_pcc_rule_to_qfi_map();
         }
+
+        // Advertise on the N11/N2 leg the flow(s) we add and modify on the UPF
+        // (released flows are carried separately via the release machinery)
+        policy_delta = std::make_optional(smf_policy_manager::convert_to_upf_delta(
+            policy_delta_smf, new_policy_decision, rule_to_qfi_map));
 
         update_upf = true;
       } else {
@@ -2756,17 +2751,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       }
     } else {
       Logger::smf_app().warn(
-          "PCF UpdateNotify without valid smPolicyDecision; "
-          "proceeding with existing QoS flows");
-
-      // Fallback: update existing flows without policy changes
-      std::vector<pfcp::qfi_t> qfis_to_update =
-          sp->get_session_handler()->get_all_qfis();
-      sp->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
-      for (const auto& qfi : qfis_to_update) {
-        smreq->req.add_qfi(qfi.qfi);
-      }
-      update_upf = !qfis_to_update.empty();
+          "PCF UpdateNotify without valid smPolicyDecision; ");
+      update_upf = false;
     }
 
     // Set procedure type for PCF-initiated modification path
@@ -2782,6 +2768,9 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       auto proc = std::make_shared<session_update_sm_context_procedure>(sp);
       std::shared_ptr<smf_procedure> sproc = proc;
       proc->session_procedure_type         = procedure_type;
+      if (policy_delta) {
+        proc->policy_delta_upf = std::move(*policy_delta);
+      }
 
       insert_procedure(sproc);
       if (proc->run(smreq, sm_context_resp_pending, shared_from_this()) ==

@@ -33,6 +33,7 @@ struct upf_selection_criteria {
   oai::_3gpp::model::RedirectInformation redirect_information{};
   unsigned int precedence{};
   uint8_t qfi{};
+  std::string pcc_rule_id{};  // PCC rule ID for QFI mapping
 
   [[nodiscard]] std::string to_string(int level) const;
 

@@ -994,6 +994,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // when we have PCC rules we set default QoS false, so we can handle all the
     // values from the rules directly
     selection_criteria.default_qos = false;
+    selection_criteria.pcc_rule_id = rule.first;  // Store PCC rule ID
     upf_selection_criteria verify_criteria;
     verify_criteria.dnais = previous_verify_criteria.dnais;
 
@@ -1091,6 +1092,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // if we have traffic rules, we keep the previously allocated QFI
     if (!selection_criteria.generate_new_qfi) {
       selection_criteria.qfi = generated_qfi;
+      // Register this rule with the reused QFI
+      if (sub_graph_ptr) {
+        sub_graph_ptr->register_pcc_rule_qfi(selection_criteria.pcc_rule_id, generated_qfi);
+      }
     }
 
     std::unordered_map<
@@ -1157,6 +1162,8 @@ bool upf_graph::select_upf_nodes(
         criteria.qfi = sub_graph_ptr->generate_qfi();
         sub_graph_ptr->qfi_count++;
       }
+      // Register PCC rule ID to QFI mapping (even for reused QFIs)
+      sub_graph_ptr->register_pcc_rule_qfi(criteria.pcc_rule_id, criteria.qfi);
 
       create_subgraph_dfs(sub_graph_ptr, upf, visited, criteria);
 
@@ -1444,4 +1451,33 @@ uint8_t upf_graph::generate_qfi() {
 //---------------------------------------------------------------------------------------------
 void upf_graph::release_qfi(uint8_t qfi) {
   qfi_generator.free_uid(qfi);
+  // Remove all rules that use this QFI
+  for (auto it = pcc_rule_id_to_qfi_.begin(); it != pcc_rule_id_to_qfi_.end(); ) {
+    if (it->second == qfi) {
+      it = pcc_rule_id_to_qfi_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+//---------------------------------------------------------------------------------------------
+void upf_graph::register_pcc_rule_qfi(const std::string& pcc_rule_id, uint8_t qfi) {
+  if (!pcc_rule_id.empty() && qfi != 0) {
+    pcc_rule_id_to_qfi_[pcc_rule_id] = qfi;
+  }
+}
+
+//---------------------------------------------------------------------------------------------
+uint8_t upf_graph::get_qfi_for_pcc_rule_id(const std::string& pcc_rule_id) const {
+  auto it = pcc_rule_id_to_qfi_.find(pcc_rule_id);
+  if (it != pcc_rule_id_to_qfi_.end()) {
+    return it->second;
+  }
+  return 0;
+}
+
+//---------------------------------------------------------------------------------------------
+std::map<std::string, uint8_t> upf_graph::get_pcc_rule_to_qfi_map() const {
+  return pcc_rule_id_to_qfi_;
 }

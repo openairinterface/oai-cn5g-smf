@@ -148,6 +148,9 @@ class upf_graph {
   unsigned int associated_edge_count = 0;
   std::unordered_set<std::string> served_dnais;
 
+  // Mapping from PCC rule ID to QFI for policy management
+  std::map<std::string, uint8_t> pcc_rule_id_to_qfi_;
+
   /**
    * @brief Adds an edge in one direction, adds node if it does not exist
    * @param source
@@ -221,19 +224,20 @@ class upf_graph {
       const std::string& indent,
       const std::shared_ptr<pfcp_association>& start) const;
 
+  oai::utils::uint_generator<uint8_t> qfi_generator;
+
+ public:
   uint8_t generate_qfi();
 
   void release_qfi(uint8_t qfi);
 
-  oai::utils::uint_generator<uint8_t> qfi_generator;
-
- public:
   upf_graph() : adjacency_list(), visited_asynch(){};
 
   upf_graph(const upf_graph& g) {
     // TODO do I need to lock the other graph here?
     adjacency_list = g.adjacency_list;
     visited_asynch = g.visited_asynch;
+    pcc_rule_id_to_qfi_ = g.pcc_rule_id_to_qfi_;
     // do not copy mutex
   }
 
@@ -373,6 +377,27 @@ class upf_graph {
    * @param uplink if uplink or downlink direction
    */
   void start_asynch_dfs_procedure(bool uplink);
+
+  /**
+   * @brief Register a PCC rule ID to QFI mapping
+   * @param pcc_rule_id The PCC rule ID
+   * @param qfi The QFI value
+   */
+  void register_pcc_rule_qfi(const std::string& pcc_rule_id, uint8_t qfi);
+
+  /**
+   * @brief Get the QFI for a given PCC rule ID
+   * @param pcc_rule_id The PCC rule ID
+   * @return The QFI value, or 0 if not found
+   */
+  uint8_t get_qfi_for_pcc_rule_id(const std::string& pcc_rule_id) const;
+
+  /**
+   * @brief Get a copy of the PCC rule ID to QFI map
+   * @return Map of PCC rule ID to QFI
+   */
+  std::map<std::string, uint8_t> get_pcc_rule_to_qfi_map() const;
+
 
   /**
    * Get all the access edges for this graph, for each QFI there may be an

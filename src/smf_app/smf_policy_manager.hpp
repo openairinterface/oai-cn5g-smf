@@ -29,72 +29,6 @@
 namespace oai::app::smf {
 
 /**
- * @brief Represents a QoS flow derived from PCF policy
- *
- * This structure holds all the information needed to create, modify,
- * or remove a QoS flow on the UPF based on PCF policy decisions.
- * It maps PCC rules and QoS data to the PFCP/N4 domain.
- */
-struct pcf_qos_flow {
-  uint8_t qfi{0};  // QoS Flow Identifier (0 = unallocated)
-
-  // PCF policy identifiers
-  std::string pcc_rule_id;   // Reference to the PCC rule
-  std::string qos_data_id;   // Reference to the QoS data entry
-
-  // QoS parameters from QosData (TS 29.512 §5.6.2.8)
-  int32_t fiveqi{9};        // 5G QoS Identifier (default: best-effort)
-  int32_t arp_priority{15}; // ARP priority level (1-15, 15=lowest)
-  bool arp_preempt_cap{false};   // Preemption capability
-  bool arp_preempt_vuln{true};   // Preemption vulnerability
-  int32_t priority_level{0};     // QoS flow priority
-
-  // Bitrates (optional, for GBR flows)
-  std::optional<std::string> gbr_ul;    // Guaranteed Bit Rate UL
-  std::optional<std::string> gbr_dl;    // Guaranteed Bit Rate DL
-  std::optional<std::string> maxbr_ul;  // Maximum Bit Rate UL
-  std::optional<std::string> maxbr_dl;  // Maximum Bit Rate DL
-
-  // Flow description from PCC rule (TS 29.512 §5.6.2.14)
-  std::vector<oai::_3gpp::model::FlowInformation> flow_descriptions;
-
-  // Precedence from PCC rule
-  int32_t precedence{255};  // Lower value = higher priority
-
-  // State tracking
-  bool is_default{false};  // True for the default QoS flow
-
-  // PFCP rule IDs (populated after N4 establishment)
-  pfcp::pdr_id_t pdr_id_ul{};
-  pfcp::pdr_id_t pdr_id_dl{};
-  pfcp::far_id_t far_id_ul{};
-  pfcp::far_id_t far_id_dl{};
-  pfcp::qer_id_t qer_id_ul{};
-  pfcp::qer_id_t qer_id_dl{};
-
-  /**
-   * @brief Check if this is a GBR flow
-   * @return true if GBR bitrates are set
-   */
-  bool is_gbr() const { return gbr_ul.has_value() || gbr_dl.has_value(); }
-
-  /**
-   * @brief Convert to QosData model object
-   * @return QosData populated with this flow's parameters
-   */
-  oai::_3gpp::model::QosData to_qos_data() const;
-
-  /**
-   * @brief Create from QosData model object
-   * @param qos_data The QosData from PCF
-   * @param qos_id The QoS data ID
-   * @return pcf_qos_flow populated with QosData parameters
-   */
-  static pcf_qos_flow from_qos_data(
-      const oai::_3gpp::model::QosData& qos_data, const std::string& qos_id);
-};
-
-/**
  * @brief Types of changes detected in policy comparison
  */
 enum class policy_change_type {
@@ -170,6 +104,25 @@ struct smf_policy_delta {
    */
   std::string to_string() const;
 };
+
+/**
+ * @brief Represents a single change in a qos flow to be applied to the UPF
+ */
+struct qos_flow_change {
+    uint8_t qfi{};                                          // QoS Flow Identifier
+    std::string pcc_rule_id{};                              // PCC rule ID for mapping
+    oai::_3gpp::model::QosData qos_profile{};               // 5QI, ARP, GBR/MBR
+    oai::_3gpp::model::FlowInformation flow_information{};  // SDF filter
+    unsigned int precedence{};
+};
+
+
+struct policy_delta {
+    std::vector<qos_flow_change> to_add;     // new QoS flows  → Create PDR/FAR/QER
+    std::vector<qos_flow_change> to_modify;  // changed flows  → Update QER/FAR/PDR
+    std::vector<pfcp::qfi_t> to_remove;      // deleted flows  → Remove PDR/FAR/QER
+};
+
 
 /**
  * @brief policy report for validation results
@@ -255,34 +208,28 @@ class smf_policy_manager {
       const oai::_3gpp::model::SmPolicyDecision& requested);
 
   /**
-   * @brief Extract QoS flows from policy decision
+   * @brief Convert policy delta to UPF-actionable delta
    *
-   * Creates pcf_qos_flow objects from PCC rules and their
-   * referenced QoS data entries.
+   * Converts the detailed policy delta (what changed) into an actionable
+   * delta for the UPF (what QFIs to add/modify/remove). This involves:
+   * - Allocating QFIs for new flows
+   * - Mapping PCC rules to qos_flow_change structures
+   * - Identifying QFIs to remove for deleted rules
    *
-   * @param policy Policy decision to extract flows from
-   * @return Vector of QoS flows
-   *
-   * Standards:
-   * - TS 29.512 §5.6.2.6 (PccRule.refQosData references QosDecs)
-   */
-  static std::vector<pcf_qos_flow> extract_qos_flows(
-      const oai::_3gpp::model::SmPolicyDecision& policy);
-
-  /**
-   * @brief Allocate a QFI for a new QoS flow
-   *
-   * Allocates the next available QFI from the per-session pool.
-   * QFI values are 6-bit (0-63), with 0 typically reserved.
-   *
-   * @param allocated_qfis Set of already allocated QFIs
-   * @return Allocated QFI, or 0 if pool exhausted
+   * @param delta The detailed policy delta from compute_delta()
+   * @param new_policy The new policy decision (for flow descriptions)
+   * @param current_qfis Current QFIs allocated on the session
+   * @param rule_to_qfi_map Map of PCC rule IDs to their allocated QFIs
+   * @return policy_delta with to_add, to_modify, to_remove
    *
    * Standards:
    * - TS 23.501 §5.7.1.4 (QFI allocation)
-   * - TS 29.244 §8.2.89 (QFI in PFCP)
+   * - TS 29.244 §5.4.4 (QoS Enforcement)
    */
-  static uint8_t allocate_qfi(const std::set<uint8_t>& allocated_qfis);
+  static policy_delta convert_to_upf_delta(
+      const smf_policy_delta& delta,
+      const oai::_3gpp::model::SmPolicyDecision& new_policy,
+      std::map<std::string, uint8_t>& rule_to_qfi_map);
 
   /**
    * @brief Validate policy decision against subscription limits
@@ -327,19 +274,6 @@ class smf_policy_manager {
    * - TS 23.501 §5.7.4 (5QI to QoS characteristics mapping)
    */
   static std::string get_5qi_resource_type(int32_t fiveqi);
-
- private:
-  /**
-   * @brief Compare two PCC rules for equality (ignoring rule ID)
-   */
-  static bool pcc_rules_equal(
-      const oai::_3gpp::model::PccRule& a, const oai::_3gpp::model::PccRule& b);
-
-  /**
-   * @brief Compare two QoS data entries for equality (ignoring qosId)
-   */
-  static bool qos_data_equal(
-      const oai::_3gpp::model::QosData& a, const oai::_3gpp::model::QosData& b);
 };
 
 }  // namespace oai::app::smf
