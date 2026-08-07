@@ -265,7 +265,7 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
       if (!pcc_rule.refQosDataIsSet() || pcc_rule.getRefQosData().empty()) {
         continue;
       }
-      const std::string& qos_ref = pcc_rule.getRefQosData()[0];
+      const std::string qos_ref = pcc_rule.getRefQosData()[0];
       auto qos_it = qos_decs.find(qos_ref);
       if (qos_it == qos_decs.end()) {
         continue;
