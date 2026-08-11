@@ -20,6 +20,7 @@
 #include "PduSessionModificationRequest.hpp"
 #include "PduSessionResourceSetupResponseTransfer.hpp"
 #include "PduSessionType.h"
+#include "PartialSuccessReport.h"
 #include "PlmnId.h"
 #include "QosFlowPerTnlInformation.hpp"
 #include "RefToBinaryData.h"
@@ -4931,50 +4932,50 @@ void smf_context::send_pdu_session_update_response(
 
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-        // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
-        // Modification. On partial validation failure, include rule reports
-        // in the response per TS 29.512 §5.6.2.26 (PartialSuccessReport).
-        Logger::smf_app().info(
-            "PDU Session Modification PCF-initiated: acknowledging PCF "
-            "UpdateNotify with 200 OK");
+            // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
+            // Modification. On partial validation failure, include PartialSuccessReport
 
-        // Check if we have any validation failures to report
-        if (!validation_report.all_rules_valid()) {
-          // Build response with partial success report (rule reports)
-          // per TS 29.512 §5.6.2.26 (PartialSuccessReport)
-          nlohmann::json json_data = {};
+            if (validation_report.all_rules_valid()) {
+              // --- 3GPP TS 29.512 Full Success ---
+              resp->res.set_http_code(http_status_code::NO_CONTENT);
 
-          // Include rule reports for failed PCC rules
-          if (!validation_report.rule_reports.empty()) {
-            nlohmann::json rule_reports_json = nlohmann::json::array();
-            for (const auto& rule_report : validation_report.rule_reports) {
+              Logger::smf_app().info(
+                  "PDU Session Modification PCF-initiated: all rules valid, acknowledging with 204 No Content");
+
+            } else {
+              // --- 3GPP TS 29.512 Partial Success ---
+              resp->res.set_http_code(http_status_code::OK);
+              resp->res.set_json_format("application/json");
+
+              PartialSuccessReport partial_report;
+
+              // Attach failed PCC rule reports
+              if (!validation_report.rule_reports.empty()) {
+                partial_report.setRuleReports(validation_report.rule_reports);
+              }
+
+              // Attach failed Session rule reports
+              if (!validation_report.session_rule_reports.empty()) {
+                partial_report.setSessRuleReports(validation_report.session_rule_reports);
+              }
+
               nlohmann::json report_json;
-              to_json(report_json, rule_report);
-              rule_reports_json.push_back(report_json);
+              to_json(report_json, partial_report);
+
+              //TODO: add correct failureCause to common-src. Seems there is a name conflict and the wrong failureCause object is part of PartialSuccessReport
+              report_json["failureCause"] = "PCC_RULE_EVENT";
+
+              // Wrap in array for strict 3GPP OpenAPI schema compliance
+              nlohmann::json response_body = nlohmann::json::array();
+              response_body.push_back(report_json);
+
+              resp->res.set_json_data(response_body);
+
+              Logger::smf_app().warn(
+                  "PDU Session Modification PCF-initiated: partial failure, acknowledging with 200 OK and %zu rule report(s)",
+                  validation_report.rule_reports.size());
             }
-            json_data["ruleReports"] = rule_reports_json;
-            Logger::smf_app().warn(
-                "PCF UpdateNotify response includes %zu failed PCC rule report(s)",
-                validation_report.rule_reports.size());
-          }
-
-          // Include session rule reports if any
-          if (!validation_report.session_rule_reports.empty()) {
-            nlohmann::json sess_rule_reports_json = nlohmann::json::array();
-            for (const auto& sess_report : validation_report.session_rule_reports) {
-              nlohmann::json report_json;
-              to_json(report_json, sess_report);
-              sess_rule_reports_json.push_back(report_json);
-            }
-            json_data["sessRuleReports"] = sess_rule_reports_json;
-          }
-
-          resp->res.set_json_data(json_data);
-        }
-
-        resp->res.set_http_code(http_status_code::OK);
-      } break;
-
+          } break;
       default: {
         Logger::smf_app().info(
             "Unknown session procedure type %d", (int) session_procedure_type);
