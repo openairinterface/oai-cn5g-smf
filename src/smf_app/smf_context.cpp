@@ -2821,6 +2821,7 @@ void smf_context::handle_pdu_session_release_sm_context_request(
 
   auto proc = std::make_shared<session_release_sm_context_procedure>(sp);
   std::shared_ptr<smf_procedure> sproc = proc;
+  proc->session_procedure_type         = DEREGISTRATION_UE_INITIATED;
 
   insert_procedure(sproc);
   uint16_t http_response_code = http_status_code::NO_CONTENT;
@@ -2831,12 +2832,13 @@ void smf_context::handle_pdu_session_release_sm_context_request(
 
     remove_procedure(sproc.get());
     http_response_code = http_status_code::INTERNAL_SERVER_ERROR;
-  } else {
-    http_response_code = http_status_code::NO_CONTENT;
+
+    // Trigger to send reply to if the procedure failed, otherwise trigger the
+    // response when receiving the N4 Deletion Response from UPF
+    smf_app_inst->trigger_http_response(
+        http_response_code, smreq->pid,
+        N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
   }
-  // Trigger to send reply to AMF
-  smf_app_inst->trigger_http_response(
-      http_response_code, smreq->pid, N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
 }
 
 //------------------------------------------------------------------------------
@@ -4835,6 +4837,14 @@ void smf_context::send_pdu_session_release_response(
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
         // TODO: To be completed
+      } break;
+
+      case session_management_procedures_type_e::DEREGISTRATION_UE_INITIATED: {
+        Logger::smf_app().info("UE-initiated Deregistration");
+        resp->res.set_http_code(http_status_code::NO_CONTENT);
+        // clear the resources including addresses allocated to this Session and
+        // associated QoS flows
+        sps->deallocate_ressources(resp->res.get_dnn());
       } break;
 
       default: {
