@@ -113,7 +113,9 @@ smf_policy_delta smf_policy_manager::compute_delta(
   }
 
   // Find removed PCC rules (in current but not in requested)
-  //TODO: only remove if the key is mapped to null value
+  // Note: 3GPP TS 29.512 §4.2.3 permits delta updates where explicit nulls indicate removal.
+  // However, snapshot-style PCFs (e.g., OAI PCF) send full decision maps omitting deleted rules.
+  // Therefore, any rule present in current_rules but missing from requested_rules must be REMOVED.
   for (const auto& [rule_id, old_rule] : current_rules) {
     if (requested_rules.find(rule_id) == requested_rules.end()) {
       pcc_rule_change change;
@@ -353,7 +355,6 @@ smf_policy_report smf_policy_manager::validate_policy(
   // Prepare subscription max values
   uint32_t sub_max_ul = 0, sub_max_dl = 0;
   if (subscription_max_ul.has_value() || subscription_max_dl.has_value()) {
-    // Compare against subscription limits
     if (subscription_max_ul.has_value()) {
       utils::sdf_conversions::parse_bitrate_string_to_unit(
           subscription_max_ul.value(), utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_ul);

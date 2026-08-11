@@ -1107,7 +1107,11 @@ void smf_http2_server::modify_sm_context_handler(
           policy_notification_response.end()) {
         json_data = policy_notification_response["json_data"];
       }
-      h.emplace("content-type", header_value{"application/problem+json"});
+      if (http_response_code >= 400) {
+        h.emplace("content-type", header_value{"application/problem+json"});
+      } else {
+        h.emplace("content-type", header_value{"application/json"});
+      }
       response.write_head(http_response_code, h);
       response.end(json_data.dump().c_str());
     }
