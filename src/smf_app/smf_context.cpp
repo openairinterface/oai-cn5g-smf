@@ -2821,7 +2821,8 @@ void smf_context::handle_pdu_session_release_sm_context_request(
 
   auto proc = std::make_shared<session_release_sm_context_procedure>(sp);
   std::shared_ptr<smf_procedure> sproc = proc;
-  proc->session_procedure_type         = DEREGISTRATION_UE_INITIATED;
+  proc->session_procedure_type =
+      session_management_procedures_type_e::DEREGISTRATION_UE_INITIATED;
 
   insert_procedure(sproc);
   uint16_t http_response_code = http_status_code::NO_CONTENT;
