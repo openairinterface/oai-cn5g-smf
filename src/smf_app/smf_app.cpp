@@ -1841,6 +1841,16 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
     } else {
       // Update PDU Session status -> INACTIVE -  to be verified
       sp.get()->set_pdu_session_status(pdu_session_status_t::Inactive);
+      // The UE never answered the Release Command, so no PDU Session Release
+      // Complete will ever arrive and nothing else would free this session.
+      // Release it locally, as required by section 6.3.3.5@3GPP TS 24.501
+      // after the last expiry of T3592. deallocate_ressources() is guarded, so
+      // this is a no-op if the session was already released.
+      Logger::smf_app().info(
+          "T3592 expired %d times without a PDU Session Release Complete, "
+          "releasing the resources locally",
+          (int) number_retransmission);
+      sp.get()->deallocate_ressources(sp.get()->dnn);
       return;
     }
     Logger::smf_app().info(

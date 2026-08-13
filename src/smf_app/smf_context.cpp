@@ -145,12 +145,30 @@ void smf_pdu_session::get_paa(paa_t& paa) {
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
+  // Releasing twice is not harmless: deallocate_resources() hands the PDR, QER,
+  // FAR, URR and QoS rule ids back to their generators and clear_session() then
+  // zeroes them, so a second call frees id 0 into each generator and those ids
+  // can come back out for another session. The release_paa() call below is
+  // already protected by ipv4, which clear() resets, but that guard covers the
+  // address only. A UE that answers the Release Command with a Release Complete
+  // reaches this function from both the release procedure and
+  // handle_pdu_session_update_sm_context_request, so the second call is a
+  // normal occurrence rather than an edge case.
+  if (resources_deallocated) {
+    Logger::smf_app().debug(
+        "Resources associated with this PDU Session were already released");
+    return;
+  }
+
   m_session_handler->deallocate_resources();
 
   if (ipv4 && !dnn.empty()) {
     paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
   }
   clear();
+  // Set after clear(), not before: clear() resets this flag along with the rest
+  // of the session state, so setting it earlier would undo the guard.
+  resources_deallocated = true;
   Logger::smf_app().info(
       "Resources associated with this PDU Session have been released");
 }
@@ -4639,7 +4657,7 @@ void smf_context::send_pdu_session_update_response(
         // No need to create N1/N2 Container
         Logger::smf_app().info(
             "PDU Session Modification UE-initiated (Step 3)");
-        // TODO: To be completed
+        sps->deallocate_ressources(resp->res.get_dnn());
       } break;
 
       case session_management_procedures_type_e::HO_PATH_SWITCH_REQ: {
@@ -4808,6 +4826,15 @@ void smf_context::send_pdu_session_release_response(
         sps->timer_T3592 = itti_inst->timer_setup(
             T3592_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3592,
             scid);
+        // Nothing is released here on purpose. The session is released once the
+        // UE has confirmed with a PDU Session Release Complete, which
+        // handle_pdu_session_update_sm_context_request acts on, or on the last
+        // expiry of T3592 if that confirmation never comes.
+        //
+        // Releasing at this point instead would free the resources before the
+        // UE has answered. That is what broke a real UE: the ids went back to
+        // their generators early, and the next establishment was rejected by
+        // the RAN with 5GSM cause #26, insufficient resources.
       } break;
         // PDU Session Release UE-initiated (Step 2)
       case session_management_procedures_type_e::
@@ -4822,7 +4849,6 @@ void smf_context::send_pdu_session_release_response(
           PDU_SESSION_RELEASE_UE_REQUESTED_STEP3: {
         // No need to create N1/N2 Container
         Logger::smf_app().info("PDU Session Release UE-initiated (Step 3)");
-        // TODO: To be completed
       } break;
 
       case session_management_procedures_type_e::
