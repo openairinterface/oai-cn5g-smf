@@ -63,20 +63,22 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     maximum_number_of_supported_packet_filters = 0;
     number_retransmission_T3591                = 0;
     number_retransmission_T3592                = 0;
+    resources_deallocated                      = false;
   }
 
   void clear() {
-    ipv4                = false;
-    ipv6                = false;
-    ipv4_address.s_addr = INADDR_ANY;
-    ipv6_address        = in6addr_any;
-    released            = false;
-    pdu_session_id      = 0;
-    dnn                 = {};
-    snssai              = {};
-    amf_addr            = {};
-    amf_status_uri      = {};
-    pdu_session_type    = {};
+    ipv4                  = false;
+    ipv6                  = false;
+    ipv4_address.s_addr   = INADDR_ANY;
+    ipv6_address          = in6addr_any;
+    released              = false;
+    resources_deallocated = false;
+    pdu_session_id        = 0;
+    dnn                   = {};
+    snssai                = {};
+    amf_addr              = {};
+    amf_status_uri        = {};
+    pdu_session_type      = {};
     ipv4_frame_route.clear();
     seid                        = 0;
     up_fseid                    = {};
@@ -274,6 +276,11 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   pdu_session_type_t pdu_session_type;  // IPv4, IPv6, IPv4v6 or Non-IP
 
   bool released;  // release session request
+
+  // Set once deallocate_ressources() has run, so that a second call is a no-op.
+  // clear() resets it, which is why deallocate_ressources() sets it after
+  // calling clear() rather than before.
+  bool resources_deallocated;
 
   std::vector<pfcp::framed_route_t> ipv4_frame_route;
 
