@@ -492,7 +492,7 @@ void smf_context::handle_itti_msg(
           proc_session_update->n11_triggered_pending,
           proc_session_update->session_procedure_type,
           proc_session_update->sps,
-          proc_session_update->validation_report);
+          proc_session_update->partial_success_report);
       remove_procedure(proc.get());
     }
   } else {
@@ -2143,7 +2143,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   bool update_upf                                          = false;
   bool pdu_session_release_procedure                       = false;
   std::optional<policy_delta> policy_delta;
-  smf_policy_report validation_report;
+  smf_policy_report partial_success_report;
+  std::optional<SmPolicyDecision> pending_policy_decision;
   session_management_procedures_type_e procedure_type(
       session_management_procedures_type_e::
           PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
@@ -2712,7 +2713,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           return true;
         } else {
           // Partial failure - some rules failed but not all
-          validation_report = validation_result;
+          partial_success_report = validation_result;
           Logger::smf_app().warn(
               "PCF policy decision has %zu failed rule(s), but not all rules failed. "
               "Continuing with valid rules.",
@@ -2757,11 +2758,9 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             "PCF policy delta requires UPF update: %s",
             policy_delta_smf.to_string().c_str());
 
-        // Store the new policy decision in session for future delta computation
-        // TODO: new_policy_decision can be partial or the change only:
-        // Therefore new decision has to be constructed like the delta
-        sp->policy_ptr->decision = new_policy_decision;
-        // TODO: Also store last delta, for rollback
+        // Store the cleaned policy decision (with failed rules removed)
+        // for commit-on-success after N4 confirms
+        pending_policy_decision = new_policy_decision;
 
         // Get rule_to_qfi_map from session's UPF graph
         std::map<std::string, uint8_t> rule_to_qfi_map;
@@ -2793,8 +2792,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             }
           }
 
-          for (const auto& qfi : policy_delta->to_remove) {
-            smreq->req.add_qfi(qfi.qfi);
+          for (const auto& flow : policy_delta->to_remove) {
+            smreq->req.add_qfi(flow.qfi);
           }
 
           for (const auto& change: policy_delta->to_modify) {
@@ -2835,8 +2834,12 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       if (policy_delta) {
         proc->policy_delta_upf = std::move(*policy_delta);
       }
-      if (!validation_report.all_rules_valid()) {
-        proc->validation_report = std::move(validation_report);
+      if (!partial_success_report.all_rules_valid()) {
+        proc->partial_success_report = std::move(partial_success_report);
+      }
+      // For PCF-initiated: pass the cleaned policy decision for commit-on-success
+      if (pending_policy_decision.has_value()) {
+        proc->pending_policy_decision = std::move(pending_policy_decision);
       }
 
       insert_procedure(sproc);
@@ -4740,7 +4743,7 @@ void smf_context::send_pdu_session_update_response(
     const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
     const session_management_procedures_type_e& session_procedure_type,
     const std::shared_ptr<smf_pdu_session>& sps,
-    const smf_policy_report& validation_report) {
+    const smf_policy_report& partial_success_report) {
   std::string n1_sm_msg      = {};
   std::string n1_sm_msg_hex  = {};
   std::string n2_sm_info     = {};
@@ -4935,7 +4938,7 @@ void smf_context::send_pdu_session_update_response(
             // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
             // Modification. On partial validation failure, include PartialSuccessReport
 
-            if (validation_report.all_rules_valid()) {
+            if (partial_success_report.all_rules_valid()) {
               // --- 3GPP TS 29.512 Full Success ---
               resp->res.set_http_code(http_status_code::NO_CONTENT);
 
@@ -4950,13 +4953,13 @@ void smf_context::send_pdu_session_update_response(
               PartialSuccessReport partial_report;
 
               // Attach failed PCC rule reports
-              if (!validation_report.rule_reports.empty()) {
-                partial_report.setRuleReports(validation_report.rule_reports);
+              if (!partial_success_report.rule_reports.empty()) {
+                partial_report.setRuleReports(partial_success_report.rule_reports);
               }
 
               // Attach failed Session rule reports
-              if (!validation_report.session_rule_reports.empty()) {
-                partial_report.setSessRuleReports(validation_report.session_rule_reports);
+              if (!partial_success_report.session_rule_reports.empty()) {
+                partial_report.setSessRuleReports(partial_success_report.session_rule_reports);
               }
 
               nlohmann::json report_json;
@@ -4973,7 +4976,7 @@ void smf_context::send_pdu_session_update_response(
 
               Logger::smf_app().warn(
                   "PDU Session Modification PCF-initiated: partial failure, acknowledging with 200 OK and %zu rule report(s)",
-                  validation_report.rule_reports.size());
+                  partial_success_report.rule_reports.size());
             }
           } break;
       default: {
