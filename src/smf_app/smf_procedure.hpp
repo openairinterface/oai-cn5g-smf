@@ -265,7 +265,13 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   session_management_procedures_type_e session_procedure_type;
 
   policy_delta policy_delta_upf;
-  smf_policy_report validation_report;
+  smf_policy_report partial_success_report;
+  // Pending policy decision - only committed after N4 success
+  std::optional<SmPolicyDecision> pending_policy_decision;
+  // Holds newly instantiated edge pairs before UPF confirmation
+  std::vector<std::pair<std::shared_ptr<qos_upf_edge>, std::shared_ptr<qos_upf_edge>>> staged_new_edges;
+  // Maps live edge -> candidate new QoS profile
+  std::map<std::shared_ptr<qos_upf_edge>, QosData> staged_modified_edges;
 
  private:
   /**

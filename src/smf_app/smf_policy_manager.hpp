@@ -135,10 +135,10 @@ struct policy_delta {
  */
 struct smf_policy_report {
   // Reports for PCC rules that failed validation
-  std::vector<oai::_3gpp::model::RuleReport> rule_reports;
+  std::vector<_3gpp::model::RuleReport> rule_reports;
 
   // Reports for session rules that failed validation (empty for now)
-  std::vector<oai::_3gpp::model::SessionRuleReport> session_rule_reports;
+  std::vector<_3gpp::model::SessionRuleReport> session_rule_reports;
 
   // Unique set of rule IDs that are effected
   std::set<std::string> effected_rule_ids;
@@ -148,6 +148,24 @@ struct smf_policy_report {
    * @return true if no rules failed validation
    */
   bool all_rules_valid() const { return rule_reports.empty() and session_rule_reports.empty(); }
+
+  /**
+   * @brief Merge another report into this one
+   * @param other The report to merge from
+   */
+  void merge(const smf_policy_report& other) {
+    rule_reports.insert(
+        rule_reports.end(),
+        other.rule_reports.begin(),
+        other.rule_reports.end());
+    session_rule_reports.insert(
+        session_rule_reports.end(),
+        other.session_rule_reports.begin(),
+        other.session_rule_reports.end());
+    effected_rule_ids.insert(
+        other.effected_rule_ids.begin(),
+        other.effected_rule_ids.end());
+  }
 };
 
 /**
@@ -275,6 +293,28 @@ class smf_policy_manager {
    * - TS 23.501 §5.7.4 (5QI to QoS characteristics mapping)
    */
   static std::string get_5qi_resource_type(int32_t fiveqi);
+
+  /**
+   * @brief Build a failure report from N4 (UPF) rejection
+   *
+   * Creates RuleReports for PCC rules that failed at the UPF level.
+   * If specific_failed_rules is provided, only those rules are reported.
+   * Otherwise, all rules in the delta are assumed to have failed.
+   *
+   * @param pfcp_cause The PFCP cause value from UPF response
+   * @param delta The policy delta that was attempted
+   * @param specific_failed_rules Optional set of specific PCC rule IDs that failed
+   *        (from PFCP Failed Rule ID IE). If empty, assumes all rules failed.
+   * @return smf_policy_report with RuleReports for failed rules
+   *
+   * Standards:
+   * - TS 29.512 §5.6.3.9 (FailureCode: RES_ALLO_FAIL for UPF rejection)
+   * - TS 29.244 §8.2.1 (PFCP Cause values)
+   * - TS 29.244 §8.2.18 (Failed Rule ID)
+   */
+  static smf_policy_report build_n4_failure_report(
+      uint8_t pfcp_cause,
+      const policy_delta& delta);
 };
 
 }  // namespace oai::app::smf

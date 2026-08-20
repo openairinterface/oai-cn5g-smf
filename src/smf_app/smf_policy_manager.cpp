@@ -298,16 +298,17 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         continue;
       }
 
-      pfcp::qfi_t qfi_to_remove = {};
-      qfi_to_remove.qfi = qfi_it->second;
-      upf_delta.to_remove.push_back(qfi_to_remove);
+      qos_flow_change flow_to_remove;
+      flow_to_remove.qfi = qfi_it->second;
+      flow_to_remove.pcc_rule_id = change.rule_id;
+      upf_delta.to_remove.push_back(flow_to_remove);
 
       // Remove from map
       rule_to_qfi_map.erase(qfi_it);
 
       Logger::smf_app().debug(
           "convert_to_upf_delta: Removed flow QFI=%d for rule '%s'",
-          qfi_to_remove.qfi, change.rule_id.c_str());
+          flow_to_remove.qfi, change.rule_id.c_str());
     }
   }
 
@@ -529,5 +530,122 @@ std::string smf_policy_manager::get_5qi_resource_type(int32_t fiveqi) {
       return "NON_GBR";
   }
 }
+//------------------------------------------------------------------------------
+smf_policy_report smf_policy_manager::build_n4_failure_report(
+    uint8_t pfcp_cause,
+    const policy_delta& delta) {
+  smf_policy_report result;
 
+  // Map PFCP Cause (3GPP TS 29.244 §8.2.1) -> Policy FailureCode (3GPP TS 29.512 §5.6.3.9)
+  FailureCode failure_code;
 
+  switch (pfcp_cause) {
+  case 70: // Invalid Forwarding Policy
+    failure_code.setEnumValue(
+        FailureCode_anyOf::eFailureCode_anyOf::TRAFFIC_STEERING_ERROR);
+    break;
+
+  case 73: // Rule creation/modification failure
+  case 74: // PFCP entity in congestion
+  case 75: // No resources available
+    failure_code.setEnumValue(
+        FailureCode_anyOf::eFailureCode_anyOf::RES_ALLO_FAIL);
+    break;
+
+  case 81: // Unknown Application ID
+    failure_code.setEnumValue(
+        FailureCode_anyOf::eFailureCode_anyOf::APP_ID_ERR);
+    break;
+
+  case 65: // Session context not found
+  case 72: // No established PFCP Association
+  case 77: // System failure
+  default:
+    // Access Node / Gateway failure for node or transport level issues
+    failure_code.setEnumValue(
+        FailureCode_anyOf::eFailureCode_anyOf::AN_GW_FAILED);
+    break;
+  }
+
+  // Because the N4 transaction was rejected by UPF without retry, ALL rules in the delta failed.
+  std::vector<std::string> failed_to_add;
+  std::vector<std::string> failed_to_modify;
+  std::vector<std::string> failed_to_remove;
+
+  for (const auto& change : delta.to_add) {
+    if (!change.pcc_rule_id.empty()) {
+      failed_to_add.push_back(change.pcc_rule_id);
+      result.effected_rule_ids.insert(change.pcc_rule_id);
+    }
+  }
+
+  for (const auto& change : delta.to_modify) {
+    if (!change.pcc_rule_id.empty()) {
+      failed_to_modify.push_back(change.pcc_rule_id);
+      result.effected_rule_ids.insert(change.pcc_rule_id);
+    }
+  }
+
+  for (const auto& change : delta.to_remove) {
+    if (!change.pcc_rule_id.empty()) {
+      failed_to_remove.push_back(change.pcc_rule_id);
+      result.effected_rule_ids.insert(change.pcc_rule_id);
+    }
+  }
+
+  // 1. Rules failed to ADD -> RuleStatus::INACTIVE (Never installed)
+  if (!failed_to_add.empty()) {
+    RuleReport report;
+    report.setPccRuleIds(failed_to_add);
+    RuleStatus status;
+    status.setEnumValue(RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
+    report.setRuleStatus(status);
+    report.setFailureCode(failure_code);
+    result.rule_reports.push_back(report);
+    Logger::smf_app().debug(
+        "N4 rejection: %zu to_add rule(s) failed -> INACTIVE",
+        failed_to_add.size());
+  }
+
+  // 2. Rules failed to MODIFY -> RuleStatus::ACTIVE (Retains prior state)
+  if (!failed_to_modify.empty()) {
+    RuleReport report;
+    report.setPccRuleIds(failed_to_modify);
+    RuleStatus status;
+    status.setEnumValue(RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
+    report.setRuleStatus(status);
+    report.setFailureCode(failure_code);
+    result.rule_reports.push_back(report);
+    Logger::smf_app().debug(
+        "N4 rejection: %zu to_modify rule(s) failed -> ACTIVE (unmodified)",
+        failed_to_modify.size());
+  }
+
+  // 3. Rules failed to REMOVE -> RuleStatus::ACTIVE (Not removed from UPF)
+  if (!failed_to_remove.empty()) {
+    RuleReport report;
+    report.setPccRuleIds(failed_to_remove);
+    RuleStatus status;
+    status.setEnumValue(RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
+    report.setRuleStatus(status);
+    report.setFailureCode(failure_code);
+    result.rule_reports.push_back(report);
+    Logger::smf_app().debug(
+        "N4 rejection: %zu to_remove rule(s) failed -> ACTIVE (retained)",
+        failed_to_remove.size());
+  }
+
+  if (result.effected_rule_ids.empty()) {
+    Logger::smf_app().warn(
+        "N4 rejection (PFCP cause=%d) but no PCC rule IDs found in delta",
+        pfcp_cause);
+  } else {
+    Logger::smf_app().warn(
+        "Built full N4 failure report: PFCP cause=%d, %zu total rule(s) reported "
+        "(add:%zu [INACTIVE], modify:%zu [ACTIVE], remove:%zu [ACTIVE])",
+        pfcp_cause, result.effected_rule_ids.size(),
+        failed_to_add.size(), failed_to_modify.size(), failed_to_remove.size());
+  }
+
+  return result;
+}
