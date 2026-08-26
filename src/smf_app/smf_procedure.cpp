@@ -323,7 +323,7 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
 
   UPInterfaceType n9_type;
-  n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
+  n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
   if (edge->type != n6_type) {
     local_fteid = pfcp_prepare_fteid(edge->fteid, up_features.ftup, cfg);
@@ -342,7 +342,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   if (edge->type == n3_type) {
-    source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N3;
+    source_interface_type.interface_type_value =
+        pfcp::_3GPP_INTERFACE_TYPE_N3_3GPP_ACCESS;
   } else if (edge->type == n9_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
   }
