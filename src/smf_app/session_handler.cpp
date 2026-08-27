@@ -147,9 +147,39 @@ qos_flow_context_updated session_handler::build_release_flow(
 }
 
 //------------------------------------------------------------------------------
-void session_handler::set_qos_flows_to_be_released(
-    const std::vector<qos_flow_context_updated>& flows) {
-  m_qos_flows_to_be_released = flows;
+void session_handler::mark_qfi_for_release(const pfcp::qfi_t& qfi) {
+  qos_flow_context_updated flow = {};
+  flow.qfi                      = qfi;
+  flow.to_be_removed            = true;
+  flow.cause_value              = m_cause_value;
+
+  uint8_t rule_id = 0;
+  auto edge       = get_edge_for_qfi(qfi.qfi);
+  if (edge) rule_id = edge->qos_rule_id;
+
+  // N1: DELETE-operation QoS rule
+  nas::QosRule rule = {};
+  rule.SetQosRuleId(rule_id);
+  rule.SetRuleOperationCode(
+      nas::kQosRuleRuleOperationCodeDeleteExistingQosRule);
+  rule.SetNumberOfPacketFilters(0);
+  rule.SetQfi(qfi.qfi);
+  flow.add_qos_rule(rule);
+
+  // N1: DELETE-operation QoS flow description
+  nas::QosFlowDescription desc = {};
+  desc.SetQfi(qfi.qfi);
+  desc.SetOperationCode(
+      nas::kQosFlowDescriptionRuleOperationCodeDeleteExistingQosFlowDescription);
+  flow.set_qos_flow_descriptions(desc);
+
+  // Stash directly into internal state
+  m_qos_flows_to_be_released.push_back(flow);
+}
+
+//------------------------------------------------------------------------------
+void session_handler::clear_qos_flows_to_be_released() {
+  m_qos_flows_to_be_released.clear();
 }
 
 //------------------------------------------------------------------------------

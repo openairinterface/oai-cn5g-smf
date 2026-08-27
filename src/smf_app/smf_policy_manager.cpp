@@ -41,11 +41,12 @@ std::string smf_policy_delta::to_string() const {
 bool smf_policy_manager::parse_policy_decision(
     const nlohmann::json& policy_json, SmPolicyDecision& policy_decision) {
   try {
-    if (policy_json.find("smPolicyDecision") != policy_json.end()) {
+    if (policy_json.is_object() &&
+        policy_json.contains("smPolicyDecision") &&
+        policy_json["smPolicyDecision"].is_object()) {
       from_json(policy_json["smPolicyDecision"], policy_decision);
       return true;
     } else if (policy_json.is_object() && policy_json.contains("pccRules")) {
-      // Direct SmPolicyDecision object (not wrapped)
       from_json(policy_json, policy_decision);
       return true;
     }

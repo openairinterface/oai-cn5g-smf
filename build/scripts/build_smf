@@ -45,6 +45,7 @@ function help()
   echo_error "  -v, --verbose                             Build process verbose."
   echo_error "  -V, --Verbose                             CMake only build process verbose, display compilation warnings and errors."
   echo_error "  -l, --lttng                               Build variant that will also include LTTNG" 
+  echo_error "  -t, --tests                               Build and run the smf_app GoogleTest unit tests"
   echo_error " "
 }
 
@@ -54,6 +55,7 @@ function main()
   local -i force=0
   local -i debug=0
   local -i verbose=0
+  local -i var_build_tests=0
   local -i var_check_install_min_deps=0
   local -i var_check_install_deps=0
   local    cmake_args=" "
@@ -127,6 +129,11 @@ function main()
         verbose=1
         shift;
         ;;
+      -t | --tests)
+        var_build_tests=1
+        cmake_args="$cmake_args -DBUILD_TESTING=ON"
+        shift;
+        ;;
       *)
         echo "Unknown option $1"
         help
@@ -163,7 +170,7 @@ function main()
 
   if [ $var_check_install_deps -gt 0 ];then
     disable_ipv6
-    check_install_smf_deps  $force $debug
+    check_install_smf_deps  $force $debug $var_build_tests
     if [[ $? -ne 0 ]]; then
         echo_error "Error: SMF deps installation failed"
         return 1
@@ -202,6 +209,28 @@ function main()
 
   compilations smf smf $OPENAIRCN_DIR/build/smf/build/smf $verbose
   ret=$?;[[ $ret -ne 0 ]] && return $ret
+
+  ##############################################################################
+  # Build and run unit tests (opt-in, --tests)
+  ##############################################################################
+  if [ $var_build_tests -ne 0 ]; then
+    compilations smf smf_unit_tests $OPENAIRCN_DIR/build/smf/build/smf_app/test/smf_unit_tests $verbose
+    ret=$?
+    if [[ $ret -ne 0 ]]; then
+      echo_error "SMF unit tests compilation failed; log follows:"
+      cat $dlog/smf_unit_tests.txt
+      return $ret
+    fi
+
+    cd $OPENAIRCN_DIR/build/smf/build
+    ctest --output-on-failure -L unit
+    ret=$?
+    if [[ $ret -ne 0 ]]; then
+      echo_error "SMF unit tests failed"
+      return $ret
+    fi
+    echo_success "SMF unit tests passed"
+  fi
 
   # For daemon should not be group writable
   $SUDO chmod 755 $OPENAIRCN_DIR/build/smf/build/smf

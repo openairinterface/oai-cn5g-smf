@@ -1397,12 +1397,9 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
   }
 
   // --- Remove phase: release one flow -------------------------------------
-  std::vector<qos_flow_context_updated> released_flows = {};
-  for (const auto& qfi : delta.to_remove) {
-    released_flows.push_back(
-        sps->get_session_handler()->build_release_flow(qfi));
+  for (const auto& change : delta.to_remove) {
+    sps->get_session_handler()->mark_qfi_for_release(change.qfi);
   }
-  sps->get_session_handler()->set_qos_flows_to_be_released(released_flows);
 
   std::set<uint8_t> remove_set = {};
   for (const auto& qfi : delta.to_remove) remove_set.insert(qfi.qfi);
@@ -1798,7 +1795,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
       staged_new_edges.clear();
       staged_modified_edges.clear();
-      sps->get_session_handler()->set_qos_flows_to_be_released({});
+      sps->get_session_handler()->clear_qos_flows_to_be_released();
 
       smf_app_inst->trigger_sm_policy_update_notify_error_response(
           oai::common::sbi::http_status_code::INTERNAL_SERVER_ERROR,
