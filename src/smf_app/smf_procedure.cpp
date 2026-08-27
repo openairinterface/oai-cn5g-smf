@@ -1865,6 +1865,10 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
         graph->add_qos_flow_edge(current_upf, pair.first);   // DL Edge
         graph->add_qos_flow_edge(current_upf, pair.second);  // UL Edge
         graph->add_to_current_edges_cache(pair.first, pair.second);
+
+        // Update local lists so the NAS validation checks below pass
+        dl_edges.push_back(pair.first);
+        ul_edges.push_back(pair.second);
       }
     }
 
