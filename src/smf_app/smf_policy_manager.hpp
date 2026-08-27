@@ -120,7 +120,7 @@ struct qos_flow_change {
 struct policy_delta {
     std::vector<qos_flow_change> to_add;     // new QoS flows  → Create PDR/FAR/QER
     std::vector<qos_flow_change> to_modify;  // changed flows  → Update QER/FAR/PDR
-    std::vector<pfcp::qfi_t> to_remove;      // deleted flows  → Remove PDR/FAR/QER
+    std::vector<qos_flow_change> to_remove;  // deleted flows  → Remove PDR/FAR/QER
 };
 
 

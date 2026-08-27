@@ -55,23 +55,32 @@ class session_handler {
   void set_qfis_to_be_updated(const std::vector<pfcp::qfi_t>& qfis);
 
   /**
-   * [QOS-MOCK] Build a "release" qos_flow_context_updated for a QFI being
+   * Build a "release" qos_flow_context_updated for a QFI being
    * removed: a DELETE-operation NAS QoS rule (using the QFI's current
    * qos_rule_id) and a DELETE-operation QoS flow description, with
    * to_be_removed = true. Must be called BEFORE the edge is mutated/removed so
    * the qos_rule_id is still valid.
-   * TODO [QOS-MOCK-REMOVE]: in the real implementation the released flows come
-   * from the policy delta's removed PCC rules, not a per-QFI lookup here.
    */
   qos_flow_context_updated build_release_flow(const pfcp::qfi_t& qfi);
 
   /**
-   * [QOS-MOCK] Store/return the QoS flows to be released towards N1 (DELETE QoS
-   * rules + flow descriptions) and N2 (QoS Flow To Release List). Populated in
-   * the PCF-initiated N4 step, consumed by the N1/N2 builders.
-   */
-  void set_qos_flows_to_be_released(
-      const std::vector<qos_flow_context_updated>& flows);
+     * Mark a QoS flow for release.
+     * Internally builds and stashes the DELETE-operation NAS QoS rule and flow
+     * description before the UPF edge is mutated/removed (which would destroy
+     * the qos_rule_id).
+     * TODO: Transition to a true QoS flow state machine where
+     * state becomes PENDING_RELEASE, and NAS descriptors are generated dynamically
+     * during N1 encoding.
+     */
+  void mark_qfi_for_release(const pfcp::qfi_t& qfi);
+
+  /**
+     * Clear the list of QoS flows marked for release.
+     * Used to rollback state if the N4 modification procedure fails.
+     */
+  void clear_qos_flows_to_be_released();
+
+
   std::vector<qos_flow_context_updated> get_qos_flows_to_be_released();
 
   /**

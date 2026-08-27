@@ -50,3 +50,6 @@ add_library (SMF STATIC
   smf_policy_manager.cpp
 )
 
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
