@@ -2099,15 +2099,15 @@ void smf_app::trigger_update_context_error_response(
 
 //------------------------------------------------------------------------------
 void smf_app::trigger_sm_policy_update_notify_error_response(
-        const uint32_t& http_code,
-        const uint8_t& cause,
-        const std::vector<RuleReport>& rule_reports,
-        const std::vector<SessionRuleReport>& sess_rule_reports,
-        uint32_t& promise_id) {
+    const uint32_t& http_code, const uint8_t& cause,
+    const std::vector<RuleReport>& rule_reports,
+    const std::vector<SessionRuleReport>& sess_rule_reports,
+    uint32_t& promise_id) {
   Logger::smf_app().debug(
-          "Send ITTI msg to SMF APP to trigger the policy notify error response of HTTP Server");
+      "Send ITTI msg to SMF APP to trigger the policy notify error response of "
+      "HTTP Server");
 
-  ErrorReport error_report = {};
+  ErrorReport error_report       = {};
   ProblemDetails problem_details = {};
   problem_details.setStatus(static_cast<int>(http_code));
 
@@ -2120,11 +2120,15 @@ void smf_app::trigger_sm_policy_update_notify_error_response(
 
   if (!rule_reports.empty()) {
     error_report.setRuleReports(rule_reports);
-    Logger::smf_app().warn("Appending %zu PCC rule report(s) to the PCF error report.", rule_reports.size());
+    Logger::smf_app().warn(
+        "Appending %zu PCC rule report(s) to the PCF error report.",
+        rule_reports.size());
   }
   if (!sess_rule_reports.empty()) {
     error_report.setSessRuleReports(sess_rule_reports);
-    Logger::smf_app().warn("Appending %zu Session rule report(s) to the PCF error report.", sess_rule_reports.size());
+    Logger::smf_app().warn(
+        "Appending %zu Session rule report(s) to the PCF error report.",
+        sess_rule_reports.size());
   }
 
   nlohmann::json json_data = {};
@@ -2195,13 +2199,13 @@ void smf_app::trigger_session_update_sm_context_response(
 
 //------------------------------------------------------------------------------
 void smf_app::trigger_session_update_sm_association_response(
-        pdu_session_sm_policy_update_notify_response& sm_context_response,
-        uint32_t& pid) {
+    pdu_session_sm_policy_update_notify_response& sm_context_response,
+    uint32_t& pid) {
   Logger::smf_app().debug(
-          "Trigger PDU Session Update SM Association Response: Set promise with ID "
-          "%d "
-          "to ready",
-          pid);
+      "Trigger PDU Session Update SM Association Response: Set promise with ID "
+      "%d "
+      "to ready",
+      pid);
   nlohmann::json response_message_json = {};
   sm_context_response.to_json(response_message_json);
   make_future_ready(response_message_json, pid);

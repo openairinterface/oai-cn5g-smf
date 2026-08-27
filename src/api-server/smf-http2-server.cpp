@@ -1094,15 +1094,16 @@ void smf_http2_server::modify_sm_context_handler(
 
     if (policy_notification_response.find("http_code") !=
         policy_notification_response.end()) {
-      http_response_code =
-          policy_notification_response["http_code"].get<int>();
+      http_response_code = policy_notification_response["http_code"].get<int>();
     }
 
-    if (http_response_code == static_cast<uint32_t>(http_status_code::NO_CONTENT)) {
+    if (http_response_code ==
+        static_cast<uint32_t>(http_status_code::NO_CONTENT)) {
       response.write_head(http_status_code::NO_CONTENT);
       response.end();
     } else {
-      // Error response - extract json_data which contains the SmContextUpdateError
+      // Error response - extract json_data which contains the
+      // SmContextUpdateError
       if (policy_notification_response.find("json_data") !=
           policy_notification_response.end()) {
         json_data = policy_notification_response["json_data"];

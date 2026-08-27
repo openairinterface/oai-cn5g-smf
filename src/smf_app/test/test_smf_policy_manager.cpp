@@ -26,22 +26,26 @@ TEST(SmfPolicyManagerTest, ParsePolicyDecision_HandlesInvalidAndValidJson) {
   SmPolicyDecision decision;
 
   nlohmann::json invalid_json = R"({"someOtherKey": 123})"_json;
-  EXPECT_FALSE(smf_policy_manager::parse_policy_decision(invalid_json, decision));
+  EXPECT_FALSE(
+      smf_policy_manager::parse_policy_decision(invalid_json, decision));
 
   nlohmann::json malformed_json = R"({"smPolicyDecision": "notAnObject"})"_json;
-  EXPECT_FALSE(smf_policy_manager::parse_policy_decision(malformed_json, decision));
+  EXPECT_FALSE(
+      smf_policy_manager::parse_policy_decision(malformed_json, decision));
 
   nlohmann::json valid_wrapped = R"({
     "smPolicyDecision": {
       "pccRules": {}
     }
   })"_json;
-  EXPECT_TRUE(smf_policy_manager::parse_policy_decision(valid_wrapped, decision));
+  EXPECT_TRUE(
+      smf_policy_manager::parse_policy_decision(valid_wrapped, decision));
 
   nlohmann::json valid_direct = R"({
     "pccRules": {}
   })"_json;
-  EXPECT_TRUE(smf_policy_manager::parse_policy_decision(valid_direct, decision));
+  EXPECT_TRUE(
+      smf_policy_manager::parse_policy_decision(valid_direct, decision));
 }
 
 // =============================================================================
@@ -59,7 +63,8 @@ TEST(SmfPolicyManagerTest, ComputeDelta_DetectsAddedModifiedAndRemovedRules) {
 
   current.setPccRules({{"rule-1", rule1}, {"rule-2", rule2}});
 
-  // Requested has rule-1 modified (precedence 150), rule-2 removed, rule-3 added
+  // Requested has rule-1 modified (precedence 150), rule-2 removed, rule-3
+  // added
   PccRule rule1_mod;
   rule1_mod.setPrecedence(150);
   PccRule rule3_new;
@@ -67,7 +72,8 @@ TEST(SmfPolicyManagerTest, ComputeDelta_DetectsAddedModifiedAndRemovedRules) {
 
   requested.setPccRules({{"rule-1", rule1_mod}, {"rule-3", rule3_new}});
 
-  smf_policy_delta delta = smf_policy_manager::compute_delta(current, requested);
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
 
   EXPECT_TRUE(delta.requires_upf_update());
   EXPECT_EQ(delta.added_pcc_rules.size(), 1u);
@@ -86,7 +92,7 @@ TEST(SmfPolicyManagerTest, ComputeDelta_DetectsAddedModifiedAndRemovedRules) {
 TEST(SmfPolicyManagerTest, ConvertToUpfDelta_SkipsRuleWithUnmatchedQosRef) {
   smf_policy_delta delta;
   pcc_rule_change change;
-  change.type = policy_change_type::ADDED;
+  change.type    = policy_change_type::ADDED;
   change.rule_id = "rule-unmatched";
 
   PccRule rule;
@@ -97,7 +103,7 @@ TEST(SmfPolicyManagerTest, ConvertToUpfDelta_SkipsRuleWithUnmatchedQosRef) {
   change.new_rule = rule;
   delta.pcc_rule_changes.push_back(change);
 
-  SmPolicyDecision new_policy; // qosDecs is empty
+  SmPolicyDecision new_policy;  // qosDecs is empty
   std::map<std::string, uint8_t> rule_to_qfi_map;
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
@@ -106,10 +112,12 @@ TEST(SmfPolicyManagerTest, ConvertToUpfDelta_SkipsRuleWithUnmatchedQosRef) {
   EXPECT_TRUE(upf_delta.to_add.empty());
 }
 
-TEST(SmfPolicyManagerTest, ConvertToUpfDelta_HandlesMultipleFlowInformationEntries) {
+TEST(
+    SmfPolicyManagerTest,
+    ConvertToUpfDelta_HandlesMultipleFlowInformationEntries) {
   smf_policy_delta delta;
   pcc_rule_change change;
-  change.type = policy_change_type::ADDED;
+  change.type    = policy_change_type::ADDED;
   change.rule_id = "rule-multi-flow";
 
   PccRule rule;
@@ -153,10 +161,10 @@ TEST(SmfPolicyManagerTest, ValidatePolicy_CatchesInvalid5QiAndArp) {
 
   QosData qos_data;
   qos_data.setQosId("qos-invalid");
-  qos_data.setR5qi(0); // Invalid (valid range: 1-255)
+  qos_data.setR5qi(0);  // Invalid (valid range: 1-255)
 
   Arp arp;
-  arp.setPriorityLevel(16); // Invalid (valid range: 1-15)
+  arp.setPriorityLevel(16);  // Invalid (valid range: 1-15)
   qos_data.setArp(arp);
 
   policy.setQosDecs({{"qos-invalid", qos_data}});
@@ -194,7 +202,8 @@ TEST(SmfPolicyManagerTest, BuildN4FailureReport_MapsPfcpCausesToFailureCodes) {
   delta.to_remove.push_back(rem_flow);
 
   // Test PFCP Cause 75 (No Resources Available)
-  smf_policy_report report_75 = smf_policy_manager::build_n4_failure_report(75, delta);
+  smf_policy_report report_75 =
+      smf_policy_manager::build_n4_failure_report(75, delta);
   ASSERT_EQ(report_75.rule_reports.size(), 3u);
 
   // to_add -> INACTIVE
@@ -216,7 +225,8 @@ TEST(SmfPolicyManagerTest, BuildN4FailureReport_MapsPfcpCausesToFailureCodes) {
       RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
 
   // Test PFCP Cause 81 -> APP_ID_ERR
-  smf_policy_report report_77 = smf_policy_manager::build_n4_failure_report(77, delta);
+  smf_policy_report report_77 =
+      smf_policy_manager::build_n4_failure_report(77, delta);
   EXPECT_EQ(
       report_77.rule_reports[0].getFailureCode().getEnumValue(),
       FailureCode_anyOf::eFailureCode_anyOf::AN_GW_FAILED);
@@ -231,7 +241,8 @@ TEST(SmfPolicyManagerTest, HelperFunctions_GbrAndResourceType) {
   EXPECT_TRUE(smf_policy_manager::is_gbr_5qi(1));
   EXPECT_TRUE(smf_policy_manager::is_gbr_5qi(82));
   EXPECT_EQ(smf_policy_manager::get_5qi_resource_type(1), "GBR");
-  EXPECT_EQ(smf_policy_manager::get_5qi_resource_type(82), "DELAY_CRITICAL_GBR");
+  EXPECT_EQ(
+      smf_policy_manager::get_5qi_resource_type(82), "DELAY_CRITICAL_GBR");
 
   // Non-GBR 5QIs
   EXPECT_FALSE(smf_policy_manager::is_gbr_5qi(5));

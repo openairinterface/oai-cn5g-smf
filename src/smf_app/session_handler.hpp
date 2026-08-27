@@ -64,22 +64,21 @@ class session_handler {
   qos_flow_context_updated build_release_flow(const pfcp::qfi_t& qfi);
 
   /**
-     * Mark a QoS flow for release.
-     * Internally builds and stashes the DELETE-operation NAS QoS rule and flow
-     * description before the UPF edge is mutated/removed (which would destroy
-     * the qos_rule_id).
-     * TODO: Transition to a true QoS flow state machine where
-     * state becomes PENDING_RELEASE, and NAS descriptors are generated dynamically
-     * during N1 encoding.
-     */
+   * Mark a QoS flow for release.
+   * Internally builds and stashes the DELETE-operation NAS QoS rule and flow
+   * description before the UPF edge is mutated/removed (which would destroy
+   * the qos_rule_id).
+   * TODO: Transition to a true QoS flow state machine where
+   * state becomes PENDING_RELEASE, and NAS descriptors are generated
+   * dynamically during N1 encoding.
+   */
   void mark_qfi_for_release(const pfcp::qfi_t& qfi);
 
   /**
-     * Clear the list of QoS flows marked for release.
-     * Used to rollback state if the N4 modification procedure fails.
-     */
+   * Clear the list of QoS flows marked for release.
+   * Used to rollback state if the N4 modification procedure fails.
+   */
   void clear_qos_flows_to_be_released();
-
 
   std::vector<qos_flow_context_updated> get_qos_flows_to_be_released();
 
@@ -210,7 +209,7 @@ class session_handler {
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;
-  // [QOS-MOCK] QoS flows to be released towards N1/N2 (PCF-initiated removal).
+  // QoS flows marked for release towards N1/N2 during PCF policy updates.
   std::vector<qos_flow_context_updated> m_qos_flows_to_be_released;
   uint8_t m_cause_value = k5gsmCauseRequestAccepted;  // for NGAP cause
   pdu_session_type_e m_pdu_session_type;

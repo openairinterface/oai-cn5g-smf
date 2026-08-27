@@ -269,7 +269,9 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   // Pending policy decision - only committed after N4 success
   std::optional<SmPolicyDecision> pending_policy_decision;
   // Holds newly instantiated edge pairs before UPF confirmation
-  std::vector<std::pair<std::shared_ptr<qos_upf_edge>, std::shared_ptr<qos_upf_edge>>> staged_new_edges;
+  std::vector<
+      std::pair<std::shared_ptr<qos_upf_edge>, std::shared_ptr<qos_upf_edge>>>
+      staged_new_edges;
   // Maps live edge -> candidate new QoS profile
   std::map<std::shared_ptr<qos_upf_edge>, QosData> staged_modified_edges;
 
@@ -285,13 +287,6 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
 
-  /**
-   * [QOS-MOCK] Build and send a single N4 Session Modification Request that
-   * removes the rules for delta.to_remove and installs delta.to_add. Used only
-   * by the PCF-initiated path.
-   * TODO [QOS-MOCK-REMOVE]: once the delta is real, this can become the generic
-   * delta -> N4 translator (add/modify/remove) instead of remove-all/add-one.
-   */
   smf_procedure_code send_n4_pcf_initiated_modification(
       const policy_delta& delta);
 };

@@ -48,7 +48,8 @@ TEST(PcfQodWorkflowTest, PartialSuccessReport_SerializesCorrectly) {
   ASSERT_TRUE(response_body.is_array());
   ASSERT_EQ(response_body.size(), 1u);
   EXPECT_EQ(response_body[0]["failureCause"], "PCC_RULE_EVENT");
-  EXPECT_EQ(response_body[0]["ruleReports"][0]["pccRuleIds"][0], "rule-failed-1");
+  EXPECT_EQ(
+      response_body[0]["ruleReports"][0]["pccRuleIds"][0], "rule-failed-1");
 }
 
 // =============================================================================
@@ -84,5 +85,6 @@ TEST(PcfQodWorkflowTest, ErrorReport_BuildsProblemDetailsWithRuleReports) {
   EXPECT_EQ(serialized["json_format"], "application/problem+json");
   EXPECT_EQ(serialized["json_data"]["error"]["status"], 500);
   EXPECT_EQ(serialized["json_data"]["error"]["cause"], "RULE_PERMANENT_ERROR");
-  EXPECT_EQ(serialized["json_data"]["ruleReports"][0]["pccRuleIds"][0], "rule-add-1");
+  EXPECT_EQ(
+      serialized["json_data"]["ruleReports"][0]["pccRuleIds"][0], "rule-add-1");
 }
