@@ -832,10 +832,10 @@ class smf_app {
    * @return void
    */
   void trigger_sm_policy_update_notify_error_response(
-          const uint32_t& http_code, const uint8_t& cause,
-          const std::vector<RuleReport>& rule_reports,
-          const std::vector<SessionRuleReport>& sess_rule_reports,
-          uint32_t& promise_id);
+      const uint32_t& http_code, const uint8_t& cause,
+      const std::vector<RuleReport>& rule_reports,
+      const std::vector<SessionRuleReport>& sess_rule_reports,
+      uint32_t& promise_id);
 
   /*
    * To trigger the response to the HTTP server by set the value of the
@@ -899,8 +899,8 @@ class smf_app {
       const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id);
 
   void trigger_session_update_sm_association_response(
-          pdu_session_sm_policy_update_notify_response& sm_context_response,
-          uint32_t& pid);
+      pdu_session_sm_policy_update_notify_response& sm_context_response,
+      uint32_t& pid);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID

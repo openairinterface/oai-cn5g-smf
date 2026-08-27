@@ -235,8 +235,8 @@ class upf_graph {
 
   upf_graph(const upf_graph& g) {
     // TODO do I need to lock the other graph here?
-    adjacency_list = g.adjacency_list;
-    visited_asynch = g.visited_asynch;
+    adjacency_list      = g.adjacency_list;
+    visited_asynch      = g.visited_asynch;
     pcc_rule_id_to_qfi_ = g.pcc_rule_id_to_qfi_;
     // do not copy mutex
   }
@@ -251,21 +251,9 @@ class upf_graph {
       const std::shared_ptr<pfcp_association>& association_to_add);
 
   /**
-   * TODO [QOS-FLOW]: Implement QoS Flow / session-graph integration
-   * Reference: OAI_SMF_Gap_Analysis.md - Phase 3, Task 3.8 (Session Context
-   *            Integration: add_qos_flow / QosFlowContext) and Task 3.2 (QoS
-   *            Flow Creation)
-   *   - Add a new QoS flow to the session's QoS-flow context and UPF graph as
-   *     part of real flow creation (with QFI allocation and PDR/FAR/QER
-   *     bookkeeping), not as a standalone edge insertion
-   * Standards: TS 23.501 §5.7.1 (QoS model), §5.7.1.5 (flow ↔ rule mapping)
+   *   @brief Add a new QoS flow to the session's QoS-flow context and UPF graph
+   *   Standards: TS 23.501 §5.7.1 (QoS model), §5.7.1.5 (flow ↔ rule mapping)
    *
-   * [QOS-MOCK] Add a single QoS-flow edge to an existing UPF node in the graph.
-   * Thin public wrapper over add_upf_graph_edge(), used by the mock to install
-   * a genuinely new QoS flow (new QFI) mid-session so it is discoverable by
-   * get_access_edges()/get_edge_for_qfi() for the N1/N2 path.
-   * TODO [QOS-MOCK-REMOVE]: replace with proper Phase 3 flow creation (edge
-   * built from policy + QFI allocator + graph bookkeeping), not this shortcut.
    * @param node the UPF the edge belongs to
    * @param edge the edge to add
    */
@@ -398,7 +386,6 @@ class upf_graph {
    */
   std::map<std::string, uint8_t> get_pcc_rule_to_qfi_map() const;
 
-
   /**
    * Get all the access edges for this graph, for each QFI there may be an
    * access edge
@@ -435,8 +422,8 @@ class upf_graph {
       const pfcp::fteid_t& fteid);
 
   void add_to_current_edges_cache(
-    const std::shared_ptr<qos_upf_edge>& dl_edge,
-    const std::shared_ptr<qos_upf_edge>& ul_edge);
+      const std::shared_ptr<qos_upf_edge>& dl_edge,
+      const std::shared_ptr<qos_upf_edge>& ul_edge);
 };
 
 class pfcp_associations {

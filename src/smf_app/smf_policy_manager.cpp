@@ -41,8 +41,7 @@ std::string smf_policy_delta::to_string() const {
 bool smf_policy_manager::parse_policy_decision(
     const nlohmann::json& policy_json, SmPolicyDecision& policy_decision) {
   try {
-    if (policy_json.is_object() &&
-        policy_json.contains("smPolicyDecision") &&
+    if (policy_json.is_object() && policy_json.contains("smPolicyDecision") &&
         policy_json["smPolicyDecision"].is_object()) {
       from_json(policy_json["smPolicyDecision"], policy_decision);
       return true;
@@ -54,8 +53,7 @@ bool smf_policy_manager::parse_policy_decision(
         "Policy JSON does not contain smPolicyDecision field");
     return false;
   } catch (const nlohmann::json::exception& e) {
-    Logger::smf_app().error(
-        "Failed to parse SmPolicyDecision: %s", e.what());
+    Logger::smf_app().error("Failed to parse SmPolicyDecision: %s", e.what());
     return false;
   } catch (const std::exception& e) {
     Logger::smf_app().error(
@@ -88,20 +86,20 @@ smf_policy_delta smf_policy_manager::compute_delta(
     if (current_it == current_rules.end()) {
       // New rule - ADDED
       pcc_rule_change change;
-      change.type = policy_change_type::ADDED;
-      change.rule_id = rule_id;
+      change.type     = policy_change_type::ADDED;
+      change.rule_id  = rule_id;
       change.new_rule = new_rule;
       delta.pcc_rule_changes.push_back(change);
       delta.added_pcc_rules.insert(rule_id);
 
       Logger::smf_app().debug(
-          "Policy delta: PCC rule '%s' ADDED (precedence %d)",
-          rule_id.c_str(), new_rule.getPrecedence());
-    } else if (current_it->second !=  new_rule) {
+          "Policy delta: PCC rule '%s' ADDED (precedence %d)", rule_id.c_str(),
+          new_rule.getPrecedence());
+    } else if (current_it->second != new_rule) {
       // Existing rule changed - MODIFIED
       pcc_rule_change change;
-      change.type = policy_change_type::MODIFIED;
-      change.rule_id = rule_id;
+      change.type     = policy_change_type::MODIFIED;
+      change.rule_id  = rule_id;
       change.old_rule = current_it->second;
       change.new_rule = new_rule;
       delta.pcc_rule_changes.push_back(change);
@@ -114,14 +112,15 @@ smf_policy_delta smf_policy_manager::compute_delta(
   }
 
   // Find removed PCC rules (in current but not in requested)
-  // Note: 3GPP TS 29.512 §4.2.3 permits delta updates where explicit nulls indicate removal.
-  // However, snapshot-style PCFs (e.g., OAI PCF) send full decision maps omitting deleted rules.
-  // Therefore, any rule present in current_rules but missing from requested_rules must be REMOVED.
+  // Note: 3GPP TS 29.512 §4.2.3 permits delta updates where explicit nulls
+  // indicate removal. However, snapshot-style PCFs (e.g., OAI PCF) send full
+  // decision maps omitting deleted rules. Therefore, any rule present in
+  // current_rules but missing from requested_rules must be REMOVED.
   for (const auto& [rule_id, old_rule] : current_rules) {
     if (requested_rules.find(rule_id) == requested_rules.end()) {
       pcc_rule_change change;
-      change.type = policy_change_type::REMOVED;
-      change.rule_id = rule_id;
+      change.type     = policy_change_type::REMOVED;
+      change.rule_id  = rule_id;
       change.old_rule = old_rule;
       delta.pcc_rule_changes.push_back(change);
       delta.removed_pcc_rules.insert(rule_id);
@@ -149,29 +148,29 @@ smf_policy_delta smf_policy_manager::compute_delta(
     if (current_it == current_qos.end()) {
       // New QoS data - ADDED
       qos_data_change change;
-      change.type = policy_change_type::ADDED;
-      change.qos_id = qos_id;
+      change.type     = policy_change_type::ADDED;
+      change.qos_id   = qos_id;
       change.new_data = new_qos;
       delta.qos_data_changes.push_back(change);
       delta.added_qos_data.insert(qos_id);
 
       Logger::smf_app().debug(
-          "Policy delta: QoS data '%s' ADDED (5QI=%d, ARP=%d)",
-          qos_id.c_str(), new_qos.getR5qi(),
+          "Policy delta: QoS data '%s' ADDED (5QI=%d, ARP=%d)", qos_id.c_str(),
+          new_qos.getR5qi(),
           new_qos.arpIsSet() ? new_qos.getArp().getPriorityLevel() : 0);
     } else if (current_it->second != new_qos) {
       // Existing QoS data changed - MODIFIED
       qos_data_change change;
-      change.type = policy_change_type::MODIFIED;
-      change.qos_id = qos_id;
+      change.type     = policy_change_type::MODIFIED;
+      change.qos_id   = qos_id;
       change.old_data = current_it->second;
       change.new_data = new_qos;
       delta.qos_data_changes.push_back(change);
       delta.modified_qos_data.insert(qos_id);
 
       Logger::smf_app().debug(
-          "Policy delta: QoS data '%s' MODIFIED (5QI=%d→%d)",
-          qos_id.c_str(), current_it->second.getR5qi(), new_qos.getR5qi());
+          "Policy delta: QoS data '%s' MODIFIED (5QI=%d→%d)", qos_id.c_str(),
+          current_it->second.getR5qi(), new_qos.getR5qi());
     }
   }
 
@@ -179,8 +178,8 @@ smf_policy_delta smf_policy_manager::compute_delta(
   for (const auto& [qos_id, old_qos] : current_qos) {
     if (requested_qos.find(qos_id) == requested_qos.end()) {
       qos_data_change change;
-      change.type = policy_change_type::REMOVED;
-      change.qos_id = qos_id;
+      change.type     = policy_change_type::REMOVED;
+      change.qos_id   = qos_id;
       change.old_data = old_qos;
       delta.qos_data_changes.push_back(change);
       delta.removed_qos_data.insert(qos_id);
@@ -196,10 +195,8 @@ smf_policy_delta smf_policy_manager::compute_delta(
 
 //------------------------------------------------------------------------------
 policy_delta smf_policy_manager::convert_to_upf_delta(
-    const smf_policy_delta& delta,
-    const SmPolicyDecision& new_policy,
+    const smf_policy_delta& delta, const SmPolicyDecision& new_policy,
     std::map<std::string, uint8_t>& rule_to_qfi_map) {
-
   policy_delta upf_delta = {};
 
   // Get QoS data from new policy for looking up parameters
@@ -210,20 +207,21 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
 
   for (const auto& change : delta.pcc_rule_changes) {
     // Process ADDED PCC rules -> to_add
-    if (change.type == policy_change_type::ADDED  && change.new_rule.has_value()) {
-
-    const auto& pcc_rule = change.new_rule.value();
+    if (change.type == policy_change_type::ADDED &&
+        change.new_rule.has_value()) {
+      const auto& pcc_rule = change.new_rule.value();
 
       // Get QoS data referenced by this PCC rule
       if (!pcc_rule.refQosDataIsSet() || pcc_rule.getRefQosData().empty()) {
         Logger::smf_app().warn(
-            "PCC rule '%s' has no refQosData, skipping", change.rule_id.c_str());
+            "PCC rule '%s' has no refQosData, skipping",
+            change.rule_id.c_str());
         continue;
       }
 
       // Use the first referenced QoS data
       auto qos_refs = pcc_rule.getRefQosData()[0];
-      auto qos_it = qos_decs.find(qos_refs);
+      auto qos_it   = qos_decs.find(qos_refs);
       if (qos_it == qos_decs.end()) {
         Logger::smf_app().warn(
             "PCC rule '%s' references unknown QoS data '%s'",
@@ -231,7 +229,9 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         continue;
       }
       if (!pcc_rule.flowInfosIsSet() || pcc_rule.getFlowInfos().empty()) {
-        Logger::smf_app().warn("PCC rule '%s' has no flow information, skipping", change.rule_id.c_str());
+        Logger::smf_app().warn(
+            "PCC rule '%s' has no flow information, skipping",
+            change.rule_id.c_str());
         continue;
       }
 
@@ -242,7 +242,8 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         flow_change.qfi = 0;  // QFI will be allocated when applying to graph
         flow_change.pcc_rule_id = change.rule_id;
         flow_change.qos_profile = qos_it->second;
-        flow_change.precedence = pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
+        flow_change.precedence =
+            pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
         flow_change.flow_information = flow_info;
         upf_delta.to_add.push_back(flow_change);
       }
@@ -251,7 +252,8 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
           flow_infos.size(), change.rule_id.c_str(), qos_it->second.getR5qi());
     }
     // Process MODIFIED PCC rules -> to_modify
-    if (change.type == policy_change_type::MODIFIED && change.new_rule.has_value()) {
+    if (change.type == policy_change_type::MODIFIED &&
+        change.new_rule.has_value()) {
       // Find the existing QFI for this rule
       auto qfi_it = rule_to_qfi_map.find(change.rule_id);
       if (qfi_it == rule_to_qfi_map.end()) {
@@ -269,16 +271,16 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         continue;
       }
       const std::string qos_ref = pcc_rule.getRefQosData()[0];
-      auto qos_it = qos_decs.find(qos_ref);
+      auto qos_it               = qos_decs.find(qos_ref);
       if (qos_it == qos_decs.end()) {
         continue;
       }
 
       qos_flow_change flow_change = {};
-      flow_change.qfi = qfi_it->second;
-      flow_change.pcc_rule_id = change.rule_id;
-      flow_change.qos_profile = qos_it->second;
-      flow_change.precedence = pcc_rule.getPrecedence();
+      flow_change.qfi             = qfi_it->second;
+      flow_change.pcc_rule_id     = change.rule_id;
+      flow_change.qos_profile     = qos_it->second;
+      flow_change.precedence      = pcc_rule.getPrecedence();
 
       if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
         flow_change.flow_information = pcc_rule.getFlowInfos()[0];
@@ -295,12 +297,13 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
       auto qfi_it = rule_to_qfi_map.find(change.rule_id);
       if (qfi_it == rule_to_qfi_map.end()) {
         Logger::smf_app().warn(
-            "Removed PCC rule '%s' has no allocated QFI", change.rule_id.c_str());
+            "Removed PCC rule '%s' has no allocated QFI",
+            change.rule_id.c_str());
         continue;
       }
 
       qos_flow_change flow_to_remove;
-      flow_to_remove.qfi = qfi_it->second;
+      flow_to_remove.qfi         = qfi_it->second;
       flow_to_remove.pcc_rule_id = change.rule_id;
       upf_delta.to_remove.push_back(flow_to_remove);
 
@@ -323,11 +326,9 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
 
 //------------------------------------------------------------------------------
 smf_policy_report smf_policy_manager::validate_policy(
-    const SmPolicyDecision& policy,
-    const smf_policy_delta& delta,
+    const SmPolicyDecision& policy, const smf_policy_delta& delta,
     const std::optional<std::string>& subscription_max_ul,
     const std::optional<std::string>& subscription_max_dl) {
-
   smf_policy_report result;
   std::set<std::string> unique_failed_pcc_rules;
 
@@ -347,7 +348,8 @@ smf_policy_report smf_policy_manager::validate_policy(
       if (rule.precedenceIsSet()) {
         if (precedences.count(rule.getPrecedence()) > 0) {
           Logger::smf_app().warn(
-                  "Duplicate PCC rule precedence %d detected", rule.getPrecedence());
+              "Duplicate PCC rule precedence %d detected",
+              rule.getPrecedence());
         }
         precedences.insert(rule.getPrecedence());
       }
@@ -359,11 +361,13 @@ smf_policy_report smf_policy_manager::validate_policy(
   if (subscription_max_ul.has_value() || subscription_max_dl.has_value()) {
     if (subscription_max_ul.has_value()) {
       utils::sdf_conversions::parse_bitrate_string_to_unit(
-          subscription_max_ul.value(), utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_ul);
+          subscription_max_ul.value(),
+          utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_ul);
     }
     if (subscription_max_dl.has_value()) {
       utils::sdf_conversions::parse_bitrate_string_to_unit(
-          subscription_max_dl.value(), utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_dl);
+          subscription_max_dl.value(),
+          utils::sdf_conversions::bitrate_unit_e::KBPS, sub_max_dl);
     }
   }
 
@@ -374,7 +378,7 @@ smf_policy_report smf_policy_manager::validate_policy(
     std::vector<std::string> add_pcc_rules;
     const auto& qos_decs = policy.getQosDecs();
     for (const auto& [qos_id, qos_data] : qos_decs) {
-      bool qos_valid         = true;
+      bool qos_valid = true;
       std::string fail_reason;
 
       // Validate 5QI is in valid range (1-255 per TS 23.501)
@@ -420,7 +424,8 @@ smf_policy_report smf_policy_manager::validate_policy(
           }
         } else {
           Logger::smf_app().warn(
-              "QoS validation failed for '%s' (%s), but no PCC rules reference it",
+              "QoS validation failed for '%s' (%s), but no PCC rules reference "
+              "it",
               qos_id.c_str(), fail_reason.c_str());
         }
       }
@@ -430,7 +435,6 @@ smf_policy_report smf_policy_manager::validate_policy(
     // Calculate what is occupied by current functions
     // Verify each modification if it will still within the limit
     // Verify each additional rule if it is still within the limit
-
 
     // Create a RuleReport for the failed PCC rules
     if (!unique_failed_pcc_rules.empty()) {
@@ -447,14 +451,14 @@ smf_policy_report smf_policy_manager::validate_policy(
 
       FailureCode failure_code;
       failure_code.setEnumValue(
-              FailureCode_anyOf::eFailureCode_anyOf::UNSUCC_QOS_VAL);
+          FailureCode_anyOf::eFailureCode_anyOf::UNSUCC_QOS_VAL);
 
       if (!inactive_failed_rules.empty()) {
         RuleReport rule_report_inactive;
         rule_report_inactive.setPccRuleIds(inactive_failed_rules);
         RuleStatus rule_status_inactive;
         rule_status_inactive.setEnumValue(
-                RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
+            RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
         rule_report_inactive.setRuleStatus(rule_status_inactive);
         rule_report_inactive.setFailureCode(failure_code);
         result.rule_reports.push_back(rule_report_inactive);
@@ -465,17 +469,18 @@ smf_policy_report smf_policy_manager::validate_policy(
         rule_report_active.setPccRuleIds(active_failed_rules);
         RuleStatus rule_status_active;
         rule_status_active.setEnumValue(
-                RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
+            RuleStatus_anyOf::eRuleStatus_anyOf::ACTIVE);
         rule_report_active.setRuleStatus(rule_status_active);
         rule_report_active.setFailureCode(failure_code);
         result.rule_reports.push_back(rule_report_active);
       }
 
-      result.effected_rule_ids.insert(unique_failed_pcc_rules.begin(), unique_failed_pcc_rules.end());
+      result.effected_rule_ids.insert(
+          unique_failed_pcc_rules.begin(), unique_failed_pcc_rules.end());
 
       Logger::smf_app().warn(
-              "QoS validation failed for %zu PCC rule(s) due to QoS data issues",
-              unique_failed_pcc_rules.size());
+          "QoS validation failed for %zu PCC rule(s) due to QoS data issues",
+          unique_failed_pcc_rules.size());
     }
   }
 
@@ -533,42 +538,43 @@ std::string smf_policy_manager::get_5qi_resource_type(int32_t fiveqi) {
 }
 //------------------------------------------------------------------------------
 smf_policy_report smf_policy_manager::build_n4_failure_report(
-    uint8_t pfcp_cause,
-    const policy_delta& delta) {
+    uint8_t pfcp_cause, const policy_delta& delta) {
   smf_policy_report result;
 
-  // Map PFCP Cause (3GPP TS 29.244 §8.2.1) -> Policy FailureCode (3GPP TS 29.512 §5.6.3.9)
+  // Map PFCP Cause (3GPP TS 29.244 §8.2.1) -> Policy FailureCode (3GPP
+  // TS 29.512 §5.6.3.9)
   FailureCode failure_code;
 
   switch (pfcp_cause) {
-  case 70: // Invalid Forwarding Policy
-    failure_code.setEnumValue(
-        FailureCode_anyOf::eFailureCode_anyOf::TRAFFIC_STEERING_ERROR);
-    break;
+    case 70:  // Invalid Forwarding Policy
+      failure_code.setEnumValue(
+          FailureCode_anyOf::eFailureCode_anyOf::TRAFFIC_STEERING_ERROR);
+      break;
 
-  case 73: // Rule creation/modification failure
-  case 74: // PFCP entity in congestion
-  case 75: // No resources available
-    failure_code.setEnumValue(
-        FailureCode_anyOf::eFailureCode_anyOf::RES_ALLO_FAIL);
-    break;
+    case 73:  // Rule creation/modification failure
+    case 74:  // PFCP entity in congestion
+    case 75:  // No resources available
+      failure_code.setEnumValue(
+          FailureCode_anyOf::eFailureCode_anyOf::RES_ALLO_FAIL);
+      break;
 
-  case 81: // Unknown Application ID
-    failure_code.setEnumValue(
-        FailureCode_anyOf::eFailureCode_anyOf::APP_ID_ERR);
-    break;
+    case 81:  // Unknown Application ID
+      failure_code.setEnumValue(
+          FailureCode_anyOf::eFailureCode_anyOf::APP_ID_ERR);
+      break;
 
-  case 65: // Session context not found
-  case 72: // No established PFCP Association
-  case 77: // System failure
-  default:
-    // Access Node / Gateway failure for node or transport level issues
-    failure_code.setEnumValue(
-        FailureCode_anyOf::eFailureCode_anyOf::AN_GW_FAILED);
-    break;
+    case 65:  // Session context not found
+    case 72:  // No established PFCP Association
+    case 77:  // System failure
+    default:
+      // Access Node / Gateway failure for node or transport level issues
+      failure_code.setEnumValue(
+          FailureCode_anyOf::eFailureCode_anyOf::AN_GW_FAILED);
+      break;
   }
 
-  // Because the N4 transaction was rejected by UPF without retry, ALL rules in the delta failed.
+  // Because the N4 transaction was rejected by UPF without retry, ALL rules in
+  // the delta failed.
   std::vector<std::string> failed_to_add;
   std::vector<std::string> failed_to_modify;
   std::vector<std::string> failed_to_remove;
@@ -642,10 +648,11 @@ smf_policy_report smf_policy_manager::build_n4_failure_report(
         pfcp_cause);
   } else {
     Logger::smf_app().warn(
-        "Built full N4 failure report: PFCP cause=%d, %zu total rule(s) reported "
+        "Built full N4 failure report: PFCP cause=%d, %zu total rule(s) "
+        "reported "
         "(add:%zu [INACTIVE], modify:%zu [ACTIVE], remove:%zu [ACTIVE])",
-        pfcp_cause, result.effected_rule_ids.size(),
-        failed_to_add.size(), failed_to_modify.size(), failed_to_remove.size());
+        pfcp_cause, result.effected_rule_ids.size(), failed_to_add.size(),
+        failed_to_modify.size(), failed_to_remove.size());
   }
 
   return result;

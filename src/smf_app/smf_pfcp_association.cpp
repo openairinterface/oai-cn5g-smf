@@ -1092,7 +1092,8 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       selection_criteria.qfi = generated_qfi;
       // Register this rule with the reused QFI
       if (sub_graph_ptr) {
-        sub_graph_ptr->register_pcc_rule_qfi(selection_criteria.pcc_rule_id, generated_qfi);
+        sub_graph_ptr->register_pcc_rule_qfi(
+            selection_criteria.pcc_rule_id, generated_qfi);
       }
     }
 
@@ -1450,7 +1451,8 @@ uint8_t upf_graph::generate_qfi() {
 void upf_graph::release_qfi(uint8_t qfi) {
   qfi_generator.free_uid(qfi);
   // Remove all rules that use this QFI
-  for (auto it = pcc_rule_id_to_qfi_.begin(); it != pcc_rule_id_to_qfi_.end(); ) {
+  for (auto it = pcc_rule_id_to_qfi_.begin();
+       it != pcc_rule_id_to_qfi_.end();) {
     if (it->second == qfi) {
       it = pcc_rule_id_to_qfi_.erase(it);
     } else {
@@ -1460,14 +1462,16 @@ void upf_graph::release_qfi(uint8_t qfi) {
 }
 
 //---------------------------------------------------------------------------------------------
-void upf_graph::register_pcc_rule_qfi(const std::string& pcc_rule_id, uint8_t qfi) {
+void upf_graph::register_pcc_rule_qfi(
+    const std::string& pcc_rule_id, uint8_t qfi) {
   if (!pcc_rule_id.empty() && qfi != 0) {
     pcc_rule_id_to_qfi_[pcc_rule_id] = qfi;
   }
 }
 
 //---------------------------------------------------------------------------------------------
-uint8_t upf_graph::get_qfi_for_pcc_rule_id(const std::string& pcc_rule_id) const {
+uint8_t upf_graph::get_qfi_for_pcc_rule_id(
+    const std::string& pcc_rule_id) const {
   auto it = pcc_rule_id_to_qfi_.find(pcc_rule_id);
   if (it != pcc_rule_id_to_qfi_.end()) {
     return it->second;

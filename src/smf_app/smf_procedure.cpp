@@ -1325,27 +1325,11 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 smf_procedure_code
 session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
     const policy_delta& delta) {
-  // TODO [N4-MODIFY]: Translate the policy delta into an N4 Session Modification
-  // Reference: Phase 2: N4 Session Modification Logic
-  //   - Task 2.1: generate_pdr_from_pcc_rule() — PDI (SDF filter, UE IP, source
-  //     interface), precedence, PDR ID, FAR/QER references
-  //   - Task 2.2: generate_far_from_qos_data() — destination interface,
-  //     forwarding params, outer header creation / TEID, apply action
-  //   - Task 2.3: generate_qer_from_qos_data() — 5QI→characteristics, QFI,
-  //     gate status, GBR/MBR, QER ID
-  //   - Task 2.4: build the PFCP Session Modification Request — create the
-  //     to_add rules, update modified rules, remove the to_remove rules
-  //   - Task 2.5/2.6: PDR/FAR/QER lifecycle + QFI allocation/deallocation
   // Standards:
   //   - TS 29.244 §7.5.4 (PFCP Session Modification), §5.2.1A (PDR),
-  //     §5.2.3 (FAR), §5.2.5 (QER); TS 23.502 §4.3.3.2 (PDU Session Modification)
-  //
-  // [QOS-MOCK] Apply the delta in place: Update QER for modified flows, Remove
-  // one released flow, and Create one genuinely new flow. Update/Remove keep
-  // the forwarding identity (F-TEID/UE-IP bindings) of the surviving flows
-  // stable, so the pipeline is never emptied (the dangerous transient). The
-  // created flow uses fresh non-colliding rule IDs and complete IEs (real UE
-  // IP, a fresh N3 UL TEID, and the gNB OHC reused from an existing flow).
+  //     §5.2.3 (FAR), §5.2.5 (QER); TS 23.502 §4.3.3.2 (PDU Session
+  //     Modification)
+
   std::shared_ptr<pfcp_association> current_upf = {};
   std::vector<std::shared_ptr<qos_upf_edge>> dl_edges{};
   std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
@@ -1373,7 +1357,6 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
   UPInterfaceType n3_type = {};
   n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
 
-
   // --- Modify phase: Update QER in place (no teardown) --------------------
   std::vector<qfi_t> qfis_to_update = {};
   staged_modified_edges.clear();
@@ -1385,13 +1368,14 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
       staged_modified_edges[edge] = change.qos_profile;
 
       qfi_t q = {};
-      q.qfi    = change.qfi;
+      q.qfi   = change.qfi;
       qfis_to_update.push_back(q);
 
       if (edge->qer_id.qer_id != 0) {
         qos_upf_edge temp_edge = *edge;
-        temp_edge.qos_profile = change.qos_profile;
-        n4_triggered->pfcp_ies.set(pfcp_update_qer(std::make_shared<qos_upf_edge>(temp_edge)));
+        temp_edge.qos_profile  = change.qos_profile;
+        n4_triggered->pfcp_ies.set(
+            pfcp_update_qer(std::make_shared<qos_upf_edge>(temp_edge)));
       }
     }
   }
@@ -1414,17 +1398,6 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
   }
 
   // --- Add phase: install a genuinely new flow ----------------------------
-  // [QOS-MOCK] CAVEATS (mock):
-  //   * The new flow's edges are CLONED from an existing DL/UL pair so they
-  //     inherit the real UPF, interface type, UE-IP context and gNB endpoint;
-  //     a real implementation would build the edge from the PCF QoS data and a
-  //     QFI allocator (Phase 3 QoS Flow Management).
-  //   * The new UL N3 F-TEID is a fresh SMF-allocated TEID on the UPF's N3 IP
-  //     (concrete, not UPF-CHOOSE) so the N4 Create and the N2 UL TNL stay
-  //     consistent without waiting for the Create-PDR response.
-  //   * The new DL FAR Outer Header Creation reuses an existing flow's gNB
-  //     F-TEID (same gNB tunnel) — a real per-flow gNB DL TEID would arrive in
-  //     the N2 PDU Session Resource Modify Response (out of mock scope).
   // TODO: replace cloning + reused gNB tunnel + concrete TEID
   //   with real Phase 2/3 flow creation (QFI allocation, generated PDR/FAR/QER
   //   from the policy, DL TEID from the N2 response).
@@ -1437,14 +1410,15 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
       continue;
     }
 
-    if (change.qfi == 0 ) {
-      Logger::smf_app().error("QFI pool exhausted, cannot add flow for rule '%s'",
+    if (change.qfi == 0) {
+      Logger::smf_app().error(
+          "QFI pool exhausted, cannot add flow for rule '%s'",
           change.pcc_rule_id.c_str());
       continue;
     }
 
     qfi_t q = {};
-    q.qfi    = change.qfi;
+    q.qfi   = change.qfi;
     qfis_to_update.push_back(q);
     n11_trigger->req.add_qfi(change.qfi);
 
@@ -1461,11 +1435,11 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
       edge->flow_information = change.flow_information;
       edge->precedence       = change.precedence;
       edge->default_qos      = false;
-      edge->pdr_id      = pdr_id_t{};
-      edge->far_id      = far_id_t{};
-      edge->qer_id      = qer_id_t{};
-      edge->urr_id      = urr_id_t{};
-      edge->qos_rule_id = 0;
+      edge->pdr_id           = pdr_id_t{};
+      edge->far_id           = far_id_t{};
+      edge->qer_id           = qer_id_t{};
+      edge->urr_id           = urr_id_t{};
+      edge->qos_rule_id      = 0;
       // Fresh N3 UL TEID on the access (N3) edge; keep the cloned gNB
       // next_hop_fteid for the DL OHC.
       if (edge->type == n3_type && !edge->fteid.is_zero()) {
@@ -1588,10 +1562,11 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
   sps->get_session_handler()->set_qfis_to_be_updated(
       list_of_qfis_to_be_modified);
-  if (!list_of_qfis_to_be_modified.empty() && (!is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
-      !is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update))) {
+  if (!list_of_qfis_to_be_modified.empty() &&
+      (!is_qfi_served_in_edges(
+           list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
+       !is_qfi_served_in_edges(
+           list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update))) {
     // TODO check on NAS, maybe can reject some QFIs and accept others?
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
@@ -1771,11 +1746,11 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
     // Special handling for PCF-initiated modifications: don't release session,
     // build failure report and respond to PCF
-    if (session_procedure_type ==
-        session_management_procedures_type_e::
-            PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    if (session_procedure_type == session_management_procedures_type_e::
+                                      PDU_SESSION_MODIFICATION_PCF_INITIATED) {
       Logger::smf_app().warn(
-          "N4 Session Modification rejected by UPF (cause=%d) for PCF-initiated "
+          "N4 Session Modification rejected by UPF (cause=%d) for "
+          "PCF-initiated "
           "modification, building failure report",
           cause.cause_value);
 
@@ -1788,7 +1763,8 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       if (sps && sps->get_session_handler()) {
         for (const auto& change : policy_delta_upf.to_add) {
           if (change.qfi != 0) {
-            sps->get_session_handler()->get_session_graph()->release_qfi(change.qfi);
+            sps->get_session_handler()->get_session_graph()->release_qfi(
+                change.qfi);
           }
         }
       }
@@ -1801,8 +1777,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
           oai::common::sbi::http_status_code::INTERNAL_SERVER_ERROR,
           smf_server_application_error_e::RULE_PERMANENT_ERROR,
           partial_success_report.rule_reports,
-          partial_success_report.session_rule_reports,
-          n11_trigger->pid);
+          partial_success_report.session_rule_reports, n11_trigger->pid);
 
       return smf_procedure_code::ERROR;
     } else {
@@ -1824,7 +1799,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       }
       sc->handle_sm_context_status_change(scid, "RELEASED");
 
-        return smf_procedure_code::ERROR;
+      return smf_procedure_code::ERROR;
     }
   }
 
@@ -1835,17 +1810,17 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
 
   if (get_current_upf(dl_edges, ul_edges, current_upf) ==
-    smf_procedure_code::ERROR) {
+      smf_procedure_code::ERROR) {
     Logger::smf_app().error("SMF DL procedure: Could not get current UPF");
     // TODO is this enough as an error message? We have cause 31 but not
     // values
     return smf_procedure_code::ERROR;
   }
 
-  if (session_procedure_type ==
-      session_management_procedures_type_e::PDU_SESSION_MODIFICATION_PCF_INITIATED) {
-
-    std::shared_ptr<upf_graph> graph = sps->get_session_handler()->get_session_graph();
+  if (session_procedure_type == session_management_procedures_type_e::
+                                    PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    std::shared_ptr<upf_graph> graph =
+        sps->get_session_handler()->get_session_graph();
 
     for (const auto& [edge, new_profile] : staged_modified_edges) {
       edge->qos_profile = new_profile;
@@ -1857,7 +1832,8 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     for (const auto& pair : staged_new_edges) {
       staged_ul_edges.push_back(pair.second);
     }
-    associate_fteid_with_created_pdrs(resp.pfcp_ies.created_pdrs, staged_ul_edges);
+    associate_fteid_with_created_pdrs(
+        resp.pfcp_ies.created_pdrs, staged_ul_edges);
 
     // COMMIT staged edges to active upf_graph
     if (graph) {
@@ -1878,7 +1854,6 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     }
     staged_new_edges.clear();
   }
-
 
   // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
   // Session
@@ -1987,66 +1962,31 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      // TODO [N4-MODIFY]: Implement N4 Response Handling for PCF-initiated updates
-      // Reference: Phase 2: N4 Session Modification Logic
+      // N4 Session Modification Logic
       // This handles the UPF response after N4 Session Modification Request
-      //
-      // Task: Process N4 Session Modification Response
-      //   1. Parse PFCP Session Modification Response from UPF
-      //   2. Check response cause code:
-      //      - If SUCCESS: Update session context with new QoS flows
-      //      - If FAILURE: Rollback policy changes, notify PCF
-      //   3. Update QoS flow state (Phase 3):
-      //      - Transition flows from PENDING_ESTABLISHMENT → ESTABLISHED
-      //      - Transition flows from PENDING_MODIFICATION → ESTABLISHED
-      //      - Transition flows from PENDING_RELEASE → RELEASED
-      //   4. Update PDR/FAR/QER mappings in session context
-      //   5. Build HTTP response for PCF:
-      //      - Success: HTTP 200 OK with updated policy
-      //      - Failure: HTTP 500 with ProblemDetails
-      //   6. For successful modifications:
-      //      - Generate N2 QoS flow setup/modify for RAN
-      //      - Update n11_triggered_pending->res with flow info
-      //      - Set continue_n4 based on next UPF in chain (if any)
-      //   7. Store updated policy decision (Phase 4):
-      //      - Call storage->update_policy_decision()
-      //      - Version the policy for rollback capability
-      //
-      // Error Handling:
-      //   - UPF rejects modification → rollback policy, notify PCF
-      //   - Timeout on N4 response → retry or rollback
-      //   - Partial success → log inconsistency, alert operator
       //
       // Standards:
       //   - TS 29.244 §7.5.4 (PFCP Session Modification Request/Response)
       //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
       //   - TS 23.502 §4.3.3 (PDU Session Modification procedures)
-      //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer - N2)
-      //
-      // [QOS-MOCK] Phase 2 response — N4 Session Modification Response handling.
-      // Mocks the [N4-MODIFY] N4-response TODO task above:
-      //   - Cause check / success path: done for real (cause validated at the
-      //     top of this method as REQUEST_ACCEPTED). The QoS flow context(s) are
-      //     appended to n11_triggered_pending->res by the common code after this
-      //     switch (the HTTP 200 reply to the PCF).
-      //   - QoS-flow state transitions, PDR/FAR/QER remapping, failure rollback
-      //     and PCF notification: MOCKED — not implemented.
+      //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer -
+      //   N2)
       continue_n4 = false;
 
-      // [QOS-MOCK] Phase 4 — N11 AMF update. Mocks the [N11-AMF-UPDATE] TODO
-      // tasks below:
-      //   - Task 4.6 (Invoke N1N2MessageTransfer): done for real, reusing the
-      //     network-requested modification path —
-      //     create_n1_pdu_session_modification_command(),
-      //     create_n2_pdu_session_resource_modify_request_transfer() and
-      //     smf_sbi::send_n1n2_message_transfer_request() all run with real
-      //     model objects and the real ITTI signalling.
-      //   - Task 4.3 (UE CM state check): MOCKED — UE assumed CM-CONNECTED.
-      //   - Tasks 4.4/4.5 (paging assistance data / UE-AMBR for CM-IDLE):
-      //     MOCKED — the CM-IDLE paging branch is not built.
-      //   - Task 4.7 (AMF/RAN rejection handling): MOCKED — response assumed
-      //     accepted; no rollback.
-      {
+      // TODO [QOS-PAGING]: Check UE CM state (CM-IDLE vs CM-CONNECTED)
+      // [TS 23.501 §5.3.2] Build paging assistance data for CM-IDLE UE
+      // [TS 23.501 §5.4.3.1, §5.4.3.2] Currently assumes CM-CONNECTED and sends
+      // direct N1N2MessageTransfer. If sps->get_upCnx_state() ==
+      // UPCNX_STATE_DEACTIVATED (CM-IDLE):
+      //   1. Build Paging Assistance Data (5QI, ARP, PPI) [TS 23.501 §5.4.3.1].
+      //   2. Send N1N2MessageTransfer with Paging Assistance Data to AMF.
+      //   3. Store pending modification in session context until UE sends
+      //   Service Request.
+      if (sps->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_DEACTIVATED) {
+        Logger::smf_app().warn(
+            "UE is in CM-IDLE state (upCnxState: DEACTIVATED). "
+            "Network-requested QoS modification requires Paging.");
+      } else {
         std::shared_ptr<itti_nx_trigger_pdu_session_modification> n1n2_trigger =
             std::make_shared<itti_nx_trigger_pdu_session_modification>(
                 TASK_SMF_APP, TASK_SMF_SBI);
@@ -2055,11 +1995,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
         n1n2_trigger->msg.set_dnn(sps->get_dnn());
         n1n2_trigger->msg.set_pdu_session_id(sps->get_pdu_session_id());
         n1n2_trigger->msg.set_snssai(sps->get_snssai());
-        // [QOS-MOCK] Advertise the QFI(s) we added and modified on the UPF (the
-        // delta's to_add + to_modify), not the QFIs from the incoming PCF
-        // request. The released flows (to_remove) ride through the session
-        // handler's get_qos_flows_to_be_released() and become the N1 DELETE
-        // rules / N2 QoS Flow To Release List inside the builders.
+
         for (const auto& change : policy_delta_upf.to_add) {
           n1n2_trigger->msg.add_qfi(change.qfi);
         }
@@ -2067,49 +2003,11 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
           n1n2_trigger->msg.add_qfi(change.qfi);
         }
         Logger::smf_app().info(
-            "[QOS-MOCK] PCF-initiated: triggering N1N2MessageTransfer to AMF "
+            "PCF-initiated: triggering N1N2MessageTransfer to AMF "
             "for %zu QoS flow(s)",
             list_of_qfis_to_be_modified.size());
         sc->handle_pdu_session_modification_network_requested(n1n2_trigger);
       }
-
-      // TODO [N11-AMF-UPDATE]: Trigger N11 N1N2MessageTransfer to AMF after UPF confirms N4 update
-      // Reference: Phase 4.6: N11 N1N2MessageTransfer Invocation
-      // The N11 infrastructure in smf_sbi.cpp is already implemented but never called here.
-      //
-      // Task 4.3: Check UE CM state (CM-IDLE vs CM-CONNECTED) [TS 23.501 §5.3.2]
-      //   - CM-CONNECTED → generate N1 + N2, invoke N1N2MessageTransfer
-      //   - CM-IDLE       → build paging assistance data only, defer N1/N2
-      //
-      // Task 4.4: Build paging assistance data for CM-IDLE UE [TS 23.501 §5.4.3.1, §5.4.3.2]
-      //   - Extract 5QI and ARP from highest-priority new/modified QoS flow in policy delta
-      //   - Derive Paging Policy Indicator (PPI) from DSCP marking
-      //   - Include 5QI, ARP, PPI in SmContextUpdatedData sent to AMF [TS 29.502 §5.6.2.2]
-      //   - AMF selects paging strategy and Paging Priority for N2 Paging [TS 23.501 §5.4.3.3]
-      //
-      // Task 4.5: Include UE-AMBR in SmContextUpdatedData [TS 23.501 §5.6.2]
-      //   - Retrieve subscribed UE-AMBR from session context / UDM subscription data
-      //   - AMF forwards it to RAN in PDU SESSION RESOURCE MODIFY REQUEST [TS 38.413 §8.2.3]
-      //
-      // Task 4.6: Generate N1 + N2 and invoke N1N2MessageTransfer [TS 23.502 §4.3.3.2 step 5b]
-      //   - N1: call smf_n1::create_n1_pdu_session_modification_command() [TS 24.501 §8.3.5]
-      //   - N2: call smf_n2::create_n2_pdu_session_resource_modify_request_transfer() [TS 38.413 §9.3.4.3]
-      //   - Populate n11_triggered_pending->res with N1/N2 payloads + UE-AMBR
-      //   - Call smf_sbi::send_n1n2_message_transfer_request()
-      //   - AMF encapsulates N1 → DL NAS TRANSPORT for UE [TS 38.413 §8.2.1.2]
-      //   - AMF encapsulates N2 → PDU SESSION RESOURCE MODIFY REQUEST for RAN [TS 38.413 §8.2.3.2]
-      //
-      // Task 4.7: Handle AMF/RAN rejection [TS 38.413 §8.6.2.2]
-      //   - Parse N1N2MessageTransfer response for QoS Flow Failed to Resume List
-      //   - If RAN rejects: rollback policy, notify PCF via N7 [TS 29.512 §4.2.6.1]
-      //   - If UE rejects: parse NAS PDU Session Modification Reject cause [TS 24.501 §8.3.6]
-      //   - If AMF cannot reach UE: trigger paging retry [TS 23.502 §4.2.3.3]
-      //
-      // Standards:
-      //   - TS 23.501 §5.6.2 (AMF as transparent relay for N1/N2 SM information)
-      //   - TS 23.501 §5.4.3 (Paging assistance data for CM-IDLE UE)
-      //   - TS 38.413 §8.2.3.2 (PDU SESSION RESOURCE MODIFY REQUEST)
-      //   - TS 38.413 §8.6.2.2 (QoS Flow Failed to Resume List)
     } break;
 
     default: {

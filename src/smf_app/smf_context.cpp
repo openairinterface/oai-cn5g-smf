@@ -490,8 +490,7 @@ void smf_context::handle_itti_msg(
       send_pdu_session_update_response(
           proc_session_update->n11_trigger,
           proc_session_update->n11_triggered_pending,
-          proc_session_update->session_procedure_type,
-          proc_session_update->sps,
+          proc_session_update->session_procedure_type, proc_session_update->sps,
           proc_session_update->partial_success_report);
       remove_procedure(proc.get());
     }
@@ -1718,12 +1717,15 @@ bool smf_context::handle_pdu_session_release_complete(
   // 5GSM Cause
   // Extended Protocol Configuration Options
 
-  // TODO [N11-AMF-UPDATE]: Implement Nsmf_PDUSession_SMContextStatusNotify to AMF
-  // Reference: Phase 4.8: N11 SMContextStatusNotify
-  // Task 4.8: Notify AMF that the SM context for this PDU Session is released
-  //   - Populate SmContextStatusNotification with resourceStatus = "RELEASED" [TS 29.502 §5.6.2.5]
-  //   - Retrieve AMF SM context notification URI from session context [TS 29.502 §5.6.1.2]
-  //   - Call smf_sbi::send_sm_context_status_notification() (stub exists at smf_sbi.cpp:337)
+  // TODO [N11-AMF-UPDATE]: Implement Nsmf_PDUSession_SMContextStatusNotify to
+  // AMF N11 SMContextStatusNotify Notify AMF that the SM context for this PDU
+  // Session is released
+  //   - Populate SmContextStatusNotification with resourceStatus = "RELEASED"
+  //   [TS 29.502 §5.6.2.5]
+  //   - Retrieve AMF SM context notification URI from session context
+  //   [TS 29.502 §5.6.1.2]
+  //   - Call smf_sbi::send_sm_context_status_notification() (stub exists at
+  //   smf_sbi.cpp:337)
   //   - Handle AMF response (200 OK expected; log on error)
   //   - Clear AMF SM context binding after successful notification
   // Standards: TS 23.502 §4.3.4 step 10, TS 29.502 §5.6.2.5
@@ -1741,8 +1743,9 @@ bool smf_context::handle_pdu_session_release_complete(
   std::string status = "RELEASED";
   event_sub.sm_context_status(scid, status);
 
-  // TODO [N11-AMF-UPDATE]: Call smf_sbi::send_sm_context_status_notification() here
-  // Task 4.8: The function exists at smf_sbi.cpp:337 but is never invoked for PDU session release
+  // TODO [N11-AMF-UPDATE]: Call smf_sbi::send_sm_context_status_notification()
+  // here Task 4.8: The function exists at smf_sbi.cpp:337 but is never invoked
+  // for PDU session release
   //   Wire it here after triggering the release event [TS 29.502 §5.6.2.5]
   if (sp.get()->get_pdu_session_status() == pdu_session_status_t::Active) {
     Logger::smf_app().debug(
@@ -2124,16 +2127,16 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
   if (smreq->session_procedure_type ==
       session_management_procedures_type_e::
-      PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+          PDU_SESSION_MODIFICATION_PCF_INITIATED) {
     Logger::smf_app().info(
-            "Handle a PCF initiated PDU Session Update"
-            "(HTTP version %d)",
-            smreq->http_version);
+        "Handle a PCF initiated PDU Session Update"
+        "(HTTP version %d)",
+        smreq->http_version);
   } else {
     Logger::smf_app().info(
-            "Handle a PDU Session Update SM Context Request message from an AMF "
-            "(HTTP version %d)",
-            smreq->http_version);
+        "Handle a PDU Session Update SM Context Request message from an AMF "
+        "(HTTP version %d)",
+        smreq->http_version);
   }
   pdu_session_update_sm_context_request sm_context_req_msg = smreq->req;
   std::string n1_sm_msg                                    = {};
@@ -2646,105 +2649,89 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
   if (smreq->session_procedure_type ==
       session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED) {
-    // TODO [PCF-POLICY]: Implement PCF Policy Decision Processing
-    // Reference: Phase 1: PCF Policy Decision Processing
-    // Task 1.1: Extract smPolicyDecision from JSON request data
-    //   - Call extract_sm_policy_decision(smreq->req)
-    //   - Parse JSON: smreq->req.get_json_data(json_data)
-    //   - Extract pccRules, qosDecs, traffContDecs from json_data["smPolicyDecision"]
-    //
-    // Task 1.5: Compute policy delta to identify changes
-    //   - Call compute_policy_delta(current_policy, new_policy)
-    //   - Identify: added/modified/removed PCC rules
-    //   - Identify: added/modified/removed QoS data entries
-    //   - Identify: added/modified/removed traffic control entries
-    //
-    // Task 1.6: Validate policy decision against subscription limits
-    //   - Call validate_policy_decision(delta, subscription_profile)
-    //   - Check cumulative bandwidth against subscription limits
-    //   - Verify PCC rule precedence uniqueness
-    //   - Validate 5QI values are supported
-    //   - Check network slice resource availability
-    //
-    // Task 1.7: Determine if UPF update is required
-    //   - If PCC rules changed → update_upf = true
-    //   - If QoS data changed → update_upf = true
-    //   - If traffic control changed → update_upf = true
-    //   - If only non-flow parameters changed → update_upf = false
-    //   - Store policy_delta in procedure context for N4 building
-    //
+    // PCF Policy Decision Processing
     // Standards:
     //   - TS 29.512 §4.2.3.2 (PCF-initiated SM Policy Association Modification)
     //   - TS 29.512 §5.6.2.4 (SmPolicyDecision data structure)
     //   - TS 29.512 §5.6.2.6 (PccRule data structure)
     //   - TS 29.512 §5.6.2.8 (QosData data structure)
-    // TODO: Think of moving the SM Association Modification handling to a separate function.
-    //  For that we would have to also move the update UPF proceture to a helper class so that
-    //  we can reuse it in the SM Policy Association Modification handling. For now, we will keep it here.
 
     nlohmann::json policy_json = {};
     smreq->req.get_json_data(policy_json);
 
-    // Task 1.1: Parse the SmPolicyDecision from PCF notification
+    // Parse the SmPolicyDecision from PCF notification
     SmPolicyDecision new_policy_decision = {};
-    bool policy_parsed =
-        smf_policy_manager::parse_policy_decision(policy_json, new_policy_decision);
+    bool policy_parsed = smf_policy_manager::parse_policy_decision(
+        policy_json, new_policy_decision);
 
     if (policy_parsed) {
-      SmPolicyDecision current_policy = sp->policy_ptr ? sp->policy_ptr->decision : SmPolicyDecision{};
+      SmPolicyDecision current_policy =
+          sp->policy_ptr ? sp->policy_ptr->decision : SmPolicyDecision{};
 
-      smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(current_policy, new_policy_decision);
+      smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(
+          current_policy, new_policy_decision);
 
-      // Task 1.6: Validate policy decision
-      smf_policy_report validation_result = smf_policy_manager::validate_policy(new_policy_decision, policy_delta_smf);
+      // Validate policy decision
+      smf_policy_report validation_result = smf_policy_manager::validate_policy(
+          new_policy_decision, policy_delta_smf);
 
       // Check if there are any validation failures
-      if (!validation_result.rule_reports.empty() && new_policy_decision.pccRulesIsSet()) {
+      if (!validation_result.rule_reports.empty() &&
+          new_policy_decision.pccRulesIsSet()) {
         // Check if ALL rules failed validation
-        if (new_policy_decision.getPccRules().size() == validation_result.effected_rule_ids.size()) {
+        if (new_policy_decision.getPccRules().size() ==
+            validation_result.effected_rule_ids.size()) {
           Logger::smf_app().error(
-              "PCF policy decision validation failed for ALL rules, rejecting update");
+              "PCF policy decision validation failed for ALL rules, rejecting "
+              "update");
           smf_app_inst->trigger_sm_policy_update_notify_error_response(
               http_status_code::BAD_REQUEST,
               smf_server_application_error_e::RULE_PERMANENT_ERROR,
               validation_result.rule_reports,
-              validation_result.session_rule_reports,
-              smreq->pid);
+              validation_result.session_rule_reports, smreq->pid);
           return true;
         } else {
           // Partial failure - some rules failed but not all
           partial_success_report = validation_result;
           Logger::smf_app().warn(
-              "PCF policy decision has %zu failed rule(s), but not all rules failed. "
+              "PCF policy decision has %zu failed rule(s), but not all rules "
+              "failed. "
               "Continuing with valid rules.",
               validation_result.effected_rule_ids.size());
 
-          // Remove failed rules from new_policy_decision so only valid rules go to UPF
+          // Remove failed rules from new_policy_decision so only valid rules go
+          // to UPF
           if (new_policy_decision.pccRulesIsSet()) {
             auto pcc_rules = new_policy_decision.getPccRules();
-            for (const auto& failed_rule_id : validation_result.effected_rule_ids) {
+            for (const auto& failed_rule_id :
+                 validation_result.effected_rule_ids) {
               pcc_rules.erase(failed_rule_id);
             }
             new_policy_decision.setPccRules(pcc_rules);
 
             Logger::smf_app().info(
-                "Removed %zu failed rule(s) from policy decision, %zu valid rules remain",
+                "Removed %zu failed rule(s) from policy decision, %zu valid "
+                "rules remain",
                 validation_result.effected_rule_ids.size(), pcc_rules.size());
           }
 
           // Remove failed rules from the delta
-          auto remove_failed_from_changes = [&](std::vector<pcc_rule_change>& changes) {
-            changes.erase(
-                std::remove_if(changes.begin(), changes.end(),
-                    [&](const pcc_rule_change& c) {
-                      return validation_result.effected_rule_ids.count(c.rule_id) > 0;
-                    }),
-                changes.end());
-          };
+          auto remove_failed_from_changes =
+              [&](std::vector<pcc_rule_change>& changes) {
+                changes.erase(
+                    std::remove_if(
+                        changes.begin(), changes.end(),
+                        [&](const pcc_rule_change& c) {
+                          return validation_result.effected_rule_ids.count(
+                                     c.rule_id) > 0;
+                        }),
+                    changes.end());
+              };
           remove_failed_from_changes(policy_delta_smf.pcc_rule_changes);
 
           // Also update the quick-access sets
-          for (const auto& failed_rule_id : validation_result.effected_rule_ids) {
+          for (const auto& failed_rule_id :
+               validation_result.effected_rule_ids) {
             policy_delta_smf.added_pcc_rules.erase(failed_rule_id);
             policy_delta_smf.modified_pcc_rules.erase(failed_rule_id);
             policy_delta_smf.removed_pcc_rules.erase(failed_rule_id);
@@ -2752,7 +2739,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         }
       }
 
-      // Task 1.7: Determine if UPF update is required
+      // Determine if UPF update is required
       if (policy_delta_smf.requires_upf_update()) {
         Logger::smf_app().info(
             "PCF policy delta requires UPF update: %s",
@@ -2764,14 +2751,17 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
         // Get rule_to_qfi_map from session's UPF graph
         std::map<std::string, uint8_t> rule_to_qfi_map;
-        if (sp && sp->get_session_handler() && sp->get_session_handler()->get_session_graph()) {
+        if (sp && sp->get_session_handler() &&
+            sp->get_session_handler()->get_session_graph()) {
           auto session_graph = sp->get_session_handler()->get_session_graph();
-          rule_to_qfi_map = session_graph->get_pcc_rule_to_qfi_map();
+          rule_to_qfi_map    = session_graph->get_pcc_rule_to_qfi_map();
 
-          // Advertise on the N11/N2 leg the flow(s) we add and modify on the UPF
-          // (released flows are carried separately via the release machinery)
-          policy_delta = std::make_optional(smf_policy_manager::convert_to_upf_delta(
-              policy_delta_smf, new_policy_decision, rule_to_qfi_map));
+          // Advertise on the N11/N2 leg the flow(s) we add and modify on the
+          // UPF (released flows are carried separately via the release
+          // machinery)
+          policy_delta =
+              std::make_optional(smf_policy_manager::convert_to_upf_delta(
+                  policy_delta_smf, new_policy_decision, rule_to_qfi_map));
 
           for (auto& change : policy_delta->to_add) {
             // Allocate QFI if not already assigned
@@ -2780,15 +2770,18 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               qfi_to_use = session_graph->generate_qfi();
               if (qfi_to_use == 0 || qfi_to_use > 63) {
                 session_graph->release_qfi(qfi_to_use);  // release invalid QFI
-                Logger::smf_app().error("QFI pool exhausted, cannot add flow for rule '%s'",
+                Logger::smf_app().error(
+                    "QFI pool exhausted, cannot add flow for rule '%s'",
                     change.pcc_rule_id.c_str());
                 continue;
               }
               change.qfi = qfi_to_use;
               // Register the PCC rule to QFI mapping
-              session_graph->register_pcc_rule_qfi(change.pcc_rule_id, qfi_to_use);
-              Logger::smf_app().debug("Allocated QFI=%d for PCC rule '%s'",
-                  qfi_to_use, change.pcc_rule_id.c_str());
+              session_graph->register_pcc_rule_qfi(
+                  change.pcc_rule_id, qfi_to_use);
+              Logger::smf_app().debug(
+                  "Allocated QFI=%d for PCC rule '%s'", qfi_to_use,
+                  change.pcc_rule_id.c_str());
             }
           }
 
@@ -2796,15 +2789,19 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             smreq->req.add_qfi(flow.qfi);
           }
 
-          for (const auto& change: policy_delta->to_modify) {
+          for (const auto& change : policy_delta->to_modify) {
             smreq->req.add_qfi(change.qfi);
           }
 
-          Logger::smf_app().info("Added QFIs to request: %zu to remove, %zu to modify", policy_delta->to_remove.size(), policy_delta->to_modify.size());
+          Logger::smf_app().info(
+              "Added QFIs to request: %zu to remove, %zu to modify",
+              policy_delta->to_remove.size(), policy_delta->to_modify.size());
 
           update_upf = true;
         } else {
-          Logger::smf_app().warn("Session graph not available, cannot determine rule to QFI mapping. UPF update may be incomplete.");
+          Logger::smf_app().warn(
+              "Session graph not available, cannot determine rule to QFI "
+              "mapping. UPF update may be incomplete.");
           update_upf = false;
         }
       } else {
@@ -2837,7 +2834,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       if (!partial_success_report.all_rules_valid()) {
         proc->partial_success_report = std::move(partial_success_report);
       }
-      // For PCF-initiated: pass the cleaned policy decision for commit-on-success
+      // For PCF-initiated: pass the cleaned policy decision for
+      // commit-on-success
       if (pending_policy_decision.has_value()) {
         proc->pending_policy_decision = std::move(pending_policy_decision);
       }
@@ -4775,28 +4773,14 @@ void smf_context::send_pdu_session_update_response(
     smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
   }
   // Register with the UDM
-  // TODO [PCF-POLICY]: Build the PCF UpdateNotify response without blocking
-  // Reference: Phase 1, Task 1.9 (Error Handling /
-  //            response to PCF) and Phase 2 (N4 response → build HTTP response)
-  //   - Respond to the PCF Npcf_SMPolicyControl_UpdateNotify promptly (200/204)
-  //     without serializing the response behind unrelated SBI round-trips
-  //   - Decide the correct UDM interaction for a policy update (per TS 23.502
-  //     §4.3.3 no new Nudm_UECM registration is expected for a modification)
-  // Standards: TS 29.512 §4.2.3.2 (UpdateNotify), TS 29.503 §5.2 (Nudm_UECM)
-  //
-  // [QOS-MOCK] Skip UDM UECM (re)registration for PCF-initiated modification.
+  // [QOS] Skip UDM UECM (re)registration for PCF-initiated modification.
   // register_with_udm() blocks the response thread on a synchronous UDM
   // round-trip (queued on the SBI task behind the N1N2MessageTransfer call),
   // which pushes the PCF UpdateNotify response past the API server's promise
   // wait (FUTURE_STATUS_TIMEOUT_MS) and makes the endpoint return an error.
   // UDM UECM registration is an establishment concern, not a policy-update one.
-  // TODO [QOS-MOCK-REMOVE]: When PCF-initiated session handling is implemented
-  // for real, define the correct (if any) UDM interaction for policy updates
-  // (per TS 23.502 §4.3.3 no new UECM registration is expected) and remove this
-  // guard along with the establishment-oriented reuse of this function.
-  if (session_procedure_type !=
-      session_management_procedures_type_e::
-          PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+  if (session_procedure_type != session_management_procedures_type_e::
+                                    PDU_SESSION_MODIFICATION_PCF_INITIATED) {
     register_with_udm(supi, pdu_session_id, smf_registration);
   }
 
@@ -4935,50 +4919,56 @@ void smf_context::send_pdu_session_update_response(
 
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-            // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
-            // Modification. On partial validation failure, include PartialSuccessReport
+        // TS 29.512 §4.2.3.2: Acknowledge PCF-initiated SM Policy Association
+        // Modification. On partial validation failure, include
+        // PartialSuccessReport
 
-            if (partial_success_report.all_rules_valid()) {
-              // --- 3GPP TS 29.512 Full Success ---
-              resp->res.set_http_code(http_status_code::NO_CONTENT);
+        if (partial_success_report.all_rules_valid()) {
+          // --- 3GPP TS 29.512 Full Success ---
+          resp->res.set_http_code(http_status_code::NO_CONTENT);
 
-              Logger::smf_app().info(
-                  "PDU Session Modification PCF-initiated: all rules valid, acknowledging with 204 No Content");
+          Logger::smf_app().info(
+              "PDU Session Modification PCF-initiated: all rules valid, "
+              "acknowledging with 204 No Content");
 
-            } else {
-              // --- 3GPP TS 29.512 Partial Success ---
-              resp->res.set_http_code(http_status_code::OK);
-              resp->res.set_json_format("application/json");
+        } else {
+          // --- 3GPP TS 29.512 Partial Success ---
+          resp->res.set_http_code(http_status_code::OK);
+          resp->res.set_json_format("application/json");
 
-              PartialSuccessReport partial_report;
+          PartialSuccessReport partial_report;
 
-              // Attach failed PCC rule reports
-              if (!partial_success_report.rule_reports.empty()) {
-                partial_report.setRuleReports(partial_success_report.rule_reports);
-              }
+          // Attach failed PCC rule reports
+          if (!partial_success_report.rule_reports.empty()) {
+            partial_report.setRuleReports(partial_success_report.rule_reports);
+          }
 
-              // Attach failed Session rule reports
-              if (!partial_success_report.session_rule_reports.empty()) {
-                partial_report.setSessRuleReports(partial_success_report.session_rule_reports);
-              }
+          // Attach failed Session rule reports
+          if (!partial_success_report.session_rule_reports.empty()) {
+            partial_report.setSessRuleReports(
+                partial_success_report.session_rule_reports);
+          }
 
-              nlohmann::json report_json;
-              to_json(report_json, partial_report);
+          nlohmann::json report_json;
+          to_json(report_json, partial_report);
 
-              //TODO: add correct failureCause to common-src. Seems there is a name conflict and the wrong failureCause object is part of PartialSuccessReport
-              report_json["failureCause"] = "PCC_RULE_EVENT";
+          // TODO: add correct failureCause to common-src. Seems there is a name
+          // conflict and the wrong failureCause object is part of
+          // PartialSuccessReport
+          report_json["failureCause"] = "PCC_RULE_EVENT";
 
-              // Wrap in array for strict 3GPP OpenAPI schema compliance
-              nlohmann::json response_body = nlohmann::json::array();
-              response_body.push_back(report_json);
+          // Wrap in array for strict 3GPP OpenAPI schema compliance
+          nlohmann::json response_body = nlohmann::json::array();
+          response_body.push_back(report_json);
 
-              resp->res.set_json_data(response_body);
+          resp->res.set_json_data(response_body);
 
-              Logger::smf_app().warn(
-                  "PDU Session Modification PCF-initiated: partial failure, acknowledging with 200 OK and %zu rule report(s)",
-                  partial_success_report.rule_reports.size());
-            }
-          } break;
+          Logger::smf_app().warn(
+              "PDU Session Modification PCF-initiated: partial failure, "
+              "acknowledging with 200 OK and %zu rule report(s)",
+              partial_success_report.rule_reports.size());
+        }
+      } break;
       default: {
         Logger::smf_app().info(
             "Unknown session procedure type %d", (int) session_procedure_type);
@@ -5139,9 +5129,9 @@ void smf_context::send_pdu_session_release_response(
       case session_management_procedures_type_e::
           PDU_SESSION_MODIFICATION_PCF_INITIATED: {
         Logger::smf_app().info("PDU Session Release PCF-initiated");
-        // TODO [PCF-POLICY]: Implement PCF-initiated Session Release/Termination
-        // Reference: Phase 1 (Error Handling section)
-        // Note: This is DIFFERENT from modification - handles TerminationNotification
+        // TODO [PCF-POLICY]: Implement PCF-initiated Session
+        // Release/Termination Note: This is DIFFERENT from modification -
+        // handles TerminationNotification
         //
         // Task: Handle PCF TerminationNotification
         //   1. Extract termination reason from PCF request:

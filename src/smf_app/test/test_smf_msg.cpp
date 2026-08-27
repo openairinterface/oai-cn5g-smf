@@ -1,5 +1,5 @@
 /*
-* SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
 #include <gtest/gtest.h>

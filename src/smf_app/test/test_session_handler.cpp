@@ -20,7 +20,8 @@ std::unique_ptr<session_handler> make_session_handler(
     pdu_session_type_e type = pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4) {
   auto handler = std::make_unique<session_handler>(type);
 
-  // Initialize session graph to prevent null pointer dereference during flow lookups
+  // Initialize session graph to prevent null pointer dereference during flow
+  // lookups
   auto graph = std::make_shared<upf_graph>();
   handler->set_session_graph(graph);
 

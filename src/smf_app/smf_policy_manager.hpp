@@ -109,20 +109,20 @@ struct smf_policy_delta {
  * @brief Represents a single change in a qos flow to be applied to the UPF
  */
 struct qos_flow_change {
-    uint8_t qfi{};                                          // QoS Flow Identifier
-    std::string pcc_rule_id{};                              // PCC rule ID for mapping
-    oai::_3gpp::model::QosData qos_profile{};               // 5QI, ARP, GBR/MBR
-    oai::_3gpp::model::FlowInformation flow_information{};  // SDF filter
-    unsigned int precedence{};
+  uint8_t qfi{};                             // QoS Flow Identifier
+  std::string pcc_rule_id{};                 // PCC rule ID for mapping
+  oai::_3gpp::model::QosData qos_profile{};  // 5QI, ARP, GBR/MBR
+  oai::_3gpp::model::FlowInformation flow_information{};  // SDF filter
+  unsigned int precedence{};
 };
-
 
 struct policy_delta {
-    std::vector<qos_flow_change> to_add;     // new QoS flows  → Create PDR/FAR/QER
-    std::vector<qos_flow_change> to_modify;  // changed flows  → Update QER/FAR/PDR
-    std::vector<qos_flow_change> to_remove;  // deleted flows  → Remove PDR/FAR/QER
+  std::vector<qos_flow_change> to_add;  // new QoS flows  → Create PDR/FAR/QER
+  std::vector<qos_flow_change>
+      to_modify;  // changed flows  → Update QER/FAR/PDR
+  std::vector<qos_flow_change>
+      to_remove;  // deleted flows  → Remove PDR/FAR/QER
 };
-
 
 /**
  * @brief policy report for validation results
@@ -147,7 +147,9 @@ struct smf_policy_report {
    * @brief Check if all rules passed validation
    * @return true if no rules failed validation
    */
-  bool all_rules_valid() const { return rule_reports.empty() and session_rule_reports.empty(); }
+  bool all_rules_valid() const {
+    return rule_reports.empty() and session_rule_reports.empty();
+  }
 
   /**
    * @brief Merge another report into this one
@@ -155,16 +157,13 @@ struct smf_policy_report {
    */
   void merge(const smf_policy_report& other) {
     rule_reports.insert(
-        rule_reports.end(),
-        other.rule_reports.begin(),
+        rule_reports.end(), other.rule_reports.begin(),
         other.rule_reports.end());
     session_rule_reports.insert(
-        session_rule_reports.end(),
-        other.session_rule_reports.begin(),
+        session_rule_reports.end(), other.session_rule_reports.begin(),
         other.session_rule_reports.end());
     effected_rule_ids.insert(
-        other.effected_rule_ids.begin(),
-        other.effected_rule_ids.end());
+        other.effected_rule_ids.begin(), other.effected_rule_ids.end());
   }
 };
 
@@ -184,7 +183,7 @@ struct smf_policy_report {
  */
 class smf_policy_manager {
  public:
-  smf_policy_manager() = default;
+  smf_policy_manager()  = default;
   ~smf_policy_manager() = default;
 
   /**
@@ -303,8 +302,8 @@ class smf_policy_manager {
    *
    * @param pfcp_cause The PFCP cause value from UPF response
    * @param delta The policy delta that was attempted
-   * @param specific_failed_rules Optional set of specific PCC rule IDs that failed
-   *        (from PFCP Failed Rule ID IE). If empty, assumes all rules failed.
+   * @param specific_failed_rules Optional set of specific PCC rule IDs that
+   * failed (from PFCP Failed Rule ID IE). If empty, assumes all rules failed.
    * @return smf_policy_report with RuleReports for failed rules
    *
    * Standards:
@@ -313,12 +312,9 @@ class smf_policy_manager {
    * - TS 29.244 §8.2.18 (Failed Rule ID)
    */
   static smf_policy_report build_n4_failure_report(
-      uint8_t pfcp_cause,
-      const policy_delta& delta);
+      uint8_t pfcp_cause, const policy_delta& delta);
 };
 
 }  // namespace oai::app::smf
 
 #endif  // FILE_SMF_POLICY_MANAGER_HPP_SEEN
-
-

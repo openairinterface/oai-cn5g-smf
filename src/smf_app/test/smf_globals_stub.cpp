@@ -1,5 +1,5 @@
 /*
-* SPDX-License-Identifier: LicenseRef-CSSL-1.0
+ * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
 #include <memory>
@@ -10,7 +10,7 @@
 class itti_mw;
 class smf_app;
 
-itti_mw* itti_inst                                            = nullptr;
-smf_app* smf_app_inst                                         = nullptr;
+itti_mw* itti_inst    = nullptr;
+smf_app* smf_app_inst = nullptr;
 std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-std::shared_ptr<oai::http::http_client> http_client_inst      = nullptr;
+std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
