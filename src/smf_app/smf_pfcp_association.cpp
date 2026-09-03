@@ -488,11 +488,24 @@ bool pfcp_associations::remove_association(const int32_t& hash_node_id) {
 }
 
 //------------------------------------------------------------------------------
+// A configured UPF is FQDN-typed while one learnt from NRF or the association
+// response is IPv4-typed, and node_id_t::operator== requires equal types.
+static bool same_upf_node(
+    const pfcp::node_id_t& lhs, const pfcp::node_id_t& rhs) {
+  if (lhs == rhs) return true;
+  if (lhs.u1.ipv4_address.s_addr != INADDR_ANY &&
+      lhs.u1.ipv4_address.s_addr == rhs.u1.ipv4_address.s_addr) {
+    return true;
+  }
+  return !lhs.fqdn.empty() && lhs.fqdn == rhs.fqdn;
+}
+
+//------------------------------------------------------------------------------
 oai::config::smf::upf pfcp_associations::get_upf_config(
     const pfcp::node_id_t& node_id) const {
   std::shared_lock peer_lock(m_mutex);
   for (const auto& it : pending_associations) {
-    if (it->node_id == node_id) {
+    if (same_upf_node(it->node_id, node_id)) {
       Logger::smf_app().debug(
           "Found UPF config for pending PFCP association %s",
           node_id.toString());
@@ -501,7 +514,7 @@ oai::config::smf::upf pfcp_associations::get_upf_config(
   }
 
   for (const auto& upf : smf_cfg->smf()->get_upfs()) {
-    if (upf.get_node_id() == node_id) {
+    if (same_upf_node(upf.get_node_id(), node_id)) {
       Logger::smf_app().debug(
           "Found UPF config for UPF-associated association %s",
           node_id.toString());
