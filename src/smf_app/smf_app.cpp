@@ -2701,6 +2701,30 @@ void smf_app::get_dnn_snssai_key(
 }
 
 //------------------------------------------------------------------------------
+// Resolve a configured or NRF-discovered UPF host to an IPv4 address, so a name
+// and the address it denotes compare equal.
+static bool upf_host_to_ipv4(const std::string& host, struct in_addr& addr) {
+  static const std::regex ipv4_re(IPV4_ADDRESS_VALIDATOR_REGEX);
+  if (std::regex_match(host, ipv4_re)) {
+    addr = oai::utils::conv::fromString(host);
+    return true;
+  }
+  std::string resolved = {};
+  uint32_t port        = 0;
+  uint8_t addr_type    = 0;
+  try {
+    if (!oai::utils::fqdn::resolve(host, resolved, port, addr_type) ||
+        addr_type != 0) {
+      return false;
+    }
+  } catch (const std::runtime_error&) {
+    return false;
+  }
+  addr = oai::utils::conv::fromString(resolved);
+  return true;
+}
+
+//------------------------------------------------------------------------------
 bool smf_app::process_upf_profile(
     const oai::_3gpp::model::NFProfile& upf_profile) {
   Logger::smf_app().debug("Process UPF Profile");
@@ -2728,13 +2752,22 @@ bool smf_app::process_upf_profile(
 
   upf local_upf_cfg = DEFAULT_UPF;
   bool found        = false;
+
+  // The NF profile carries an IP address while upfs[].host is usually a name:
+  // compare the resolved addresses, or the operator's per-UPF config is lost.
+  struct in_addr discovered = {};
+  bool discovered_ok        = upf_host_to_ipv4(host, discovered);
+
   for (const auto& upf_cfg : smf_cfg->smf()->get_upfs()) {
-    if (upf_cfg.get_host() == host) {
+    struct in_addr cfg_addr = {};
+    if (upf_cfg.get_host() == host ||
+        (discovered_ok && upf_host_to_ipv4(upf_cfg.get_host(), cfg_addr) &&
+         cfg_addr.s_addr == discovered.s_addr)) {
       found = true;
       Logger::smf_app().debug(
-          "Found UPF with host name %s in configuration, take config "
+          "Found UPF %s in configuration (configured as %s), take config "
           "from there",
-          host);
+          host.c_str(), upf_cfg.get_host().c_str());
       local_upf_cfg = upf_cfg;
     }
   }
