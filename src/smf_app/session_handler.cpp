@@ -13,6 +13,7 @@
 #include "conversions.h"
 #include "conversions.hpp"
 #include "smf_config.hpp"
+#include "smf_qos_upf_edge.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::_3gpp::model;
@@ -403,7 +404,15 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
       "Created new QoS rule with ID %u and %u packet filters",
       edge->qos_rule_id, qos_rule.GetNumberOfPacketFilters());
 
-  qos_rule.SetPrecedence(edge->precedence);
+  // TS 24.501 §6.2.5.1.1.2: Default QoS rule with match-all filter uses highest
+  // precedence value (255)
+  uint8_t nas_precedence = edge->precedence;
+  if (edge->default_qos &&
+      edge->flow_information.getFlowDescription() == DEFAULT_FLOW_DESCRIPTION) {
+    nas_precedence = 255;  // Lowest priority for default flow
+  }
+
+  qos_rule.SetPrecedence(nas_precedence);
   qos_rule.SetSegregation(oai::nas::kQosRuleSegregationNotRequested);
   qos_rule.SetQfi(edge->qfi.qfi);
   // qos_rule.qosruleprecedence = edge->precedence;
