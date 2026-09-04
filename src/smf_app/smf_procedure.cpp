@@ -10,12 +10,14 @@
 #include "3gpp_29.274.h"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
+#include "3gpp_29.512.h"
 #include "3gpp_conversions.hpp"
 #include "smf_3gpp_conversions.hpp"
 #include "common_defs.h"
 #include "conversions.hpp"
 #include "itti.hpp"
 #include "itti_msg_n4_restore.hpp"
+#include "itti_msg_nx.hpp"
 #include "logger.hpp"
 #include "smf_app.hpp"
 #include "smf_config.hpp"
@@ -23,6 +25,9 @@
 #include "smf_pfcp_association.hpp"
 #include "ProblemDetails.h"
 #include "3gpp_24.501.hpp"
+#include "Arp.h"
+#include "PreemptionCapability_anyOf.h"
+#include "PreemptionVulnerability_anyOf.h"
 
 using namespace pfcp;
 using namespace oai::app::smf;
@@ -692,6 +697,7 @@ bool smf_session_procedure::is_qfi_served_in_edges(
   }
   bool found_qfi = false;
   for (const auto& qfi : qfis) {
+    Logger::smf_app().debug("Checking if QFI %d is served in edges", qfi.qfi);
     for (const auto& edge : edges) {
       if (qfi == edge->qfi) {
         found_qfi = true;
@@ -1316,6 +1322,163 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
 }
 
 //------------------------------------------------------------------------------
+smf_procedure_code
+session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
+    const policy_delta& delta) {
+  // Standards:
+  //   - TS 29.244 §7.5.4 (PFCP Session Modification), §5.2.1A (PDR),
+  //     §5.2.3 (FAR), §5.2.5 (QER); TS 23.502 §4.3.3.2 (PDU Session
+  //     Modification)
+
+  std::shared_ptr<pfcp_association> current_upf = {};
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges{};
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
+
+  if (get_current_upf(dl_edges, ul_edges, current_upf) !=
+      smf_procedure_code::OK) {
+    return smf_procedure_code::ERROR;
+  }
+
+  config::smf::upf upf_cfg = current_upf->get_upf_config();
+  std::shared_ptr<upf_graph> graph =
+      sps->get_session_handler()->get_session_graph();
+
+  n4_triggered = std::make_shared<itti_n4_session_modification_request>(
+      TASK_SMF_APP, TASK_SMF_N4);
+  n4_triggered->seid    = sps->up_fseid.seid;
+  n4_triggered->trxn_id = this->trxn_id;
+  n4_triggered->r_endpoint =
+      endpoint(current_upf->node_id.u1.ipv4_address, default_port);
+
+  // all edges (both directions) for convenience
+  std::vector<std::shared_ptr<qos_upf_edge>> all_edges = dl_edges;
+  all_edges.insert(all_edges.end(), ul_edges.begin(), ul_edges.end());
+
+  UPInterfaceType n3_type = {};
+  n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
+
+  // --- Modify phase: Update QER in place (no teardown) --------------------
+  std::vector<qfi_t> qfis_to_update = {};
+  staged_modified_edges.clear();
+  for (const auto& change : delta.to_modify) {
+    for (const auto& edge : all_edges) {
+      if (edge->qfi.qfi != change.qfi) continue;
+
+      // STAGE: Save target QoS profile mapped to edge pointer
+      staged_modified_edges[edge] = change.qos_profile;
+
+      qfi_t q = {};
+      q.qfi   = change.qfi;
+      qfis_to_update.push_back(q);
+
+      if (edge->qer_id.qer_id != 0) {
+        qos_upf_edge temp_edge = *edge;
+        temp_edge.qos_profile  = change.qos_profile;
+        n4_triggered->pfcp_ies.set(
+            pfcp_update_qer(std::make_shared<qos_upf_edge>(temp_edge)));
+      }
+    }
+  }
+
+  // --- Remove phase: release one flow -------------------------------------
+  for (const auto& change : delta.to_remove) {
+    sps->get_session_handler()->mark_qfi_for_release(change.qfi);
+  }
+
+  std::set<uint8_t> remove_set = {};
+  for (const auto& qfi : delta.to_remove) remove_set.insert(qfi.qfi);
+  for (const auto& edge : all_edges) {
+    if (remove_set.count(edge->qfi.qfi) == 0) continue;
+    if (edge->pdr_id.rule_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));
+    if (edge->far_id.far_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_far(edge));
+    if (edge->qer_id.qer_id != 0)
+      n4_triggered->pfcp_ies.set(pfcp_remove_qer(edge));
+  }
+
+  // --- Add phase: install a genuinely new flow ----------------------------
+  // TODO: replace cloning + reused gNB tunnel + concrete TEID
+  //   with real Phase 2/3 flow creation (QFI allocation, generated PDR/FAR/QER
+  //   from the policy, DL TEID from the N2 response).
+
+  staged_new_edges.clear();
+  for (const auto& change : delta.to_add) {
+    if (dl_edges.empty() || !dl_edges[0]->associated_edge) {
+      Logger::smf_app().error(
+          "No DL/UL edge pair available to clone the new QoS flow");
+      continue;
+    }
+
+    if (change.qfi == 0) {
+      Logger::smf_app().error(
+          "QFI pool exhausted, cannot add flow for rule '%s'",
+          change.pcc_rule_id.c_str());
+      continue;
+    }
+
+    qfi_t q = {};
+    q.qfi   = change.qfi;
+    qfis_to_update.push_back(q);
+    n11_trigger->req.add_qfi(change.qfi);
+
+    std::shared_ptr<qos_upf_edge> new_dl =
+        std::make_shared<qos_upf_edge>(*dl_edges[0]);
+    std::shared_ptr<qos_upf_edge> new_ul =
+        std::make_shared<qos_upf_edge>(*dl_edges[0]->associated_edge);
+    new_dl->associated_edge = new_ul;
+    new_ul->associated_edge = new_dl;
+
+    for (const auto& edge : {new_dl, new_ul}) {
+      edge->qfi.qfi          = change.qfi;
+      edge->qos_profile      = change.qos_profile;
+      edge->flow_information = change.flow_information;
+      edge->precedence       = change.precedence;
+      edge->default_qos      = false;
+      edge->pdr_id           = pdr_id_t{};
+      edge->far_id           = far_id_t{};
+      edge->qer_id           = qer_id_t{};
+      edge->urr_id           = urr_id_t{};
+      edge->qos_rule_id      = 0;
+      // Fresh N3 UL TEID on the access (N3) edge; keep the cloned gNB
+      // next_hop_fteid for the DL OHC.
+      if (edge->type == n3_type && !edge->fteid.is_zero()) {
+        edge->fteid.teid = smf_app_inst->generate_teid();
+      }
+    }
+    staged_new_edges.push_back({new_dl, new_ul});
+
+    // Create the full flow (same order as establishment / the modification
+    // path): UL side FAR+QER -> DL PDR, then DL side FAR+QER -> UL PDR.
+    n4_triggered->pfcp_ies.set(pfcp_create_far(new_ul));
+    if (upf_cfg.enable_qers())
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(new_ul));
+    n4_triggered->pfcp_ies.set(pfcp_create_pdr(new_dl));
+
+    n4_triggered->pfcp_ies.set(pfcp_create_far(new_dl));
+    if (upf_cfg.enable_qers())
+      n4_triggered->pfcp_ies.set(pfcp_create_qer(new_dl));
+    n4_triggered->pfcp_ies.set(pfcp_create_pdr(new_ul));
+  }
+
+  sps->get_session_handler()->set_qfis_to_be_updated(qfis_to_update);
+
+  Logger::smf_app().info(
+      "PCF-initiated N4 Session Modification: modify %zu, add %zu, "
+      "remove %zu QoS flow(s)",
+      delta.to_modify.size(), delta.to_add.size(), delta.to_remove.size());
+
+  int ret = itti_inst->send_msg(n4_triggered);
+  if (RETURNok != ret) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        n4_triggered->get_msg_name());
+    return smf_procedure_code::ERROR;
+  }
+  return smf_procedure_code::OK;
+}
+
+//------------------------------------------------------------------------------
 smf_procedure_code session_update_sm_context_procedure::run(
     const std::shared_ptr<itti_sbi_update_sm_context_request>& sm_context_req,
     std::shared_ptr<itti_sbi_update_sm_context_response> sm_context_resp,
@@ -1399,11 +1562,11 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
   sps->get_session_handler()->set_qfis_to_be_updated(
       list_of_qfis_to_be_modified);
-
-  if (!is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
-      !is_qfi_served_in_edges(
-          list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update)) {
+  if (!list_of_qfis_to_be_modified.empty() &&
+      (!is_qfi_served_in_edges(
+           list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
+       !is_qfi_served_in_edges(
+           list_of_qfis_to_be_modified, ul_edges, ul_edges_to_update))) {
     // TODO check on NAS, maybe can reject some QFIs and accept others?
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
@@ -1534,9 +1697,12 @@ smf_procedure_code session_update_sm_context_procedure::run(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
-      // TODO:
-      send_n4 = false;
-    } break;
+      // Build N4 Session Modification Request
+      // CAVEAT: reuses/mutates session-graph edges — see the full caveat list
+      //   in send_n4_pcf_initiated_modification().
+
+      return send_n4_pcf_initiated_modification(policy_delta_upf);
+    }
 
     default: {
       Logger::smf_app().error(
@@ -1578,39 +1744,70 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
-    // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
-    // is not successful, the SMF informs the AMF by invoking
-    // Nsmf_PDUSession_SMContextStatusNotify (Release). The
-    // SMF also releases any N4 session(s) created, any PDU Session address if
-    // allocated (e.g. IP address) and releases the association with PCF, if
-    // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
-
-    scid_t scid = {};
-    try {
-      scid = std::stoi(n11_trigger->scid);
-    } catch (const std::exception& err) {
+    // Special handling for PCF-initiated modifications: don't release session,
+    // build failure report and respond to PCF
+    if (session_procedure_type == session_management_procedures_type_e::
+                                      PDU_SESSION_MODIFICATION_PCF_INITIATED) {
       Logger::smf_app().warn(
-          "SM Context associated with this id %s does not exit!",
-          n11_trigger->scid.c_str());
+          "N4 Session Modification rejected by UPF (cause=%d) for "
+          "PCF-initiated "
+          "modification, building failure report",
+          cause.cause_value);
+
+      smf_policy_report n4_failure_report =
+          smf_policy_manager::build_n4_failure_report(
+              cause.cause_value, policy_delta_upf);
+      partial_success_report.merge(n4_failure_report);
+
+      // Release QFI reservations
+      if (sps && sps->get_session_handler()) {
+        for (const auto& change : policy_delta_upf.to_add) {
+          if (change.qfi != 0) {
+            sps->get_session_handler()->get_session_graph()->release_qfi(
+                change.qfi);
+          }
+        }
+      }
+
+      staged_new_edges.clear();
+      staged_modified_edges.clear();
+      sps->get_session_handler()->clear_qos_flows_to_be_released();
+
+      smf_app_inst->trigger_sm_policy_update_notify_error_response(
+          oai::common::sbi::http_status_code::INTERNAL_SERVER_ERROR,
+          smf_server_application_error_e::RULE_PERMANENT_ERROR,
+          partial_success_report.rule_reports,
+          partial_success_report.session_rule_reports, n11_trigger->pid);
+
+      return smf_procedure_code::ERROR;
+    } else {
+      // Original behavior for non-PCF-initiated: release session
+      // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
+      // is not successful, the SMF informs the AMF by invoking
+      // Nsmf_PDUSession_SMContextStatusNotify (Release). The
+      // SMF also releases any N4 session(s) created, any PDU Session address if
+      // allocated (e.g. IP address) and releases the association with PCF, if
+      // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
+
+      scid_t scid = {};
+      try {
+        scid = std::stoi(n11_trigger->scid);
+      } catch (const std::exception& err) {
+        Logger::smf_app().warn(
+            "SM Context associated with this id %s does not exit!",
+            n11_trigger->scid.c_str());
+      }
+      sc->handle_sm_context_status_change(scid, "RELEASED");
+
+      return smf_procedure_code::ERROR;
     }
-    sc->handle_sm_context_status_change(scid, "RELEASED");
-
-    return smf_procedure_code::ERROR;
-
-  } else {
-    n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
   }
 
-  // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
-  // Session
-  std::vector<pfcp::qfi_t> list_of_qfis_to_be_modified = {};
-  n11_trigger->req.get_qfis(list_of_qfis_to_be_modified);
+  n11_triggered_pending->res.set_cause(k5gsmCauseRequestAccepted);
 
   std::shared_ptr<pfcp_association> current_upf = {};
   std::vector<std::shared_ptr<qos_upf_edge>> dl_edges{};
   std::vector<std::shared_ptr<qos_upf_edge>> ul_edges{};
-  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges_to_update{};
-  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges_to_update{};
 
   if (get_current_upf(dl_edges, ul_edges, current_upf) ==
       smf_procedure_code::ERROR) {
@@ -1619,6 +1816,53 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     // values
     return smf_procedure_code::ERROR;
   }
+
+  if (session_procedure_type == session_management_procedures_type_e::
+                                    PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    std::shared_ptr<upf_graph> graph =
+        sps->get_session_handler()->get_session_graph();
+
+    for (const auto& [edge, new_profile] : staged_modified_edges) {
+      edge->qos_profile = new_profile;
+    }
+    staged_modified_edges.clear();
+
+    // Associate UPF-allocated F-TEIDs with staged UL edges
+    std::vector<std::shared_ptr<qos_upf_edge>> staged_ul_edges;
+    for (const auto& pair : staged_new_edges) {
+      staged_ul_edges.push_back(pair.second);
+    }
+    associate_fteid_with_created_pdrs(
+        resp.pfcp_ies.created_pdrs, staged_ul_edges);
+
+    // COMMIT staged edges to active upf_graph
+    if (graph) {
+      for (const auto& pair : staged_new_edges) {
+        graph->add_qos_flow_edge(current_upf, pair.first);   // DL Edge
+        graph->add_qos_flow_edge(current_upf, pair.second);  // UL Edge
+        graph->add_to_current_edges_cache(pair.first, pair.second);
+
+        // Update local lists so the NAS validation checks below pass
+        dl_edges.push_back(pair.first);
+        ul_edges.push_back(pair.second);
+      }
+    }
+
+    // 3. Commit policy decision and clear staged edges
+    if (pending_policy_decision.has_value() && sps && sps->policy_ptr) {
+      sps->policy_ptr->decision = pending_policy_decision.value();
+    }
+    staged_new_edges.clear();
+  }
+
+  // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
+  // Session
+  std::vector<pfcp::qfi_t> list_of_qfis_to_be_modified = {};
+  n11_trigger->req.get_qfis(list_of_qfis_to_be_modified);
+
+  std::vector<std::shared_ptr<qos_upf_edge>> dl_edges_to_update{};
+  std::vector<std::shared_ptr<qos_upf_edge>> ul_edges_to_update{};
+
   // TODO put in helper function or make a get_current_upf with this
   if (!is_qfi_served_in_edges(
           list_of_qfis_to_be_modified, dl_edges, dl_edges_to_update) ||
@@ -1718,8 +1962,52 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
     case session_management_procedures_type_e::
         PDU_SESSION_MODIFICATION_PCF_INITIATED: {
+      // N4 Session Modification Logic
+      // This handles the UPF response after N4 Session Modification Request
+      //
+      // Standards:
+      //   - TS 29.244 §7.5.4 (PFCP Session Modification Request/Response)
+      //   - TS 29.512 §4.2.3.2 (Npcf_SMPolicyControl_UpdateNotify)
+      //   - TS 23.502 §4.3.3 (PDU Session Modification procedures)
+      //   - TS 38.413 §9.3.4.3 (PDU Session Resource Modify Request Transfer -
+      //   N2)
       continue_n4 = false;
-      // TODO:
+
+      // TODO [QOS-PAGING]: Check UE CM state (CM-IDLE vs CM-CONNECTED)
+      // [TS 23.501 §5.3.2] Build paging assistance data for CM-IDLE UE
+      // [TS 23.501 §5.4.3.1, §5.4.3.2] Currently assumes CM-CONNECTED and sends
+      // direct N1N2MessageTransfer. If sps->get_upCnx_state() ==
+      // UPCNX_STATE_DEACTIVATED (CM-IDLE):
+      //   1. Build Paging Assistance Data (5QI, ARP, PPI) [TS 23.501 §5.4.3.1].
+      //   2. Send N1N2MessageTransfer with Paging Assistance Data to AMF.
+      //   3. Store pending modification in session context until UE sends
+      //   Service Request.
+      if (sps->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_DEACTIVATED) {
+        Logger::smf_app().warn(
+            "UE is in CM-IDLE state (upCnxState: DEACTIVATED). "
+            "Network-requested QoS modification requires Paging.");
+      } else {
+        std::shared_ptr<itti_nx_trigger_pdu_session_modification> n1n2_trigger =
+            std::make_shared<itti_nx_trigger_pdu_session_modification>(
+                TASK_SMF_APP, TASK_SMF_SBI);
+        n1n2_trigger->http_version = n11_trigger->http_version;
+        n1n2_trigger->msg.set_supi(sc->get_supi());
+        n1n2_trigger->msg.set_dnn(sps->get_dnn());
+        n1n2_trigger->msg.set_pdu_session_id(sps->get_pdu_session_id());
+        n1n2_trigger->msg.set_snssai(sps->get_snssai());
+
+        for (const auto& change : policy_delta_upf.to_add) {
+          n1n2_trigger->msg.add_qfi(change.qfi);
+        }
+        for (const auto& change : policy_delta_upf.to_modify) {
+          n1n2_trigger->msg.add_qfi(change.qfi);
+        }
+        Logger::smf_app().info(
+            "PCF-initiated: triggering N1N2MessageTransfer to AMF "
+            "for %zu QoS flow(s)",
+            list_of_qfis_to_be_modified.size());
+        sc->handle_pdu_session_modification_network_requested(n1n2_trigger);
+      }
     } break;
 
     default: {

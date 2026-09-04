@@ -20,6 +20,7 @@
 #include "uint_generator.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_qos_upf_edge.hpp"
+#include "smf_policy_manager.hpp"
 
 namespace oai::app::smf {
 
@@ -263,6 +264,17 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
+  policy_delta policy_delta_upf;
+  smf_policy_report partial_success_report;
+  // Pending policy decision - only committed after N4 success
+  std::optional<SmPolicyDecision> pending_policy_decision;
+  // Holds newly instantiated edge pairs before UPF confirmation
+  std::vector<
+      std::pair<std::shared_ptr<qos_upf_edge>, std::shared_ptr<qos_upf_edge>>>
+      staged_new_edges;
+  // Maps live edge -> candidate new QoS profile
+  std::map<std::shared_ptr<qos_upf_edge>, QosData> staged_modified_edges;
+
  private:
   /**
    * Sends a session modification request, based on the graph
@@ -274,6 +286,9 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
+
+  smf_procedure_code send_n4_pcf_initiated_modification(
+      const policy_delta& delta);
 };
 
 //------------------------------------------------------------------------------

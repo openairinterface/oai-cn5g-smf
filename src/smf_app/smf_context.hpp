@@ -308,6 +308,29 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   pfcp::qfi_t default_qfi;  // Default QFI for this session
 
+  // TODO [STORAGE]: Add Storage Integration
+  // Storage and Persistence
+  //   std::shared_ptr<SmPolicyDecision> m_current_policy_decision;
+  //   - Store current policy decision from PCF
+  //   - Used for delta computation (Phase 1)
+  //   - Persisted to storage backend [TS 23.501 Annex C]
+  //
+  //   uint32_t m_policy_decision_version;
+  //   - Version number for policy decision
+  //   - Incremented on each update
+  //   - Used for optimistic locking and rollback
+  //
+  // Required Methods for Storage [TS 23.501 §4.2.5, TS 29.500 §6.5.3.1]:
+  //   bool persist_to_storage();
+  //   - Store session state to configured backend (DB/Cache/UDSF)
+  //   - Call storage->store_session_snapshot() [TS 23.501 Annex C]
+  //   - Return true on success
+  //
+  //   bool restore_from_storage();
+  //   - Restore session state from storage on SMF restart
+  //   - Called during SMF restart/recovery [TS 23.502 §4.2.2.2.2]
+  //   - Reconstruct QoS flows and policy decisions
+
   // 5GSM parameters and capabilities
   uint8_t maximum_number_of_supported_packet_filters;
   // TODO: 5GSM Capability (section 9.11.4.1@3GPP TS 24.501 V16.1.0)
@@ -1129,12 +1152,15 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
    * Create a PDU session UPDATE response, based on the content of resp
    * @param resp
    * @pram session_procedure_type The session procedure type of this reply
+   * @param validation_report Optional validation report for partial failures
+   * (PCF-initiated)
    */
   void send_pdu_session_update_response(
       const std::shared_ptr<itti_sbi_update_sm_context_request>& req,
       const std::shared_ptr<itti_sbi_update_sm_context_response>& resp,
       const session_management_procedures_type_e& session_procedure_type,
-      const std::shared_ptr<smf_pdu_session>& sps);
+      const std::shared_ptr<smf_pdu_session>& sps,
+      const smf_policy_report& validation_report = {});
 
   /**
    * Create a PDU session Release response, based on the content of resp

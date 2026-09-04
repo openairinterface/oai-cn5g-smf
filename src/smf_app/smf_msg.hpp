@@ -36,6 +36,7 @@ typedef enum {
   PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE,
   PDU_SESSION_MODIFICATION_SMF_REQUESTED,
   PDU_SESSION_REPORT_RESPONSE,
+  PDU_SESSION_SM_POLICY_UPDATE_NOTIFY_RESPONSE,
   PDU_SESSION_MSG_TYPE_MAX
 } pdu_session_msg_type_t;
 
@@ -449,6 +450,37 @@ class pdu_session_update_sm_context_response
   std::string m_smf_context_uri;
 };
 
+class pdu_session_sm_policy_update_notify_response : public pdu_session_msg {
+ public:
+  pdu_session_sm_policy_update_notify_response()
+      : pdu_session_msg(PDU_SESSION_SM_POLICY_UPDATE_NOTIFY_RESPONSE) {
+    m_http_code   = 200;
+    m_json_format = "application/json";
+    m_json_data   = {};
+  }
+
+  void set_http_code(const uint32_t code) { m_http_code = code; }
+  uint32_t get_http_code() const { return m_http_code; }
+
+  void set_json_data(const nlohmann::json& data) { m_json_data = data; }
+  void get_json_data(nlohmann::json& data) const { data = m_json_data; }
+
+  void set_json_format(const std::string& format) { m_json_format = format; }
+  std::string get_json_format() const { return m_json_format; }
+
+  void to_json(nlohmann::json& data) const {
+    pdu_session_msg::to_json(data);
+    data["http_code"]   = m_http_code;
+    data["json_format"] = m_json_format;
+    data["json_data"]   = m_json_data;
+  }
+
+ private:
+  uint32_t m_http_code;
+  std::string m_json_format;
+  nlohmann::json m_json_data;
+};
+
 //---------------------------------------------------------------------------------------
 class pdu_session_release_sm_context_request : public pdu_session_msg {
  public:
@@ -604,6 +636,76 @@ class pdu_session_sm_policy_notificatiion : public pdu_session_msg {
   void set_sm_policy_decision(
       const oai::_3gpp::model::SmPolicyDecision& sm_policy_decision);
   oai::_3gpp::model::SmPolicyDecision get_sm_policy_decision() const;
+
+  // TODO [PCF-POLICY]: Add helper methods for parsing SM Policy Decision
+  // Reference: Phase 1, Task 1.2-1.4
+  // These methods encapsulate policy parsing logic for better modularity
+  //
+  // Task 1.2: PCC Rule Parsing [TS 29.512 §5.6.2.6]
+  //   bool parse_pcc_rules(const nlohmann::json& pccRules);
+  //   - Extract pccRules map from SmPolicyDecision
+  //   - Parse pccRuleId, precedence, flowInfos [TS 29.512 §5.6.2.14],
+  //   refQosData, refTcData
+  //   - Validate rule completeness and consistency
+  //   - Handle rule precedence conflicts [TS 23.503 §6.3.1]
+  //   - Store in structured format (std::map<PccRuleId, PccRule>)
+  //   - Returns true on success, false on parse error
+  //
+  // Task 1.3: QoS Data Parsing [TS 29.512 §5.6.2.8]
+  //   bool parse_qos_decisions(const nlohmann::json& qosDecs);
+  //   - Extract qosDecs map from SmPolicyDecision
+  //   - Parse qosId, 5qi [TS 29.512 §5.6.2.8, TS 23.501 §5.7.4], arp, gbrUl/Dl,
+  //   maxbrUl/Dl, priorityLevel
+  //   - Validate QoS parameters against 3GPP specs [TS 23.501 §5.7]
+  //   - Map 5QI to QoS characteristics [TS 23.501 §5.7.4]
+  //   - Handle non-standardized 5QI values [TS 29.512 §4.2.6.6.3, TS 29.512
+  //   §5.6.2.16]
+  //   - Store in structured format (std::map<QosId, QosData>)
+  //   - Returns true on success, false on parse error
+  //
+  // Task 1.4: Traffic Control Data Parsing [TS 29.512 §5.6.2.10]
+  //   bool parse_traffic_control_decisions(const nlohmann::json&
+  //   traffContDecs);
+  //   - Extract traffContDecs map from SmPolicyDecision
+  //   - Parse tcId, routeToLocs (DNAI) [TS 29.512 §5.6.2.10, TS 23.501 §5.6.7],
+  //     upPathChgEvent [TS 29.512 §5.6.2.10], redirectInfo [TS 29.512
+  //     §5.6.2.13]
+  //   - Handle DNAI-based traffic steering requirements [TS 23.501 §5.6.7,
+  //   TS 23.503 §6.1.3.14]
+  //   - Store traffic control configuration for UPF selection [TS 29.512
+  //   §4.2.6.2.6]
+  //   - Returns true on success, false on parse error
+  //
+  // Task 1.5: Policy Delta Computation [TS 29.512 §4.2.6.1]
+  //   PolicyDecisionDelta compute_delta(
+  //       const SmPolicyDecision& current,
+  //       const SmPolicyDecision& requested);
+  //   - Compare new vs current policy decisions [TS 29.512 §4.2.6.1]
+  //   - Identify added/modified/removed PCC rules
+  //   - Identify removed rules encoded as NULL [TS 29.512 §4.2.6.1]
+  //   - Identify added/modified/removed QoS data and traffic control entries
+  //   - Optimize for incremental updates to minimize UPF interactions
+  //   [TS 29.244 §7.5.4]
+  //   - Return structured delta for N4 processing (Phase 2)
+  //
+  // Task 1.6: Session Validation [TS 29.512 §4.2.3.26]
+  //   bool validate_against_session(
+  //       const std::shared_ptr<smf_pdu_session>& session);
+  //   - Validate policy against subscription profile [TS 23.503 §6.1.3.2.3]
+  //   - Check cumulative bandwidth against subscription limits [TS 23.503
+  //   §6.1.3.3]
+  //   - Verify PCC rule precedence uniqueness [TS 23.503 §6.3.1]
+  //   - Verify network slice resource availability [TS 28.541 §6.3.3, TS 23.503
+  //   §6.1.4.1]
+  //   - Return appropriate error codes to PCF [TS 29.512 §5.6.3.9]
+  //   - Returns true if valid, false if policy should be rejected
+  //
+  // Standards:
+  //   - TS 29.512 §5.6.2.4 (SmPolicyDecision)
+  //   - TS 29.512 §5.6.2.6 (PccRule)
+  //   - TS 29.512 §5.6.2.8 (QosData)
+  //   - TS 29.512 §5.6.2.10 (TrafficControlData)
+  //   - TS 29.512 §5.6.2.14 (FlowInformation / SDF templates)
 
  private:
   oai::_3gpp::model::SmPolicyDecision m_sm_policy_decision;

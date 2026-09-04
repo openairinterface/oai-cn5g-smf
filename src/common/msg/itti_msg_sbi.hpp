@@ -12,6 +12,7 @@
 #include "itti_msg.hpp"
 #include "pistache/http.h"
 #include "smf_msg.hpp"
+#include "smf_policy_manager.hpp"
 #include "smf_profile.hpp"
 
 using namespace oai::_3gpp::model;
@@ -126,7 +127,8 @@ class itti_sbi_update_sm_context_request : public itti_sbi_msg {
         pid(i.pid),
         scid(i.scid),
         http_version(i.http_version),
-        session_procedure_type(i.session_procedure_type) {}
+        session_procedure_type(i.session_procedure_type),
+        pcf_policy_delta(i.pcf_policy_delta) {}
 
   const char* get_msg_name() {
     return "N11_SESSION_UPDATE_SM_CONTEXT_REQUEST";
@@ -136,6 +138,10 @@ class itti_sbi_update_sm_context_request : public itti_sbi_msg {
   std::string scid;  // SM Context ID
   uint8_t http_version;
   session_management_procedures_type_e session_procedure_type;
+
+  // Policy delta computed in smf_context for PCF-initiated modifications
+  // Passed to the procedure for N4 message building
+  std::optional<oai::app::smf::smf_policy_delta> pcf_policy_delta;
 };
 
 //-----------------------------------------------------------------------------

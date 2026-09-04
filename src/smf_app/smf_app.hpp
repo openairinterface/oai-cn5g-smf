@@ -824,6 +824,23 @@ class smf_app {
    * To trigger the response to the HTTP server by set the value of the
    * corresponding promise to ready
    * @param [const uint32_t &] http_code: Status code of HTTP response
+   * @param [const uint8_t &] cause: Error cause
+   * @param [std::vector<RuleReport>]  rule_reports: Rule Report
+   * @param [std::vector<SessionRuleReport>] sess_rule_reports:
+   * Session Rule Report
+   * @param [uint32_t &] promise_id: Promise Id
+   * @return void
+   */
+  void trigger_sm_policy_update_notify_error_response(
+      const uint32_t& http_code, const uint8_t& cause,
+      const std::vector<RuleReport>& rule_reports,
+      const std::vector<SessionRuleReport>& sess_rule_reports,
+      uint32_t& promise_id);
+
+  /*
+   * To trigger the response to the HTTP server by set the value of the
+   * corresponding promise to ready
+   * @param [const uint32_t &] http_code: Status code of HTTP response
    * @param [const uint8_t &] cause: cause
    * @param [const std::string &] n1_sm_msg: N1 SM message
    * @param [uint32_t &] promise_id: Promise Id
@@ -880,6 +897,10 @@ class smf_app {
   void reply_with_pdu_session_establishment_reject(
       pdu_session_msg& msg, std::string& n1_sm_message, uint8_t sm_cause,
       const uint32_t& http_code, const uint8_t& cause, uint32_t& promise_id);
+
+  void trigger_session_update_sm_association_response(
+      pdu_session_sm_policy_update_notify_response& sm_context_response,
+      uint32_t& pid);
   /*
    * Add an Event Subscription to the list
    * @param [const evsub_id_t&] sub_id: Subscription ID

@@ -64,6 +64,28 @@ RUN  if [ "$ENABLE_LTTNG" = "true" ]; then DEBIAN_FRONTEND=noninteractive apt-ge
 
 
 #---------------------------------------------------------------------
+# CHECKS (unit tests) -- opt-in, not part of the default build and not in
+# the runtime image's dependency graph, so a plain `docker build` never
+# builds this stage.
+# Build explicitly with: docker build --target checks -f docker/Dockerfile.smf.ubuntu .
+# Tests run at build time (via build_smf --tests -> ctest), so a failing
+# test fails the image build.
+#---------------------------------------------------------------------
+FROM oai-smf-base AS checks
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+      libgtest-dev \
+      libgmock-dev \
+      googletest-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . /openair-smf
+WORKDIR /openair-smf/build/scripts
+RUN ./build_smf --tests --jobs
+
+
+#---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
 FROM $BASE_IMAGE AS oai-smf

@@ -16,6 +16,7 @@
 #include "3gpp_24.501.hpp"
 #include "3gpp_29.500.h"
 #include "3gpp_29.502.h"
+#include "3gpp_29.512.h"
 #include "Nas5gsmMessage.hpp"
 #include "PduSessionEstablishmentAccept.hpp"
 #include "PduSessionEstablishmentReject.hpp"
@@ -50,6 +51,9 @@
 #include "smf_sbi_helper.hpp"
 #include "http_definitions.hpp"
 #include "SearchResult.h"
+#include "SessionRuleReport.h"
+#include "RuleReport.h"
+#include "ErrorReport.h"
 
 using namespace oai::app::smf;
 using namespace oai::config::smf;
@@ -1170,7 +1174,7 @@ void smf_app::handle_pdu_session_update_sm_context_request(
     std::shared_ptr<itti_sbi_update_sm_context_request> smreq) {
   // Handle PDU Session Update SM Context Request (section 4.3.2@3GPP TS 23.502)
   Logger::smf_app().info(
-      "Handle a PDU Session Update SM Context Request from an AMF (HTTP "
+      "Handle a PDU Session Update SM Context Request (HTTP "
       "version %d)",
       smreq->http_version);
 
@@ -2094,6 +2098,49 @@ void smf_app::trigger_update_context_error_response(
 }
 
 //------------------------------------------------------------------------------
+void smf_app::trigger_sm_policy_update_notify_error_response(
+    const uint32_t& http_code, const uint8_t& cause,
+    const std::vector<RuleReport>& rule_reports,
+    const std::vector<SessionRuleReport>& sess_rule_reports,
+    uint32_t& promise_id) {
+  Logger::smf_app().debug(
+      "Send ITTI msg to SMF APP to trigger the policy notify error response of "
+      "HTTP Server");
+
+  ErrorReport error_report       = {};
+  ProblemDetails problem_details = {};
+  problem_details.setStatus(static_cast<int>(http_code));
+
+  if (static_cast<size_t>(cause) < smf_server_application_error_e2str.size()) {
+    problem_details.setCause(smf_server_application_error_e2str.at(cause));
+  } else {
+    problem_details.setCause("UNKNOWN_ERROR");
+  }
+  error_report.setError(problem_details);
+
+  if (!rule_reports.empty()) {
+    error_report.setRuleReports(rule_reports);
+    Logger::smf_app().warn(
+        "Appending %zu PCC rule report(s) to the PCF error report.",
+        rule_reports.size());
+  }
+  if (!sess_rule_reports.empty()) {
+    error_report.setSessRuleReports(sess_rule_reports);
+    Logger::smf_app().warn(
+        "Appending %zu Session rule report(s) to the PCF error report.",
+        sess_rule_reports.size());
+  }
+
+  nlohmann::json json_data = {};
+  to_json(json_data, error_report);
+  pdu_session_sm_policy_update_notify_response policy_response = {};
+  policy_response.set_json_data(json_data);
+  policy_response.set_json_format("application/problem+json");
+  policy_response.set_http_code(http_code);
+  trigger_session_update_sm_association_response(policy_response, promise_id);
+}
+
+//------------------------------------------------------------------------------
 void smf_app::make_future_ready(
     const nlohmann::json& response_message_json, uint32_t& pid) {
   Logger::smf_app().debug(
@@ -2141,6 +2188,21 @@ void smf_app::trigger_session_update_sm_context_response(
     uint32_t& pid) {
   Logger::smf_app().debug(
       "Trigger PDU Session Update SM Context Response: Set promise with ID "
+      "%d "
+      "to ready",
+      pid);
+  nlohmann::json response_message_json = {};
+  sm_context_response.to_json(response_message_json);
+  make_future_ready(response_message_json, pid);
+  return;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::trigger_session_update_sm_association_response(
+    pdu_session_sm_policy_update_notify_response& sm_context_response,
+    uint32_t& pid) {
+  Logger::smf_app().debug(
+      "Trigger PDU Session Update SM Association Response: Set promise with ID "
       "%d "
       "to ready",
       pid);

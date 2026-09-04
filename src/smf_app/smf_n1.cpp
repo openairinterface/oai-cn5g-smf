@@ -389,8 +389,7 @@ bool smf_n1::create_n1_pdu_session_modification_command(
       session_ambr, sm_context_res.get_snssai(), sm_context_res.get_dnn());
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
-  // TODO: RQ timer value
-  // TODO: AlwaysonPDUSessionIndication
+  // TODO: Optional IEs (RQ timer value, Always-on PDU Session Indication)
 
   // Authorized QoS rules
   // Get the authorized QoS Rules
@@ -400,9 +399,9 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   qos_rules.Set(qos_rule_list);
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
-  // TODO: MappedEPSBearerContexts
+  // Optional MappedEPSBearerContexts IE (N26 EPS interworking)
 
-  // TODO: Authorized QoS Flow Descriptions
+  // Authorized QoS Flow Descriptions IE
   std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
@@ -517,31 +516,43 @@ bool smf_n1::create_n1_pdu_session_modification_command(
   sc->get_session_ambr(session_ambr, msg.get_snssai(), msg.get_dnn());
   pdu_session_modification_command->SetSessionAmbr(session_ambr);
 
-  // TODO: RQ timer value
-  // TODO: AlwaysonPDUSessionIndication
+  // TODO: Optional IEs (RQ timer value, Always-on PDU Session Indication)
 
   // Authorized QoS rules
   // Get the authorized QoS Rules
   std::vector<oai::nas::QosRule> qos_rule_list =
       sp->get_session_handler()->get_qos_rules();
 
+  std::vector<::oai::app::smf::qos_flow_context_updated> released_flows =
+      sp->get_session_handler()->get_qos_flows_to_be_released();
+  for (const auto& rf : released_flows) {
+    for (const auto& it : rf.qos_rules) {
+      qos_rule_list.push_back(it.second);
+    }
+  }
+
   oai::nas::QosRules qos_rules = {};
   qos_rules.Set(qos_rule_list);
   pdu_session_modification_command->SetAuthorizedQosRules(qos_rules);
 
-  // TODO: MappedEPSBearerContexts
+  // Optional MappedEPSBearerContexts IE (N26 EPS interworking)
 
-  // TODO: Authorized QoS Flow Descriptions
   std::vector<::oai::app::smf::qos_flow_context_updated> qos_flows =
       sp->get_session_handler()->get_qos_flows_context_updated();
 
-  if (smf_app_inst->is_supi_2_smf_context(supi) and !qos_flows.empty()) {
+  if (smf_app_inst->is_supi_2_smf_context(supi) and
+      (!qos_flows.empty() or !released_flows.empty())) {
     oai::nas::QosFlowDescriptions qos_flow_descriptions                 = {};
     std::vector<oai::nas::QosFlowDescription> qos_flow_description_list = {};
     for (const auto& qf : qos_flows) {
       oai::nas::QosFlowDescription qos_flow_description =
           qf.get_qos_flow_descriptions();
       qos_flow_description_list.push_back(qos_flow_description);
+    }
+    // Append DELETE-operation QoS flow descriptions for the released
+    // flows so the UE is told to remove them
+    for (const auto& rf : released_flows) {
+      qos_flow_description_list.push_back(rf.get_qos_flow_descriptions());
     }
     qos_flow_descriptions.Set(qos_flow_description_list);
     pdu_session_modification_command->SetAuthorizedQosFlowDescriptions(
