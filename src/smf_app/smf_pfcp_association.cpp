@@ -993,6 +993,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   std::vector<upf_selection_criteria> verify_criterias;
   QosData default_qos_to_use = base_criteria.qos_profile;
   bool session_rule_exists   = false;
+  bool remove_session_rule   = false;
   // we only use one session rule here
   if (!session_rules.empty()) {
     auto rule_it                    = session_rules.begin();
@@ -1078,6 +1079,15 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       continue;
     }
 
+    if (selection_criteria.flow_information.getFlowDescription() ==
+        DEFAULT_FLOW_DESCRIPTION) {
+      // An 'any' match-all PCC rule is present; supersede the default session
+      // rule
+      remove_session_rule            = true;
+      selection_criteria.default_qos = true;
+      selection_criteria.flow_information.setPacketFilterUsage(true);
+    }
+
     uint32_t precedence = rule.second.getPrecedence();
 
     // TS 24.501 §9.11.4.13: Precedence 0 is invalid for match-all filter and
@@ -1111,6 +1121,12 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // different logic
     previous_verify_criteria = verify_criteria;
     generate_new_qfi         = false;
+  }
+
+  if (remove_session_rule && session_rule_exists) {
+    precedences.erase(255);
+    verify_criterias.erase(verify_criterias.begin());
+    selection_criterias.erase(selection_criterias.begin());
   }
 
   // Now we have gathered all the information, run the DFS algorithm for each
