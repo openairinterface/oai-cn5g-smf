@@ -4625,6 +4625,7 @@ void smf_context::send_pdu_session_create_response(
   std::string n1_sm_msg_hex  = {};
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
+  std::string callback_uri   = {};
   uint8_t cause_n1           = {k5gsmCauseUnknown};
 
   if (resp->res.get_cause() != k5gsmCauseRequestAccepted) {
@@ -4708,10 +4709,9 @@ void smf_context::send_pdu_session_create_response(
         oai::smf::api::smf_sbi_helper::
             SmfCallbackPathN1N2MessageTransferFailure,
         fmr_format_str);
-    std::string callback_uri =
-        smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
-        oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
-        fmt::format(fmr_format_str, supi);
+    callback_uri = smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
+                   oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+                   fmt::format(fmr_format_str, supi);
     json_data["n1n2FailureTxfNotifURI"] = callback_uri.c_str();
   }
   // Others information
