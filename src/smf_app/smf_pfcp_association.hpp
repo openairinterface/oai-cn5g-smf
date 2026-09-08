@@ -16,6 +16,7 @@
 #include "3gpp_29.244.h"
 #include "itti.hpp"
 #include "smf_profile.hpp"
+#include "fqdn.hpp"
 #include "SmPolicyDecision.h"
 #include "3gpp_24.007.hpp"
 #include "UpfInfo.h"
@@ -53,7 +54,8 @@ class pfcp_association {
 
   explicit pfcp_association(oai::config::smf::upf upf_cfg)
       : recovery_time_stamp(), m_upf_cfg(std::move(upf_cfg)) {
-    node_id      = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
 
@@ -62,14 +64,16 @@ class pfcp_association {
       const pfcp::recovery_time_stamp_t& recovery_time_stamp)
       : recovery_time_stamp(recovery_time_stamp),
         m_upf_cfg(std::move(upf_cfg)) {
-    node_id      = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
   pfcp_association(
       oai::config::smf::upf upf_cfg, const pfcp::recovery_time_stamp_t& rts,
       const pfcp::up_function_features_s& uff)
       : recovery_time_stamp(rts), m_upf_cfg(std::move(upf_cfg)) {
-    node_id                  = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id             = std::hash<pfcp::node_id_t>{}(node_id);
     function_features.first  = true;
     function_features.second = uff;
