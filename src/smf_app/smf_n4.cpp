@@ -745,13 +745,14 @@ void smf_n4::send_heartbeat_request(std::shared_ptr<pfcp_association>& a) {
   pfcp::node_id_t& node_id = a->node_id;
   if ((node_id.node_id_type == pfcp::NODE_ID_TYPE_IPV4_ADDRESS) or
       (node_id.node_id_type == pfcp::NODE_ID_TYPE_FQDN)) {
-    a->timer_heartbeat = itti_inst->timer_setup(
+    a->timer_heartbeat_timeout = itti_inst->timer_setup(
         5, 0, TASK_SMF_N4, TASK_SMF_N4_TIMEOUT_HEARTBEAT_REQUEST,
         a->hash_node_id);
 
     endpoint r_endpoint = endpoint(node_id.u1.ipv4_address, pfcp::default_port);
-    a->trxn_id_heartbeat = generate_trxn_id();
-    send_request(r_endpoint, h, TASK_SMF_N4, a->trxn_id_heartbeat);
+    const uint64_t trxn_id = generate_trxn_id();
+    a->trxn_ids_heartbeat.insert(trxn_id);
+    send_request(r_endpoint, h, TASK_SMF_N4, trxn_id);
 
   } else {
     Logger::smf_n4().warn("TODO send_heartbeat_request() node_id IPV6!");

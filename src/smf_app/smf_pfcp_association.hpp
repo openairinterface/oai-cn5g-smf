@@ -7,6 +7,7 @@
 
 #include <map>
 #include <mutex>
+#include <set>
 #include <utility>
 #include <vector>
 #include <stack>
@@ -43,9 +44,17 @@ class pfcp_association {
   mutable std::mutex m_sessions;
   std::set<pfcp::fseid_t> sessions;
   //
-  timer_id_t timer_heartbeat      = ITTI_INVALID_TIMER_ID;
-  int num_retries_timer_heartbeat = 0;
-  uint64_t trxn_id_heartbeat      = 0;
+  // Two timers, two members. They used to share one: the 10 s timer that
+  // starts the next heartbeat and the 5 s one that gives up on the current
+  // reply. Whichever was armed last owned the field, so cancelling one could
+  // silently cancel -- or leak -- the other.
+  timer_id_t timer_heartbeat_periodic = ITTI_INVALID_TIMER_ID;
+  timer_id_t timer_heartbeat_timeout  = ITTI_INVALID_TIMER_ID;
+  int num_retries_timer_heartbeat     = 0;
+  /// Every heartbeat this association still awaits a reply for. A retry adds
+  /// one rather than replacing it, so a reply to the earlier request is still
+  /// recognised as coming from this peer -- and only from this peer.
+  std::set<uint64_t> trxn_ids_heartbeat;
 
   bool is_restore_sessions_pending = false;
 
