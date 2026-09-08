@@ -139,11 +139,23 @@ bool smf_session_procedure::pfcp_mbr(
   mbr_pfcp = {};
   std::string bitrate;
   if (edge->uplink) {
-    if (!edge->qos_profile.maxbrUlIsSet()) return false;
-    bitrate = edge->qos_profile.getMaxbrUl();
+    if (edge->qos_profile.maxbrUlIsSet()) {
+      bitrate = edge->qos_profile.getMaxbrUl();
+    } else if (!edge->session_ambr_ul.empty()) {
+      // No per-flow MFBR: bound the flow by the session AMBR instead, so a
+      // non-GBR flow still arrives at the UPF with a rate to enforce.
+      bitrate = edge->session_ambr_ul;
+    } else {
+      return false;
+    }
   } else {
-    if (!edge->qos_profile.maxbrDlIsSet()) return false;
-    bitrate = edge->qos_profile.getMaxbrDl();
+    if (edge->qos_profile.maxbrDlIsSet()) {
+      bitrate = edge->qos_profile.getMaxbrDl();
+    } else if (!edge->session_ambr_dl.empty()) {
+      bitrate = edge->session_ambr_dl;
+    } else {
+      return false;
+    }
   }
 
   uint32_t mbr;
@@ -1082,6 +1094,24 @@ smf_procedure_code session_create_sm_context_procedure::run(
   criteria.qos_profile.setArp(arp);
   if (default_qos.priority_level != 0) {
     criteria.qos_profile.setPriorityLevel(default_qos.priority_level);
+  }
+
+  // Carry the session AMBR to the QER. It reaches the gNB over N2 but never
+  // reached the UPF over N4, so a non-GBR flow -- 5QI 9, the default, which
+  // carries no MFBR -- arrived with no rate to enforce. It travels beside the
+  // QoS profile rather than inside it: that profile is the per-flow
+  // authorisation the UE and gNB are told about, and an aggregate limit put
+  // there would be signalled as a per-QFI maximum and applied once per flow.
+  {
+    session_ambr_t ambr = {};
+    sc->get_session_ambr(
+        ambr, sm_context_req->req.get_snssai(), sm_context_req->req.get_dnn());
+    criteria.session_ambr_ul = ambr.uplink;
+    criteria.session_ambr_dl = ambr.downlink;
+    Logger::smf_app().debug(
+        "Session AMBR for the QER: ul=%s dl=%s",
+        ambr.uplink.empty() ? "unset" : ambr.uplink.c_str(),
+        ambr.downlink.empty() ? "unset" : ambr.downlink.c_str());
   }
 
   // Find PDU session

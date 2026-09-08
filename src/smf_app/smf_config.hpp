@@ -40,7 +40,10 @@ const subscribed_default_qos_t DEFAULT_QOS{
     9,
     {1, "NOT_PREEMPT", "NOT_PREEMPTABLE"},
     0};  // will be set based on 5QI if users dont override it
-const upf DEFAULT_UPF{"oai-upf", 8805, false, false, false, ""};
+// host, port, usage_reporting, qers, dl_pdr_in_establishment, local_n3_ip.
+// QERs default ON: without one the UPF is never told the session AMBR, so a
+// configured rate limit is silently not enforced.
+const upf DEFAULT_UPF{"oai-upf", 8805, false, true, false, ""};
 
 typedef struct interface_cfg_s {
   std::string if_name;

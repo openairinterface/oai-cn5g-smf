@@ -195,6 +195,8 @@ bool qos_upf_edge::serves_network(const upf_selection_criteria& criteria) {
   flow_information     = criteria.flow_information;
   redirect_information = criteria.redirect_information;
   qos_profile          = criteria.qos_profile;
+  session_ambr_ul      = criteria.session_ambr_ul;
+  session_ambr_dl      = criteria.session_ambr_dl;
   precedence           = criteria.precedence;
   qfi.qfi              = criteria.qfi;
   default_qos          = criteria.default_qos;

@@ -485,7 +485,8 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
     // any default UPF is deleted if people configure UPFs
     m_upfs.clear();
     for (const auto& yaml_upf : node["upfs"]) {
-      upf u = upf("", 8805, false, false, false, "");
+      // QERs on by default -- see DEFAULT_UPF.
+      upf u = upf("", 8805, false, true, false, "");
       u.from_yaml(yaml_upf);
       m_upfs.push_back(u);
     }
