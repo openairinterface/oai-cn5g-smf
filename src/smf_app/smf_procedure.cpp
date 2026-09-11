@@ -1076,7 +1076,12 @@ smf_procedure_code session_create_sm_context_procedure::run(
   std::shared_ptr<upf_graph> graph = {};
 
   upf_selection_criteria criteria;
-  criteria.dnn = sm_context_req->req.get_dnn();
+  // The criteria carry a match-all filter, so they describe the default flow
+  // until a PCC rule overrides them. On PFCP the lower value wins
+  // (TS 29.244 §8.2.11), so leaving the zero-initialised 0 here would let the
+  // default PDR shadow every dedicated one.
+  criteria.precedence = 255;  // TS 24.501 §6.2.5.1.1.2
+  criteria.dnn        = sm_context_req->req.get_dnn();
   xgpp_conv::snssai_to_model(sm_context_req->req.get_snssai(), criteria.snssai);
 
   // get the default QoS profile

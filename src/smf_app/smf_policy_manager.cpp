@@ -299,7 +299,8 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
       flow_change.qfi             = qfi_it->second;
       flow_change.pcc_rule_id     = change.rule_id;
       flow_change.qos_profile     = qos_it->second;
-      flow_change.precedence      = pcc_rule.getPrecedence();
+      flow_change.precedence =
+          pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
 
       if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
         flow_change.flow_information = pcc_rule.getFlowInfos()[0];
