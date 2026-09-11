@@ -13,6 +13,7 @@
 #include "RuleStatus_anyOf.h"
 #include "FailureCode.h"
 #include "FailureCode_anyOf.h"
+#include "http_definitions.hpp"
 #include "smf_msg.hpp"
 
 using namespace oai::app::smf;
@@ -81,10 +82,10 @@ TEST(PcfQodWorkflowTest, ErrorReport_BuildsProblemDetailsWithRuleReports) {
   nlohmann::json serialized;
   response.to_json(serialized);
 
-  EXPECT_EQ(serialized["http_code"], 500);
+  const auto& body = serialized[oai::http::kSbiResponseJsonData];
+  EXPECT_EQ(serialized[oai::http::kSbiResponseHttpResponseCode], 500);
   EXPECT_EQ(serialized["json_format"], "application/problem+json");
-  EXPECT_EQ(serialized["json_data"]["error"]["status"], 500);
-  EXPECT_EQ(serialized["json_data"]["error"]["cause"], "RULE_PERMANENT_ERROR");
-  EXPECT_EQ(
-      serialized["json_data"]["ruleReports"][0]["pccRuleIds"][0], "rule-add-1");
+  EXPECT_EQ(body["error"]["status"], 500);
+  EXPECT_EQ(body["error"]["cause"], "RULE_PERMANENT_ERROR");
+  EXPECT_EQ(body["ruleReports"][0]["pccRuleIds"][0], "rule-add-1");
 }

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include "http_definitions.hpp"
 #include "smf_msg.hpp"
 
 using namespace oai::app::smf;
@@ -33,7 +34,9 @@ TEST(SmfMsgTest, SmPolicyUpdateNotifyResponse_ToJsonSerializesAllFields) {
   nlohmann::json serialized_json;
   response.to_json(serialized_json);
 
-  EXPECT_EQ(serialized_json["http_code"], 204);
+  // The API server reads the envelope back under these very keys
+  EXPECT_EQ(serialized_json[oai::http::kSbiResponseHttpResponseCode], 204);
+  EXPECT_EQ(
+      serialized_json[oai::http::kSbiResponseJsonData]["status"], "SUCCESS");
   EXPECT_EQ(serialized_json["json_format"], "application/json");
-  EXPECT_EQ(serialized_json["json_data"]["status"], "SUCCESS");
 }

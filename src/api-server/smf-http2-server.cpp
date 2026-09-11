@@ -1092,9 +1092,12 @@ void smf_http2_server::modify_sm_context_handler(
     nlohmann::json json_data    = {};
     header_map h                = {};
 
-    if (policy_notification_response.find("http_code") !=
+    if (policy_notification_response.find(
+            oai::http::kSbiResponseHttpResponseCode) !=
         policy_notification_response.end()) {
-      http_response_code = policy_notification_response["http_code"].get<int>();
+      http_response_code =
+          policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
+              .get<int>();
     }
 
     if (http_response_code ==
@@ -1104,9 +1107,10 @@ void smf_http2_server::modify_sm_context_handler(
     } else {
       // Error response - extract json_data which contains the
       // SmContextUpdateError
-      if (policy_notification_response.find("json_data") !=
+      if (policy_notification_response.find(oai::http::kSbiResponseJsonData) !=
           policy_notification_response.end()) {
-        json_data = policy_notification_response["json_data"];
+        json_data =
+            policy_notification_response[oai::http::kSbiResponseJsonData];
       }
       if (http_response_code >= 400) {
         h.emplace("content-type", header_value{"application/problem+json"});
