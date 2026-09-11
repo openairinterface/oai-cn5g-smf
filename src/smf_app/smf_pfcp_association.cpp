@@ -134,7 +134,8 @@ std::shared_ptr<pfcp_association> pfcp_associations::check_association_on_add(
     const pfcp::up_function_features_s& function_features) {
   std::shared_ptr<pfcp_association> sa = {};
   if (get_association(node_id, sa)) {
-    itti_inst->timer_remove(sa->timer_heartbeat);
+    itti_inst->timer_remove(sa->timer_heartbeat_timeout);
+    itti_inst->timer_remove(sa->timer_heartbeat_periodic);
     if (sa->recovery_time_stamp == recovery_time_stamp) {
       restore_n4_sessions = false;
     } else {
@@ -348,7 +349,11 @@ void pfcp_associations::restore_n4_sessions(const pfcp::node_id_t& node_id) {
 //------------------------------------------------------------------------------
 void pfcp_associations::trigger_heartbeat_request_procedure(
     std::shared_ptr<pfcp_association>& s) {
-  s->timer_heartbeat = itti_inst->timer_setup(
+  // Idempotent: every reply used to arm another periodic timer without
+  // cancelling the last, so the procedures piled up and each overwrote the
+  // transaction the association was waiting on.
+  itti_inst->timer_remove(s->timer_heartbeat_periodic);
+  s->timer_heartbeat_periodic = itti_inst->timer_setup(
       PFCP_ASSOCIATION_HEARTBEAT_INTERVAL_SEC, 0, TASK_SMF_N4,
       TASK_SMF_N4_TRIGGER_HEARTBEAT_REQUEST, s->hash_node_id);
 }
@@ -362,6 +367,7 @@ void pfcp_associations::initiate_heartbeat_request(
     Logger::smf_n4().info(
         "PFCP HEARTBEAT PROCEDURE hash %u starting", hash_node_id);
     association->num_retries_timer_heartbeat = 0;
+    association->trxn_ids_heartbeat.clear();
     smf_n4_inst->send_heartbeat_request(association);
   }
 }
@@ -418,12 +424,18 @@ void pfcp_associations::timeout_release_request(
 //------------------------------------------------------------------------------
 void pfcp_associations::handle_receive_heartbeat_response(
     const uint64_t trxn_id) {
+  // Matches whichever outstanding request the peer answered, so a reply that
+  // arrives after a retry still counts -- without it the timeout it should
+  // have cancelled goes on to be a failure, and three of those drop a healthy
+  // UPF.
   auto association = associations_graph.get_association_for_trxn_id(trxn_id);
 
   if (association) {
-    itti_inst->timer_remove(association->timer_heartbeat);
+    itti_inst->timer_remove(association->timer_heartbeat_timeout);
+    association->timer_heartbeat_timeout     = ITTI_INVALID_TIMER_ID;
+    association->num_retries_timer_heartbeat = 0;
+    association->trxn_ids_heartbeat.clear();
     trigger_heartbeat_request_procedure(association);
-    return;
   }
 }
 
@@ -663,7 +675,7 @@ std::shared_ptr<pfcp_association> upf_graph::get_association_for_trxn_id(
     const uint64_t trxn_id) const {
   std::shared_lock graph_lock(graph_mutex);
   for (const auto& it : adjacency_list) {
-    if (it.first->trxn_id_heartbeat == trxn_id) {
+    if (it.first->trxn_ids_heartbeat.count(trxn_id)) {
       return it.first;
     }
   }

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <mutex>
+#include <set>
 #include <utility>
 #include <vector>
 #include <stack>
@@ -16,6 +17,7 @@
 #include "3gpp_29.244.h"
 #include "itti.hpp"
 #include "smf_profile.hpp"
+#include "fqdn.hpp"
 #include "SmPolicyDecision.h"
 #include "3gpp_24.007.hpp"
 #include "UpfInfo.h"
@@ -42,9 +44,17 @@ class pfcp_association {
   mutable std::mutex m_sessions;
   std::set<pfcp::fseid_t> sessions;
   //
-  timer_id_t timer_heartbeat      = ITTI_INVALID_TIMER_ID;
-  int num_retries_timer_heartbeat = 0;
-  uint64_t trxn_id_heartbeat      = 0;
+  // Two timers, two members. They used to share one: the 10 s timer that
+  // starts the next heartbeat and the 5 s one that gives up on the current
+  // reply. Whichever was armed last owned the field, so cancelling one could
+  // silently cancel -- or leak -- the other.
+  timer_id_t timer_heartbeat_periodic = ITTI_INVALID_TIMER_ID;
+  timer_id_t timer_heartbeat_timeout  = ITTI_INVALID_TIMER_ID;
+  int num_retries_timer_heartbeat     = 0;
+  /// Every heartbeat this association still awaits a reply for. A retry adds
+  /// one rather than replacing it, so a reply to the earlier request is still
+  /// recognised as coming from this peer -- and only from this peer.
+  std::set<uint64_t> trxn_ids_heartbeat;
 
   bool is_restore_sessions_pending = false;
 
@@ -53,7 +63,8 @@ class pfcp_association {
 
   explicit pfcp_association(oai::config::smf::upf upf_cfg)
       : recovery_time_stamp(), m_upf_cfg(std::move(upf_cfg)) {
-    node_id      = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
 
@@ -62,14 +73,16 @@ class pfcp_association {
       const pfcp::recovery_time_stamp_t& recovery_time_stamp)
       : recovery_time_stamp(recovery_time_stamp),
         m_upf_cfg(std::move(upf_cfg)) {
-    node_id      = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id = std::hash<pfcp::node_id_t>{}(node_id);
   }
   pfcp_association(
       oai::config::smf::upf upf_cfg, const pfcp::recovery_time_stamp_t& rts,
       const pfcp::up_function_features_s& uff)
       : recovery_time_stamp(rts), m_upf_cfg(std::move(upf_cfg)) {
-    node_id                  = m_upf_cfg.get_node_id();
+    node_id = m_upf_cfg.get_node_id();
+    oai::utils::fqdn::resolve(node_id);
     hash_node_id             = std::hash<pfcp::node_id_t>{}(node_id);
     function_features.first  = true;
     function_features.second = uff;

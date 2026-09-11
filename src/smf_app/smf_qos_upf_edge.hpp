@@ -24,6 +24,12 @@ struct upf_selection_criteria {
   std::string dnn{};
   std::unordered_set<std::string> dnais;
   oai::_3gpp::model::QosData qos_profile{};  // QoS profile
+  // Session AMBR, as TS 29.571 BitRate strings. Kept apart from qos_profile
+  // because that one is a per-flow authorisation: it builds the NAS QoS Flow
+  // Description's MFBR and the N2 profile, and an aggregate limit copied in
+  // there would be signalled as a per-QFI maximum and applied once per flow.
+  std::string session_ambr_ul{};
+  std::string session_ambr_dl{};
   // we dont use the default QoS model here because it is a subset of this model
   bool default_qos      = true;
   bool generate_new_qfi = true;
@@ -87,6 +93,9 @@ class qos_upf_edge {
   // for N3 or N9
   pfcp::fteid_t next_hop_fteid{};
   oai::_3gpp::model::QosData qos_profile{};
+  /// Session AMBR for the aggregate QER; see upf_selection_criteria.
+  std::string session_ambr_ul{};
+  std::string session_ambr_dl{};
 
   std::shared_ptr<qos_upf_edge> associated_edge{};
   std::shared_ptr<pfcp_association> destination_upf{};
