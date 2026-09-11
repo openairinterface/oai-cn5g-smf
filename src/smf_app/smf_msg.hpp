@@ -19,7 +19,6 @@
 #include "QosFlowDescription.hpp"
 #include "QosRule.hpp"
 #include "SmPolicyDecision.h"
-#include "http_definitions.hpp"
 #include "pistache/http.h"
 #include "smf.h"
 #include "smf_profile.hpp"
@@ -469,14 +468,9 @@ class pdu_session_sm_policy_update_notify_response : public pdu_session_msg {
   void set_json_format(const std::string& format) { m_json_format = format; }
   std::string get_json_format() const { return m_json_format; }
 
-  // Envelope keys come from oai::http so the SBI response is spelled the same
-  // way everywhere; json_format has no constant there yet.
-  void to_json(nlohmann::json& data) const {
-    pdu_session_msg::to_json(data);
-    data[oai::http::kSbiResponseHttpResponseCode] = m_http_code;
-    data[oai::http::kSbiResponseJsonData]         = m_json_data;
-    data["json_format"]                           = m_json_format;
-  }
+  // Defined in smf_msg.cpp: the envelope keys live in oai::http, and that
+  // header is not on the include path of every target using this one.
+  void to_json(nlohmann::json& data) const;
 
  private:
   uint32_t m_http_code;
