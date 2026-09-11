@@ -2797,7 +2797,39 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               "Added QFIs to request: %zu to remove, %zu to modify",
               policy_delta->to_remove.size(), policy_delta->to_modify.size());
 
-          update_upf = true;
+          // A delta that resolves to no UPF action must not trigger an N4
+          // Session Modification: the request would carry neither IEs nor
+          // QFIs, and the empty QFI list later fails the QFI check and
+          // reports an error to the PCF although the new policy decision was
+          // already committed. Settle it here instead.
+          const bool upf_action_required = !policy_delta->to_add.empty() or
+                                           !policy_delta->to_modify.empty() or
+                                           !policy_delta->to_remove.empty();
+
+          if (upf_action_required) {
+            update_upf = true;
+          } else {
+            update_upf = false;
+            Logger::smf_app().warn(
+                "PCF policy delta resolves to no UPF action (%s), committing "
+                "the policy decision without an N4 Session Modification",
+                policy_delta_smf.to_string().c_str());
+
+            if (sp->policy_ptr) {
+              sp->policy_ptr->decision = new_policy_decision;
+            }
+            pending_policy_decision.reset();
+
+            // Rules dropped during validation still have to be reported
+            if (!partial_success_report.all_rules_valid()) {
+              smf_app_inst->trigger_sm_policy_update_notify_error_response(
+                  http_status_code::INTERNAL_SERVER_ERROR,
+                  smf_server_application_error_e::RULE_PERMANENT_ERROR,
+                  partial_success_report.rule_reports,
+                  partial_success_report.session_rule_reports, smreq->pid);
+              return true;
+            }
+          }
         } else {
           Logger::smf_app().warn(
               "Session graph not available, cannot determine rule to QFI "

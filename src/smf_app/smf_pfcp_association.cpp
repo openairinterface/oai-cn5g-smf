@@ -4,6 +4,8 @@
 
 #include "smf_pfcp_association.hpp"
 
+#include <algorithm>
+
 #include "common_defs.h"
 #include "logger.hpp"
 #include "smf_n4.hpp"
@@ -755,6 +757,46 @@ void upf_graph::add_qos_flow_edge(
     const std::shared_ptr<pfcp_association>& node,
     const std::shared_ptr<qos_upf_edge>& edge) {
   add_upf_graph_edge(node, edge);
+}
+
+//------------------------------------------------------------------------------
+bool upf_graph::remove_qos_flow_edge(uint8_t qfi) {
+  std::unique_lock lock_graph(graph_mutex);
+
+  auto is_released_flow = [qfi](const std::shared_ptr<qos_upf_edge>& edge) {
+    return edge && edge->qfi.qfi == qfi && !edge->default_qos;
+  };
+
+  std::size_t removed = 0;
+  for (auto& [node, edges] : adjacency_list) {
+    auto it = std::remove_if(edges.begin(), edges.end(), is_released_flow);
+    removed += std::distance(it, edges.end());
+    edges.erase(it, edges.end());
+  }
+
+  // Drop them from the asynchronous DFS caches as well, otherwise a later
+  // traversal keeps handing out edges whose PDR/FAR/QER no longer exist.
+  auto drop_from =
+      [&is_released_flow](std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
+        edges.erase(
+            std::remove_if(edges.begin(), edges.end(), is_released_flow),
+            edges.end());
+      };
+  drop_from(current_edges_dl_asynch);
+  drop_from(current_edges_ul_asynch);
+
+  if (removed == 0) {
+    Logger::smf_app().warn(
+        "No non-default QoS flow edge with QFI %d to remove from the UPF "
+        "graph",
+        qfi);
+    return false;
+  }
+
+  Logger::smf_app().debug(
+      "Removed %zu QoS flow edge(s) with QFI %d from the UPF graph", removed,
+      qfi);
+  return true;
 }
 
 //------------------------------------------------------------------------------

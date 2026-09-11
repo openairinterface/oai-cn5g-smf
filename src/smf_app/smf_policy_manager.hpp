@@ -232,6 +232,9 @@ class smf_policy_manager {
    * - Allocating QFIs for new flows
    * - Mapping PCC rules to qos_flow_change structures
    * - Identifying QFIs to remove for deleted rules
+   * - Resolving QoS-data-only changes back to the PCC rules referencing them,
+   *   so a changed QoS profile on an otherwise untouched rule still reaches
+   *   the UPF
    *
    * @param delta The detailed policy delta from compute_delta()
    * @param new_policy The new policy decision (for flow descriptions)
@@ -247,6 +250,22 @@ class smf_policy_manager {
       const smf_policy_delta& delta,
       const oai::_3gpp::model::SmPolicyDecision& new_policy,
       std::map<std::string, uint8_t>& rule_to_qfi_map);
+
+  /**
+   * @brief Build the reverse map from QoS data ID to referencing PCC rule IDs
+   *
+   * A PCC rule points at the QoS data it uses through refQosData. Several
+   * callers need the opposite direction: given a QoS data ID that changed,
+   * which PCC rules (and therefore which QFIs) are affected.
+   *
+   * @param policy Policy decision to index
+   * @return Map of QoS data ID to the IDs of the PCC rules referencing it
+   *
+   * Standards:
+   * - TS 29.512 §5.6.2.6 (PccRule.refQosData)
+   */
+  static std::map<std::string, std::vector<std::string>> build_qos_to_pcc_rules(
+      const oai::_3gpp::model::SmPolicyDecision& policy);
 
   /**
    * @brief Validate policy decision against subscription limits

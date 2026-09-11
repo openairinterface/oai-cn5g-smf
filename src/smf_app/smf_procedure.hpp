@@ -274,6 +274,10 @@ class session_update_sm_context_procedure : public smf_session_procedure {
       staged_new_edges;
   // Maps live edge -> candidate new QoS profile
   std::map<std::shared_ptr<qos_upf_edge>, QosData> staged_modified_edges;
+  // Holds edges whose PDR/FAR/QER removal is in flight on N4. They stay in the
+  // session graph until the UPF accepts, so a rejected removal leaves the
+  // local forwarding state untouched.
+  std::vector<std::shared_ptr<qos_upf_edge>> staged_removed_edges;
 
  private:
   /**
@@ -289,6 +293,17 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   smf_procedure_code send_n4_pcf_initiated_modification(
       const policy_delta& delta);
+
+  /**
+   * @brief Commits the staged flow removals to the local session state.
+   *
+   * Called once the UPF has accepted the N4 Session Modification: drops the
+   * edges from the session graph, frees their QFIs and, with them, the
+   * PCC-rule-to-QFI mapping. Until then the flows stay live locally.
+   *
+   * Standards: TS 23.501 §5.7.1.4 (QFI allocation), TS 29.244 §7.5.4
+   */
+  void commit_staged_flow_removals();
 };
 
 //------------------------------------------------------------------------------

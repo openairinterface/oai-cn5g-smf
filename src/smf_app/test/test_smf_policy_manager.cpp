@@ -148,6 +148,189 @@ TEST(
   EXPECT_EQ(upf_delta.to_add[1].pcc_rule_id, "rule-multi-flow");
 }
 
+// -----------------------------------------------------------------------------
+// QoS-data-only changes: a PCF snapshot can leave the PCC rule untouched and
+// only change the QosData it references. The rule-driven branches see no
+// change at all, so the delta has to be resolved through refQosData.
+// -----------------------------------------------------------------------------
+
+namespace {
+
+// Builds a policy with one PCC rule 'rule-1' referencing 'qos-1'
+SmPolicyDecision make_single_rule_policy(
+    const std::string& gbr_ul, const std::string& gbr_dl, int32_t fiveqi = 5) {
+  SmPolicyDecision policy;
+
+  PccRule rule;
+  rule.setPccRuleId("rule-1");
+  rule.setPrecedence(100);
+  rule.setRefQosData({"qos-1"});
+  FlowInformation flow_info;
+  flow_info.setFlowDescription("permit out ip from any to any");
+  rule.setFlowInfos({flow_info});
+  policy.setPccRules({{"rule-1", rule}});
+
+  QosData qos_data;
+  qos_data.setQosId("qos-1");
+  qos_data.setR5qi(fiveqi);
+  qos_data.setGbrUl(gbr_ul);
+  qos_data.setGbrDl(gbr_dl);
+  policy.setQosDecs({{"qos-1", qos_data}});
+
+  return policy;
+}
+
+}  // namespace
+
+TEST(SmfPolicyManagerTest, ConvertToUpfDelta_EmitsModifyForQosDataOnlyChange) {
+  SmPolicyDecision current   = make_single_rule_policy("1 Mbps", "2 Mbps");
+  SmPolicyDecision requested = make_single_rule_policy("5 Mbps", "10 Mbps");
+
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+
+  // The PCC rule is byte-identical, only the referenced QoS data changed
+  ASSERT_TRUE(delta.pcc_rule_changes.empty());
+  ASSERT_EQ(delta.modified_qos_data.size(), 1u);
+  EXPECT_TRUE(delta.modified_qos_data.count("qos-1"));
+
+  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+
+  policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
+      delta, requested, rule_to_qfi_map);
+
+  ASSERT_EQ(upf_delta.to_modify.size(), 1u);
+  EXPECT_EQ(upf_delta.to_modify[0].qfi, 6);
+  EXPECT_EQ(upf_delta.to_modify[0].pcc_rule_id, "rule-1");
+  EXPECT_EQ(upf_delta.to_modify[0].qos_profile.getGbrUl(), "5 Mbps");
+  EXPECT_EQ(upf_delta.to_modify[0].qos_profile.getGbrDl(), "10 Mbps");
+  // Flow description and precedence come from the unchanged PCC rule
+  EXPECT_EQ(upf_delta.to_modify[0].precedence, 100u);
+  EXPECT_EQ(
+      upf_delta.to_modify[0].flow_information.getFlowDescription(),
+      "permit out ip from any to any");
+
+  EXPECT_TRUE(upf_delta.to_add.empty());
+  EXPECT_TRUE(upf_delta.to_remove.empty());
+}
+
+TEST(
+    SmfPolicyManagerTest,
+    ConvertToUpfDelta_QosDataOnlyChangeWithoutQfiEmitsNothing) {
+  SmPolicyDecision current   = make_single_rule_policy("1 Mbps", "2 Mbps");
+  SmPolicyDecision requested = make_single_rule_policy("5 Mbps", "10 Mbps");
+
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+
+  // No QFI allocated for 'rule-1' yet
+  std::map<std::string, uint8_t> rule_to_qfi_map;
+
+  policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
+      delta, requested, rule_to_qfi_map);
+
+  EXPECT_TRUE(upf_delta.to_add.empty());
+  EXPECT_TRUE(upf_delta.to_modify.empty());
+  EXPECT_TRUE(upf_delta.to_remove.empty());
+}
+
+TEST(
+    SmfPolicyManagerTest,
+    ConvertToUpfDelta_QosDataOnlyChangeWithoutReferencingRuleEmitsNothing) {
+  SmPolicyDecision current   = make_single_rule_policy("1 Mbps", "2 Mbps");
+  SmPolicyDecision requested = make_single_rule_policy("1 Mbps", "2 Mbps");
+
+  // An extra QoS data entry no PCC rule refers to
+  QosData orphan;
+  orphan.setQosId("qos-orphan");
+  orphan.setR5qi(9);
+  auto qos_decs          = requested.getQosDecs();
+  qos_decs["qos-orphan"] = orphan;
+  requested.setQosDecs(qos_decs);
+
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+  ASSERT_EQ(delta.added_qos_data.size(), 1u);
+
+  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+
+  policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
+      delta, requested, rule_to_qfi_map);
+
+  EXPECT_TRUE(upf_delta.to_add.empty());
+  EXPECT_TRUE(upf_delta.to_modify.empty());
+  EXPECT_TRUE(upf_delta.to_remove.empty());
+}
+
+TEST(
+    SmfPolicyManagerTest,
+    ConvertToUpfDelta_DoesNotDuplicateRuleChangedTogetherWithItsQosData) {
+  SmPolicyDecision current = make_single_rule_policy("1 Mbps", "2 Mbps");
+
+  // Both the rule (precedence) and the referenced QoS data change
+  SmPolicyDecision requested = make_single_rule_policy("5 Mbps", "10 Mbps");
+  auto rules                 = requested.getPccRules();
+  rules["rule-1"].setPrecedence(50);
+  requested.setPccRules(rules);
+
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+  ASSERT_EQ(delta.modified_pcc_rules.size(), 1u);
+  ASSERT_EQ(delta.modified_qos_data.size(), 1u);
+
+  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+
+  policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
+      delta, requested, rule_to_qfi_map);
+
+  // A single entry carrying the new QoS profile, not one per change source
+  ASSERT_EQ(upf_delta.to_modify.size(), 1u);
+  EXPECT_EQ(upf_delta.to_modify[0].qfi, 6);
+  EXPECT_EQ(upf_delta.to_modify[0].precedence, 50u);
+  EXPECT_EQ(upf_delta.to_modify[0].qos_profile.getGbrUl(), "5 Mbps");
+}
+
+TEST(
+    SmfPolicyManagerTest,
+    ConvertToUpfDelta_RemovedRuleIsNotRevivedByItsQosDataChange) {
+  SmPolicyDecision current = make_single_rule_policy("1 Mbps", "2 Mbps");
+
+  // The PCF drops the rule but keeps a (changed) QoS data entry around
+  SmPolicyDecision requested = make_single_rule_policy("5 Mbps", "10 Mbps");
+  requested.setPccRules({});
+
+  smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+  ASSERT_EQ(delta.removed_pcc_rules.size(), 1u);
+
+  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+
+  policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
+      delta, requested, rule_to_qfi_map);
+
+  ASSERT_EQ(upf_delta.to_remove.size(), 1u);
+  EXPECT_EQ(upf_delta.to_remove[0].qfi, 6);
+  EXPECT_TRUE(upf_delta.to_modify.empty());
+}
+
+TEST(SmfPolicyManagerTest, BuildQosToPccRules_IndexesAllReferences) {
+  SmPolicyDecision policy;
+
+  PccRule rule1;
+  rule1.setRefQosData({"qos-1"});
+  PccRule rule2;
+  rule2.setRefQosData({"qos-1", "qos-2"});
+  PccRule rule3;  // no refQosData at all
+  policy.setPccRules({{"rule-1", rule1}, {"rule-2", rule2}, {"rule-3", rule3}});
+
+  const auto index = smf_policy_manager::build_qos_to_pcc_rules(policy);
+
+  ASSERT_EQ(index.size(), 2u);
+  EXPECT_EQ(index.at("qos-1").size(), 2u);
+  EXPECT_EQ(index.at("qos-2").size(), 1u);
+  EXPECT_EQ(index.at("qos-2")[0], "rule-2");
+}
+
 // =============================================================================
 // Policy Validation (`validate_policy`)
 // =============================================================================

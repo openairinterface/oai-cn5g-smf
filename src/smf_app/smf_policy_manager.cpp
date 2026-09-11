@@ -194,6 +194,25 @@ smf_policy_delta smf_policy_manager::compute_delta(
 }
 
 //------------------------------------------------------------------------------
+std::map<std::string, std::vector<std::string>>
+smf_policy_manager::build_qos_to_pcc_rules(const SmPolicyDecision& policy) {
+  std::map<std::string, std::vector<std::string>> qos_to_pcc_rules;
+
+  if (!policy.pccRulesIsSet()) {
+    return qos_to_pcc_rules;
+  }
+
+  for (const auto& [rule_id, rule] : policy.getPccRules()) {
+    if (!rule.refQosDataIsSet()) continue;
+    for (const auto& qos_ref : rule.getRefQosData()) {
+      qos_to_pcc_rules[qos_ref].push_back(rule_id);
+    }
+  }
+
+  return qos_to_pcc_rules;
+}
+
+//------------------------------------------------------------------------------
 policy_delta smf_policy_manager::convert_to_upf_delta(
     const smf_policy_delta& delta, const SmPolicyDecision& new_policy,
     std::map<std::string, uint8_t>& rule_to_qfi_map) {
@@ -316,6 +335,119 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
     }
   }
 
+  // --- Process QoS-data-only changes -> to_modify -------------------------
+  // A snapshot-style PCF can leave a PCC rule byte-identical while changing
+  // the QosData it references (e.g. new GBR/MBR on an existing flow). Such an
+  // update produces no pcc_rule_change at all, so without resolving the
+  // changed QoS IDs back to their referencing rules the N4 modification would
+  // carry no IEs while the SMF still committed the new policy.
+  //
+  // Standards:
+  // - TS 29.512 §4.2.6.2 (QoS data provisioning)
+  // - TS 29.244 §5.4.4 (QoS Enforcement - QER update)
+  const auto qos_to_pcc_rules = build_qos_to_pcc_rules(new_policy);
+  std::map<std::string, PccRule> pcc_rules;
+  if (new_policy.pccRulesIsSet()) {
+    pcc_rules = new_policy.getPccRules();
+  }
+
+  // PCC rules already carried by the rule-driven branches above: their
+  // qos_flow_change already holds the new QoS profile, so do not emit a
+  // second entry for them.
+  std::set<std::string> handled_rules;
+  for (const auto& change : upf_delta.to_add)
+    handled_rules.insert(change.pcc_rule_id);
+  for (const auto& change : upf_delta.to_modify)
+    handled_rules.insert(change.pcc_rule_id);
+  for (const auto& change : upf_delta.to_remove)
+    handled_rules.insert(change.pcc_rule_id);
+
+  for (const auto& qos_change : delta.qos_data_changes) {
+    // ADDED QoS data only matters once a PCC rule references it, which is
+    // covered by the ADDED/MODIFIED rule branches above.
+    if (qos_change.type == policy_change_type::ADDED) continue;
+
+    auto refs_it = qos_to_pcc_rules.find(qos_change.qos_id);
+
+    if (qos_change.type == policy_change_type::REMOVED) {
+      // The rule referencing it is normally removed in the same update. A
+      // surviving reference to removed QoS data is a malformed policy.
+      if (refs_it != qos_to_pcc_rules.end()) {
+        for (const auto& rule_id : refs_it->second) {
+          if (handled_rules.count(rule_id) > 0) continue;
+          Logger::smf_app().error(
+              "PCC rule '%s' still references removed QoS data '%s'",
+              rule_id.c_str(), qos_change.qos_id.c_str());
+        }
+      }
+      continue;
+    }
+
+    // MODIFIED QoS data
+    if (refs_it == qos_to_pcc_rules.end() || refs_it->second.empty()) {
+      Logger::smf_app().debug(
+          "QoS data '%s' modified but no PCC rule references it, nothing to "
+          "update on the UPF",
+          qos_change.qos_id.c_str());
+      continue;
+    }
+
+    auto qos_it = qos_decs.find(qos_change.qos_id);
+    if (qos_it == qos_decs.end()) {
+      Logger::smf_app().warn(
+          "Modified QoS data '%s' is absent from the new policy decision",
+          qos_change.qos_id.c_str());
+      continue;
+    }
+
+    // TODO: a changed 5QI cannot be applied by updating the QER in place -
+    //   the QFI is bound to the 5QI (TS 23.501 §5.7.1.4), so it needs a
+    //   remove + add of the flow with a freshly allocated QFI.
+    if (qos_change.old_data.has_value() &&
+        qos_change.old_data.value().getR5qi() != qos_it->second.getR5qi()) {
+      Logger::smf_app().warn(
+          "QoS data '%s' changed 5QI %d->%d; applying it on the existing QFI, "
+          "flow re-establishment is not implemented yet",
+          qos_change.qos_id.c_str(), qos_change.old_data.value().getR5qi(),
+          qos_it->second.getR5qi());
+    }
+
+    for (const auto& rule_id : refs_it->second) {
+      if (handled_rules.count(rule_id) > 0) continue;
+
+      auto qfi_it = rule_to_qfi_map.find(rule_id);
+      if (qfi_it == rule_to_qfi_map.end()) {
+        Logger::smf_app().warn(
+            "PCC rule '%s' references modified QoS data '%s' but has no "
+            "allocated QFI, skipping",
+            rule_id.c_str(), qos_change.qos_id.c_str());
+        continue;
+      }
+
+      const auto rule_it = pcc_rules.find(rule_id);
+      if (rule_it == pcc_rules.end()) continue;
+      const auto& pcc_rule = rule_it->second;
+
+      qos_flow_change flow_change = {};
+      flow_change.qfi             = qfi_it->second;
+      flow_change.pcc_rule_id     = rule_id;
+      flow_change.qos_profile     = qos_it->second;
+      flow_change.precedence =
+          pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
+      if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
+        flow_change.flow_information = pcc_rule.getFlowInfos()[0];
+      }
+
+      upf_delta.to_modify.push_back(flow_change);
+      handled_rules.insert(rule_id);
+
+      Logger::smf_app().debug(
+          "convert_to_upf_delta: Modified flow QFI=%d for rule '%s' (QoS data "
+          "'%s' changed)",
+          qfi_it->second, rule_id.c_str(), qos_change.qos_id.c_str());
+    }
+  }
+
   Logger::smf_app().info(
       "convert_to_upf_delta: %zu to_add, %zu to_modify, %zu to_remove",
       upf_delta.to_add.size(), upf_delta.to_modify.size(),
@@ -332,27 +464,19 @@ smf_policy_report smf_policy_manager::validate_policy(
   smf_policy_report result;
   std::set<std::string> unique_failed_pcc_rules;
 
-  // Build a map from QoS data ID to the PCC rule IDs that reference it
-  std::map<std::string, std::vector<std::string>> qos_to_pcc_rules;
+  // Map from QoS data ID to the PCC rule IDs that reference it
+  const auto qos_to_pcc_rules = build_qos_to_pcc_rules(policy);
+
   if (policy.pccRulesIsSet()) {
-    const auto& rules = policy.getPccRules();
     std::set<int32_t> precedences;
 
-    for (const auto& [rule_id, rule] : rules) {
-      if (rule.refQosDataIsSet()) {
-        for (const auto& qos_ref : rule.getRefQosData()) {
-          qos_to_pcc_rules[qos_ref].push_back(rule_id);
-        }
+    for (const auto& [rule_id, rule] : policy.getPccRules()) {
+      if (!rule.precedenceIsSet()) continue;
+      if (precedences.count(rule.getPrecedence()) > 0) {
+        Logger::smf_app().warn(
+            "Duplicate PCC rule precedence %d detected", rule.getPrecedence());
       }
-
-      if (rule.precedenceIsSet()) {
-        if (precedences.count(rule.getPrecedence()) > 0) {
-          Logger::smf_app().warn(
-              "Duplicate PCC rule precedence %d detected",
-              rule.getPrecedence());
-        }
-        precedences.insert(rule.getPrecedence());
-      }
+      precedences.insert(rule.getPrecedence());
     }
   }
 

@@ -275,6 +275,21 @@ class upf_graph {
       const std::shared_ptr<qos_upf_edge>& edge);
 
   /**
+   * @brief Removes every non-default QoS flow edge carrying this QFI from the
+   * graph and from the asynchronous DFS edge caches.
+   *
+   * Counterpart of add_qos_flow_edge(), to be called once the UPF has accepted
+   * the removal of the flow's PDR/FAR/QER. The default QoS flow is never
+   * removed: it lives as long as the PDU session does.
+   *
+   * @param qfi the QoS Flow Identifier of the flow to drop
+   * @return true if at least one edge was removed
+   *
+   * Standards: TS 23.501 §5.7.1 (QoS model)
+   */
+  bool remove_qos_flow_edge(uint8_t qfi);
+
+  /**
    * @brief Get Association from an UPF node id hash
    * @param association_hash
    * @return shared_ptr to an association, may be null

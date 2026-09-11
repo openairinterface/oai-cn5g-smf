@@ -1417,8 +1417,13 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
 
   std::set<uint8_t> remove_set = {};
   for (const auto& qfi : delta.to_remove) remove_set.insert(qfi.qfi);
+
+  // STAGE: the edges stay in the graph until the UPF accepts the removal,
+  // see commit_staged_flow_removals().
+  staged_removed_edges.clear();
   for (const auto& edge : all_edges) {
     if (remove_set.count(edge->qfi.qfi) == 0) continue;
+    staged_removed_edges.push_back(edge);
     if (edge->pdr_id.rule_id != 0)
       n4_triggered->pfcp_ies.set(pfcp_remove_pdr(edge));
     if (edge->far_id.far_id != 0)
@@ -1801,6 +1806,8 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
       staged_new_edges.clear();
       staged_modified_edges.clear();
+      // The UPF kept the flows, so the graph must keep their edges too
+      staged_removed_edges.clear();
       sps->get_session_handler()->clear_qos_flows_to_be_released();
 
       smf_app_inst->trigger_sm_policy_update_notify_error_response(
@@ -1883,6 +1890,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       sps->policy_ptr->decision = pending_policy_decision.value();
     }
     staged_new_edges.clear();
+
+    // 4. The UPF removed the PDR/FAR/QER of the released flows, so drop them
+    // from the local forwarding state as well. The N1/N2 delete descriptors
+    // built further down still come from the session handler's release list,
+    // which is cleared only once that content exists.
+    commit_staged_flow_removals();
   }
 
   // list of accepted QFI(s) and AN Tunnel Info corresponding to the PDU
@@ -2038,6 +2051,12 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
             list_of_qfis_to_be_modified.size());
         sc->handle_pdu_session_modification_network_requested(n1n2_trigger);
       }
+
+      // The N1 QoS rule / flow description deletions and the N2 QoS Flow To
+      // Release List have been built above, so the release list has served
+      // its purpose. Without this it survives into the next procedure and
+      // re-advertises flows that are already gone.
+      sps->get_session_handler()->clear_qos_flows_to_be_released();
     } break;
 
     default: {
@@ -2066,6 +2085,44 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       oai::common::sbi::http_status_code::OK);
 
   return smf_procedure_code::OK;
+}
+
+//------------------------------------------------------------------------------
+void session_update_sm_context_procedure::commit_staged_flow_removals() {
+  if (staged_removed_edges.empty()) return;
+
+  std::shared_ptr<upf_graph> graph =
+      sps->get_session_handler()->get_session_graph();
+
+  std::set<uint8_t> released_qfis = {};
+  for (const auto& edge : staged_removed_edges) {
+    if (!edge) continue;
+    if (edge->default_qos) {
+      // The default flow lives as long as the PDU session, a PCC rule must
+      // never map onto it.
+      Logger::smf_app().error(
+          "Refusing to release the default QoS flow (QFI %d)", edge->qfi.qfi);
+      continue;
+    }
+    released_qfis.insert(edge->qfi.qfi);
+    // Any shared_ptr still held elsewhere must not keep stale rule IDs
+    edge->clear_session();
+  }
+  staged_removed_edges.clear();
+
+  if (!graph) {
+    Logger::smf_app().warn(
+        "No session graph available, cannot release %zu QoS flow(s)",
+        released_qfis.size());
+    return;
+  }
+
+  for (const auto& qfi : released_qfis) {
+    graph->remove_qos_flow_edge(qfi);
+    // Frees the QFI for reuse and drops every PCC rule mapped onto it
+    graph->release_qfi(qfi);
+    Logger::smf_app().info("Released QoS flow QFI %d", qfi);
+  }
 }
 
 //------------------------------------------------------------------------------
