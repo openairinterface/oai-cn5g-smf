@@ -1080,7 +1080,7 @@ smf_procedure_code session_create_sm_context_procedure::run(
   // until a PCC rule overrides them. On PFCP the lower value wins
   // (TS 29.244 §8.2.11), so leaving the zero-initialised 0 here would let the
   // default PDR shadow every dedicated one.
-  criteria.precedence = 255;  // TS 24.501 §6.2.5.1.1.2
+  criteria.precedence = kDefaultFlowPfcpPrecedence;
   criteria.dnn        = sm_context_req->req.get_dnn();
   xgpp_conv::snssai_to_model(sm_context_req->req.get_snssai(), criteria.snssai);
 

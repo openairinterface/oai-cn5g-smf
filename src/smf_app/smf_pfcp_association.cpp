@@ -1048,10 +1048,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       default_qos_to_use.setArp(auth_default_qos.getArp());
       default_qos_to_use.setR5qi(auth_default_qos.getR5qi());
     }
-    // TS 24.501 §6.2.5.1.1.2: Default QoS rule uses precedence 255 (lowest
-    // priority). It belongs to the match-all filter, not to authDefQos, so it
-    // applies to a session rule without one as well.
-    criteria.precedence = 255;
+    // The match-all default flow sits at the bottom of the PFCP precedence
+    // range. It belongs to the filter, not to authDefQos, so it applies to a
+    // session rule without one as well.
+    criteria.precedence = kDefaultFlowPfcpPrecedence;
     precedences.insert(criteria.precedence);
     selection_criterias.push_back(criteria);
     verify_criterias.push_back(criteria);
@@ -1166,7 +1166,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   }
 
   if (remove_session_rule && session_rule_exists) {
-    precedences.erase(255);
+    precedences.erase(kDefaultFlowPfcpPrecedence);
     verify_criterias.erase(verify_criterias.begin());
     selection_criterias.erase(selection_criterias.begin());
   }
