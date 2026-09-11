@@ -283,45 +283,26 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
 }
 
 //------------------------------------------------------------------------------
-pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
-    const std::shared_ptr<qos_upf_edge>& edge) {
-  // When we have a PDR and edge is uplink we know we are in a downlink
-  // procedure, e.g. PDR from N6 to N3 -> N6 is uplink edge, so downlink
-  // procedure
-
+pfcp::pdi smf_session_procedure::pfcp_build_pdi(
+    const std::shared_ptr<qos_upf_edge>& edge, bool set_qfi) {
+  // Packet detection information (see Table 7.5.2.2-2: PDI IE within PFCP
+  // Session Establishment Request, 3GPP TS 29.244 V16.0.0)
   oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
   pfcp::up_function_features_s up_features =
       edge->source_upf->function_features.second;
-  //-------------------
-  // IE create_pdr (section 5.8.2.11.3@TS 23.501)
-  //-------------------
-  pfcp::create_pdr create_pdr   = {};
-  pfcp::precedence_t precedence = {};
-  pfcp::pdi pdi                 = {};  // packet detection information
-  pfcp::outer_header_removal_t outer_header_removal = {};
-  // pdi IEs
+
+  pfcp::pdi pdi                                       = {};
   pfcp::source_interface_t source_interface           = {};
   pfcp::fteid_t local_fteid                           = {};
   pfcp::sdf_filter_t sdf_filter                       = {};
-  pfcp::application_id_t application_id               = {};
   pfcp::_3gpp_interface_type_t source_interface_type  = {};
   pfcp::ethernet_packet_filter ethernet_packet_filter = {};
-
-  // Packet detection information (see Table 7.5.2.2-2: PDI IE within PFCP
-  // Session Establishment Request, 3GPP TS 29.244 V16.0.0)  source interface
-
-  if (edge->pdr_id.rule_id == 0) {
-    edge->pdr_id = sps->get_session_handler()->generate_pdr_id();
-  }
-  create_pdr.set(edge->pdr_id);
 
   if (edge->uplink) {
     source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
   } else {
     source_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
   }
-
-  Logger::smf_app().debug("Created PDR ID, rule ID %d", edge->pdr_id.rule_id);
   pdi.set(source_interface);
 
   //-------------------
@@ -364,13 +345,8 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   } else if (edge->type == n9_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
   }
-  // do not remove outer header in dl direction
-  // also we dont add this information if we use DL PDR in session establishment
-  // as we update it later anyway
-  if (edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment()) {
-    outer_header_removal.outer_header_removal_description =
-        OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
-    create_pdr.set(outer_header_removal);
+
+  if (set_qfi) {
     pdi.set(edge->qfi);  // QFI - QoS Flow ID
   }
 
@@ -414,6 +390,47 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   }
 
   pdi.set(source_interface_type);
+
+  return pdi;
+}
+
+//------------------------------------------------------------------------------
+pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  // When we have a PDR and edge is uplink we know we are in a downlink
+  // procedure, e.g. PDR from N6 to N3 -> N6 is uplink edge, so downlink
+  // procedure
+
+  oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
+  //-------------------
+  // IE create_pdr (section 5.8.2.11.3@TS 23.501)
+  //-------------------
+  pfcp::create_pdr create_pdr                       = {};
+  pfcp::precedence_t precedence                     = {};
+  pfcp::outer_header_removal_t outer_header_removal = {};
+
+  if (edge->pdr_id.rule_id == 0) {
+    edge->pdr_id = sps->get_session_handler()->generate_pdr_id();
+  }
+  create_pdr.set(edge->pdr_id);
+  Logger::smf_app().debug("Created PDR ID, rule ID %d", edge->pdr_id.rule_id);
+
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+
+  // do not remove outer header in dl direction
+  // also we dont add this information if we use DL PDR in session establishment
+  // as we update it later anyway
+  const bool tunnelled =
+      edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment();
+
+  pfcp::pdi pdi = pfcp_build_pdi(edge, tunnelled);
+
+  if (tunnelled) {
+    outer_header_removal.outer_header_removal_description =
+        OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
+    create_pdr.set(outer_header_removal);
+  }
 
   // Here we take the precedence directly from the PCC rules. It should be okay
   // because both values are integer, but we might need to provide another
@@ -510,34 +527,28 @@ pfcp::remove_far smf_session_procedure::pfcp_remove_far(
 //------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
     const std::shared_ptr<qos_upf_edge>& edge) {
-  // TODO some duplicated code from create_pdr
-
+  // An Update PDR replaces the stored PDI (TS 29.244 §7.5.4.3), so it is built
+  // from the same helper as the Create PDR: a partial PDI would drop the
+  // F-TEID and QFI the UPF matches tunnelled traffic on.
   oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
 
   pfcp::update_pdr update_pdr                       = {};
   pfcp::precedence_t precedence                     = {};
-  pfcp::pdi pdi                                     = {};
-  pfcp::sdf_filter_t sdf_filter                     = {};
-  pfcp::source_interface_t source_interface         = {};
   pfcp::outer_header_removal_t outer_header_removal = {};
 
-  // UE IP address
-  pdi.set(pfcp_ue_ip_address(edge));
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
-  precedence.precedence = edge->precedence;
-  // TODO this is now only in DL direction
-  source_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
-  if (!edge->nw_instance.empty()) {
-    // mandatory for travelping
-    pfcp::network_instance_t network_instance = {};
-    network_instance.network_instance         = edge->nw_instance;
-    pdi.set(network_instance);
-  }
+  // Unlike the Create PDR there is no DL-PDR-in-establishment exception here:
+  // by now the tunnel exists, so the QFI and the header removal always apply.
+  const bool tunnelled = edge->type != n6_type;
 
-  pdi.set(source_interface);
+  pfcp::pdi pdi = pfcp_build_pdi(edge, tunnelled);
 
-  if (pfcp_sdf_filter(edge, sdf_filter)) {
-    pdi.set(sdf_filter);
+  if (tunnelled) {
+    outer_header_removal.outer_header_removal_description =
+        OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
+    update_pdr.set(outer_header_removal);
   }
 
   if (cfg.enable_usage_reporting()) {
@@ -545,14 +556,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
     update_pdr.set(urr_id);
   }
 
-  UPInterfaceType n6_type;
-  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
-
-  if (edge->type != n6_type) {
-    outer_header_removal.outer_header_removal_description =
-        OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
-    update_pdr.set(outer_header_removal);
-  }
+  precedence.precedence = edge->precedence;
 
   update_pdr.set(edge->pdr_id);
   update_pdr.set(precedence);
@@ -1387,25 +1391,34 @@ session_update_sm_context_procedure::send_n4_pcf_initiated_modification(
   UPInterfaceType n3_type = {};
   n3_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
 
-  // --- Modify phase: Update QER in place (no teardown) --------------------
+  // --- Modify phase: update the flow in place (no teardown) ---------------
+  // The QER carries the bitrates, the PDR the SDF filter and the precedence,
+  // so a changed PCC rule needs both (TS 29.244 §7.5.4.3, §8.2.11).
   std::vector<qfi_t> qfis_to_update = {};
   staged_modified_edges.clear();
   for (const auto& change : delta.to_modify) {
     for (const auto& edge : all_edges) {
       if (edge->qfi.qfi != change.qfi) continue;
 
-      // STAGE: Save target QoS profile mapped to edge pointer
-      staged_modified_edges[edge] = change.qos_profile;
+      // STAGE: save the whole change, applied to the edge on N4 success
+      staged_modified_edges[edge] = change;
 
       qfi_t q = {};
       q.qfi   = change.qfi;
       qfis_to_update.push_back(q);
 
+      // Build the IEs from a copy carrying the new values: the live edge is
+      // only updated once the UPF accepted them.
+      auto candidate_edge              = std::make_shared<qos_upf_edge>(*edge);
+      candidate_edge->qos_profile      = change.qos_profile;
+      candidate_edge->flow_information = change.flow_information;
+      candidate_edge->precedence       = change.precedence;
+
       if (edge->qer_id.qer_id != 0) {
-        qos_upf_edge temp_edge = *edge;
-        temp_edge.qos_profile  = change.qos_profile;
-        n4_triggered->pfcp_ies.set(
-            pfcp_update_qer(std::make_shared<qos_upf_edge>(temp_edge)));
+        n4_triggered->pfcp_ies.set(pfcp_update_qer(candidate_edge));
+      }
+      if (edge->pdr_id.rule_id != 0) {
+        n4_triggered->pfcp_ies.set(pfcp_update_pdr(candidate_edge));
       }
     }
   }
@@ -1859,8 +1872,10 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     std::shared_ptr<upf_graph> graph =
         sps->get_session_handler()->get_session_graph();
 
-    for (const auto& [edge, new_profile] : staged_modified_edges) {
-      edge->qos_profile = new_profile;
+    for (const auto& [edge, change] : staged_modified_edges) {
+      edge->qos_profile      = change.qos_profile;
+      edge->flow_information = change.flow_information;
+      edge->precedence       = change.precedence;
     }
     staged_modified_edges.clear();
 

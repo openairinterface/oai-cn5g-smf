@@ -20,8 +20,13 @@
 #include "PduSessionModificationRequest.hpp"
 #include "PduSessionResourceSetupResponseTransfer.hpp"
 #include "PduSessionType.h"
+#include "FailureCode.h"
+#include "FailureCode_anyOf.h"
 #include "PartialSuccessReport.h"
 #include "PlmnId.h"
+#include "RuleReport.h"
+#include "RuleStatus.h"
+#include "RuleStatus_anyOf.h"
 #include "QosFlowPerTnlInformation.hpp"
 #include "RefToBinaryData.h"
 #include "SmContextCreatedData.h"
@@ -2745,10 +2750,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             "PCF policy delta requires UPF update: %s",
             policy_delta_smf.to_string().c_str());
 
-        // Store the cleaned policy decision (with failed rules removed)
-        // for commit-on-success after N4 confirms
-        pending_policy_decision = new_policy_decision;
-
         // Get rule_to_qfi_map from session's UPF graph
         std::map<std::string, uint8_t> rule_to_qfi_map;
         if (sp && sp->get_session_handler() &&
@@ -2763,16 +2764,20 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               std::make_optional(smf_policy_manager::convert_to_upf_delta(
                   policy_delta_smf, new_policy_decision, rule_to_qfi_map));
 
+          std::set<std::string> qfi_exhausted_rules;
           for (auto& change : policy_delta->to_add) {
             // Allocate QFI if not already assigned
             uint8_t qfi_to_use = change.qfi;
             if (qfi_to_use == 0 && session_graph) {
               qfi_to_use = session_graph->generate_qfi();
               if (qfi_to_use == 0 || qfi_to_use > 63) {
-                session_graph->release_qfi(qfi_to_use);  // release invalid QFI
+                if (qfi_to_use != 0) {
+                  session_graph->release_qfi(qfi_to_use);  // out of range
+                }
                 Logger::smf_app().error(
                     "QFI pool exhausted, cannot add flow for rule '%s'",
                     change.pcc_rule_id.c_str());
+                qfi_exhausted_rules.insert(change.pcc_rule_id);
                 continue;
               }
               change.qfi = qfi_to_use;
@@ -2784,6 +2789,53 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                   change.pcc_rule_id.c_str());
             }
           }
+
+          // A rule without a QFI reaches neither the UPF nor the UE, so drop it from the delta and
+          // from the policy decision, and report it back to the PCF.
+          // Standards: TS 29.512 §5.6.3.9 (FailureCode RES_ALLO_FAIL)
+          if (!qfi_exhausted_rules.empty()) {
+            policy_delta->to_add.erase(
+                std::remove_if(
+                    policy_delta->to_add.begin(), policy_delta->to_add.end(),
+                    [&qfi_exhausted_rules](const qos_flow_change& change) {
+                      return qfi_exhausted_rules.count(change.pcc_rule_id) > 0;
+                    }),
+                policy_delta->to_add.end());
+
+            if (new_policy_decision.pccRulesIsSet()) {
+              auto pcc_rules = new_policy_decision.getPccRules();
+              for (const auto& rule_id : qfi_exhausted_rules) {
+                pcc_rules.erase(rule_id);
+              }
+              new_policy_decision.setPccRules(pcc_rules);
+            }
+
+            RuleReport rule_report;
+            rule_report.setPccRuleIds(std::vector<std::string>(
+                qfi_exhausted_rules.begin(), qfi_exhausted_rules.end()));
+            RuleStatus rule_status;
+            rule_status.setEnumValue(
+                RuleStatus_anyOf::eRuleStatus_anyOf::INACTIVE);
+            rule_report.setRuleStatus(rule_status);
+            FailureCode failure_code;
+            failure_code.setEnumValue(
+                FailureCode_anyOf::eFailureCode_anyOf::RES_ALLO_FAIL);
+            rule_report.setFailureCode(failure_code);
+
+            smf_policy_report qfi_failure_report;
+            qfi_failure_report.rule_reports.push_back(rule_report);
+            qfi_failure_report.effected_rule_ids = qfi_exhausted_rules;
+            partial_success_report.merge(qfi_failure_report);
+
+            Logger::smf_app().warn(
+                "Could not allocate a QFI for %zu PCC rule(s), reporting them "
+                "as inactive",
+                qfi_exhausted_rules.size());
+          }
+
+          // Store the cleaned policy decision (failed and unallocatable rules
+          // removed) for commit-on-success after N4 confirms
+          pending_policy_decision = new_policy_decision;
 
           for (const auto& flow : policy_delta->to_remove) {
             smreq->req.add_qfi(flow.qfi);
