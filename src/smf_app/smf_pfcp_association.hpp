@@ -161,6 +161,9 @@ class upf_graph {
   unsigned int associated_edge_count = 0;
   std::unordered_set<std::string> served_dnais;
 
+  // Mapping from PCC rule ID to QFI for policy management
+  std::map<std::string, uint8_t> pcc_rule_id_to_qfi_;
+
   /**
    * @brief Adds an edge in one direction, adds node if it does not exist
    * @param source
@@ -234,19 +237,20 @@ class upf_graph {
       const std::string& indent,
       const std::shared_ptr<pfcp_association>& start) const;
 
+  oai::utils::uint_generator<uint8_t> qfi_generator;
+
+ public:
   uint8_t generate_qfi();
 
   void release_qfi(uint8_t qfi);
 
-  oai::utils::uint_generator<uint8_t> qfi_generator;
-
- public:
   upf_graph() : adjacency_list(), visited_asynch(){};
 
   upf_graph(const upf_graph& g) {
     // TODO do I need to lock the other graph here?
-    adjacency_list = g.adjacency_list;
-    visited_asynch = g.visited_asynch;
+    adjacency_list      = g.adjacency_list;
+    visited_asynch      = g.visited_asynch;
+    pcc_rule_id_to_qfi_ = g.pcc_rule_id_to_qfi_;
     // do not copy mutex
   }
 
@@ -258,6 +262,32 @@ class upf_graph {
    */
   void insert_into_graph(
       const std::shared_ptr<pfcp_association>& association_to_add);
+
+  /**
+   *   @brief Add a new QoS flow to the session's QoS-flow context and UPF graph
+   *   Standards: TS 23.501 §5.7.1 (QoS model), §5.7.1.5 (flow ↔ rule mapping)
+   *
+   * @param node the UPF the edge belongs to
+   * @param edge the edge to add
+   */
+  void add_qos_flow_edge(
+      const std::shared_ptr<pfcp_association>& node,
+      const std::shared_ptr<qos_upf_edge>& edge);
+
+  /**
+   * @brief Removes every non-default QoS flow edge carrying this QFI from the
+   * graph and from the asynchronous DFS edge caches.
+   *
+   * Counterpart of add_qos_flow_edge(), to be called once the UPF has accepted
+   * the removal of the flow's PDR/FAR/QER. The default QoS flow is never
+   * removed: it lives as long as the PDU session does.
+   *
+   * @param qfi the QoS Flow Identifier of the flow to drop
+   * @return true if at least one edge was removed
+   *
+   * Standards: TS 23.501 §5.7.1 (QoS model)
+   */
+  bool remove_qos_flow_edge(uint8_t qfi);
 
   /**
    * @brief Get Association from an UPF node id hash
@@ -365,6 +395,26 @@ class upf_graph {
   void start_asynch_dfs_procedure(bool uplink);
 
   /**
+   * @brief Register a PCC rule ID to QFI mapping
+   * @param pcc_rule_id The PCC rule ID
+   * @param qfi The QFI value
+   */
+  void register_pcc_rule_qfi(const std::string& pcc_rule_id, uint8_t qfi);
+
+  /**
+   * @brief Get the QFI for a given PCC rule ID
+   * @param pcc_rule_id The PCC rule ID
+   * @return The QFI value, or 0 if not found
+   */
+  uint8_t get_qfi_for_pcc_rule_id(const std::string& pcc_rule_id) const;
+
+  /**
+   * @brief Get a copy of the PCC rule ID to QFI map
+   * @return Map of PCC rule ID to QFI
+   */
+  std::map<std::string, uint8_t> get_pcc_rule_to_qfi_map() const;
+
+  /**
    * Get all the access edges for this graph, for each QFI there may be an
    * access edge
    * @return
@@ -398,6 +448,10 @@ class upf_graph {
   void update_next_hop_fteid(
       const std::shared_ptr<qos_upf_edge>& src_edge,
       const pfcp::fteid_t& fteid);
+
+  void add_to_current_edges_cache(
+      const std::shared_ptr<qos_upf_edge>& dl_edge,
+      const std::shared_ptr<qos_upf_edge>& ul_edge);
 };
 
 class pfcp_associations {

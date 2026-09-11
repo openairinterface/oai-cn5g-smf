@@ -4,6 +4,8 @@
 
 #include "smf_pfcp_association.hpp"
 
+#include <algorithm>
+
 #include "common_defs.h"
 #include "logger.hpp"
 #include "smf_n4.hpp"
@@ -751,6 +753,53 @@ void upf_graph::add_upf_graph_edge(
 }
 
 //------------------------------------------------------------------------------
+void upf_graph::add_qos_flow_edge(
+    const std::shared_ptr<pfcp_association>& node,
+    const std::shared_ptr<qos_upf_edge>& edge) {
+  add_upf_graph_edge(node, edge);
+}
+
+//------------------------------------------------------------------------------
+bool upf_graph::remove_qos_flow_edge(uint8_t qfi) {
+  std::unique_lock lock_graph(graph_mutex);
+
+  auto is_released_flow = [qfi](const std::shared_ptr<qos_upf_edge>& edge) {
+    return edge && edge->qfi.qfi == qfi && !edge->default_qos;
+  };
+
+  std::size_t removed = 0;
+  for (auto& [node, edges] : adjacency_list) {
+    auto it = std::remove_if(edges.begin(), edges.end(), is_released_flow);
+    removed += std::distance(it, edges.end());
+    edges.erase(it, edges.end());
+  }
+
+  // Drop them from the asynchronous DFS caches as well, otherwise a later
+  // traversal keeps handing out edges whose PDR/FAR/QER no longer exist.
+  auto drop_from =
+      [&is_released_flow](std::vector<std::shared_ptr<qos_upf_edge>>& edges) {
+        edges.erase(
+            std::remove_if(edges.begin(), edges.end(), is_released_flow),
+            edges.end());
+      };
+  drop_from(current_edges_dl_asynch);
+  drop_from(current_edges_ul_asynch);
+
+  if (removed == 0) {
+    Logger::smf_app().warn(
+        "No non-default QoS flow edge with QFI %d to remove from the UPF "
+        "graph",
+        qfi);
+    return false;
+  }
+
+  Logger::smf_app().debug(
+      "Removed %zu QoS flow edge(s) with QFI %d from the UPF graph", removed,
+      qfi);
+  return true;
+}
+
+//------------------------------------------------------------------------------
 void upf_graph::add_upf_graph_node(
     const std::shared_ptr<pfcp_association>& node) {
   std::unique_lock lock_graph(graph_mutex);
@@ -999,6 +1048,11 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       default_qos_to_use.setArp(auth_default_qos.getArp());
       default_qos_to_use.setR5qi(auth_default_qos.getR5qi());
     }
+    // The match-all default flow sits at the bottom of the PFCP precedence
+    // range. It belongs to the filter, not to authDefQos, so it applies to a
+    // session rule without one as well.
+    criteria.precedence = kDefaultFlowPfcpPrecedence;
+    precedences.insert(criteria.precedence);
     selection_criterias.push_back(criteria);
     verify_criterias.push_back(criteria);
     // TODO also update AMBR
@@ -1010,6 +1064,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // when we have PCC rules we set default QoS false, so we can handle all the
     // values from the rules directly
     selection_criteria.default_qos = false;
+    selection_criteria.pcc_rule_id = rule.first;  // Store PCC rule ID
     upf_selection_criteria verify_criteria;
     verify_criteria.dnais = previous_verify_criteria.dnais;
 
@@ -1066,24 +1121,41 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
       continue;
     }
 
-    uint32_t precedence = rule.second.getPrecedence();
-    if (auto it = precedences.find(precedence) != precedences.end()) {
-      Logger::smf_app().warn(
-          "UPF graph selection failed: The precedences in the PCC rule "
-          "are not unique. Aborting selection.");
-      return nullptr;
-    }
-    precedences.insert(precedence);
-    selection_criteria.precedence = precedence;
-
     if (selection_criteria.flow_information.getFlowDescription() ==
         DEFAULT_FLOW_DESCRIPTION) {
-      // we have an 'any' PCC rule, so we don't have to run the algorithm for
-      // the session rule
+      // An 'any' match-all PCC rule is present; supersede the default session
+      // rule
       remove_session_rule            = true;
       selection_criteria.default_qos = true;
       selection_criteria.flow_information.setPacketFilterUsage(true);
     }
+
+    uint32_t precedence = rule.second.getPrecedence();
+
+    // TS 24.501 §9.11.4.13: Precedence 0 is invalid for match-all filter and
+    // conflicts with default flow
+    if (precedence == 0 &&
+        selection_criteria.flow_information.getFlowDescription() ==
+            DEFAULT_FLOW_DESCRIPTION) {
+      Logger::smf_app().warn(
+          "UPF graph selection failed: PCC rule '%s' has precedence 0 with "
+          "match-all "
+          "filter. This is a semantic error per TS 24.501.",
+          rule.first.c_str());
+      return nullptr;
+    }
+
+    // Check precedence uniqueness including the default flow precedence
+    if (precedences.count(precedence) > 0) {
+      Logger::smf_app().warn(
+          "UPF graph selection failed: Precedence %d (PCC rule '%s') conflicts "
+          "with "
+          "another rule. Precedences must be unique per TS 24.501.",
+          precedence, rule.first.c_str());
+      return nullptr;
+    }
+    precedences.insert(precedence);
+    selection_criteria.precedence       = precedence;
     selection_criteria.generate_new_qfi = generate_new_qfi;
     selection_criterias.push_back(selection_criteria);
     verify_criterias.push_back(verify_criteria);
@@ -1094,6 +1166,7 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   }
 
   if (remove_session_rule && session_rule_exists) {
+    precedences.erase(kDefaultFlowPfcpPrecedence);
     verify_criterias.erase(verify_criterias.begin());
     selection_criterias.erase(selection_criterias.begin());
   }
@@ -1107,6 +1180,11 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     // if we have traffic rules, we keep the previously allocated QFI
     if (!selection_criteria.generate_new_qfi) {
       selection_criteria.qfi = generated_qfi;
+      // Register this rule with the reused QFI
+      if (sub_graph_ptr) {
+        sub_graph_ptr->register_pcc_rule_qfi(
+            selection_criteria.pcc_rule_id, generated_qfi);
+      }
     }
 
     std::unordered_map<
@@ -1173,6 +1251,8 @@ bool upf_graph::select_upf_nodes(
         criteria.qfi = sub_graph_ptr->generate_qfi();
         sub_graph_ptr->qfi_count++;
       }
+      // Register PCC rule ID to QFI mapping (even for reused QFIs)
+      sub_graph_ptr->register_pcc_rule_qfi(criteria.pcc_rule_id, criteria.qfi);
 
       create_subgraph_dfs(sub_graph_ptr, upf, visited, criteria);
 
@@ -1460,4 +1540,44 @@ uint8_t upf_graph::generate_qfi() {
 //---------------------------------------------------------------------------------------------
 void upf_graph::release_qfi(uint8_t qfi) {
   qfi_generator.free_uid(qfi);
+  // Remove all rules that use this QFI
+  for (auto it = pcc_rule_id_to_qfi_.begin();
+       it != pcc_rule_id_to_qfi_.end();) {
+    if (it->second == qfi) {
+      it = pcc_rule_id_to_qfi_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+//---------------------------------------------------------------------------------------------
+void upf_graph::register_pcc_rule_qfi(
+    const std::string& pcc_rule_id, uint8_t qfi) {
+  if (!pcc_rule_id.empty() && qfi != 0) {
+    pcc_rule_id_to_qfi_[pcc_rule_id] = qfi;
+  }
+}
+
+//---------------------------------------------------------------------------------------------
+uint8_t upf_graph::get_qfi_for_pcc_rule_id(
+    const std::string& pcc_rule_id) const {
+  auto it = pcc_rule_id_to_qfi_.find(pcc_rule_id);
+  if (it != pcc_rule_id_to_qfi_.end()) {
+    return it->second;
+  }
+  return 0;
+}
+
+//---------------------------------------------------------------------------------------------
+std::map<std::string, uint8_t> upf_graph::get_pcc_rule_to_qfi_map() const {
+  return pcc_rule_id_to_qfi_;
+}
+
+void upf_graph::add_to_current_edges_cache(
+    const std::shared_ptr<qos_upf_edge>& dl_edge,
+    const std::shared_ptr<qos_upf_edge>& ul_edge) {
+  std::unique_lock lock(graph_mutex);
+  current_edges_dl_asynch.push_back(dl_edge);
+  current_edges_ul_asynch.push_back(ul_edge);
 }
