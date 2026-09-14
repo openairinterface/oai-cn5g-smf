@@ -119,7 +119,7 @@ COPY --from=oai-smf-builder \
 COPY --from=oai-smf-builder /usr/local/bin/yq /usr/bin/yq
 
 COPY --from=oai-smf-builder \
-    /usr/local/lib64/libpistache.so.0 \
+    /usr/local/lib/libpistache.so* \
     /usr/local/lib/libnghttp2_asio.so \
     /usr/local/lib/libnghttp2_asio.so.1 \
     /usr/local/lib64/libspdlog.so \

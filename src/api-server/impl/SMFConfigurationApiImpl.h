@@ -8,7 +8,7 @@
 #include "smf_app.hpp"
 #include <SMFConfigurationApi.h>
 #include <pistache/http.h>
-#include <pistache/optional.h>
+#include <optional>
 
 namespace oai::smf_server::api {
 

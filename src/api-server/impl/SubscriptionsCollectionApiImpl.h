@@ -31,7 +31,7 @@
 
 #include <SubscriptionsCollectionApi.h>
 
-#include <pistache/optional.h>
+#include <optional>
 
 #include "NsmfEventExposure.h"
 #include "ProblemDetails.h"
