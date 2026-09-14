@@ -14,8 +14,8 @@ namespace bs2 = boost::signals2;
 namespace oai::app::smf {
 class smf_event {
  public:
-  smf_event(){};
-  smf_event(smf_event const&) = delete;
+  smf_event() {};
+  smf_event(smf_event const&)      = delete;
   void operator=(smf_event const&) = delete;
 
   static smf_event& get_instance() {

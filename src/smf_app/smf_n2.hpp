@@ -44,8 +44,8 @@ class smf_n2 {
       const qos_flow_context_updated& qos_flow);
 
  public:
-  smf_n2(){};
-  smf_n2(smf_n2 const&) = delete;
+  smf_n2() {};
+  smf_n2(smf_n2 const&)         = delete;
   void operator=(smf_n2 const&) = delete;
 
  public:

@@ -41,7 +41,7 @@ typedef struct ssc_mode_s {
     return *this;
   }
 
-  virtual ~ssc_mode_s(){};
+  virtual ~ssc_mode_s() {};
 
   const std::string& to_string() const { return ssc_mode_e2str.at(ssc_mode); }
 
@@ -199,7 +199,7 @@ typedef struct ip_address_s {
     return *this;
   }
 
-  virtual ~ip_address_s(){};
+  virtual ~ip_address_s() {};
 
   std::string to_string() const {
     if (IP_ADDRESS_TYPE_IPV4_ADDRESS == this->ip_address_type) {

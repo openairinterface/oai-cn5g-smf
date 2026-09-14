@@ -764,7 +764,7 @@ void smf_n4::send_heartbeat_response(
     const endpoint& r_endpoint, const uint64_t trxn_id) {
   pfcp::pfcp_heartbeat_response h = {};
   pfcp::recovery_time_stamp_t r   = {
-      .recovery_time_stamp = (uint32_t) recovery_time_stamp};
+        .recovery_time_stamp = (uint32_t) recovery_time_stamp};
   h.set(r);
   send_response(r_endpoint, h, trxn_id);
 }

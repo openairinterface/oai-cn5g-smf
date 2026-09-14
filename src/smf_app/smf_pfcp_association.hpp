@@ -241,7 +241,7 @@ class upf_graph {
   oai::utils::uint_generator<uint8_t> qfi_generator;
 
  public:
-  upf_graph() : adjacency_list(), visited_asynch(){};
+  upf_graph() : adjacency_list(), visited_asynch() {};
 
   upf_graph(const upf_graph& g) {
     // TODO do I need to lock the other graph here?
@@ -407,7 +407,7 @@ class pfcp_associations {
 
   upf_graph associations_graph;
 
-  pfcp_associations() : pending_associations(), associations_graph(){};
+  pfcp_associations() : pending_associations(), associations_graph() {};
 
   void trigger_heartbeat_request_procedure(
       std::shared_ptr<pfcp_association>& s);
@@ -444,7 +444,7 @@ class pfcp_associations {
   }
 
   pfcp_associations(pfcp_associations const&) = delete;
-  void operator=(pfcp_associations const&) = delete;
+  void operator=(pfcp_associations const&)    = delete;
 
   bool add_association(
       pfcp::node_id_t& node_id,

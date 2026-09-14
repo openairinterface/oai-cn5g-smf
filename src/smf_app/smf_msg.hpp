@@ -427,10 +427,10 @@ class pdu_session_update_sm_context_response
  public:
   pdu_session_update_sm_context_response()
       : pdu_session_sm_context_response(
-            PDU_SESSION_UPDATE_SM_CONTEXT_RESPONSE){};
+            PDU_SESSION_UPDATE_SM_CONTEXT_RESPONSE) {};
 
   pdu_session_update_sm_context_response(pdu_session_msg_type_t type)
-      : pdu_session_sm_context_response(type){};
+      : pdu_session_sm_context_response(type) {};
 
   void add_qos_flow_context_updated(const qos_flow_context_updated& qos_flow);
   bool get_qos_flow_context_updated(
@@ -453,7 +453,7 @@ class pdu_session_update_sm_context_response
 class pdu_session_release_sm_context_request : public pdu_session_msg {
  public:
   pdu_session_release_sm_context_request()
-      : pdu_session_msg(PDU_SESSION_RELEASE_SM_CONTEXT_REQUEST){};
+      : pdu_session_msg(PDU_SESSION_RELEASE_SM_CONTEXT_REQUEST) {};
 
   void set_json_data(const nlohmann::json& data);
   void get_json_data(nlohmann::json& data) const;
@@ -477,7 +477,7 @@ class pdu_session_release_sm_context_response
  public:
   pdu_session_release_sm_context_response()
       : pdu_session_sm_context_response(
-            PDU_SESSION_RELEASE_SM_CONTEXT_RESPONSE){};
+            PDU_SESSION_RELEASE_SM_CONTEXT_RESPONSE) {};
 
   void to_json(nlohmann::json& data) const;
   void from_json(const nlohmann::json& data);

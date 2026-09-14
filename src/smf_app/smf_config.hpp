@@ -71,7 +71,7 @@ typedef struct interface_cfg_s {
     addr4_str             = json_data["addr4"].get<std::string>();
 
     if (boost::iequals(addr4_str, "read")) {
-      struct in_addr net_mask_addr4 {};
+      struct in_addr net_mask_addr4{};
       if (utils::get_inet_addr_infos_from_iface(
               this->if_name, this->addr4, net_mask_addr4, this->mtu)) {
         Logger::smf_app().error(
