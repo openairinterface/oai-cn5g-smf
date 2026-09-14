@@ -4,87 +4,80 @@
 
 #---------------------------------------------------------------------
 #
-# Dockerfile for the Open-Air-Interface SMF service
-#   Valid for Rocky Linux 9.+
+# Dockerfile for the OpenAirInterface SMF service
+#   Valid for CentOS Stream 10
 #
 #---------------------------------------------------------------------
 
 #---------------------------------------------------------------------
 # BUILDER IMAGE
 #---------------------------------------------------------------------
-FROM docker.io/rockylinux:9 AS oai-smf-builder
+
+FROM quay.io/centos/centos:stream10 AS oai-smf-builder
 
 ENV IS_DOCKERFILE=1
 
-RUN dnf install 'dnf-command(config-manager)' -y && \
-    dnf install epel-release -y && crb enable && \
+# meson and ninja-build come from CRB; EPEL is enabled for the packages
+# build_helper.smf pulls from it. The rest are in BaseOS/AppStream.
+RUN dnf config-manager --set-enabled crb && \
+    dnf install epel-release -y && \
     dnf update -y && \
-    # here just to display the current version
+    # Log the exact OS release used for the build.
     cat /etc/os-release && \
     dnf install -y \
         psmisc \
         git \
         diffutils \
-        file \
-        gcc-c++ \
-        ninja-build \
-        boost-devel \
-        openssl-devel \
-        openssl \
+        libasan \
         wget \
-        libasan && \
+        file && \
+    # Libraries built from source are installed under /usr/local, which is not
+    # on the default loader path on EL. This is also needed for the ldd check.
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
 
-# Some GIT configuration command quite useful
+# Git configuration
 RUN git config --global https.postBuffer 123289600 && \
     git config --global http.sslverify false
 
-# Copying source code
+# Copy source code
 WORKDIR /openair-smf
-COPY ./build/scripts /openair-smf/build/scripts
-COPY ./build/common-build /openair-smf/build/common-build
-COPY ./build/smf/CMakeLists.txt /openair-smf/build/smf/CMakeLists.txt
+COPY . /openair-smf
 
-# Installing all the needed libraries/packages to build and run SMF
+# Install and Build SMF
 WORKDIR /openair-smf/build/scripts
 RUN ./build_smf --install-deps --force
-
-# Building SMF
-WORKDIR /openair-smf/build/scripts
-COPY . /openair-smf
-RUN ldconfig && \
-    ./build_smf --clean --Verbose --build-type Release --jobs && \
+RUN ./build_smf --clean --Verbose --build-type Release --jobs && \
     ldd /openair-smf/build/smf/build/smf && \
     mv /openair-smf/build/smf/build/smf /openair-smf/build/smf/build/oai_smf
 
-FROM mikefarah/yq:latest as yq-source
+FROM mikefarah/yq:latest AS yq-source
 
 #---------------------------------------------------------------------
 # TARGET IMAGE
 #---------------------------------------------------------------------
-FROM docker.io/rockylinux:9-minimal as oai-smf
+FROM quay.io/centos/centos:stream10-minimal AS oai-smf
 ENV TZ=Europe/Paris
 
 RUN microdnf update -y && \
     microdnf install -y \
-# Debug Tools that are not mandatory
+# Timezone data, and debugging/networking utilities
       tzdata \
       procps-ng \
       psmisc \
       net-tools \
       iputils \
       tcpdump \
-# Mandatory packages for the NF to run
-#      libasan \
+# Runtime dependencies of oai_smf
       libicu \
       boost \
       libevent \
+      nettle \
       findutils && \
     microdnf clean all -y && \
-    rm -rf /var/cache/yum /var/cache/dnf 
+    rm -rf /var/cache/yum /var/cache/dnf
 
-# Copying executable and generated libraries
+# Copy executable and generated libraries
 WORKDIR /openair-smf/bin
 COPY --from=oai-smf-builder \
     /openair-smf/build/smf/build/oai_smf \
@@ -92,6 +85,9 @@ COPY --from=oai-smf-builder \
     ./
 COPY --from=yq-source /usr/bin/yq /usr/bin
 
+# The libraries built from source, plus the NAS and NGAP objects built with
+# the SMF itself. pistache (meson) and nghttp2 (autotools) install into lib,
+# the CMake-built spdlog, fmt, yaml-cpp and cpr into lib64.
 COPY --from=oai-smf-builder \
     /usr/local/lib/libpistache.so* \
     /usr/local/lib/libnghttp2_asio.so \
@@ -99,27 +95,29 @@ COPY --from=oai-smf-builder \
     /usr/local/lib64/libspdlog.so \
     /usr/local/lib64/libfmt.so \
     /usr/local/lib64/libyaml-cpp.so.0.* \
+    /usr/local/lib64/libcpr.so.1* \
     /openair-smf/build/smf/build/nas/libNAS.so \
     /openair-smf/build/smf/build/ngap/libNGAP.so \
-    /usr/local/lib/libcpr.so.1 \
     /usr/lib64/
 
-RUN ldconfig -v && \
-    ldd /openair-smf/bin/oai_smf
+RUN ldconfig && \
+    ldd /openair-smf/bin/oai_smf && \
+    # ldd exits 0 even when a library is missing, so check its output
+    ! ldd /openair-smf/bin/oai_smf | grep -q 'not found'
 
-# Copying template configuration files
-# The configuration folder will be flat
 WORKDIR /openair-smf/etc
-COPY --from=oai-smf-builder /openair-smf/etc/config.yaml .
+COPY --from=oai-smf-builder \
+    /openair-smf/etc/config.yaml ./
 
 WORKDIR /openair-smf
 
-# expose ports
+# Expose ports
 EXPOSE 80/tcp 9090/tcp 8805/udp
-# healthcheck
+
+# Configure healthcheck
 HEALTHCHECK --interval=10s \
             --timeout=15s \
             --retries=6 \
     CMD /openair-smf/bin/healthcheck.sh
 
-CMD ["/openair-smf/bin/oai_smf", "-c", "/openair-smf/etc/config.yaml", "-o"]
+CMD ["/openair-smf/bin/oai_smf", "-c" , "/openair-smf/etc/config.yaml", "-o"]

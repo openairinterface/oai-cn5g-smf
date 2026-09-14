@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------
 # Install the build and runtime dependencies of the OAI SMF: distribution
 # packages plus the libraries that are built from source.
-# Ubuntu 24.04 and the RHEL/Rocky 9 family are the supported distributions.
+# Ubuntu 24.04 and CentOS Stream 10 are the supported distributions.
 # -------------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ check_install_smf_deps() {
       check \
       nettle-devel \
       libcurl-devel \
-      pkgconfig \
+      pkgconf-pkg-config \
       boost-devel \
       libasan"
   else
@@ -159,7 +159,7 @@ check_install_smf_min_deps() {
   if [[ $OS_DISTRO == "ubuntu" ]]; then
     PACKAGE_LIST="$PACKAGE_LIST vlan"
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
-    PACKAGE_LIST="$PACKAGE_LIST iperf iproute vconfig"
+    PACKAGE_LIST="$PACKAGE_LIST iperf iproute"
   else
     echo_fatal "$OS_DISTRO is not a supported distribution."
   fi
