@@ -287,8 +287,8 @@ class smf_pcf_client : public policy_storage {
  */
 class smf_n7 {
  public:
-  smf_n7() : policy_storages(){};
-  smf_n7(smf_n7 const&) = delete;
+  smf_n7() : policy_storages() {};
+  smf_n7(smf_n7 const&)         = delete;
   void operator=(smf_n7 const&) = delete;
   virtual ~smf_n7();
 

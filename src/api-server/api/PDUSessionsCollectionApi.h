@@ -23,7 +23,7 @@
 #include <pistache/http.h>
 #include <pistache/router.h>
 #include <pistache/http_headers.h>
-#include <pistache/optional.h>
+#include <optional>
 
 #include "PduSessionCreateData.h"
 #include "PduSessionCreateError.h"

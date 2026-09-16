@@ -549,7 +549,7 @@ class itti_sbi_retrieve_sm_data : public itti_sbi_msg {
     snssai     = i.snssai;
     plmn       = i.plmn;
   }
-  virtual ~itti_sbi_retrieve_sm_data(){};
+  virtual ~itti_sbi_retrieve_sm_data() {};
   const char* get_msg_name() { return "SBI_RETRIEVE_SM_DATA"; };
 
   uint32_t promise_id;
@@ -577,7 +577,7 @@ class itti_sbi_register_with_udm : public itti_sbi_msg {
     pdu_session_id   = i.pdu_session_id;
     smf_registration = i.smf_registration;
   }
-  virtual ~itti_sbi_register_with_udm(){};
+  virtual ~itti_sbi_register_with_udm() {};
   const char* get_msg_name() { return "SBI_REGISTER_WITH_UDM"; };
 
   uint32_t promise_id;
@@ -599,7 +599,7 @@ class itti_sbi_deregister_with_udm : public itti_sbi_msg {
     supi           = i.supi;
     pdu_session_id = i.pdu_session_id;
   }
-  virtual ~itti_sbi_deregister_with_udm(){};
+  virtual ~itti_sbi_deregister_with_udm() {};
   const char* get_msg_name() { return "SBI_DEREGISTER_WITH_UDM"; };
 
   std::string supi;
@@ -621,7 +621,7 @@ class itti_sbi_deregister_with_udm_response : public itti_sbi_msg {
     supi           = i.supi;
     pdu_session_id = i.pdu_session_id;
   }
-  virtual ~itti_sbi_deregister_with_udm_response(){};
+  virtual ~itti_sbi_deregister_with_udm_response() {};
   const char* get_msg_name() { return "SBI_DEREGISTER_WITH_UDM_RESPONSE"; };
 
   std::string supi;
@@ -643,7 +643,7 @@ class itti_sbi_subscribe_sdm_subscriptions : public itti_sbi_msg {
     supi             = i.supi;
     sdm_subscription = i.sdm_subscription;
   }
-  virtual ~itti_sbi_subscribe_sdm_subscriptions(){};
+  virtual ~itti_sbi_subscribe_sdm_subscriptions() {};
   const char* get_msg_name() { return "SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS"; };
 
   std::string supi;
@@ -665,7 +665,7 @@ class itti_sbi_subscribe_sdm_subscriptions_response : public itti_sbi_msg {
     supi          = i.supi;
     response_data = i.response_data;
   }
-  virtual ~itti_sbi_subscribe_sdm_subscriptions_response(){};
+  virtual ~itti_sbi_subscribe_sdm_subscriptions_response() {};
   const char* get_msg_name() {
     return "SBI_SUBSCRIBE_SDM_SUBSCRIPTIONS_RESPONSE";
   };
@@ -689,7 +689,7 @@ class itti_sbi_unsubscribe_sdm_subscriptions : public itti_sbi_msg {
     supi            = i.supi;
     subscription_id = i.subscription_id;
   }
-  virtual ~itti_sbi_unsubscribe_sdm_subscriptions(){};
+  virtual ~itti_sbi_unsubscribe_sdm_subscriptions() {};
   const char* get_msg_name() { return "SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS"; };
 
   std::string supi;
@@ -711,7 +711,7 @@ class itti_sbi_unsubscribe_sdm_subscriptions_response : public itti_sbi_msg {
     supi            = i.supi;
     subscription_id = i.subscription_id;
   }
-  virtual ~itti_sbi_unsubscribe_sdm_subscriptions_response(){};
+  virtual ~itti_sbi_unsubscribe_sdm_subscriptions_response() {};
   const char* get_msg_name() {
     return "SBI_UNSUBSCRIBE_SDM_SUBSCRIPTIONS_RESPONSE";
   };
@@ -735,7 +735,7 @@ class itti_sbi_discover_upf : public itti_sbi_msg {
     snssai = i.snssai;
     plmn   = i.plmn;
   }
-  virtual ~itti_sbi_discover_upf(){};
+  virtual ~itti_sbi_discover_upf() {};
   const char* get_msg_name() { return "SBI_DISCOVER_UPF"; };
 
   std::optional<std::string> dnn;
@@ -753,7 +753,7 @@ class itti_sbi_discover_upf_response : public itti_sbi_msg {
       : itti_sbi_msg(i) {
     response_data = i.response_data;
   }
-  virtual ~itti_sbi_discover_upf_response(){};
+  virtual ~itti_sbi_discover_upf_response() {};
   const char* get_msg_name() { return "SBI_DISCOVER_UPF_RESPONSE"; };
 
   nlohmann::json response_data;

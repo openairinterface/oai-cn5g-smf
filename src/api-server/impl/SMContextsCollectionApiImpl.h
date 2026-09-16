@@ -31,7 +31,7 @@
 
 #include <SMContextsCollectionApi.h>
 
-#include <pistache/optional.h>
+#include <optional>
 
 #include "SmContextMessage.h"
 #include "ProblemDetails.h"

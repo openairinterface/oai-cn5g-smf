@@ -31,7 +31,7 @@
 
 #include <IndividualPDUSessionHSMFApi.h>
 
-#include <pistache/optional.h>
+#include <optional>
 
 #include "HsmfUpdateData.h"
 #include "HsmfUpdateError.h"

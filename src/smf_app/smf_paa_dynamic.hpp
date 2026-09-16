@@ -137,7 +137,7 @@ class paa_dynamic {
 
   mutable std::shared_mutex m_ipv4_pools;
 
-  paa_dynamic() : ipv4_pools(), ipv6_pools(), dnns(), m_ipv4_pools(){};
+  paa_dynamic() : ipv4_pools(), ipv6_pools(), dnns(), m_ipv4_pools() {};
 
  public:
   static paa_dynamic& get_instance() {
@@ -145,7 +145,7 @@ class paa_dynamic {
     return instance;
   }
 
-  paa_dynamic(paa_dynamic const&) = delete;
+  paa_dynamic(paa_dynamic const&)    = delete;
   void operator=(paa_dynamic const&) = delete;
 
   void add_pool(
