@@ -4,6 +4,8 @@
 
 #include "smf_msg.hpp"
 
+#include "http_definitions.hpp"
+
 using namespace oai::app::smf;
 
 /*
@@ -339,6 +341,17 @@ void pdu_session_sm_context_response::set_json_format(
 void pdu_session_sm_context_response::get_json_format(
     std::string& format) const {
   format = m_json_format;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_sm_policy_update_notify_response::to_json(
+    nlohmann::json& data) const {
+  pdu_session_msg::to_json(data);
+  // Envelope keys come from oai::http so the SBI response is spelled the same
+  // way everywhere; json_format has no constant there yet.
+  data[oai::http::kSbiResponseHttpResponseCode] = m_http_code;
+  data[oai::http::kSbiResponseJsonData]         = m_json_data;
+  data["json_format"]                           = m_json_format;
 }
 
 //-----------------------------------------------------------------------------
