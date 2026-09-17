@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "3gpp_29.244.h"
 #include "UPInterfaceType.h"
 #include "RedirectInformation.h"
@@ -18,6 +20,13 @@ class pfcp_association;
 
 const std::string DEFAULT_FLOW_DESCRIPTION =
     "permit out ip from any to assigned";
+
+// PFCP precedence of the match-all default flow. The PDR precedence is 4
+// octets and the lower value wins (TS 29.244 §8.2.11), so the catch-all takes
+// the very bottom of the range: any precedence a PCF can provision must
+// outrank it. Unrelated to the NAS QoS rule precedence, which is one octet
+// and stays 255 for the default rule (TS 24.501 §6.2.5.1.1.2).
+constexpr unsigned int kDefaultFlowPfcpPrecedence = UINT32_MAX;
 
 struct upf_selection_criteria {
   oai::_3gpp::model::Snssai snssai{};
@@ -39,6 +48,7 @@ struct upf_selection_criteria {
   oai::_3gpp::model::RedirectInformation redirect_information{};
   unsigned int precedence{};
   uint8_t qfi{};
+  std::string pcc_rule_id{};  // PCC rule ID for QFI mapping
 
   [[nodiscard]] std::string to_string(int level) const;
 
