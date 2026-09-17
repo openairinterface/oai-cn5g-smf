@@ -36,6 +36,7 @@ typedef enum {
   PDU_SESSION_MODIFY_SM_CONTEXT_RESPONSE,
   PDU_SESSION_MODIFICATION_SMF_REQUESTED,
   PDU_SESSION_REPORT_RESPONSE,
+  PDU_SESSION_SM_POLICY_UPDATE_NOTIFY_RESPONSE,
   PDU_SESSION_MSG_TYPE_MAX
 } pdu_session_msg_type_t;
 
@@ -447,6 +448,34 @@ class pdu_session_update_sm_context_response
  private:
   std::map<uint8_t, qos_flow_context_updated> qos_flow_context_updateds;
   std::string m_smf_context_uri;
+};
+
+class pdu_session_sm_policy_update_notify_response : public pdu_session_msg {
+ public:
+  pdu_session_sm_policy_update_notify_response()
+      : pdu_session_msg(PDU_SESSION_SM_POLICY_UPDATE_NOTIFY_RESPONSE) {
+    m_http_code   = 200;
+    m_json_format = "application/json";
+    m_json_data   = {};
+  }
+
+  void set_http_code(const uint32_t code) { m_http_code = code; }
+  uint32_t get_http_code() const { return m_http_code; }
+
+  void set_json_data(const nlohmann::json& data) { m_json_data = data; }
+  void get_json_data(nlohmann::json& data) const { data = m_json_data; }
+
+  void set_json_format(const std::string& format) { m_json_format = format; }
+  std::string get_json_format() const { return m_json_format; }
+
+  // Defined in smf_msg.cpp: the envelope keys live in oai::http, and that
+  // header is not on the include path of every target using this one.
+  void to_json(nlohmann::json& data) const;
+
+ private:
+  uint32_t m_http_code;
+  std::string m_json_format;
+  nlohmann::json m_json_data;
 };
 
 //---------------------------------------------------------------------------------------
