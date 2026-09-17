@@ -13,6 +13,7 @@
 #include "conversions.h"
 #include "conversions.hpp"
 #include "smf_config.hpp"
+#include "smf_qos_upf_edge.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::_3gpp::model;
@@ -97,6 +98,83 @@ session_handler::get_qos_flows_context_updated() {
 void session_handler::set_qfis_to_be_updated(
     const std::vector<pfcp::qfi_t>& qfis) {
   m_qfis_to_be_updated = qfis;
+}
+
+//------------------------------------------------------------------------------
+qos_flow_context_updated session_handler::build_release_flow(
+    const pfcp::qfi_t& qfi) {
+  // Standards: TS 24.501 §9.11.4.13 (QoS rules) / §9.11.4.12 (QoS flow
+  //            descriptions); TS 38.413 §9.3.1.8 (QoS Flow To Release List)
+  qos_flow_context_updated flow = {};
+  flow.qfi                      = qfi;
+  flow.to_be_removed            = true;
+  flow.cause_value              = m_cause_value;
+
+  uint8_t rule_id = 0;
+  auto edge       = get_edge_for_qfi(qfi.qfi);
+  if (edge) rule_id = edge->qos_rule_id;
+
+  // N1: DELETE-operation QoS rule (no packet filters for a delete).
+  nas::QosRule rule = {};
+  rule.SetQosRuleId(rule_id);
+  rule.SetRuleOperationCode(
+      nas::kQosRuleRuleOperationCodeDeleteExistingQosRule);
+  rule.SetNumberOfPacketFilters(0);
+  rule.SetQfi(qfi.qfi);
+  flow.add_qos_rule(rule);
+
+  // N1: DELETE-operation QoS flow description.
+  nas::QosFlowDescription desc = {};
+  desc.SetQfi(qfi.qfi);
+  desc.SetOperationCode(
+      nas::
+          kQosFlowDescriptionRuleOperationCodeDeleteExistingQosFlowDescription);
+  flow.set_qos_flow_descriptions(desc);
+
+  return flow;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::mark_qfi_for_release(const pfcp::qfi_t& qfi) {
+  qos_flow_context_updated flow = {};
+  flow.qfi                      = qfi;
+  flow.to_be_removed            = true;
+  flow.cause_value              = m_cause_value;
+
+  uint8_t rule_id = 0;
+  auto edge       = get_edge_for_qfi(qfi.qfi);
+  if (edge) rule_id = edge->qos_rule_id;
+
+  // N1: DELETE-operation QoS rule
+  nas::QosRule rule = {};
+  rule.SetQosRuleId(rule_id);
+  rule.SetRuleOperationCode(
+      nas::kQosRuleRuleOperationCodeDeleteExistingQosRule);
+  rule.SetNumberOfPacketFilters(0);
+  rule.SetQfi(qfi.qfi);
+  flow.add_qos_rule(rule);
+
+  // N1: DELETE-operation QoS flow description
+  nas::QosFlowDescription desc = {};
+  desc.SetQfi(qfi.qfi);
+  desc.SetOperationCode(
+      nas::
+          kQosFlowDescriptionRuleOperationCodeDeleteExistingQosFlowDescription);
+  flow.set_qos_flow_descriptions(desc);
+
+  // Stash directly into internal state
+  m_qos_flows_to_be_released.push_back(flow);
+}
+
+//------------------------------------------------------------------------------
+void session_handler::clear_qos_flows_to_be_released() {
+  m_qos_flows_to_be_released.clear();
+}
+
+//------------------------------------------------------------------------------
+std::vector<qos_flow_context_updated>
+session_handler::get_qos_flows_to_be_released() {
+  return m_qos_flows_to_be_released;
 }
 
 //------------------------------------------------------------------------------
@@ -326,7 +404,15 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
       "Created new QoS rule with ID %u and %u packet filters",
       edge->qos_rule_id, qos_rule.GetNumberOfPacketFilters());
 
-  qos_rule.SetPrecedence(edge->precedence);
+  // TS 24.501 §6.2.5.1.1.2: Default QoS rule with match-all filter uses highest
+  // precedence value (255)
+  uint8_t nas_precedence = edge->precedence;
+  if (edge->default_qos &&
+      edge->flow_information.getFlowDescription() == DEFAULT_FLOW_DESCRIPTION) {
+    nas_precedence = 255;  // Lowest priority for default flow
+  }
+
+  qos_rule.SetPrecedence(nas_precedence);
   qos_rule.SetSegregation(oai::nas::kQosRuleSegregationNotRequested);
   qos_rule.SetQfi(edge->qfi.qfi);
   // qos_rule.qosruleprecedence = edge->precedence;
