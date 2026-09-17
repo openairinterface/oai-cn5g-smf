@@ -113,8 +113,11 @@ smf_policy_delta smf_policy_manager::compute_delta(
   // indicate removal. However, snapshot-style PCFs (e.g., OAI PCF) send full
   // decision maps omitting deleted rules. Therefore, any rule present in
   // current_rules but missing from requested_rules must be REMOVED.
-  for (const auto& [rule_id, old_rule] : current_rules) {
-    if (requested_rules.find(rule_id) == requested_rules.end()) {
+  // An omitted pccRules member is a partial UpdateNotify: it leaves the
+  // existing rules untouched. Only an explicitly present map is reconciled.
+  if (requested.pccRulesIsSet()) {
+    for (const auto& [rule_id, old_rule] : current_rules) {
+      if (requested_rules.find(rule_id) != requested_rules.end()) continue;
       pcc_rule_change change;
       change.type     = policy_change_type::REMOVED;
       change.rule_id  = rule_id;
@@ -172,8 +175,10 @@ smf_policy_delta smf_policy_manager::compute_delta(
   }
 
   // Find removed QoS data
-  for (const auto& [qos_id, old_qos] : current_qos) {
-    if (requested_qos.find(qos_id) == requested_qos.end()) {
+  // Likewise, an omitted qosDecs member does not revoke the current QoS data.
+  if (requested.qosDecsIsSet()) {
+    for (const auto& [qos_id, old_qos] : current_qos) {
+      if (requested_qos.find(qos_id) != requested_qos.end()) continue;
       qos_data_change change;
       change.type     = policy_change_type::REMOVED;
       change.qos_id   = qos_id;
@@ -212,7 +217,7 @@ smf_policy_manager::build_qos_to_pcc_rules(const SmPolicyDecision& policy) {
 //------------------------------------------------------------------------------
 policy_delta smf_policy_manager::convert_to_upf_delta(
     const smf_policy_delta& delta, const SmPolicyDecision& new_policy,
-    std::map<std::string, uint8_t>& rule_to_qfi_map) {
+    pcc_rule_qfi_map& rule_to_qfi_map) {
   policy_delta upf_delta = {};
 
   // Get QoS data from new policy for looking up parameters
@@ -292,21 +297,20 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         continue;
       }
 
-      qos_flow_change flow_change = {};
-      flow_change.qfi             = qfi_it->second;
-      flow_change.pcc_rule_id     = change.rule_id;
-      flow_change.qos_profile     = qos_it->second;
-      flow_change.precedence =
-          pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
-
-      if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
-        flow_change.flow_information = pcc_rule.getFlowInfos()[0];
+      const auto& flow_infos = pcc_rule.getFlowInfos();
+      for (size_t index = 0; index < qfi_it->second.size(); ++index) {
+        qos_flow_change flow_change = {};
+        flow_change.qfi             = qfi_it->second[index];
+        flow_change.pcc_rule_id     = change.rule_id;
+        flow_change.qos_profile     = qos_it->second;
+        flow_change.precedence =
+            pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
+        if (!flow_infos.empty()) {
+          flow_change.flow_information =
+              flow_infos[std::min(index, flow_infos.size() - 1)];
+        }
+        upf_delta.to_modify.push_back(flow_change);
       }
-
-      upf_delta.to_modify.push_back(flow_change);
-      Logger::smf_app().debug(
-          "convert_to_upf_delta: Modified flow QFI=%d for rule '%s'",
-          qfi_it->second, change.rule_id.c_str());
     }
 
     // Process REMOVED PCC rules -> to_remove
@@ -319,17 +323,20 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
         continue;
       }
 
-      qos_flow_change flow_to_remove;
-      flow_to_remove.qfi         = qfi_it->second;
-      flow_to_remove.pcc_rule_id = change.rule_id;
-      upf_delta.to_remove.push_back(flow_to_remove);
+      for (const auto qfi : qfi_it->second) {
+        qos_flow_change flow_to_remove;
+        flow_to_remove.qfi         = qfi;
+        flow_to_remove.pcc_rule_id = change.rule_id;
+        upf_delta.to_remove.push_back(flow_to_remove);
+      }
 
+      const size_t removed_flow_count = qfi_it->second.size();
       // Remove from map
       rule_to_qfi_map.erase(qfi_it);
 
       Logger::smf_app().debug(
-          "convert_to_upf_delta: Removed flow QFI=%d for rule '%s'",
-          flow_to_remove.qfi, change.rule_id.c_str());
+          "convert_to_upf_delta: Removed %zu flow(s) for rule '%s'",
+          removed_flow_count, change.rule_id.c_str());
     }
   }
 
@@ -426,23 +433,26 @@ policy_delta smf_policy_manager::convert_to_upf_delta(
       if (rule_it == pcc_rules.end()) continue;
       const auto& pcc_rule = rule_it->second;
 
-      qos_flow_change flow_change = {};
-      flow_change.qfi             = qfi_it->second;
-      flow_change.pcc_rule_id     = rule_id;
-      flow_change.qos_profile     = qos_it->second;
-      flow_change.precedence =
-          pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
-      if (pcc_rule.flowInfosIsSet() && !pcc_rule.getFlowInfos().empty()) {
-        flow_change.flow_information = pcc_rule.getFlowInfos()[0];
+      const auto& flow_infos = pcc_rule.getFlowInfos();
+      for (size_t index = 0; index < qfi_it->second.size(); ++index) {
+        qos_flow_change flow_change = {};
+        flow_change.qfi             = qfi_it->second[index];
+        flow_change.pcc_rule_id     = rule_id;
+        flow_change.qos_profile     = qos_it->second;
+        flow_change.precedence =
+            pcc_rule.precedenceIsSet() ? pcc_rule.getPrecedence() : 255;
+        if (!flow_infos.empty()) {
+          flow_change.flow_information =
+              flow_infos[std::min(index, flow_infos.size() - 1)];
+        }
+        upf_delta.to_modify.push_back(flow_change);
       }
-
-      upf_delta.to_modify.push_back(flow_change);
       handled_rules.insert(rule_id);
 
       Logger::smf_app().debug(
           "convert_to_upf_delta: Modified flow QFI=%d for rule '%s' (QoS data "
           "'%s' changed)",
-          qfi_it->second, rule_id.c_str(), qos_change.qos_id.c_str());
+          qfi_it->second.front(), rule_id.c_str(), qos_change.qos_id.c_str());
     }
   }
 

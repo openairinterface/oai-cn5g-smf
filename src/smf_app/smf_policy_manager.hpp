@@ -24,6 +24,7 @@
 #include "FailureCode_anyOf.h"
 #include "SessionRuleReport.h"
 #include "3gpp_29.244.hpp"
+#include "smf_policy_types.hpp"
 #include "smf_qos_upf_edge.hpp"
 
 namespace oai::app::smf {
@@ -239,7 +240,7 @@ class smf_policy_manager {
    * @param delta The detailed policy delta from compute_delta()
    * @param new_policy The new policy decision (for flow descriptions)
    * @param current_qfis Current QFIs allocated on the session
-   * @param rule_to_qfi_map Map of PCC rule IDs to their allocated QFIs
+   * @param rule_to_qfi_map Map of PCC rule IDs to all of their allocated QFIs
    * @return policy_delta with to_add, to_modify, to_remove
    *
    * Standards:
@@ -249,7 +250,7 @@ class smf_policy_manager {
   static policy_delta convert_to_upf_delta(
       const smf_policy_delta& delta,
       const oai::_3gpp::model::SmPolicyDecision& new_policy,
-      std::map<std::string, uint8_t>& rule_to_qfi_map);
+      pcc_rule_qfi_map& rule_to_qfi_map);
 
   /**
    * @brief Build the reverse map from QoS data ID to referencing PCC rule IDs

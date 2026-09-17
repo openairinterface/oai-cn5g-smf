@@ -86,6 +86,32 @@ TEST(SmfPolicyManagerTest, ComputeDelta_DetectsAddedModifiedAndRemovedRules) {
   EXPECT_TRUE(delta.removed_pcc_rules.count("rule-2"));
 }
 
+TEST(SmfPolicyManagerTest, ComputeDelta_OmittedPccRulesPreservesCurrentRules) {
+  SmPolicyDecision current;
+  PccRule rule;
+  rule.setRefQosData({"qos-1"});
+  current.setPccRules({{"rule-1", rule}});
+
+  QosData current_qos;
+  current_qos.setQosId("qos-1");
+  current_qos.setR5qi(5);
+  current_qos.setGbrUl("1 Mbps");
+  current.setQosDecs({{"qos-1", current_qos}});
+
+  SmPolicyDecision requested;
+
+  auto qos_data = current.getQosDecs();
+  qos_data["qos-1"].setGbrUl("5 Mbps");
+  requested.setQosDecs(qos_data);
+
+  const smf_policy_delta delta =
+      smf_policy_manager::compute_delta(current, requested);
+
+  EXPECT_TRUE(delta.pcc_rule_changes.empty());
+  EXPECT_TRUE(delta.removed_pcc_rules.empty());
+  EXPECT_TRUE(delta.modified_qos_data.count("qos-1"));
+}
+
 // =============================================================================
 // UPF Delta Translation (`convert_to_upf_delta`)
 // =============================================================================
@@ -105,7 +131,7 @@ TEST(SmfPolicyManagerTest, ConvertToUpfDelta_SkipsRuleWithUnmatchedQosRef) {
   delta.pcc_rule_changes.push_back(change);
 
   SmPolicyDecision new_policy;  // qosDecs is empty
-  std::map<std::string, uint8_t> rule_to_qfi_map;
+  pcc_rule_qfi_map rule_to_qfi_map;
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, new_policy, rule_to_qfi_map);
@@ -139,7 +165,7 @@ TEST(
   std::map<std::string, QosData> qos_map = {{"qos-1", qos_data}};
   new_policy.setQosDecs(qos_map);
 
-  std::map<std::string, uint8_t> rule_to_qfi_map;
+  pcc_rule_qfi_map rule_to_qfi_map;
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, new_policy, rule_to_qfi_map);
@@ -147,6 +173,25 @@ TEST(
   ASSERT_EQ(upf_delta.to_add.size(), 2u);
   EXPECT_EQ(upf_delta.to_add[0].pcc_rule_id, "rule-multi-flow");
   EXPECT_EQ(upf_delta.to_add[1].pcc_rule_id, "rule-multi-flow");
+}
+
+TEST(SmfPolicyManagerTest, ConvertToUpfDelta_RemovesEveryQfiOwnedByRule) {
+  smf_policy_delta delta;
+  pcc_rule_change change;
+  change.type    = policy_change_type::REMOVED;
+  change.rule_id = "rule-multi-flow";
+  delta.pcc_rule_changes.push_back(change);
+
+  SmPolicyDecision policy;
+  pcc_rule_qfi_map rule_to_qfi_map = {{"rule-multi-flow", {5, 6}}};
+
+  const policy_delta upf_delta =
+      smf_policy_manager::convert_to_upf_delta(delta, policy, rule_to_qfi_map);
+
+  ASSERT_EQ(upf_delta.to_remove.size(), 2u);
+  EXPECT_EQ(upf_delta.to_remove[0].qfi, 5);
+  EXPECT_EQ(upf_delta.to_remove[1].qfi, 6);
+  EXPECT_TRUE(rule_to_qfi_map.empty());
 }
 
 // -----------------------------------------------------------------------------
@@ -195,7 +240,7 @@ TEST(SmfPolicyManagerTest, ConvertToUpfDelta_EmitsModifyForQosDataOnlyChange) {
   ASSERT_EQ(delta.modified_qos_data.size(), 1u);
   EXPECT_TRUE(delta.modified_qos_data.count("qos-1"));
 
-  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+  pcc_rule_qfi_map rule_to_qfi_map = {{"rule-1", {6}}};
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, requested, rule_to_qfi_map);
@@ -225,7 +270,7 @@ TEST(
       smf_policy_manager::compute_delta(current, requested);
 
   // No QFI allocated for 'rule-1' yet
-  std::map<std::string, uint8_t> rule_to_qfi_map;
+  pcc_rule_qfi_map rule_to_qfi_map;
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, requested, rule_to_qfi_map);
@@ -253,7 +298,7 @@ TEST(
       smf_policy_manager::compute_delta(current, requested);
   ASSERT_EQ(delta.added_qos_data.size(), 1u);
 
-  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+  pcc_rule_qfi_map rule_to_qfi_map = {{"rule-1", {6}}};
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, requested, rule_to_qfi_map);
@@ -279,7 +324,7 @@ TEST(
   ASSERT_EQ(delta.modified_pcc_rules.size(), 1u);
   ASSERT_EQ(delta.modified_qos_data.size(), 1u);
 
-  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+  pcc_rule_qfi_map rule_to_qfi_map = {{"rule-1", {6}}};
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, requested, rule_to_qfi_map);
@@ -304,7 +349,7 @@ TEST(
       smf_policy_manager::compute_delta(current, requested);
   ASSERT_EQ(delta.removed_pcc_rules.size(), 1u);
 
-  std::map<std::string, uint8_t> rule_to_qfi_map = {{"rule-1", 6}};
+  pcc_rule_qfi_map rule_to_qfi_map = {{"rule-1", {6}}};
 
   policy_delta upf_delta = smf_policy_manager::convert_to_upf_delta(
       delta, requested, rule_to_qfi_map);
