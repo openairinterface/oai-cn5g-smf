@@ -20,6 +20,7 @@
 #include "uint_generator.hpp"
 #include "smf_pfcp_association.hpp"
 #include "smf_qos_upf_edge.hpp"
+#include "smf_policy_manager.hpp"
 
 namespace oai::app::smf {
 
@@ -76,6 +77,23 @@ class smf_session_procedure : public smf_procedure {
   pfcp::create_far pfcp_create_far(const std::shared_ptr<qos_upf_edge>& edge);
 
   pfcp::create_pdr pfcp_create_pdr(const std::shared_ptr<qos_upf_edge>& edge);
+
+  /**
+   * @brief Builds the Packet Detection Information of an edge's PDR.
+   *
+   * Shared by pfcp_create_pdr() and pfcp_update_pdr(): an Update PDR replaces
+   * the stored PDI wholesale (TS 29.244 §7.5.4.3), so both have to describe
+   * the packet detection identically or the UPF loses the F-TEID / QFI it
+   * matches tunnelled traffic on.
+   *
+   * @param edge the edge whose PDI is built
+   * @param set_qfi whether the QFI is part of the detection information
+   * @return the assembled PDI
+   *
+   * Standards: TS 29.244 §7.5.2.2 (PDI), §8.2.23 (Source Interface)
+   */
+  pfcp::pdi pfcp_build_pdi(
+      const std::shared_ptr<qos_upf_edge>& edge, bool set_qfi);
 
   pfcp::create_urr pfcp_create_urr(const std::shared_ptr<qos_upf_edge>& edge);
 
@@ -263,6 +281,23 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   std::shared_ptr<itti_sbi_update_sm_context_response> n11_triggered_pending;
   session_management_procedures_type_e session_procedure_type;
 
+  policy_delta policy_delta_upf;
+  smf_policy_report partial_success_report;
+  // Pending policy decision - only committed after N4 success
+  std::optional<SmPolicyDecision> pending_policy_decision;
+  // Holds newly instantiated edge pairs before UPF confirmation
+  std::vector<
+      std::pair<std::shared_ptr<qos_upf_edge>, std::shared_ptr<qos_upf_edge>>>
+      staged_new_edges;
+  // Maps live edge -> the candidate change (QoS profile, SDF filter,
+  // precedence) applied to it once the UPF accepts
+  std::map<std::shared_ptr<qos_upf_edge>, qos_flow_change>
+      staged_modified_edges;
+  // Holds edges whose PDR/FAR/QER removal is in flight on N4. They stay in the
+  // session graph until the UPF accepts, so a rejected removal leaves the
+  // local forwarding state untouched.
+  std::vector<std::shared_ptr<qos_upf_edge>> staged_removed_edges;
+
  private:
   /**
    * Sends a session modification request, based on the graph
@@ -274,6 +309,20 @@ class session_update_sm_context_procedure : public smf_session_procedure {
 
   void remove_pdrs_fars_qers(
       const std::vector<std::shared_ptr<qos_upf_edge>>& edges);
+
+  smf_procedure_code send_n4_pcf_initiated_modification(
+      const policy_delta& delta);
+
+  /**
+   * @brief Commits the staged flow removals to the local session state.
+   *
+   * Called once the UPF has accepted the N4 Session Modification: drops the
+   * edges from the session graph, frees their QFIs and, with them, the
+   * PCC-rule-to-QFI mapping. Until then the flows stay live locally.
+   *
+   * Standards: TS 23.501 §5.7.1.4 (QFI allocation), TS 29.244 §7.5.4
+   */
+  void commit_staged_flow_removals();
 };
 
 //------------------------------------------------------------------------------
