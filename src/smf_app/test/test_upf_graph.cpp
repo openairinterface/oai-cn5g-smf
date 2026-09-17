@@ -73,8 +73,24 @@ TEST(UpfGraphTest, GetPccRuleToQfiMap_ReturnsCopyOfAllMappings) {
   auto map_copy = graph->get_pcc_rule_to_qfi_map();
 
   EXPECT_EQ(map_copy.size(), 2u);
-  EXPECT_EQ(map_copy["rule-1"], 5);
-  EXPECT_EQ(map_copy["rule-2"], 6);
+  EXPECT_EQ(map_copy["rule-1"], std::vector<uint8_t>({5}));
+  EXPECT_EQ(map_copy["rule-2"], std::vector<uint8_t>({6}));
+}
+
+TEST(UpfGraphTest, RegisterPccRuleQfi_RetainsEveryFlowQfi) {
+  auto graph = make_test_graph();
+
+  graph->register_pcc_rule_qfi("rule-multi-flow", 5);
+  graph->register_pcc_rule_qfi("rule-multi-flow", 6);
+
+  const auto map_copy = graph->get_pcc_rule_to_qfi_map();
+  ASSERT_EQ(map_copy.at("rule-multi-flow").size(), 2u);
+  EXPECT_EQ(map_copy.at("rule-multi-flow"), std::vector<uint8_t>({5, 6}));
+
+  graph->release_qfi(5);
+  EXPECT_EQ(
+      graph->get_pcc_rule_to_qfi_map().at("rule-multi-flow"),
+      std::vector<uint8_t>({6}));
 }
 
 // =============================================================================

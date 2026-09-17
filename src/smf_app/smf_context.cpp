@@ -2673,6 +2673,15 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
       SmPolicyDecision current_policy =
           sp->policy_ptr ? sp->policy_ptr->decision : SmPolicyDecision{};
 
+      // UpdateNotify may omit unchanged policy sections. Keep those sections
+      // in the effective decision so a QoS-only update cannot delete all PCC
+      // rules (or vice versa) when we commit the accepted policy.
+      if (!new_policy_decision.pccRulesIsSet() &&
+          current_policy.pccRulesIsSet())
+        new_policy_decision.setPccRules(current_policy.getPccRules());
+      if (!new_policy_decision.qosDecsIsSet() && current_policy.qosDecsIsSet())
+        new_policy_decision.setQosDecs(current_policy.getQosDecs());
+
       smf_policy_delta policy_delta_smf = smf_policy_manager::compute_delta(
           current_policy, new_policy_decision);
 
@@ -2704,43 +2713,50 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               "Continuing with valid rules.",
               validation_result.effected_rule_ids.size());
 
-          // Remove failed rules from new_policy_decision so only valid rules go
-          // to UPF
+          // Keep the last accepted state for a failed modification. Removing
+          // it from the pending decision would make a live UPF flow disappear
+          // from SMF policy state and cause a duplicate add on the next update.
           if (new_policy_decision.pccRulesIsSet()) {
-            auto pcc_rules = new_policy_decision.getPccRules();
+            auto pcc_rules           = new_policy_decision.getPccRules();
+            auto qos_decs            = new_policy_decision.qosDecsIsSet() ?
+                                           new_policy_decision.getQosDecs() :
+                                           std::map<std::string, QosData>{};
+            const auto current_rules = current_policy.pccRulesIsSet() ?
+                                           current_policy.getPccRules() :
+                                           std::map<std::string, PccRule>{};
+            const auto current_qos   = current_policy.qosDecsIsSet() ?
+                                           current_policy.getQosDecs() :
+                                           std::map<std::string, QosData>{};
             for (const auto& failed_rule_id :
                  validation_result.effected_rule_ids) {
-              pcc_rules.erase(failed_rule_id);
+              const auto current_rule = current_rules.find(failed_rule_id);
+              if (current_rule == current_rules.end()) {
+                pcc_rules.erase(failed_rule_id);
+                continue;
+              }
+              pcc_rules[failed_rule_id] = current_rule->second;
+              if (current_rule->second.refQosDataIsSet()) {
+                for (const auto& qos_id :
+                     current_rule->second.getRefQosData()) {
+                  const auto old_qos = current_qos.find(qos_id);
+                  if (old_qos != current_qos.end())
+                    qos_decs[qos_id] = old_qos->second;
+                }
+              }
             }
             new_policy_decision.setPccRules(pcc_rules);
+            if (!qos_decs.empty()) new_policy_decision.setQosDecs(qos_decs);
 
             Logger::smf_app().info(
-                "Removed %zu failed rule(s) from policy decision, %zu valid "
-                "rules remain",
+                "Retained the last accepted state for %zu failed rule(s); %zu "
+                "rules remain in the pending policy",
                 validation_result.effected_rule_ids.size(), pcc_rules.size());
           }
 
-          // Remove failed rules from the delta
-          auto remove_failed_from_changes =
-              [&](std::vector<pcc_rule_change>& changes) {
-                changes.erase(
-                    std::remove_if(
-                        changes.begin(), changes.end(),
-                        [&](const pcc_rule_change& c) {
-                          return validation_result.effected_rule_ids.count(
-                                     c.rule_id) > 0;
-                        }),
-                    changes.end());
-              };
-          remove_failed_from_changes(policy_delta_smf.pcc_rule_changes);
-
-          // Also update the quick-access sets
-          for (const auto& failed_rule_id :
-               validation_result.effected_rule_ids) {
-            policy_delta_smf.added_pcc_rules.erase(failed_rule_id);
-            policy_delta_smf.modified_pcc_rules.erase(failed_rule_id);
-            policy_delta_smf.removed_pcc_rules.erase(failed_rule_id);
-          }
+          // Recompute after restoring failed modifications so neither their
+          // PCC rule nor their QoS data reaches the UPF transaction.
+          policy_delta_smf = smf_policy_manager::compute_delta(
+              current_policy, new_policy_decision);
         }
       }
 
@@ -2751,7 +2767,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             policy_delta_smf.to_string().c_str());
 
         // Get rule_to_qfi_map from session's UPF graph
-        std::map<std::string, uint8_t> rule_to_qfi_map;
+        pcc_rule_qfi_map rule_to_qfi_map;
         if (sp && sp->get_session_handler() &&
             sp->get_session_handler()->get_session_graph()) {
           auto session_graph = sp->get_session_handler()->get_session_graph();

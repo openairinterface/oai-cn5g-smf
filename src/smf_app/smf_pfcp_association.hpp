@@ -23,6 +23,7 @@
 #include "UpfInfo.h"
 #include "smf.h"
 #include "smf_config_types.hpp"
+#include "smf_policy_types.hpp"
 #include "smf_qos_upf_edge.hpp"
 #include "uint_generator.hpp"
 
@@ -161,8 +162,8 @@ class upf_graph {
   unsigned int associated_edge_count = 0;
   std::unordered_set<std::string> served_dnais;
 
-  // Mapping from PCC rule ID to QFI for policy management
-  std::map<std::string, uint8_t> pcc_rule_id_to_qfi_;
+  // Mapping from PCC rule ID to every QFI installed for the rule.
+  pcc_rule_qfi_map pcc_rule_id_to_qfi_;
 
   /**
    * @brief Adds an edge in one direction, adds node if it does not exist
@@ -402,7 +403,7 @@ class upf_graph {
   void register_pcc_rule_qfi(const std::string& pcc_rule_id, uint8_t qfi);
 
   /**
-   * @brief Get the QFI for a given PCC rule ID
+   * @brief Get the first QFI for a given PCC rule ID
    * @param pcc_rule_id The PCC rule ID
    * @return The QFI value, or 0 if not found
    */
@@ -412,7 +413,7 @@ class upf_graph {
    * @brief Get a copy of the PCC rule ID to QFI map
    * @return Map of PCC rule ID to QFI
    */
-  std::map<std::string, uint8_t> get_pcc_rule_to_qfi_map() const;
+  pcc_rule_qfi_map get_pcc_rule_to_qfi_map() const;
 
   /**
    * Get all the access edges for this graph, for each QFI there may be an
