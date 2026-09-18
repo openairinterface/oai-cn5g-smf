@@ -17,6 +17,8 @@ set (NF_TARGET       smf)
 
 set (MOUNTED_COMMON      common-src)
 
+include(CTest)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../src/oai_smf/CMakeLists.txt)
 
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../src/smf_app ${CMAKE_CURRENT_BINARY_DIR}/smf_app)
