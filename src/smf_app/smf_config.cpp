@@ -3,11 +3,12 @@
  */
 
 #include "smf_config.hpp"
+#include <regex>
+#include <set>
 
 #include <iostream>
 
 #include <arpa/inet.h>
-#include <regex>
 
 #include "common_defs.h"
 #include "if.hpp"
@@ -27,6 +28,7 @@ smf_config::smf_config(
       n4(),
       sbi(),
       itti() {
+  roaming_config_path = configPath;
   m_used_config_values = {LOG_LEVEL_CONFIG_NAME, REGISTER_NF_CONFIG_NAME,
                           NF_LIST_CONFIG_NAME,   SMF_CONFIG_NAME,
                           DNNS_CONFIG_NAME,      NF_CONFIG_HTTP_NAME,
@@ -238,6 +240,38 @@ bool smf_config::init() {
     throw;
   }
 
+  const auto yaml = YAML::LoadFile(roaming_config_path);
+  auto read_plmns = [](const YAML::Node& entries, std::vector<plmn_t>& out) {
+    if (!entries) return;
+    if (!entries.IsSequence()) throw std::invalid_argument("PLMN list must be a sequence");
+    for (const auto& entry : entries) {
+      plmn_t plmn;
+      plmn.mcc = entry["mcc"].as<std::string>();
+      plmn.mnc = entry["mnc"].as<std::string>();
+      if (!std::regex_match(plmn.mcc, std::regex("[0-9]{3}")) ||
+          !std::regex_match(plmn.mnc, std::regex("[0-9]{2,3}")))
+        throw std::invalid_argument("Invalid configured PLMN identity");
+      out.push_back(plmn);
+    }
+  };
+  local_plmns.clear();
+  roaming_partners.clear();
+  if (yaml["nrf"]) read_plmns(yaml["nrf"]["plmn_list"], local_plmns);
+  const auto roaming = yaml["enable_roaming"];
+  roaming_enabled = roaming && roaming["general"] && roaming["general"].as<bool>();
+  if (roaming_enabled) {
+    read_plmns(roaming["roaming_partners"], roaming_partners);
+    const auto sepp = yaml["nfs"]["sepp"];
+    const auto host = sepp["host"].as<std::string>();
+    const auto scheme = sepp["sbi"]["scheme"] ? sepp["sbi"]["scheme"].as<std::string>() : "http";
+    const auto port = sepp["sbi"]["port"].as<unsigned>();
+    if (!std::regex_match(host, std::regex("[A-Za-z0-9.-]+")) ||
+        (scheme != "http" && scheme != "https") || port == 0 || port > 65535 || local_plmns.empty())
+      throw std::invalid_argument("Roaming requires local PLMNs and a valid local SEPP endpoint");
+    local_sepp_root = scheme + "://" + host + ":" + std::to_string(port);
+    if (use_local_subscription_info)
+      throw std::invalid_argument("Roaming requires home UDM subscription retrieval");
+  }
   return success;
 }
 
@@ -311,4 +345,19 @@ const ue_dns& smf_config::get_dns_from_dnn(const std::string& dnn) {
     }
   }
   return smf()->get_ue_dns();
+}
+
+// Resolve MNC width only from operator-configured PLMN identities. Ambiguous
+// two/three-digit prefixes and unknown networks fail closed, never guess.
+bool smf_config::resolve_home_plmn(const std::string& supi, plmn_t& home) const {
+  if (!std::regex_match(supi, std::regex("imsi-[0-9]{5,15}"))) return false;
+  const auto imsi = supi.substr(5);
+  std::set<std::pair<std::string, std::string>> matches;
+  for (const auto* list : {&local_plmns, &roaming_partners})
+    for (const auto& p : *list)
+      if (imsi.rfind(p.mcc + p.mnc, 0) == 0) matches.emplace(p.mcc, p.mnc);
+  if (matches.size() != 1) return false;
+  home.mcc = matches.begin()->first;
+  home.mnc = matches.begin()->second;
+  return true;
 }

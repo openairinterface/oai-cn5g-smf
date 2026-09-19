@@ -476,6 +476,12 @@ void smf_profile::to_json(nlohmann::json& data) const {
   nlohmann::json allowed_nf_type = "AMF";
   data["allowedNfTypes"].push_back(allowed_nf_type);
 
+  if (!smf_cfg->local_plmns.empty()) {
+    data["plmnList"] = nlohmann::json::array();
+    for (const auto& plmn : smf_cfg->local_plmns)
+      data["plmnList"].push_back({{"mcc", plmn.mcc}, {"mnc", plmn.mnc}});
+  }
+
   data["custom_info"] = custom_info;
 
   // SMF info

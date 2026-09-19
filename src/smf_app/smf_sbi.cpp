@@ -7,6 +7,7 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <regex>
 
 #include "common_defs.h"
 #include "http_client.hpp"
@@ -617,6 +618,88 @@ void smf_sbi::subscribe_upf_status_notify(
 }
 
 //------------------------------------------------------------------------------
+response smf_sbi::send_udm_request(const std::string& supi, method_e method, request req) {
+  if (!smf_cfg->roaming_enabled) return http_client_inst->send_http_request(method, req);
+  response failure;
+  failure.status_code = http_status_code::SERVICE_UNAVAILABLE;
+  plmn_t home, serving;
+  if (!smf_cfg->resolve_home_plmn(supi, home) ||
+      !smf_app_inst->is_supi_2_smf_context(supi)) {
+    Logger::smf_sbi().error("Cannot resolve an unambiguous configured home PLMN for UDM selection");
+    return failure;
+  }
+  smf_app_inst->supi_2_smf_context(supi)->get_plmn(serving);
+  if (home.mcc == serving.mcc && home.mnc == serving.mnc)
+    return http_client_inst->send_http_request(method, req);
+  bool partner = false, local = false;
+  for (const auto& p : smf_cfg->roaming_partners) partner |= p.mcc == home.mcc && p.mnc == home.mnc;
+  for (const auto& p : smf_cfg->local_plmns) local |= p.mcc == serving.mcc && p.mnc == serving.mnc;
+  if (!partner || !local || smf_cfg->local_sepp_root.empty()) return failure;
+  const std::string service = req.uri.find("/nudm-uecm/") != std::string::npos ? "nudm-uecm" : "nudm-sdm";
+  const auto& udm_sbi = smf_cfg->get_nf(oai::config::UDM_CONFIG_NAME)->get_sbi();
+  const auto configured_root = udm_sbi.get_url(smf_cfg->enable_tls());
+  if (req.uri.rfind(configured_root + "/", 0) != 0) return failure;
+  auto discovery = oai::smf::api::smf_sbi_helper::get_nrf_disc_search_nf_instances_uri(
+      smf_cfg->get_nf(oai::config::NRF_CONFIG_NAME)->get_sbi(), smf_cfg->enable_tls());
+  const auto target = json::array({{{"mcc", home.mcc}, {"mnc", home.mnc}}});
+  const auto requester = json::array({{{"mcc", serving.mcc}, {"mnc", serving.mnc}}});
+  discovery += "?target-nf-type=UDM&requester-nf-type=SMF&service-names=" + service +
+      "&target-plmn-list=" + target.dump() + "&requester-plmn-list=" + requester.dump() + "&supi=" + supi;
+  request search;
+  search.uri = discovery;
+  const auto found = http_client_inst->send_http_request(method_e::GET, search);
+  if (found.status_code != http_status_code::OK) return failure;
+  std::string root;
+  try {
+    const auto discovery_data = json::parse(found.body);
+    for (const auto& nf : discovery_data.at("nfInstances")) {
+      if (nf.value("nfType", "") != "UDM" || nf.value("nfStatus", "") != "REGISTERED") continue;
+      if (nf.contains("plmnList") && std::find(nf["plmnList"].begin(), nf["plmnList"].end(), target[0]) == nf["plmnList"].end()) continue;
+      if (!nf.contains("nfServices") || nf["nfServices"].empty()) {
+        const auto host = nf.value("fqdn", "");
+        if (!std::regex_match(host, std::regex("[A-Za-z0-9.-]+"))) continue;
+        root = configured_root.substr(0, configured_root.find("://") + 3) + host + ":" + std::to_string(udm_sbi.get_port());
+      } else {
+        for (const auto& svc : nf["nfServices"]) {
+          if (svc.value("serviceName", "") != service || svc.value("nfServiceStatus", "") != "REGISTERED") continue;
+          bool version = false;
+          for (const auto& v : svc.at("versions")) version |= v.value("apiVersionInUri", "") == udm_sbi.get_api_version();
+          if (!version) continue;
+          const auto scheme = svc.value("scheme", "");
+          if (scheme != "http" && scheme != "https") continue;
+          root = svc.value("apiPrefix", "");
+          if (root.empty()) {
+            auto host = svc.value("fqdn", nf.value("fqdn", ""));
+            unsigned port = scheme == "https" ? 443 : 80;
+            if (svc.contains("ipEndPoints") && !svc["ipEndPoints"].empty()) {
+              const auto& ep = svc["ipEndPoints"][0];
+              port = ep.value("port", port);
+              if (host.empty()) host = ep.value("ipv4Address", "");
+            }
+            if (!std::regex_match(host, std::regex("[A-Za-z0-9.-]+")) || port == 0 || port > 65535) continue;
+            root = scheme + "://" + host + ":" + std::to_string(port);
+          }
+          while (!root.empty() && root.back() == '/') root.pop_back();
+          if (!std::regex_match(root, std::regex("https?://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]+)?"))) { root.clear(); continue; }
+          break;
+        }
+      }
+      if (!root.empty()) break;
+    }
+  } catch (const std::exception& e) {
+    Logger::smf_sbi().warn("Invalid UDM discovery response: %s", e.what());
+    return failure;
+  }
+  if (root.empty()) return failure;
+  // Resource identifiers in the subscription must name the home producer too.
+  for (size_t pos = 0; (pos = req.body.find(configured_root + "/", pos)) != std::string::npos; pos += root.size())
+    req.body.replace(pos, configured_root.size(), root);
+  req.uri = smf_cfg->local_sepp_root + req.uri.substr(configured_root.size());
+  req.headers["3gpp-Sbi-Target-apiRoot"] = root;
+  Logger::smf_sbi().info("Selected home UDM %s via local NRF/SEPP; serving PLMN %s%s", root.c_str(), serving.mcc.c_str(), serving.mnc.c_str());
+  return http_client_inst->send_http_request(method, req);
+}
+
 bool smf_sbi::retrieve_sm_data(
     const std::shared_ptr<itti_sbi_retrieve_sm_data>& msg) {
   nlohmann::json json_data = {};
@@ -635,7 +718,7 @@ bool smf_sbi::retrieve_sm_data(
   request req;
   req.uri = udm_url;
   // TODO: add retry mechanism, probably directly inside HTTP Client lib
-  response resp = http_client_inst->send_http_request(method_e::GET, req);
+  response resp = send_udm_request(msg->supi, method_e::GET, req);
 
   Logger::smf_sbi().debug("Response data %s", resp.body);
   Logger::smf_sbi().debug(
@@ -672,6 +755,11 @@ bool smf_sbi::retrieve_sm_data(
 
     return true;
   } else {
+    if (msg->promise_id > 0) {
+      nlohmann::json failed = {{oai::http::kSbiResponseHttpResponseCode, resp.status_code},
+                               {oai::http::kSbiResponseJsonData, json_data}};
+      smf_app_inst->make_future_ready(failed, msg->promise_id);
+    }
     return false;
   }
 }
@@ -695,7 +783,7 @@ void smf_sbi::register_with_udm(
 
   std::string req_body = msg->smf_registration.dump();
   request req   = http_client_inst->prepare_json_request(udm_uri, req_body);
-  response resp = http_client_inst->send_http_request(method_e::GET, req);
+  response resp = send_udm_request(msg->supi, method_e::PUT, req);
 
   Logger::smf_sbi().debug(
       "Register with UDM for this PDU Session, response from UDM");
@@ -738,7 +826,7 @@ void smf_sbi::deregister_with_udm(
 
   request req   = {};
   req.uri       = udm_uri;
-  response resp = http_client_inst->send_http_request(method_e::DELETE, req);
+  response resp = send_udm_request(msg->supi, method_e::DELETE, req);
 
   Logger::smf_sbi().debug(
       "Deregister with UDM for this PDU Session, response from UDM");
@@ -776,7 +864,7 @@ void smf_sbi::subscribe_sdm_subscriptions(
   request req = http_client_inst->prepare_json_request(
       udm_uri, msg->sdm_subscription.dump());
   // TODO: add retry mechanism
-  response resp = http_client_inst->send_http_request(method_e::GET, req);
+  response resp = send_udm_request(msg->supi, method_e::POST, req);
 
   Logger::smf_sbi().debug(
       "Subscribe SDM Subscriptions with UDM, response from UDM");
@@ -796,6 +884,8 @@ void smf_sbi::subscribe_sdm_subscriptions(
   nlohmann::json response_data                           = {};
   response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
   response_data[oai::http::kSbiResponseJsonData]         = json_data;
+  if (auto location = resp.headers.find("location"); location != resp.headers.end())
+    response_data[oai::http::kSbiResponseHeaderLocation] = location->second;
 
   if (resp.status_code == oai::common::sbi::http_status_code::CREATED) {
     std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions_response>
@@ -826,7 +916,7 @@ void smf_sbi::unsubscribe_sdm_subscriptions(
 
   request req   = {};
   req.uri       = udm_uri;
-  response resp = http_client_inst->send_http_request(method_e::GET, req);
+  response resp = send_udm_request(msg->supi, method_e::DELETE, req);
 
   Logger::smf_sbi().debug(
       "Unsubscribe SDM Subscriptions with UDM, response from UDM");

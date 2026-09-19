@@ -6,6 +6,7 @@
 #define FILE_SMF_SBI_HPP_SEEN
 
 #include <thread>
+#include "http_definitions.hpp"
 
 #include <boost/thread.hpp>
 #include <boost/thread/future.hpp>
@@ -19,6 +20,8 @@ namespace oai::app::smf {
 
 class smf_sbi {
  private:
+  oai::http::response send_udm_request(const std::string& supi,
+      oai::common::sbi::method_e method, oai::http::request request);
   std::thread::id thread_id;
   std::thread thread;
 

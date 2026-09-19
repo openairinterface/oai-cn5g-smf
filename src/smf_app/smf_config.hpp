@@ -147,6 +147,7 @@ typedef struct dnn_s {
 
 class smf_config : public config {
  private:
+  std::string roaming_config_path;
   // TODO only temporary, to avoid changing all the references to the config in
   // all the calling classes
   void to_smf_config();
@@ -165,6 +166,11 @@ class smf_config : public config {
   std::map<std::string, dnn_t> dnns;
 
   bool force_push_pco;
+  bool roaming_enabled = false;
+  std::string local_sepp_root;
+  std::vector<plmn_t> local_plmns, roaming_partners;
+  bool resolve_home_plmn(const std::string& supi, plmn_t& home) const;
+
 
   bool discover_pcf;
   bool use_local_subscription_info;

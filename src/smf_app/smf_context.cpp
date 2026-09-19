@@ -1726,6 +1726,10 @@ bool smf_context::handle_pdu_session_release_complete(
     // TODO: return;
   }
 
+  cleanup_udm_session(
+      sm_context_request->req.get_supi(),
+      sm_context_request->req.get_pdu_session_id(), sp);
+
   Logger::smf_app().debug("Signal the SM Context Status Change");
   std::string status = "RELEASED";
   event_sub.sm_context_status(scid, status);
@@ -3636,6 +3640,14 @@ void smf_context::handle_sm_context_status_change(
   itti_msg->sm_context_status = status;
   itti_msg->amf_status_uri    = sp->get_amf_status_uri();
 
+  if (status == "RELEASED") {
+    // Finish the release notification before acknowledging the update to AMF.
+    // Otherwise its next CreateSMContext can reuse this PDU session identity
+    // before a queued notification deletes the new AMF session context.
+    smf_sbi_inst->send_sm_context_status_notification(itti_msg);
+    return;
+  }
+
   int ret = itti_inst->send_msg(itti_msg);
   if (RETURNok != ret) {
     Logger::smf_app().error(
@@ -4557,18 +4569,21 @@ void smf_context::send_pdu_session_update_response(
   oai::_3gpp::model::SmfRegistration smf_registration = {};
   smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
   smf_registration.setPduSessionId(pdu_session_id);
-  auto smf_info = smf_cfg->smf()->get_smf_info();
-  if (smf_info.getSNssaiSmfInfoList().size() > 0) {
-    // Use the first SNssai
-    smf_registration.setSingleNssai(
-        (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
+  oai::_3gpp::model::Snssai registered_slice;
+  xgpp_conv::snssai_to_model(sps->get_snssai(), registered_slice);
+  smf_registration.setSingleNssai(registered_slice);
+  smf_registration.setDnn(sps->get_dnn());
+  plmn_t serving;
+  get_plmn(serving);
+  oai::_3gpp::model::PlmnId registered_plmn;
+  registered_plmn.setMcc(serving.mcc);
+  registered_plmn.setMnc(serving.mnc);
+  smf_registration.setPlmnId(registered_plmn);
+  if (session_procedure_type == session_management_procedures_type_e::PDU_SESSION_ESTABLISHMENT_UE_REQUESTED &&
+      resp->res.get_cause() == k5gsmCauseRequestAccepted) {
+    if (!register_with_udm(supi, pdu_session_id, smf_registration))
+      Logger::smf_app().error("Home UDM registration failed for established PDU session");
   }
-  if (smf_info.getTaiList().size() > 0) {
-    // Use the first TAI
-    smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
-  }
-  // Register with the UDM
-  register_with_udm(supi, pdu_session_id, smf_registration);
 
   // Process the response
   if (resp->res.get_cause() == k5gsmCauseRequestAccepted) {
@@ -4868,6 +4883,11 @@ void smf_context::send_pdu_session_release_response(
 
       case session_management_procedures_type_e::DEREGISTRATION_UE_INITIATED: {
         Logger::smf_app().info("UE-initiated Deregistration");
+        // Deregistration has no NAS PDU Session Release Complete. Clean up
+        // the UDM association after the UPF accepts deletion instead.
+        cleanup_udm_session(
+            req->req.get_supi(), req->req.get_pdu_session_id(), sps);
+        sps->set_pdu_session_status(pdu_session_status_t::Inactive);
         resp->res.set_http_code(http_status_code::NO_CONTENT);
         // clear the resources including addresses allocated to this Session and
         // associated QoS flows
@@ -4951,9 +4971,46 @@ bool smf_context::register_with_udm(
       json_data = result[oai::http::kSbiResponseJsonData];
     }
 
-    return true;
+    return http_response_code == http_status_code::OK ||
+           http_response_code == http_status_code::CREATED ||
+           http_response_code == http_status_code::NO_CONTENT;
   }
   return false;
+}
+
+//------------------------------------------------------------------------------
+void smf_context::cleanup_udm_session(
+    const std::string& released_supi, const pdu_session_id_t& released_session_id,
+    const std::shared_ptr<smf_pdu_session>& sp) {
+  deregister_with_udm(released_supi, released_session_id);
+  oai::_3gpp::model::Snssai released_slice;
+  xgpp_conv::snssai_to_model(sp->get_snssai(), released_slice);
+  std::string subscription_key;
+  smf_app_inst->get_dnn_snssai_key(sp->get_dnn(), released_slice, subscription_key);
+  std::shared_ptr<oai::_3gpp::model::SdmSubscription> subscription;
+  get_sdm_subscription(subscription_key, subscription);
+  bool shared_subscription = false;
+  std::map<pdu_session_id_t, std::shared_ptr<smf_pdu_session>> sessions;
+  get_pdu_sessions(sessions);
+  for (const auto& entry : sessions) {
+    if (entry.first == released_session_id) continue;
+    const auto slice = entry.second->get_snssai();
+    shared_subscription |= entry.second->get_pdu_session_status() != pdu_session_status_t::Inactive &&
+        entry.second->get_dnn() == sp->get_dnn() &&
+        slice.sst == sp->get_snssai().sst && slice.sd == sp->get_snssai().sd;
+  }
+  if (!shared_subscription) {
+    if (subscription) unsubscribe_sdm_subscriptions(released_supi, subscription);
+    {
+      std::unique_lock lock(m_sdm_subscriptions);
+      sdm_subscriptions.erase(subscription_key);
+    }
+    // Without change notifications, do not reuse cached subscription data.
+    uint32_t slice_key;
+    get_snssai_key(sp->get_snssai(), slice_key);
+    std::unique_lock<std::recursive_mutex> lock(m_context);
+    dnn_subscriptions.erase(slice_key);
+  }
 }
 
 //------------------------------------------------------------------------------

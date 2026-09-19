@@ -1169,6 +1169,10 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
           sdm_subscription);
 
  private:
+  void cleanup_udm_session(
+      const std::string& supi, const pdu_session_id_t& pdu_session_id,
+      const std::shared_ptr<smf_pdu_session>& session);
+
   std::vector<std::shared_ptr<smf_procedure>> pending_procedures;
   // snssai <-> session management subscription
   std::map<uint32_t, std::shared_ptr<session_management_subscription>>

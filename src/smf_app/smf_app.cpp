@@ -2664,6 +2664,9 @@ void smf_app::subscribe_sdm_subscriptions(
   plmn_id_requested.setMcc(plmn.mcc);
   plmn_id_requested.setMnc(plmn.mnc);
 
+  sdm_subscription.setPlmnId(plmn_id_requested);
+  sdm_subscription.setMonitoredResourceUris({
+      oai::smf::api::smf_sbi_helper::get_udm_sdm_sm_data_uri(supi)});
   sdm_subscription.setDnn(dnn);  // DNN
   // singleNssai
   oai::_3gpp::model::Snssai snssai_model_requested = {};
