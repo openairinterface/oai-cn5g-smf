@@ -557,6 +557,26 @@ class smf_app {
       std::shared_ptr<itti_sbi_release_sm_context_request> smreq);
 
   /*
+   * H-SMF: handle Nsmf_PDUSession_Create from a V-SMF over N16, for a
+   * home-routed PDU session (TS 23.502 4.3.2.2.2, TS 29.502 5.2.2.7)
+   * @param [const nlohmann::json&] create_data: PduSessionCreateData
+   * @param [uint32_t] promise_id: promise of the pending HTTP response
+   * @return void
+   */
+  void handle_nsmf_pdu_session_create(
+      const nlohmann::json& create_data, uint32_t promise_id);
+
+  /*
+   * H-SMF: handle Nsmf_PDUSession_Release from a V-SMF over N16
+   * @param [const std::string&] pdu_session_ref: resource created by
+   * handle_nsmf_pdu_session_create
+   * @param [uint32_t] promise_id: promise of the pending HTTP response
+   * @return void
+   */
+  void handle_nsmf_pdu_session_release(
+      const std::string& pdu_session_ref, uint32_t promise_id);
+
+  /*
    * Handle Event Exposure Msg from AMF
    * @param [std::shared_ptr<itti_sbi_event_exposure_request>&] Request message
    * @return [evsub_id_t] ID of the created subscription

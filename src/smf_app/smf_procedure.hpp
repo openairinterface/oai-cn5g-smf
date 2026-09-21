@@ -111,10 +111,9 @@ class smf_session_procedure : public smf_procedure {
   static pfcp::update_qer pfcp_update_qer(
       const std::shared_ptr<qos_upf_edge>& edge);
 
-  static pfcp::update_far pfcp_update_far(
-      const std::shared_ptr<qos_upf_edge>& edge);
+  pfcp::update_far pfcp_update_far(const std::shared_ptr<qos_upf_edge>& edge);
 
-  static bool pfcp_outer_header_creation(
+  bool pfcp_outer_header_creation(
       const std::shared_ptr<qos_upf_edge>& edge,
       pfcp::outer_header_creation_t& outer_header);
 
@@ -167,6 +166,12 @@ class smf_session_procedure : public smf_procedure {
       std::shared_ptr<pfcp_association>& next_upf);
 
   static std::string to_string_fteid(const pfcp::fteid_t& fteid);
+
+  /*
+   * Home-routed roaming, V-SMF: whether this edge of the V-UPF is the N9
+   * tunnel towards the H-UPF
+   */
+  bool is_home_routed_n9(const std::shared_ptr<qos_upf_edge>& edge) const;
 
   static bool is_qfi_served_in_edges(
       const std::vector<pfcp::qfi_t>& qfis,
@@ -230,7 +235,20 @@ class session_create_sm_context_procedure : public smf_session_procedure {
       itti_n4_session_establishment_response& resp,
       std::shared_ptr<oai::app::smf::smf_context> sc) override;
 
+  /*
+   * Handle the N4 Session Modification Response of the home-routed V-UPF
+   * (3GPP TS 23.502 clause 4.3.2.2.2 step 13b)
+   * @param [itti_n4_session_modification_response] resp
+   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @return
+   */
+  smf_procedure_code handle_itti_msg(
+      itti_n4_session_modification_response& resp,
+      std::shared_ptr<oai::app::smf::smf_context> sc) override;
+
   std::shared_ptr<itti_n4_session_establishment_request> n4_triggered;
+  // Home-routed V-SMF: N4 Session Modification of step 13a
+  std::shared_ptr<itti_n4_session_modification_request> n4_hr_modification;
 
   std::shared_ptr<itti_sbi_create_sm_context_request> n11_trigger;
   std::shared_ptr<itti_sbi_create_sm_context_response> n11_triggered_pending;
@@ -240,6 +258,37 @@ class session_create_sm_context_procedure : public smf_session_procedure {
    * @return
    */
   smf_procedure_code send_n4_session_establishment_request();
+
+ private:
+  /*
+   * Home-routed V-SMF, after the V-UPF N4 Session Establishment: take the
+   * V-CN Tunnel Info it allocated, create the PDU session on the H-SMF and
+   * send the N4 Session Modification with the N9 uplink (3GPP TS 23.502
+   * clause 4.3.2.2.2 steps 5b-13a)
+   */
+  smf_procedure_code home_routed_after_establishment(
+      itti_n4_session_establishment_response& resp,
+      std::shared_ptr<oai::app::smf::smf_context> sc,
+      const std::vector<std::shared_ptr<qos_upf_edge>>& dl_edges,
+      const std::vector<std::shared_ptr<qos_upf_edge>>& ul_edges,
+      const std::shared_ptr<pfcp_association>& current_upf,
+      const std::vector<pfcp::qfi_t>& used_qfis);
+
+  /*
+   * Report the QoS flows handled by the UPF in the Create SM Context
+   * response
+   */
+  smf_procedure_code finish_establishment(
+      const std::vector<pfcp::qfi_t>& used_qfis, bool ftup);
+
+  /*
+   * Delete the V-UPF N4 session of a home-routed PDU session that is rejected
+   */
+  void release_home_routed_n4_session(
+      const std::shared_ptr<pfcp_association>& current_upf);
+
+  std::vector<pfcp::qfi_t> hr_used_qfis;
+  bool hr_ftup = false;
 };
 
 //------------------------------------------------------------------------------

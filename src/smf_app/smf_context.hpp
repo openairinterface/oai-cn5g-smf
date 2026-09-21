@@ -34,6 +34,29 @@ using namespace boost::placeholders;
 
 namespace oai::app::smf {
 
+// Home-routed roaming state of a PDU session (3GPP TS 23.502 clause
+// 4.3.2.2.2). The V-SMF controls the V-UPF and the H-SMF the H-UPF; the two
+// UPFs are joined by an N9 tunnel and the SMFs by N16 (Nsmf_PDUSession, 3GPP
+// TS 29.502) via the SEPPs (3GPP TS 23.501 clause 4.2.4).
+struct home_routed_session {
+  bool anchor = false;           // true on the H-SMF, false on the V-SMF
+  std::string h_smf_uri;         // V-SMF: Nsmf_PDUSession API URI of the H-SMF
+  std::string peer_session_uri;  // V-SMF: the PDU session resource on the H-SMF
+  pfcp::fteid_t vcn_tunnel = {};  // V-UPF N9 tunnel, downlink
+  pfcp::fteid_t hcn_tunnel = {};  // H-UPF N9 tunnel, uplink
+  struct in_addr ue_ipv4   = {};  // UE address allocated by the H-SMF
+  uint32_t n16_promise_id  = 0;   // H-SMF: pending Nsmf_PDUSession_Create reply
+  std::string n16_resource_id;    // H-SMF: pduSessionRef of the N16 resource
+  // V-SMF: Create SM Context parameters for the Nsmf_PDUSession_Create sent
+  // once the V-UPF has allocated the V-CN Tunnel Info (TS 23.502 step 5b)
+  std::string supi;
+  pdu_session_id_t pdu_session_id = 0;
+  std::string dnn;
+  snssai_t snssai     = {};
+  plmn_t serving_plmn = {};
+  scid_t scid         = 0;
+};
+
 class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
  public:
   smf_pdu_session() : m_pdu_session_mutex() { clear(); }
@@ -307,6 +330,13 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   timer_id_t timer_T3592;
 
   pfcp::qfi_t default_qfi;  // Default QFI for this session
+
+  // Set for home-routed roaming sessions only
+  std::shared_ptr<home_routed_session> home_routed;
+  // V-SMF side of a home-routed session: the local UPF is an intermediate UPF
+  bool is_home_routed_visited() const {
+    return home_routed && !home_routed->anchor;
+  }
 
   // TODO [STORAGE]: Add Storage Integration
   // Storage and Persistence
@@ -1193,6 +1223,45 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       const std::string& supi,
       const std::shared_ptr<oai::_3gpp::model::SdmSubscription>&
           sdm_subscription);
+
+  /*
+   * V-SMF: start a home-routed PDU session (3GPP TS 23.502 clause 4.3.2.2.2).
+   * Keeps what Nsmf_PDUSession_Create needs and installs provisional
+   * subscription data so that the V-UPF can be selected and its N4 session
+   * established first (steps 4-5); the H-SMF authorizes the session later.
+   * @param [smreq] Create SM Context Request from the AMF (with hSmfUri)
+   * @param [sp] PDU session
+   */
+  void prepare_home_routed_session(
+      const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
+      const std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * V-SMF: create the PDU session on the H-SMF (Nsmf_PDUSession_Create over
+   * N16, step 6) with the V-CN Tunnel Info allocated by the V-UPF, and adopt
+   * the parameters it authorizes (UE address, QoS, AMBR, H-CN Tunnel Info,
+   * step 13)
+   * @param [sp] PDU session, with home_routed->vcn_tunnel set
+   * @return true if the H-SMF accepted the PDU session
+   */
+  bool create_home_routed_session(const std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * V-SMF: release the PDU session on the H-SMF (Nsmf_PDUSession_Release)
+   * @param [sp] PDU session
+   */
+  void release_home_routed_session(const std::shared_ptr<smf_pdu_session>& sp);
+
+  /*
+   * H-SMF: answer the pending Nsmf_PDUSession_Create request of the V-SMF
+   * once the H-UPF session is established, then install the downlink N9
+   * tunnel towards the V-UPF
+   * @param [resp] session parameters (UE address, QoS flows, UL F-TEID)
+   * @param [sps] PDU session
+   */
+  void send_home_routed_create_response(
+      const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
+      const std::shared_ptr<smf_pdu_session>& sps);
 
  private:
   void cleanup_udm_session(

@@ -237,10 +237,25 @@ pfcp::create_far smf_session_procedure::pfcp_create_far(
   // ACCESS is for downlink, CORE for uplink
   if (edge->uplink) {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_CORE;
+
+    // Home-routed V-UPF: no H-CN Tunnel Info before the H-SMF answers. Drop
+    // rather than break out on N6 until the N4 Session Modification of 3GPP
+    // TS 23.502 clause 4.3.2.2.2 step 13a adds the N9 tunnel.
+    if (is_home_routed_n9(edge) && !sps->home_routed->hcn_tunnel.teid) {
+      apply_action.forw = 0;
+      apply_action.drop = 1;
+      create_far.set(edge->far_id);
+      create_far.set(apply_action);
+      return create_far;
+    }
   } else {
     destination_interface.interface_value = pfcp::INTERFACE_VALUE_ACCESS;
 
-    if (cfg.enable_dl_pdr_in_session_establishment()) {
+    // Home-routed V-UPF: the DL FAR exists from the N4 Session Establishment,
+    // before the AN Tunnel Info is known (3GPP TS 23.502 clause 4.3.2.2.2
+    // step 19a)
+    if (cfg.enable_dl_pdr_in_session_establishment() ||
+        (sps->is_home_routed_visited() && edge->next_hop_fteid.is_zero())) {
       apply_action.forw = 0;
       apply_action.drop = 1;
       create_far.set(edge->far_id);
@@ -323,7 +338,19 @@ pfcp::pdi smf_session_procedure::pfcp_build_pdi(
   UPInterfaceType n9_type;
   n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
-  if (edge->type != n6_type) {
+  const bool home_routed_n9 = is_home_routed_n9(edge);
+  if (home_routed_n9) {
+    // Downlink from the H-UPF. The V-UPF allocates the V-CN Tunnel Info in the
+    // N4 Session Establishment (3GPP TS 23.502 clause 4.3.2.2.2 step 5b, 3GPP
+    // TS 29.244 clause 5.5.3); afterwards the PDR keeps that F-TEID.
+    if (sps->home_routed->vcn_tunnel.teid) {
+      local_fteid = sps->home_routed->vcn_tunnel;
+    } else {
+      local_fteid.ch = 1;
+      local_fteid.v4 = 1;
+    }
+    pdi.set(local_fteid);
+  } else if (edge->type != n6_type) {
     local_fteid = pfcp_prepare_fteid(edge->fteid, up_features.ftup, cfg);
     // in UPLINK always choose ID
     if (edge->uplink) {
@@ -332,17 +359,19 @@ pfcp::pdi smf_session_procedure::pfcp_build_pdi(
     pdi.set(local_fteid);
   }
 
-  // UE IP address
-  if (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
-      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
-      sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) {
+  // UE IP address. The V-SMF of a home-routed session learns it from the
+  // H-SMF only after the N4 Session Establishment, and adds it then.
+  if ((sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4 ||
+       sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6 ||
+       sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) &&
+      (sps->ipv4 || sps->ipv6 || !sps->is_home_routed_visited())) {
     pdi.set(pfcp_ue_ip_address(edge));
   }
 
   if (edge->type == n3_type) {
     source_interface_type.interface_type_value =
         pfcp::_3GPP_INTERFACE_TYPE_N3_3GPP_ACCESS;
-  } else if (edge->type == n9_type) {
+  } else if (edge->type == n9_type || home_routed_n9) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
   }
 
@@ -421,8 +450,13 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   // do not remove outer header in dl direction
   // also we dont add this information if we use DL PDR in session establishment
   // as we update it later anyway
+  // Home-routed V-UPF: the core side is the N9 tunnel, which is GTP-U too
+  // (3GPP TS 23.501 clause 4.2.4)
+  // The N9 F-TEID of a home-routed V-UPF is allocated in the N4 Session
+  // Establishment (CHOOSE), so its outer header removal is always needed.
   const bool tunnelled =
-      edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment();
+      is_home_routed_n9(edge) ||
+      (edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment());
 
   pfcp::pdi pdi = pfcp_build_pdi(edge, tunnelled);
 
@@ -541,7 +575,7 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
 
   // Unlike the Create PDR there is no DL-PDR-in-establishment exception here:
   // by now the tunnel exists, so the QFI and the header removal always apply.
-  const bool tunnelled = edge->type != n6_type;
+  const bool tunnelled = edge->type != n6_type || is_home_routed_n9(edge);
 
   pfcp::pdi pdi = pfcp_build_pdi(edge, tunnelled);
 
@@ -633,12 +667,32 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
 }
 
 //------------------------------------------------------------------------------
+bool smf_session_procedure::is_home_routed_n9(
+    const std::shared_ptr<qos_upf_edge>& edge) const {
+  // Home-routed roaming, V-SMF: the core side of the V-UPF is the N9 tunnel
+  // to the H-UPF (3GPP TS 23.501 clause 4.2.4), so its "N6" edge carries
+  // GTP-U
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+  return sps && sps->is_home_routed_visited() && edge->uplink &&
+         edge->type == n6_type;
+}
+
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
     const std::shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
+  if (is_home_routed_n9(edge)) {
+    // V-UPF uplink: N9 tunnel to the H-UPF instead of N6
+    outer_header.outer_header_creation_description =
+        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
+    outer_header.teid         = sps->home_routed->hcn_tunnel.teid;
+    outer_header.ipv4_address = sps->home_routed->hcn_tunnel.ipv4_address;
+    return true;
+  }
   if (edge->type != n6_type) {
     outer_header.outer_header_creation_description =
         OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
@@ -1049,6 +1103,23 @@ session_create_sm_context_procedure::send_n4_session_establishment_request() {
         "Adding DL PDR and FAR during PFCP session establishment");
   }
 
+  if (sps->is_home_routed_visited() &&
+      !upf_cfg.enable_dl_pdr_in_session_establishment()) {
+    // Home-routed V-UPF (3GPP TS 23.502 clause 4.3.2.2.2 step 5): create the
+    // N9 DL PDR now, so that the V-UPF allocates the V-CN Tunnel Info sent to
+    // the H-SMF in step 6. Its DL FAR drops until the AN Tunnel Info is
+    // known (step 19a).
+    for (const auto& dl_edge : dl_edges) {
+      n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
+      }
+    }
+    for (const auto& ul_edge : ul_edges) {
+      n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
+    }
+  }
+
   // TODO: verify whether N4 SessionID should be included in PDR and FAR
   // (Section 5.8.2.11@3GPP TS 23.501)
 
@@ -1246,6 +1317,11 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   std::vector<pfcp::qfi_t> used_qfis =
       associate_fteid_with_created_pdrs(resp.pfcp_ies.created_pdrs, dl_edges);
 
+  if (sps->is_home_routed_visited() && !sps->home_routed->vcn_tunnel.teid) {
+    return home_routed_after_establishment(
+        resp, sc, dl_edges, ul_edges, current_upf, used_qfis);
+  }
+
   UPInterfaceType n9_type;
   n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
   // covers the case that UL CL is returned from algorithm, but not all TEIDs
@@ -1282,9 +1358,15 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
     return send_n4_session_establishment_request();
   }
 
+  return finish_establishment(used_qfis, up_features.ftup);
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code session_create_sm_context_procedure::finish_establishment(
+    const std::vector<pfcp::qfi_t>& used_qfis, bool ftup) {
   auto all_qfis = sps->get_session_handler()->get_all_qfis();
 
-  if (up_features.ftup) {
+  if (ftup) {
     check_if_all_qfis_are_handled(all_qfis, used_qfis);
   } else {
     // If UPF does not support TEID Creation then set all qfis to be updated in
@@ -1298,6 +1380,134 @@ smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
   }
 
   return smf_procedure_code::OK;
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code
+session_create_sm_context_procedure::home_routed_after_establishment(
+    itti_n4_session_establishment_response& resp,
+    std::shared_ptr<smf::smf_context> sc,
+    const std::vector<std::shared_ptr<qos_upf_edge>>& dl_edges,
+    const std::vector<std::shared_ptr<qos_upf_edge>>& ul_edges,
+    const std::shared_ptr<pfcp_association>& current_upf,
+    const std::vector<pfcp::qfi_t>& used_qfis) {
+  auto hr = sps->home_routed;
+
+  // Step 5b (3GPP TS 23.502 clause 4.3.2.2.2): the V-UPF provides the CN
+  // Tunnel Info; the N9 one is in the Created PDR of the N9 DL PDR (3GPP TS
+  // 29.244 clause 7.5.3.2)
+  for (const auto& created : resp.pfcp_ies.created_pdrs) {
+    pfcp::pdr_id_t pdr_id = {};
+    pfcp::fteid_t fteid   = {};
+    if (!created.get(pdr_id) || !created.get(fteid)) continue;
+    for (const auto& ul_edge : ul_edges) {
+      if (is_home_routed_n9(ul_edge) && ul_edge->pdr_id == pdr_id)
+        hr->vcn_tunnel = fteid;
+    }
+  }
+  if (!hr->vcn_tunnel.teid) {
+    Logger::smf_app().warn(
+        "Home-routed PDU session: the V-UPF did not allocate the N9 F-TEID");
+    n11_triggered_pending->res.set_cause(k5gsmCauseNetworkFailure);
+    release_home_routed_n4_session(current_upf);
+    return smf_procedure_code::ERROR;
+  }
+
+  // Steps 6 and 13: Nsmf_PDUSession_Create to the H-SMF
+  if (!sc->create_home_routed_session(sps)) {
+    n11_triggered_pending->res.set_cause(k5gsmCauseNetworkFailure);
+    release_home_routed_n4_session(current_upf);
+    return smf_procedure_code::ERROR;
+  }
+
+  // The UE address comes from the home PLMN pool of the H-SMF
+  paa_t paa                             = {};
+  paa.pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_IPV4;
+  paa.ipv4_address                      = hr->ue_ipv4;
+  sps->set(paa);
+  n11_triggered_pending->res.set_paa(paa);
+  Logger::smf_app().info(
+      "Home-routed PDU session: UE IPv4 Address %s allocated by the H-SMF",
+      inet_ntoa(hr->ue_ipv4));
+
+  // QoS Flow level QoS parameters authorized by the H-SMF, sent to the UE and
+  // the (R)AN. QoS enforcement in the V-UPF on them is not expected (step 13,
+  // NOTE 2).
+  subscribed_default_qos_t qos = {};
+  sc->get_default_qos(sps->get_snssai(), sps->get_dnn(), qos);
+  for (const auto& edges : {dl_edges, ul_edges}) {
+    for (const auto& edge : edges) {
+      edge->qos_profile.setR5qi(qos._5qi);
+      auto arp = edge->qos_profile.getArp();
+      arp.setPriorityLevel(qos.arp.priority_level);
+      edge->qos_profile.setArp(arp);
+    }
+  }
+
+  // Steps 13a-13b: N4 Session Modification with the V-UPF, with the rules to
+  // forward UL traffic to the H-UPF over N9 and the UE address
+  hr_used_qfis       = used_qfis;
+  hr_ftup            = current_upf->function_features.second.ftup;
+  n4_hr_modification = std::make_shared<itti_n4_session_modification_request>(
+      TASK_SMF_APP, TASK_SMF_N4);
+  n4_hr_modification->seid    = sps->up_fseid.seid;
+  n4_hr_modification->trxn_id = this->trxn_id;
+  n4_hr_modification->r_endpoint =
+      endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
+  for (const auto& ul_edge : ul_edges) {
+    n4_hr_modification->pfcp_ies.set(pfcp_update_far(ul_edge));
+    n4_hr_modification->pfcp_ies.set(pfcp_update_pdr(ul_edge));
+  }
+  for (const auto& dl_edge : dl_edges) {
+    n4_hr_modification->pfcp_ies.set(pfcp_update_pdr(dl_edge));
+  }
+  Logger::smf_app().info(
+      "Sending ITTI message %s to task TASK_SMF_N4",
+      n4_hr_modification->get_msg_name());
+  if (itti_inst->send_msg(n4_hr_modification) != RETURNok) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        n4_hr_modification->get_msg_name());
+    n11_triggered_pending->res.set_cause(k5gsmCauseNetworkFailure);
+    return smf_procedure_code::ERROR;
+  }
+  return smf_procedure_code::CONTINUE;
+}
+
+//------------------------------------------------------------------------------
+smf_procedure_code session_create_sm_context_procedure::handle_itti_msg(
+    itti_n4_session_modification_response& resp,
+    std::shared_ptr<smf::smf_context> sc) {
+  // Only the home-routed V-SMF modifies the N4 session during the
+  // establishment (3GPP TS 23.502 clause 4.3.2.2.2 step 13b)
+  pfcp::cause_t cause = {};
+  resp.pfcp_ies.get(cause);
+  if (cause.cause_value != pfcp::CAUSE_VALUE_REQUEST_ACCEPTED) {
+    Logger::smf_app().warn(
+        "Home-routed PDU session: the V-UPF rejected the N9 forwarding rules");
+    n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
+    return smf_procedure_code::ERROR;
+  }
+  return finish_establishment(hr_used_qfis, hr_ftup);
+}
+
+//------------------------------------------------------------------------------
+void session_create_sm_context_procedure::release_home_routed_n4_session(
+    const std::shared_ptr<pfcp_association>& current_upf) {
+  // The PDU session is rejected after the V-UPF accepted its N4 session:
+  // delete it (3GPP TS 23.502 clause 4.3.2.2.2 step 21). Nothing waits for
+  // the response.
+  auto deletion = std::make_shared<itti_n4_session_deletion_request>(
+      TASK_SMF_APP, TASK_SMF_N4);
+  deletion->seid    = sps->up_fseid.seid;
+  deletion->trxn_id = this->trxn_id;
+  deletion->r_endpoint =
+      endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
+  if (itti_inst->send_msg(deletion) != RETURNok) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        deletion->get_msg_name());
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -1335,7 +1545,18 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
   n4_triggered->r_endpoint =
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
+  // Home-routed V-UPF: the DL FAR and the N9 DL PDR exist since the N4
+  // Session Establishment; only the AN Tunnel Info is added (3GPP TS 23.502
+  // clause 4.3.2.2.2 step 19a)
+  const bool home_routed = sps->is_home_routed_visited();
   for (const auto& dl_edge : dl_edges_to_use) {
+    if (home_routed) {
+      n4_triggered->pfcp_ies.set(pfcp_update_far(dl_edge));
+      if (upf_cfg.enable_qers()) {
+        n4_triggered->pfcp_ies.set(pfcp_update_qer(dl_edge));
+      }
+      continue;
+    }
     n4_triggered->pfcp_ies.set(pfcp_create_far(dl_edge));
     if (upf_cfg.enable_qers()) {
       n4_triggered->pfcp_ies.set(pfcp_create_qer(dl_edge));
@@ -1343,7 +1564,7 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
   }
 
   for (const auto& ul_edge : ul_edges_to_use) {
-    n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
+    if (!home_routed) n4_triggered->pfcp_ies.set(pfcp_create_pdr(ul_edge));
   }
 
   Logger::smf_app().info(
