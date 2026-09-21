@@ -162,7 +162,8 @@ void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
 
   m_session_handler->deallocate_resources();
 
-  if (ipv4 && !dnn.empty()) {
+  // The V-SMF of a home-routed session uses an address of the H-SMF pool
+  if (ipv4 && !dnn.empty() && !is_home_routed_visited()) {
     paa_dynamic::get_instance().release_paa(dnn, ipv4_address);
   }
   clear();
@@ -922,6 +923,28 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     Logger::smf_app().warn("PDU session is already existed!");
   }
 
+  // Home-routed roaming (TS 23.502 4.3.2.2.2): the AMF provided the H-SMF.
+  // The H-SMF authorizes the session and allocates the UE address; the
+  // V-SMF only controls the V-UPF.
+  pfcp::fteid_t vcn_tunnel = {};
+  if (smreq->req.get_vcn_tunnel(vcn_tunnel)) {
+    sp->home_routed              = std::make_shared<home_routed_session>();
+    sp->home_routed->anchor      = true;
+    sp->home_routed->vcn_tunnel  = vcn_tunnel;
+    sp->home_routed->n16_promise_id = smreq->pid;
+    sp->home_routed->n16_resource_id = std::to_string(smreq->scid);
+  } else if (!smreq->req.get_h_smf_uri().empty()) {
+    if (!create_home_routed_session(smreq, sp)) {
+      remove_pdu_session(pdu_session_id);
+      send_pdu_session_establishment_response_reject(
+          smreq, k5gsmCauseNetworkFailure,
+          pdu_session_application_error_e::
+              PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING,
+          http_status_code::FORBIDDEN);
+      return;
+    }
+  }
+
   // TODO: if "Integrity Protection is required", check UE Integrity Protection
   // Maximum Data Rate
   // TODO: (Optional) Secondary authentication/authorization
@@ -955,6 +978,16 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   paa_t paa    = {};
   Logger::smf_app().debug("UE Address Allocation");
   bool paa_static_ip = false;
+  if (sp->is_home_routed_visited()) {
+    // Allocated by the H-SMF, from the home PLMN address pool
+    paa.pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_IPV4;
+    paa.ipv4_address                      = sp->home_routed->ue_ipv4;
+    set_paa                               = true;
+    paa_static_ip                         = true;
+    Logger::smf_app().info(
+        "Home-routed PDU session: UE IPv4 Address %s allocated by the H-SMF",
+        inet_ntoa(sp->home_routed->ue_ipv4));
+  }
 
   std::shared_ptr<session_management_subscription> ss = {};
   std::shared_ptr<dnn_configuration_t> sdc            = {};
@@ -1284,8 +1317,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   sm_context_response.set_json_data(json_data);
   sm_context_response.set_http_code(http_status_code::CREATED);
 
-  smf_app_inst->trigger_session_create_sm_context_response(
-      sm_context_response, smreq->pid);
+  // The H-SMF answers the V-SMF only once the H-UPF session is established
+  if (!(sp->home_routed && sp->home_routed->anchor)) {
+    smf_app_inst->trigger_session_create_sm_context_response(
+        sm_context_response, smreq->pid);
+  }
 
   // TODO: PDU Session authentication/authorization (Optional)
   // see section 4.3.2.3@3GPP TS 23.502 and section 6.3.1@3GPP TS 24.501
@@ -1317,7 +1353,7 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     // free paa
     paa_t free_paa = {};
     free_paa       = sm_context_resp_pending->res.get_paa();
-    if (free_paa.is_ip_assigned()) {
+    if (free_paa.is_ip_assigned() && !sp->is_home_routed_visited()) {
       switch (sp->pdu_session_type.pdu_session_type) {
         case PDU_SESSION_TYPE_E_IPV4:
         case PDU_SESSION_TYPE_E_IPV4V6:
@@ -1332,6 +1368,14 @@ void smf_context::handle_pdu_session_create_sm_context_request(
     }
     // clear the created context??
     // TODO:
+
+    if (sp->home_routed && sp->home_routed->anchor) {
+      // H-SMF: reject the Nsmf_PDUSession_Create request of the V-SMF
+      smf_app_inst->trigger_http_response(
+          http_status_code::INTERNAL_SERVER_ERROR, smreq->pid,
+          N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+      return;
+    }
 
     // Create PDU Session Establishment Reject and embedded in
     // Namf_Communication_N1N2MessageTransfer Request
@@ -1726,9 +1770,13 @@ bool smf_context::handle_pdu_session_release_complete(
     // TODO: return;
   }
 
-  cleanup_udm_session(
-      sm_context_request->req.get_supi(),
-      sm_context_request->req.get_pdu_session_id(), sp);
+  if (sp->is_home_routed_visited()) {
+    release_home_routed_session(sp);
+  } else {
+    cleanup_udm_session(
+        sm_context_request->req.get_supi(),
+        sm_context_request->req.get_pdu_session_id(), sp);
+  }
 
   Logger::smf_app().debug("Signal the SM Context Status Change");
   std::string status = "RELEASED";
@@ -4435,6 +4483,12 @@ void smf_context::send_pdu_session_create_response(
   std::string n2_sm_info_hex = {};
   uint8_t cause_n1           = {k5gsmCauseUnknown};
 
+  if (sps->home_routed && sps->home_routed->anchor) {
+    // H-SMF: the reply goes to the V-SMF (N16), not to an AMF (N11)
+    send_home_routed_create_response(resp, sps);
+    return;
+  }
+
   if (resp->res.get_cause() != k5gsmCauseRequestAccepted) {
     // PDU Session Establishment Reject
     Logger::smf_app().debug(
@@ -4579,8 +4633,10 @@ void smf_context::send_pdu_session_update_response(
   registered_plmn.setMcc(serving.mcc);
   registered_plmn.setMnc(serving.mnc);
   smf_registration.setPlmnId(registered_plmn);
+  // For a home-routed session the H-SMF, not the V-SMF, registers in the UDM
   if (session_procedure_type == session_management_procedures_type_e::PDU_SESSION_ESTABLISHMENT_UE_REQUESTED &&
-      resp->res.get_cause() == k5gsmCauseRequestAccepted) {
+      resp->res.get_cause() == k5gsmCauseRequestAccepted &&
+      !sps->is_home_routed_visited()) {
     if (!register_with_udm(supi, pdu_session_id, smf_registration))
       Logger::smf_app().error("Home UDM registration failed for established PDU session");
   }
@@ -4885,8 +4941,12 @@ void smf_context::send_pdu_session_release_response(
         Logger::smf_app().info("UE-initiated Deregistration");
         // Deregistration has no NAS PDU Session Release Complete. Clean up
         // the UDM association after the UPF accepts deletion instead.
-        cleanup_udm_session(
-            req->req.get_supi(), req->req.get_pdu_session_id(), sps);
+        if (sps->is_home_routed_visited()) {
+          release_home_routed_session(sps);
+        } else {
+          cleanup_udm_session(
+              req->req.get_supi(), req->req.get_pdu_session_id(), sps);
+        }
         sps->set_pdu_session_status(pdu_session_status_t::Inactive);
         resp->res.set_http_code(http_status_code::NO_CONTENT);
         // clear the resources including addresses allocated to this Session and
@@ -5094,5 +5154,282 @@ void smf_context::unsubscribe_sdm_subscriptions(
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
+// Home-routed roaming (TS 23.502 4.3.2.2.2, TS 29.502 Nsmf_PDUSession)
+//------------------------------------------------------------------------------
+// TEIDs allocated by the V-SMF for the V-UPF N9 tunnel use the upper half of
+// the TEID space, so they cannot collide with TEIDs the V-UPF allocates itself.
+static constexpr uint32_t kHomeRoutedTeidBase = 0x80000000;
+
+static std::string to_string_n9_fteid(const pfcp::fteid_t& fteid) {
+  return fmt::format(
+      "F-TEID ID 0x{:X} - IP: {}", fteid.teid,
+      conv::toString(fteid.ipv4_address));
+}
+
+//------------------------------------------------------------------------------
+bool smf_context::create_home_routed_session(
+    const std::shared_ptr<itti_sbi_create_sm_context_request>& smreq,
+    const std::shared_ptr<smf_pdu_session>& sp) {
+  auto hr       = std::make_shared<home_routed_session>();
+  hr->h_smf_uri = smreq->req.get_h_smf_uri();
+  while (!hr->h_smf_uri.empty() && hr->h_smf_uri.back() == '/')
+    hr->h_smf_uri.pop_back();
+  const std::string dnn = smreq->req.get_dnn();
+  const snssai_t snssai = smreq->req.get_snssai();
+
+  // Step 6: select the V-UPF. It terminates N3 and the N9 tunnel towards the
+  // H-UPF, and has no N6 for this PDU session.
+  upf_selection_criteria criteria;
+  criteria.dnn = dnn;
+  xgpp_conv::snssai_to_model(snssai, criteria.snssai);
+  criteria.qos_profile.setR5qi(DEFAULT_5QI);
+  auto graph = pfcp_associations::get_instance().select_up_node(criteria);
+  std::vector<std::shared_ptr<qos_upf_edge>> access_edges;
+  if (graph) access_edges = graph->get_access_edges();
+  if (access_edges.empty() || !access_edges[0]->source_upf) {
+    Logger::smf_app().warn("Home-routed PDU session: no V-UPF available");
+    return false;
+  }
+  const auto& v_upf        = access_edges[0]->source_upf;
+  const auto& v_upf_config = v_upf->get_upf_config();
+  hr->vcn_tunnel.v4        = 1;
+  hr->vcn_tunnel.ipv4_address =
+      v_upf_config.get_local_n3_ip().empty() ?
+          v_upf->node_id.u1.ipv4_address :
+          conv::fromString(v_upf_config.get_local_n3_ip());
+  // CN tunnel info allocated by the CP function (TS 29.244 5.5.3)
+  hr->vcn_tunnel.teid = kHomeRoutedTeidBase | smf_app_inst->generate_teid();
+
+  // Step 7: Nsmf_PDUSession_Create towards the H-SMF over N16
+  plmn_t serving = smreq->req.get_plmn();
+  nlohmann::json create_data;
+  create_data["supi"]         = smreq->req.get_supi();
+  create_data["pduSessionId"] = smreq->req.get_pdu_session_id();
+  create_data["dnn"]          = dnn;
+  create_data["sNssai"]["sst"] = snssai.sst;
+  if (!snssai.sd.empty()) create_data["sNssai"]["sd"] = snssai.sd;
+  create_data["vsmfId"]                  = smf_app_inst->get_smf_instance_id();
+  create_data["servingNetwork"]["mcc"]   = serving.mcc;
+  create_data["servingNetwork"]["mnc"]   = serving.mnc;
+  create_data["requestType"]             = "INITIAL_REQUEST";
+  create_data["anType"]                  = "3GPP_ACCESS";
+  create_data["ratType"]                 = "NR";
+  create_data["vcnTunnelInfo"]["ipv4Addr"] =
+      conv::toString(hr->vcn_tunnel.ipv4_address);
+  create_data["vcnTunnelInfo"]["gtpTeid"] =
+      fmt::format("{:08X}", hr->vcn_tunnel.teid);
+  create_data["vsmfPduSessionUri"] =
+      smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
+      oai::smf::api::smf_sbi_helper::SmfPduSessionBase() +
+      "/vsmf-pdu-sessions/" + std::to_string(smreq->scid);
+
+  Logger::smf_app().info(
+      "Home-routed PDU session: Nsmf_PDUSession_Create to H-SMF %s, V-UPF N9 "
+      "%s",
+      hr->h_smf_uri.c_str(),
+      to_string_n9_fteid(hr->vcn_tunnel).c_str());
+  auto resp = smf_sbi_inst->send_roaming_request(
+      method_e::POST, hr->h_smf_uri + "/pdu-sessions", create_data.dump());
+  if (resp.status_code != http_status_code::CREATED) {
+    Logger::smf_app().warn(
+        "H-SMF rejected the PDU session (HTTP %d) %s", resp.status_code,
+        resp.body.c_str());
+    return false;
+  }
+
+  // Step 13: the H-SMF authorized the session
+  auto dnn_config = std::make_shared<dnn_configuration_t>();
+  try {
+    const auto created = nlohmann::json::parse(resp.body);
+    const auto& hcn    = created.at("hcnTunnelInfo");
+    hr->hcn_tunnel.v4  = 1;
+    hr->hcn_tunnel.ipv4_address =
+        conv::fromString(hcn.at("ipv4Addr").get<std::string>());
+    hr->hcn_tunnel.teid =
+        std::stoul(hcn.at("gtpTeid").get<std::string>(), nullptr, 16);
+    if (inet_aton(
+            created.at("ueIpv4Address").get<std::string>().c_str(),
+            &hr->ue_ipv4) == 0)
+      throw std::invalid_argument("invalid ueIpv4Address");
+
+    // Keep the QoS and AMBR authorized by the home network as the
+    // subscription data of this DNN
+    dnn_config->pdu_session_types.default_session_type.pdu_session_type =
+        PDU_SESSION_TYPE_E_IPV4;
+    dnn_config->ssc_modes.default_ssc_mode.ssc_mode = 1;
+    dnn_config->_5g_qos_profile._5qi               = DEFAULT_5QI;
+    dnn_config->_5g_qos_profile.arp.priority_level = 1;
+    dnn_config->_5g_qos_profile.arp.preempt_cap    = "NOT_PREEMPT";
+    dnn_config->_5g_qos_profile.arp.preempt_vuln   = "NOT_PREEMPTABLE";
+    dnn_config->_5g_qos_profile.priority_level     = 0;
+    dnn_config->session_ambr.uplink =
+        created.at("sessionAmbr").at("uplink").get<std::string>();
+    dnn_config->session_ambr.downlink =
+        created.at("sessionAmbr").at("downlink").get<std::string>();
+    if (created.contains("qosFlowsSetupList") &&
+        !created["qosFlowsSetupList"].empty() &&
+        created["qosFlowsSetupList"][0].contains("qosFlowProfile")) {
+      const auto& profile = created["qosFlowsSetupList"][0]["qosFlowProfile"];
+      dnn_config->_5g_qos_profile._5qi = profile.value("5qi", DEFAULT_5QI);
+      if (profile.contains("arp")) {
+        const auto& arp = profile["arp"];
+        dnn_config->_5g_qos_profile.arp.priority_level =
+            arp.value("priorityLevel", 1);
+        dnn_config->_5g_qos_profile.arp.preempt_cap =
+            arp.value("preemptCap", "NOT_PREEMPT");
+        dnn_config->_5g_qos_profile.arp.preempt_vuln =
+            arp.value("preemptVuln", "NOT_PREEMPTABLE");
+      }
+    }
+  } catch (const std::exception& e) {
+    Logger::smf_app().warn(
+        "Invalid Nsmf_PDUSession_Create response from the H-SMF: %s",
+        e.what());
+    return false;
+  }
+  auto location = resp.headers.find("location");
+  if (location == resp.headers.end() || location->second.empty()) {
+    Logger::smf_app().warn("H-SMF did not return the PDU session resource");
+    return false;
+  }
+  hr->peer_session_uri = location->second;
+
+  auto subscription = std::make_shared<session_management_subscription>(snssai);
+  subscription->insert_dnn_configuration(dnn, dnn_config);
+  insert_dnn_subscription(snssai, dnn, subscription);
+  sp->home_routed = hr;
+
+  Logger::smf_app().info(
+      "Home-routed PDU session created on the H-SMF: %s, UE IPv4 %s, H-UPF N9 "
+      "%s, Session AMBR UL %s DL %s, 5QI %d",
+      hr->peer_session_uri.c_str(), inet_ntoa(hr->ue_ipv4),
+      to_string_n9_fteid(hr->hcn_tunnel).c_str(),
+      dnn_config->session_ambr.uplink.c_str(),
+      dnn_config->session_ambr.downlink.c_str(),
+      dnn_config->_5g_qos_profile._5qi);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void smf_context::release_home_routed_session(
+    const std::shared_ptr<smf_pdu_session>& sp) {
+  if (!sp->is_home_routed_visited() ||
+      sp->home_routed->peer_session_uri.empty())
+    return;
+  const auto uri = sp->home_routed->peer_session_uri + "/release";
+  // Release only once, whichever of the release paths comes first
+  sp->home_routed->peer_session_uri.clear();
+  Logger::smf_app().info(
+      "Home-routed PDU session: Nsmf_PDUSession_Release to H-SMF %s",
+      uri.c_str());
+  auto resp = smf_sbi_inst->send_roaming_request(method_e::POST, uri, "{}");
+  if (resp.status_code != http_status_code::OK &&
+      resp.status_code != http_status_code::NO_CONTENT) {
+    Logger::smf_app().warn(
+        "H-SMF PDU session release failed (HTTP %d)", resp.status_code);
+  }
+}
+
+//------------------------------------------------------------------------------
+void smf_context::send_home_routed_create_response(
+    const std::shared_ptr<itti_sbi_create_sm_context_response>& resp,
+    const std::shared_ptr<smf_pdu_session>& sps) {
+  auto hr      = sps->home_routed;
+  uint32_t pid = hr->n16_promise_id;
+
+  std::map<uint8_t, qos_flow_context_updated> flows;
+  resp->res.get_all_qos_flow_context_created(flows);
+  if (resp->res.get_cause() != k5gsmCauseRequestAccepted || flows.empty()) {
+    Logger::smf_app().warn(
+        "Home-routed PDU session: H-UPF session establishment failed");
+    smf_app_inst->trigger_http_response(
+        http_status_code::INTERNAL_SERVER_ERROR, pid,
+        N11_SESSION_CREATE_SM_CONTEXT_RESPONSE);
+    return;
+  }
+  const auto& flow = flows.begin()->second;
+  hr->hcn_tunnel   = flow.ul_fteid;
+
+  subscribed_default_qos_t default_qos = {};
+  get_default_qos(sps->get_snssai(), sps->get_dnn(), default_qos);
+  session_ambr_t session_ambr = {};
+  get_session_ambr(session_ambr, sps->get_snssai(), sps->get_dnn());
+  paa_t paa = resp->res.get_paa();
+
+  // PduSessionCreatedData (TS 29.502)
+  nlohmann::json created;
+  created["pduSessionType"]           = "IPV4";
+  created["sscMode"]                  = "SSC_MODE_1";
+  created["hcnTunnelInfo"]["ipv4Addr"] =
+      conv::toString(flow.ul_fteid.ipv4_address);
+  created["hcnTunnelInfo"]["gtpTeid"] =
+      fmt::format("{:08X}", flow.ul_fteid.teid);
+  created["sessionAmbr"]["uplink"]   = session_ambr.uplink;
+  created["sessionAmbr"]["downlink"] = session_ambr.downlink;
+  nlohmann::json qos_flow;
+  qos_flow["qfi"]                          = flow.qfi.qfi;
+  qos_flow["qosFlowProfile"]["5qi"]        = default_qos._5qi;
+  qos_flow["qosFlowProfile"]["arp"]["priorityLevel"] =
+      default_qos.arp.priority_level;
+  qos_flow["qosFlowProfile"]["arp"]["preemptCap"] = default_qos.arp.preempt_cap;
+  qos_flow["qosFlowProfile"]["arp"]["preemptVuln"] =
+      default_qos.arp.preempt_vuln;
+  created["qosFlowsSetupList"] = nlohmann::json::array({qos_flow});
+  created["ueIpv4Address"]     = conv::toString(paa.ipv4_address);
+  created["hSmfInstanceId"]    = smf_app_inst->get_smf_instance_id();
+  created["pduSessionId"]      = sps->get_pdu_session_id();
+  created["sNssai"]["sst"]     = sps->get_snssai().sst;
+  if (!sps->get_snssai().sd.empty())
+    created["sNssai"]["sd"] = sps->get_snssai().sd;
+
+  const std::string location =
+      smf_cfg->local().get_sbi().get_url(smf_cfg->enable_tls()) +
+      oai::smf::api::smf_sbi_helper::SmfPduSessionBase() + "/pdu-sessions/" +
+      hr->n16_resource_id;
+  Logger::smf_app().info(
+      "Home-routed PDU session: reply to the V-SMF, UE IPv4 %s, H-UPF N9 %s, "
+      "resource %s",
+      conv::toString(paa.ipv4_address).c_str(),
+      to_string_n9_fteid(hr->hcn_tunnel).c_str(),
+      location.c_str());
+  nlohmann::json reply;
+  reply["http_code"]       = http_status_code::CREATED;
+  reply["json_data"]       = created;
+  reply["smf_context_uri"] = location;
+  smf_app_inst->make_future_ready(reply, pid);
+
+  // Step 16 (TS 23.502 4.3.2.2.2): the downlink N9 tunnel of the V-UPF takes
+  // the place of the AN tunnel. Update the H-UPF like for a non-roaming
+  // session, which also registers the SMF in the UDM.
+  auto update_req = std::make_shared<itti_sbi_update_sm_context_request>(
+      TASK_SMF_APP, TASK_SMF_APP, 0, hr->n16_resource_id);
+  update_req->req.set_supi(resp->res.get_supi());
+  update_req->req.set_pdu_session_id(sps->get_pdu_session_id());
+  update_req->req.set_dnn(sps->get_dnn());
+  update_req->req.set_snssai(sps->get_snssai());
+  update_req->req.set_dl_fteid(hr->vcn_tunnel);
+  update_req->req.add_qfi(flow.qfi);
+  auto update_resp = std::make_shared<itti_sbi_update_sm_context_response>(
+      TASK_SMF_APP, TASK_SMF_APP, 0);
+  xgpp_conv::update_sm_context_response_from_ctx_request(
+      update_req, update_resp);
+  update_resp->res.set_pdu_session_type(
+      sps->get_pdu_session_type().pdu_session_type);
+
+  std::shared_ptr<smf_pdu_session> session = sps;
+  auto proc = std::make_shared<session_update_sm_context_procedure>(session);
+  std::shared_ptr<smf_procedure> sproc = proc;
+  proc->session_procedure_type =
+      session_management_procedures_type_e::PDU_SESSION_ESTABLISHMENT_UE_REQUESTED;
+  insert_procedure(sproc);
+  if (proc->run(update_req, update_resp, shared_from_this()) ==
+      smf_procedure_code::ERROR) {
+    Logger::smf_app().warn(
+        "Home-routed PDU session: could not install the N9 downlink tunnel");
+    remove_procedure(sproc.get());
   }
 }

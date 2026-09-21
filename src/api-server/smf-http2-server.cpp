@@ -318,6 +318,67 @@ void smf_http2_server::start() {
         });
       });
 
+  // Nsmf_PDUSession_Create (H-SMF, home-routed roaming over N16)
+  server.handle(
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathPduSessions,
+      [&](const request& request, const response& response) {
+        auto body = std::make_shared<std::string>();
+        request.on_data([&, body](const uint8_t* data, std::size_t len) {
+          if (len > 0) {
+            body->append(reinterpret_cast<const char*>(data), len);
+            return;
+          }
+          Logger::smf_api_server().info(
+              "Received a PDU session create request from a V-SMF.");
+          Logger::smf_api_server().debug("Message content \n %s", body->c_str());
+          if (request.method().compare("POST") != 0) {
+            response.write_head(http_status_code::METHOD_NOT_ALLOWED);
+            response.end();
+            return;
+          }
+          nlohmann::json create_data = {};
+          try {
+            create_data = nlohmann::json::parse(*body);
+          } catch (nlohmann::detail::exception& e) {
+            Logger::smf_api_server().warn(
+                "Can not parse the json data (error: %s)!", e.what());
+            response.write_head(http_status_code::BAD_REQUEST);
+            response.end();
+            return;
+          }
+          this->create_pdu_session_handler(create_data, response);
+        });
+      });
+
+  // Nsmf_PDUSession_Release (H-SMF), {pduSessionRef}/release
+  server.handle(
+      smf_sbi_helper::SmfPduSessionBase() +
+          smf_sbi_helper::SmfPduSessionPathPduSessions + "/",
+      [&](const request& request, const response& response) {
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          if (len > 0) return;
+          std::vector<std::string> split_result;
+          boost::split(
+              split_result, request.uri().path, boost::is_any_of("/"));
+          // "", nsmf-pdusession, v1, pdu-sessions, {pduSessionRef}, release
+          if (split_result.size() != 6 ||
+              split_result.back().compare("release") != 0) {
+            response.write_head(http_status_code::NOT_IMPLEMENTED);
+            response.end();
+            return;
+          }
+          if (request.method().compare("POST") != 0) {
+            response.write_head(http_status_code::METHOD_NOT_ALLOWED);
+            response.end();
+            return;
+          }
+          Logger::smf_api_server().info(
+              "Received a PDU session release request from a V-SMF.");
+          this->release_pdu_session_handler(split_result[4], response);
+        });
+      });
+
   // NFStatusNotify
   server.handle(
       smf_sbi_helper::SmfStatusNotifyBase() +
@@ -765,6 +826,61 @@ void smf_http2_server::update_sm_context_handler(
     response.write_head(http_code);
     response.end();
   }
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::create_pdu_session_handler(
+    const nlohmann::json& pdu_session_create_data, const response& response) {
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f = p->get_future();
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  m_smf_app->add_promise(promise_id, p);
+
+  m_smf_app->handle_nsmf_pdu_session_create(
+      pdu_session_create_data, promise_id);
+
+  // The reply follows the N4 Session Establishment with the H-UPF
+  if (f.wait_for(boost::chrono::milliseconds(N16_RESPONSE_TIMEOUT_MS)) !=
+      boost::future_status::ready) {
+    Logger::smf_api_server().warn("No response for PDU session %d", promise_id);
+    response.write_head(http_status_code::GATEWAY_TIMEOUT);
+    response.end();
+    return;
+  }
+  nlohmann::json result = f.get();
+  uint16_t http_code    = result.value("http_code", 500);
+  header_map h;
+  h.emplace(
+      "content-type",
+      header_value{result.value("json_format", "application/json")});
+  if (result.contains("smf_context_uri")) {
+    h.emplace(
+        "location",
+        header_value{result["smf_context_uri"].get<std::string>()});
+  }
+  response.write_head(http_code, h);
+  response.end(result.contains("json_data") ? result["json_data"].dump() : "");
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::release_pdu_session_handler(
+    const std::string& pdu_session_ref, const response& response) {
+  boost::shared_ptr<boost::promise<nlohmann::json>> p =
+      boost::make_shared<boost::promise<nlohmann::json>>();
+  boost::shared_future<nlohmann::json> f = p->get_future();
+  uint32_t promise_id = m_smf_app->generate_promise_id();
+  m_smf_app->add_promise(promise_id, p);
+
+  m_smf_app->handle_nsmf_pdu_session_release(pdu_session_ref, promise_id);
+
+  uint16_t http_code = http_status_code::GATEWAY_TIMEOUT;
+  if (f.wait_for(boost::chrono::milliseconds(N16_RESPONSE_TIMEOUT_MS)) ==
+      boost::future_status::ready) {
+    http_code = f.get().value("http_code", 500);
+  }
+  response.write_head(http_code);
+  response.end();
 }
 
 //------------------------------------------------------------------------------

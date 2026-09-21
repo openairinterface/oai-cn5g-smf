@@ -5,6 +5,8 @@
 #ifndef FILE_SMF_MSG_HPP_SEEN
 #define FILE_SMF_MSG_HPP_SEEN
 
+#include <optional>
+
 #include "3gpp_23.003.h"
 #include "3gpp_24.007.hpp"
 #include "3gpp_24.501.hpp"
@@ -268,9 +270,18 @@ class pdu_session_create_sm_context_request
   void get_an_type(std::string& an_type) const;
   void set_guami(const guami_5g_t& guami);
   void get_guami(guami_5g_t& guami) const;
+  // Home-routed roaming, V-SMF: Nsmf_PDUSession API URI of the H-SMF
+  void set_h_smf_uri(const std::string& uri);
+  std::string get_h_smf_uri() const;
+  // Home-routed roaming, H-SMF: request received from a V-SMF over N16 with
+  // the V-UPF N9 downlink tunnel (vcnTunnelInfo)
+  void set_vcn_tunnel(const pfcp::fteid_t& vcn_tunnel);
+  bool get_vcn_tunnel(pfcp::fteid_t& vcn_tunnel) const;
 
  private:
   bool m_unauthenticated_supi;
+  std::string m_h_smf_uri;
+  std::optional<pfcp::fteid_t> m_vcn_tunnel;
   std::string m_serving_nf_id;  // AMF Id
   std::string m_request_type;
   std::string m_rat_type;

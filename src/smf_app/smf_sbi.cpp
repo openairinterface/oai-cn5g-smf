@@ -618,6 +618,33 @@ void smf_sbi::subscribe_upf_status_notify(
 }
 
 //------------------------------------------------------------------------------
+response smf_sbi::send_roaming_request(
+    method_e method, const std::string& uri, const std::string& body) {
+  request req = body.empty() ? request{} :
+                               http_client_inst->prepare_json_request(uri, body);
+  req.uri = uri;
+  // Target apiRoot: scheme://authority, the rest of the URI is the path
+  const auto authority = uri.find("://");
+  const auto path =
+      authority == std::string::npos ? authority : uri.find('/', authority + 3);
+  if (smf_cfg->roaming_enabled && !smf_cfg->local_sepp_root.empty() &&
+      authority != std::string::npos) {
+    const auto root = uri.substr(0, path);
+    req.uri = smf_cfg->local_sepp_root +
+              (path == std::string::npos ? "" : uri.substr(path));
+    req.headers["3gpp-Sbi-Target-apiRoot"] = root;
+    Logger::smf_sbi().info(
+        "Send inter-PLMN request to %s via local SEPP %s", root.c_str(),
+        smf_cfg->local_sepp_root.c_str());
+  }
+  Logger::smf_sbi().debug("Request body: %s", body.c_str());
+  auto resp = http_client_inst->send_http_request(method, req);
+  Logger::smf_sbi().debug(
+      "Response code %d, body: %s", resp.status_code, resp.body.c_str());
+  return resp;
+}
+
+//------------------------------------------------------------------------------
 response smf_sbi::send_udm_request(const std::string& supi, method_e method, request req) {
   if (!smf_cfg->roaming_enabled) return http_client_inst->send_http_request(method, req);
   response failure;
@@ -631,6 +658,10 @@ response smf_sbi::send_udm_request(const std::string& supi, method_e method, req
   smf_app_inst->supi_2_smf_context(supi)->get_plmn(serving);
   if (home.mcc == serving.mcc && home.mnc == serving.mnc)
     return http_client_inst->send_http_request(method, req);
+  // H-SMF of a home-routed session: the subscriber's UDM is in this PLMN
+  for (const auto& p : smf_cfg->local_plmns)
+    if (p.mcc == home.mcc && p.mnc == home.mnc)
+      return http_client_inst->send_http_request(method, req);
   bool partner = false, local = false;
   for (const auto& p : smf_cfg->roaming_partners) partner |= p.mcc == home.mcc && p.mnc == home.mnc;
   for (const auto& p : smf_cfg->local_plmns) local |= p.mcc == serving.mcc && p.mnc == serving.mnc;

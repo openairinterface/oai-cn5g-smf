@@ -75,6 +75,8 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
 
 // FOR FUTURE PROMISE
 #define FUTURE_STATUS_TIMEOUT_MS 100
+// Nsmf_PDUSession on the H-SMF answers after its N4 procedure with the H-UPF
+#define N16_RESPONSE_TIMEOUT_MS 5000
 
 // for PFCP
 constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;

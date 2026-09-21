@@ -19,6 +19,10 @@ namespace oai::smf::api {
 
 class smf_sbi_helper : public sbi_helper {
  public:
+  // Nsmf_PDUSession "PDU Sessions" collection of the H-SMF (TS 29.502)
+  static inline const std::string SmfPduSessionPathPduSessions =
+      "/pdu-sessions";
+
   static std::string SmfPduSessionBase() {
     return sbi_helper::SmfPduSessionBase + smf_cfg->sbi_api_version;
   }

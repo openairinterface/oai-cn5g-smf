@@ -48,6 +48,12 @@ class smf_http2_server {
       const SmContextReleaseMessage& smContextReleaseMessage,
       const response& response);
 
+  // Nsmf_PDUSession service of the H-SMF for home-routed roaming (N16)
+  void create_pdu_session_handler(
+      const nlohmann::json& pdu_session_create_data, const response& response);
+  void release_pdu_session_handler(
+      const std::string& pdu_session_ref, const response& response);
+
   void nf_status_notify_handler(
       const NotificationData& notificationData, const response& response);
 

@@ -93,10 +93,10 @@ class smf_session_procedure : public smf_procedure {
   static pfcp::update_qer pfcp_update_qer(
       const std::shared_ptr<qos_upf_edge>& edge);
 
-  static pfcp::update_far pfcp_update_far(
+  pfcp::update_far pfcp_update_far(
       const std::shared_ptr<qos_upf_edge>& edge);
 
-  static bool pfcp_outer_header_creation(
+  bool pfcp_outer_header_creation(
       const std::shared_ptr<qos_upf_edge>& edge,
       pfcp::outer_header_creation_t& outer_header);
 
@@ -149,6 +149,12 @@ class smf_session_procedure : public smf_procedure {
       std::shared_ptr<pfcp_association>& next_upf);
 
   static std::string to_string_fteid(const pfcp::fteid_t& fteid);
+
+  /*
+   * Home-routed roaming, V-SMF: whether this edge of the V-UPF is the N9
+   * tunnel towards the H-UPF
+   */
+  bool is_home_routed_n9(const std::shared_ptr<qos_upf_edge>& edge) const;
 
   static bool is_qfi_served_in_edges(
       const std::vector<pfcp::qfi_t>& qfis,

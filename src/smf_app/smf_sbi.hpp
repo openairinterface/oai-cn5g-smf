@@ -28,6 +28,19 @@ class smf_sbi {
  public:
   smf_sbi();
   virtual ~smf_sbi()             = default;
+
+  /*
+   * Send a request to an NF of a roaming partner (e.g. the H-SMF over N16).
+   * Inter-PLMN signalling goes through the local SEPP, which is told the
+   * producer with the 3gpp-Sbi-Target-apiRoot header (TS 29.500).
+   * @param [method_e] method: HTTP method
+   * @param [const std::string&] uri: absolute URI of the remote resource
+   * @param [const std::string&] body: JSON body, may be empty
+   * @return HTTP response (status_code 0 if the request could not be sent)
+   */
+  oai::http::response send_roaming_request(
+      oai::common::sbi::method_e method, const std::string& uri,
+      const std::string& body);
   smf_sbi(smf_sbi const&)        = delete;
   void operator=(smf_sbi const&) = delete;
 

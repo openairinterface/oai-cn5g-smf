@@ -468,6 +468,31 @@ void pdu_session_create_sm_context_request::get_guami(guami_5g_t& guami) const {
   guami = m_guami;
 }
 
+//-----------------------------------------------------------------------------
+void pdu_session_create_sm_context_request::set_h_smf_uri(
+    const std::string& uri) {
+  m_h_smf_uri = uri;
+}
+
+//-----------------------------------------------------------------------------
+std::string pdu_session_create_sm_context_request::get_h_smf_uri() const {
+  return m_h_smf_uri;
+}
+
+//-----------------------------------------------------------------------------
+void pdu_session_create_sm_context_request::set_vcn_tunnel(
+    const pfcp::fteid_t& vcn_tunnel) {
+  m_vcn_tunnel = vcn_tunnel;
+}
+
+//-----------------------------------------------------------------------------
+bool pdu_session_create_sm_context_request::get_vcn_tunnel(
+    pfcp::fteid_t& vcn_tunnel) const {
+  if (!m_vcn_tunnel.has_value()) return false;
+  vcn_tunnel = m_vcn_tunnel.value();
+  return true;
+}
+
 /*
  * class: PDU Session Create SM Context Response
  */

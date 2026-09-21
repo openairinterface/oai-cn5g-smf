@@ -101,6 +101,14 @@ void xgpp_conv::sm_context_create_from_openapi(
     Logger::smf_app().warn("No Request Type available");
   }
 
+  // H-SMF URI: the AMF selected a home-routed PDU session (TS 29.502)
+  if (context_data.hSmfUriIsSet()) {
+    Logger::smf_app().debug(
+        "Home-routed PDU session, H-SMF URI %s",
+        context_data.getHSmfUri().c_str());
+    pcr.set_h_smf_uri(context_data.getHSmfUri());
+  }
+
   // SMContextStatusUri
   pcr.set_sm_context_status_uri(context_data.getSmContextStatusUri());
   Logger::smf_app().debug(

@@ -337,7 +337,12 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   UPInterfaceType n9_type;
   n9_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N9);
 
-  if (edge->type != n6_type) {
+  const bool home_routed_n9 = is_home_routed_n9(edge);
+  if (home_routed_n9) {
+    // Downlink from the H-UPF: the N9 F-TEID given to the H-SMF
+    local_fteid = sps->home_routed->vcn_tunnel;
+    pdi.set(local_fteid);
+  } else if (edge->type != n6_type) {
     local_fteid = pfcp_prepare_fteid(edge->fteid, up_features.ftup, cfg);
     // in UPLINK always choose ID
     if (edge->uplink) {
@@ -356,13 +361,14 @@ pfcp::create_pdr smf_session_procedure::pfcp_create_pdr(
   if (edge->type == n3_type) {
     source_interface_type.interface_type_value =
         pfcp::_3GPP_INTERFACE_TYPE_N3_3GPP_ACCESS;
-  } else if (edge->type == n9_type) {
+  } else if (edge->type == n9_type || home_routed_n9) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
   }
   // do not remove outer header in dl direction
   // also we dont add this information if we use DL PDR in session establishment
   // as we update it later anyway
-  if (edge->type != n6_type && !cfg.enable_dl_pdr_in_session_establishment()) {
+  if ((edge->type != n6_type || home_routed_n9) &&
+      !cfg.enable_dl_pdr_in_session_establishment()) {
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     create_pdr.set(outer_header_removal);
@@ -543,10 +549,13 @@ pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
-  if (edge->type != n6_type) {
+  if (edge->type != n6_type || is_home_routed_n9(edge)) {
     outer_header_removal.outer_header_removal_description =
         OUTER_HEADER_REMOVAL_GTPU_UDP_IPV4;
     update_pdr.set(outer_header_removal);
+  }
+  if (is_home_routed_n9(edge)) {
+    pdi.set(sps->home_routed->vcn_tunnel);
   }
 
   update_pdr.set(edge->pdr_id);
@@ -624,12 +633,31 @@ pfcp::update_far smf_session_procedure::pfcp_update_far(
 }
 
 //------------------------------------------------------------------------------
+bool smf_session_procedure::is_home_routed_n9(
+    const std::shared_ptr<qos_upf_edge>& edge) const {
+  // Home-routed roaming, V-SMF: the core side of the V-UPF is the N9 tunnel
+  // to the H-UPF (TS 23.501 4.2.4), so its "N6" edge carries GTP-U
+  UPInterfaceType n6_type;
+  n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
+  return sps && sps->is_home_routed_visited() && edge->uplink &&
+         edge->type == n6_type;
+}
+
+//------------------------------------------------------------------------------
 bool smf_session_procedure::pfcp_outer_header_creation(
     const std::shared_ptr<qos_upf_edge>& edge,
     outer_header_creation_t& outer_header) {
   UPInterfaceType n6_type;
   n6_type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N6);
 
+  if (is_home_routed_n9(edge)) {
+    // V-UPF uplink: N9 tunnel to the H-UPF instead of N6
+    outer_header.outer_header_creation_description =
+        OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
+    outer_header.teid         = sps->home_routed->hcn_tunnel.teid;
+    outer_header.ipv4_address = sps->home_routed->hcn_tunnel.ipv4_address;
+    return true;
+  }
   if (edge->type != n6_type) {
     outer_header.outer_header_creation_description =
         OUTER_HEADER_CREATION_GTPU_UDP_IPV4;
@@ -1146,6 +1174,28 @@ smf_procedure_code session_create_sm_context_procedure::run(
       return smf_procedure_code::ERROR;
     } else {
       sp->get_session_handler()->set_session_graph(graph);
+    }
+    if (sp->is_home_routed_visited()) {
+      // The N9 tunnel given to the H-SMF must end on the selected V-UPF
+      auto access_edges = graph->get_access_edges();
+      bool same_upf     = false;
+      for (const auto& edge : access_edges) {
+        const auto& upf = edge->source_upf;
+        if (!upf) continue;
+        const auto& n3_ip = upf->get_upf_config().get_local_n3_ip();
+        const auto ip     = n3_ip.empty() ? upf->node_id.u1.ipv4_address :
+                                            oai::utils::conv::fromString(n3_ip);
+        same_upf |=
+            ip.s_addr == sp->home_routed->vcn_tunnel.ipv4_address.s_addr;
+      }
+      if (!same_upf) {
+        Logger::smf_app().warn(
+            "Home-routed PDU session: selected V-UPF does not own the N9 "
+            "tunnel sent to the H-SMF");
+        sm_context_resp->res.set_cause(
+            PDU_SESSION_APPLICATION_ERROR_PEER_NOT_RESPONDING);
+        return smf_procedure_code::ERROR;
+      }
     }
   } else {
     Logger::smf_app().warn(

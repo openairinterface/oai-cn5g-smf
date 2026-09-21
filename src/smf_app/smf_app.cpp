@@ -1088,7 +1088,13 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   std::string dnn_selection_mode = smreq->req.get_dnn_selection_mode();
   // If the Session Management Subscription data is not available, get from
   // configuration file or UDM
-  if (not sc->is_dnn_snssai_subscription_data(dnn, snssai)) {
+  if (!smreq->req.get_h_smf_uri().empty()) {
+    // Home-routed: the H-SMF retrieves the subscription and authorizes the
+    // PDU session, the V-SMF uses what the H-SMF returns
+    Logger::smf_app().info(
+        "Home-routed PDU session (H-SMF %s), SUPI %s, DNN %s",
+        smreq->req.get_h_smf_uri().c_str(), supi.c_str(), dnn.c_str());
+  } else if (not sc->is_dnn_snssai_subscription_data(dnn, snssai)) {
     Logger::smf_app().debug(
         "The Session Management Subscription data is not available");
     auto subscription =
@@ -1344,6 +1350,158 @@ void smf_app::handle_pdu_session_release_sm_context_request(
 
   // Step 3. handle the message in smf_context
   sc.get()->handle_pdu_session_release_sm_context_request(smreq);
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_nsmf_pdu_session_create(
+    const nlohmann::json& create_data, uint32_t promise_id) {
+  auto reply_error = [&](uint32_t http_code, const std::string& cause) {
+    Logger::smf_app().warn(
+        "Reject Nsmf_PDUSession_Create from V-SMF: %s", cause.c_str());
+    nlohmann::json reply;
+    reply["http_code"]   = http_code;
+    reply["json_format"] = "application/problem+json";
+    reply["json_data"]   = {{"status", http_code}, {"cause", cause}};
+    make_future_ready(reply, promise_id);
+  };
+
+  auto smreq = std::make_shared<itti_sbi_create_sm_context_request>(
+      TASK_SMF_SBI, TASK_SMF_APP, promise_id);
+  smreq->http_version      = 2;
+  std::string supi         = {};
+  std::string dnn          = {};
+  snssai_t snssai          = {};
+  plmn_t serving           = {};
+  pfcp::fteid_t vcn_tunnel = {};
+  pdu_session_id_t pdu_session_id = 0;
+  try {
+    supi           = create_data.at("supi").get<std::string>();
+    pdu_session_id = create_data.at("pduSessionId").get<int>();
+    dnn            = create_data.at("dnn").get<std::string>();
+    snssai.sst     = create_data.at("sNssai").at("sst").get<int>();
+    snssai.sd      = create_data.at("sNssai").value("sd", "");
+    serving.mcc = create_data.at("servingNetwork").at("mcc").get<std::string>();
+    serving.mnc = create_data.at("servingNetwork").at("mnc").get<std::string>();
+    const auto& vcn = create_data.at("vcnTunnelInfo");
+    vcn_tunnel.v4   = 1;
+    vcn_tunnel.ipv4_address =
+        conv::fromString(vcn.at("ipv4Addr").get<std::string>());
+    vcn_tunnel.teid =
+        std::stoul(vcn.at("gtpTeid").get<std::string>(), nullptr, 16);
+  } catch (const std::exception& e) {
+    Logger::smf_app().warn("Invalid PduSessionCreateData: %s", e.what());
+    reply_error(http_status_code::BAD_REQUEST, "INVALID_MSG_FORMAT");
+    return;
+  }
+  if ((pdu_session_id == PDU_SESSION_IDENTITY_UNASSIGNED) ||
+      (pdu_session_id > PDU_SESSION_IDENTITY_LAST)) {
+    reply_error(http_status_code::BAD_REQUEST, "INVALID_MSG_FORMAT");
+    return;
+  }
+  Logger::smf_app().info(
+      "Handle Nsmf_PDUSession_Create from V-SMF (home-routed PDU session), "
+      "SUPI %s, PDU Session ID %d, DNN %s, serving PLMN %s%s, V-UPF N9 TEID "
+      "0x%X IP %s",
+      supi.c_str(), pdu_session_id, dnn.c_str(), serving.mcc.c_str(),
+      serving.mnc.c_str(), vcn_tunnel.teid,
+      conv::toString(vcn_tunnel.ipv4_address).c_str());
+
+  // Only UEs roaming in a partner network are served this way
+  bool partner = false;
+  for (const auto& p : smf_cfg->roaming_partners)
+    partner |= p.mcc == serving.mcc && p.mnc == serving.mnc;
+  if (!smf_cfg->roaming_enabled || !partner) {
+    reply_error(http_status_code::FORBIDDEN, "ROAMING_NOT_ALLOWED");
+    return;
+  }
+
+  std::string nd_dnn = {};
+  if (dotted_to_string(dnn, nd_dnn)) dnn = nd_dnn;
+  pdu_session_type_t pdu_session_type = {};
+  pdu_session_type.pdu_session_type   = PDU_SESSION_TYPE_E_IPV4;
+  if (not smf_cfg->is_dotted_dnn_handled(dnn, pdu_session_type)) {
+    reply_error(http_status_code::FORBIDDEN, "DNN_DENIED");
+    return;
+  }
+
+  smreq->req.set_supi(supi);
+  smreq->req.set_pdu_session_id(pdu_session_id);
+  smreq->req.set_dnn(dnn);
+  smreq->req.set_snssai(snssai);
+  smreq->req.set_plmn(serving);
+  smreq->req.set_request_type("INITIAL_REQUEST");
+  smreq->req.set_an_type("3GPP_ACCESS");
+  smreq->req.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
+  smreq->req.set_vcn_tunnel(vcn_tunnel);
+
+  // SMF context, as for a Create SM Context Request
+  std::shared_ptr<smf_context> sc = {};
+  if (is_supi_2_smf_context(supi)) {
+    sc = supi_2_smf_context(supi);
+  } else {
+    sc = std::make_shared<smf_context>();
+    sc->set_supi(supi);
+    set_supi_2_smf_context(supi, sc);
+  }
+  // The serving PLMN is the VPLMN, e.g. for the UDM registration
+  sc->set_plmn(serving);
+  if (is_scid_2_smf_context(supi, pdu_session_id)) {
+    sc->remove_pdu_session(pdu_session_id);
+    Logger::smf_app().warn(
+        "PDU Session already existed (SUPI %s, PDU Session ID %d)", supi,
+        pdu_session_id);
+  }
+
+  // The H-SMF retrieves the Session Management Subscription data from the UDM
+  if (not sc->is_dnn_snssai_subscription_data(dnn, snssai)) {
+    auto subscription =
+        std::make_shared<session_management_subscription>(snssai);
+    if (!get_sm_data(supi, dnn, snssai, subscription, serving)) {
+      reply_error(http_status_code::FORBIDDEN, "SUBSCRIPTION_DENIED");
+      return;
+    }
+    sc->insert_dnn_subscription(snssai, dnn, subscription);
+    subscribe_sdm_subscriptions(supi, dnn, snssai, serving);
+  }
+
+  scid_t scid         = generate_smf_context_ref();
+  auto scf            = std::make_shared<smf_context_ref>();
+  scf->supi           = supi;
+  scf->pdu_session_id = pdu_session_id;
+  set_scid_2_smf_context(scid, scf);
+  smreq->set_scid(scid);
+
+  sc->handle_pdu_session_create_sm_context_request(smreq);
+}
+
+//------------------------------------------------------------------------------
+void smf_app::handle_nsmf_pdu_session_release(
+    const std::string& pdu_session_ref, uint32_t promise_id) {
+  Logger::smf_app().info(
+      "Handle Nsmf_PDUSession_Release from V-SMF, PDU session %s",
+      pdu_session_ref.c_str());
+  // Only resources created over N16 can be released over N16
+  scid_t scid                         = 0;
+  std::shared_ptr<smf_pdu_session> sp = {};
+  try {
+    scid = std::stoul(pdu_session_ref);
+  } catch (const std::exception&) {
+  }
+  if (scid != 0 && is_scid_2_smf_context(scid)) {
+    auto scf = scid_2_smf_context(scid);
+    if (is_supi_2_smf_context(scf->supi))
+      supi_2_smf_context(scf->supi)->find_pdu_session(scf->pdu_session_id, sp);
+  }
+  if (!sp || !sp->home_routed || !sp->home_routed->anchor) {
+    trigger_http_response(
+        http_status_code::NOT_FOUND, promise_id,
+        N11_SESSION_RELEASE_SM_CONTEXT_RESPONSE);
+    return;
+  }
+  auto smreq = std::make_shared<itti_sbi_release_sm_context_request>(
+      TASK_SMF_SBI, TASK_SMF_APP, promise_id, pdu_session_ref);
+  smreq->http_version = 2;
+  handle_pdu_session_release_sm_context_request(smreq);
 }
 
 //------------------------------------------------------------------------------
