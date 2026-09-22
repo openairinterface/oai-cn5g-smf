@@ -200,9 +200,15 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
+  // value(), not operator[]: a body that parses as JSON but carries no "cause"
+  // member - an RFC 7807 ProblemDetails from a proxy, say - would otherwise
+  // reach set_cause() as a null and throw nlohmann::json::type_error on the
+  // TASK_SMF_SBI thread, which has no handler in its call chain
+  const std::string cause =
+      response_data_json.value("cause", std::string("UNSPECIFIED"));
   Logger::smf_sbi().debug(
       "Response from AMF, Http Code: %d, cause %s", resp.status_code,
-      response_data_json["cause"].dump().c_str());
+      cause.c_str());
 
   // Send response to APP to process
   std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
@@ -213,7 +219,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   itti_msg->set_scid(sm_context_res->scid);
   itti_msg->set_procedure_type(session_management_procedures_type_e::
                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
-  itti_msg->set_cause(response_data_json["cause"]);
+  itti_msg->set_cause(cause);
   if (sm_context_res->res.get_cause() == k5gsmCauseRequestAccepted) {
     itti_msg->set_msg_type(kPduSessionEstablishmentAccept);
   } else {
@@ -309,9 +315,16 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
+  // value(), not operator[]: a body that parses as JSON but carries no "cause"
+  // member - an RFC 7807 ProblemDetails, which is exactly what a 4xx from the
+  // AMF carries - would otherwise reach set_cause() as a null and throw
+  // nlohmann::json::type_error on the TASK_SMF_SBI thread, which has no
+  // handler in its call chain
+  const std::string cause =
+      response_data_json.value("cause", std::string("UNSPECIFIED"));
   Logger::smf_sbi().debug(
       "Response from AMF, HTTP Code: %i, cause %s", resp.status_code,
-      response_data_json["cause"].dump().c_str());
+      cause.c_str());
 
   // Send response to APP to process
   std::shared_ptr<itti_sbi_n1n2_message_transfer_response_status> itti_msg =
@@ -321,7 +334,7 @@ void smf_sbi::send_n1n2_message_transfer_request(
   itti_msg->set_response_code(static_cast<int16_t>(resp.status_code));
   itti_msg->set_procedure_type(
       session_management_procedures_type_e::SERVICE_REQUEST_NETWORK_TRIGGERED);
-  itti_msg->set_cause(response_data_json["cause"]);
+  itti_msg->set_cause(cause);
   itti_msg->set_seid(report_msg->res.get_seid());
   itti_msg->set_trxn_id(report_msg->res.get_trxn_id());
 
