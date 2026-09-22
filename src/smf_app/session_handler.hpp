@@ -196,9 +196,8 @@ class session_handler {
 
   /**
    * Stores the PDR ID / FAR ID pair of the paging rule armed on AN release.
-   * They must survive the AN release, so they cannot be kept on the edge:
-   * qos_upf_edge::clear_session() zeroes the edge rule IDs on the very path
-   * that arms the rule.
+   * They cannot live on the edge: clear_session() zeroes the edge rule IDs on
+   * the very path that arms the rule.
    * @param [const pfcp::pdr_id_t&] pdr_id: PDR ID of the paging rule
    * @param [const pfcp::far_id_t&] far_id: FAR ID of the paging rule
    */
