@@ -36,6 +36,7 @@ add_library (SMF STATIC
   smf_n2.cpp
   smf_pfcp_association.cpp
   smf_pco.cpp
+  smf_paging_rules.cpp
   smf_procedure.cpp
   smf_n4.cpp
   smf_n7.cpp
