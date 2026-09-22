@@ -85,13 +85,10 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 //------------------------------------------------------------------------------
 std::vector<::oai::app::smf::qos_flow_context_updated>
 session_handler::get_qos_flows_context_updated() {
-  // Snapshot under a shared lock, then RELEASE it before the loop: the
-  // singular getter below reaches the session graph and
-  // m_session_handler_mutex is not recursive, so a lock held around the loop
-  // would deadlock. Iterating the member directly is a data race, not a stale
-  // value risk: set_qfis_to_be_updated() assigns the WHOLE vector and
-  // smf_http2_server calls into the SMF app with no ITTI hop, so the HTTP/2
-  // thread can reallocate the buffer under a live iterator here.
+  // Snapshot, then drop the lock before the loop: the singular getter below
+  // reaches the session graph and m_session_handler_mutex is not recursive.
+  // Iterating the member itself would race, as set_qfis_to_be_updated()
+  // reassigns the whole vector from the HTTP/2 thread.
   std::vector<pfcp::qfi_t> qfis_snapshot;
   {
     std::shared_lock lock(m_session_handler_mutex);

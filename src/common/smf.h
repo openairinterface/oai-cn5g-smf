@@ -74,11 +74,9 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
 };
 
 // Stage of the network-triggered service request (paging) procedure for one
-// PDU session. It lives here, and NOT in smf_context.hpp, on purpose:
-// smf_context.hpp includes smf_procedure.hpp, whose last line includes
-// smf_context.hpp back, so nothing declared in smf_context.hpp is visible
-// inside smf_procedure.hpp - which needs this type in a signature. smf.h is
-// reachable from both (smf_procedure.hpp -> smf_msg.hpp -> smf.h).
+// PDU session. Declared here rather than in smf_context.hpp because that
+// header and smf_procedure.hpp include each other, so smf_procedure.hpp -
+// which needs this type in a signature - cannot see anything declared there.
 enum class paging_stage_e : uint8_t {
   IDLE                 = 0,
   AWAITING_M3_RESPONSE = 1,
@@ -90,10 +88,10 @@ static const std::vector<std::string> paging_stage_e2str = {
     "IDLE", "AWAITING_M3_RESPONSE", "AWAITING_SETUP_RSP",
     "AWAITING_M5_RESPONSE"};
 
-// Age after which an outstanding N4 procedure count is treated as stale. There
-// is no N4 response timeout anywhere in the SMF and an orphaned procedure is
-// never unregistered, so without this a single lost N4 response would make the
-// session unpageable for its whole life. Evaluated lazily, never by a timer.
+// Age after which an outstanding N4 procedure count is treated as stale.
+// Nothing times out an N4 response and an orphaned procedure is never
+// unregistered, so without this one lost response would leave the session
+// unpageable for the rest of its life. Checked lazily, not by a timer.
 static constexpr uint16_t PAGING_STALE_SECONDS = 30;
 
 // for N1N2
