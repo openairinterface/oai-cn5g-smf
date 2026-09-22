@@ -1339,18 +1339,12 @@ session_update_sm_context_procedure::send_n4_session_modification_request(
   n4_triggered->r_endpoint =
       endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
-  // SP11 - M5: the armed paging rule MUST leave the UPF in the very message
-  // that re-creates the real downlink rules. Its precedence was captured on AN
-  // release, BEFORE STEP1's `+= 1`, so it is the WINNING (lower) precedence on
-  // the UPF's CORE lookup: every downlink packet would keep matching it, hit
-  // its BUFF|NOCP FAR, be dropped, and - `notified_cp` being latched - not even
-  // be reported.
-  // Both Removes are conditional on a non-zero STORED id. A Remove for a rule
-  // the UPF does not hold answers Cause 73 and aborts the WHOLE message, so
-  // neither Create loop below would ever run.
-  // m_paging_removes_emitted is not belt-and-braces: this function is also
-  // re-entered from handle_itti_msg() when get_next_upf() returns CONTINUE, and
-  // the next UPF's N4 session never held these two rules.
+  // The armed paging rule has to leave the UPF in the same message that
+  // re-creates the real downlink rules: it holds the lower precedence and
+  // would keep winning the CORE lookup, silently buffering every downlink
+  // packet. Only stored ids are removed, and only once: a Remove for a rule
+  // the UPF does not hold answers Cause 73 and aborts the whole message,
+  // Creates included. A re-entry here targets another UPF's session.
   const bool remove_paging_rule =
       !m_paging_removes_emitted and smf_cfg->smf()->get_paging().enable() and
       sps->is_paging_armed() and
@@ -1784,19 +1778,37 @@ smf_procedure_code session_update_sm_context_procedure::run(
         PDU_SESSION_RELEASE_AN_INITIATED: {
       Logger::smf_app().debug("PDU_SESSION_RELEASE_AN_INITIATED");
       const bool paging_enabled = smf_cfg->smf()->get_paging().enable();
-      // Capture BEFORE the removes, and from `ul_edges` - the UNFILTERED N6
-      // vector, NOT `ul_edges_to_update`, which is_qfi_served_in_edges can
-      // leave empty. The paging rule is session-wide.
+      // An AN release during a page tears the edges down and zeroes the
+      // uplink F-TEID, so the paging state has to be closed here - before the
+      // removes below - or the next wake-up would advertise a dead tunnel.
+      // The rule stays armed: it is still installed in the UPF, and only the
+      // re-activation removes it.
+      if (paging_enabled) {
+        const paging_stage_e stage_at_an_release = sps->get_paging_stage();
+        if (stage_at_an_release != paging_stage_e::IDLE) {
+          Logger::smf_app().error(
+              "Paging: AN release for SEID " SEID_FMT
+              " while a page is in flight (stage %s); abandoning the page, "
+              "the armed pair stays on the UPF",
+              sps->seid,
+              paging_stage_e2str.at(static_cast<int>(stage_at_an_release))
+                  .c_str());
+          sps->end_paging(/* keep_armed = */ true);
+        }
+      }
+      // Captured before the removes, and from ul_edges rather than from
+      // ul_edges_to_update, which the QFI filter can leave empty: the paging
+      // rule is session-wide.
       uint32_t paging_precedence = 0;
       std::string paging_nwi     = {};
       if (!ul_edges.empty()) {
         paging_precedence = ul_edges[0]->precedence;
         paging_nwi        = ul_edges[0]->nw_instance;
       }
-      // With paging ON, tear down EVERY edge, not the QFI-filtered subset: a
-      // partial teardown leaves live CORE PDRs competing with the paging PDR
-      // and non-zero rule IDs on the edges, so the re-activation would create
-      // on a LIVE ID.
+      // With paging on, tear every edge down rather than the QFI-filtered
+      // subset: a partial teardown leaves downlink PDRs competing with the
+      // paging PDR and non-zero rule IDs behind, so the re-activation would
+      // stack a duplicate on a live id, and the stale rule would win for good.
       remove_pdrs_fars_qers(paging_enabled ? ul_edges : ul_edges_to_update);
       remove_pdrs_fars_qers(paging_enabled ? dl_edges : dl_edges_to_update);
       if (paging_enabled && sps->ipv4 && !ul_edges.empty() &&
@@ -1830,6 +1842,17 @@ smf_procedure_code session_update_sm_context_procedure::run(
             "Paging: SEID " SEID_FMT
             " has no IPv4 address; not arming. IPv6 "
             "downlink data cannot page this session.",
+            sps->seid);
+      } else if (paging_enabled) {
+        // Last arm of the chain: paging is on, the session has an IPv4
+        // address and is not armed yet, so the only way the first arm can
+        // have failed is an empty ul_edges - no N6 edge to take the
+        // precedence and network instance from. Without this the session
+        // would silently never page.
+        Logger::smf_app().warn(
+            "Paging: SEID " SEID_FMT
+            " has no N6 (ul_edges) edge; not arming. This session will not "
+            "page until it is re-established.",
             sps->seid);
       }
       send_n4 = true;
@@ -1886,14 +1909,10 @@ smf_procedure_code session_update_sm_context_procedure::run(
 //------------------------------------------------------------------------------
 void session_update_sm_context_procedure::abandon_paging_reactivation(
     const char* reason) {
-  // FIRST test, and not optional: both call sites sit AHEAD of the
-  // switch (session_procedure_type), in code shared by every
-  // session_update_sm_context_procedure type. Only the M5 of a
-  // re-activation owns the paging cycle; for any other procedure -
-  // e.g. a SERVICE_REQUEST_UE_TRIGGERED_STEP1 failing while a page is in
-  // flight - this must be a total no-op, or it would force
-  // upCnx_state -> DEACTIVATED and paging_stage -> IDLE underneath the
-  // page's real owner and leak the stored ids.
+  // Both call sites sit ahead of the switch on session_procedure_type, in
+  // code shared by every update procedure. Only the re-activation owns the
+  // paging cycle; anything else has to be a no-op here, or it would reset the
+  // state underneath the page's real owner and leak the stored ids.
   if (session_procedure_type !=
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP2)
     return;
@@ -1908,16 +1927,14 @@ void session_update_sm_context_procedure::abandon_paging_reactivation(
       "Paging: abandoning the re-activation of SEID " SEID_FMT
       " (%s); the user plane stays down",
       sps->seid, reason);
-  // DEACTIVATED is the ONE state try_begin_paging() accepts, and SP9 left this
-  // session ACTIVATING before the N1N2 transfer. Without this line the session
-  // could never be paged again.
+  // The session was left ACTIVATING before the N1N2 transfer, and DEACTIVATED
+  // is the only state a page can start from: without this it could never be
+  // paged again.
   sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
   if (m_paging_removes_emitted) {
-    // The rules may or may not still be in the UPF, but they can never fire
-    // again (notified_cp is latched on the PDR), and leaving the pair armed
-    // would make the AN-release path refuse to arm a fresh one for the rest of
-    // this session's life. Give the IDs back and forget the pair; the next AN
-    // release arms a brand-new one.
+    // The pair can never fire again (notified_cp is latched on the PDR), and
+    // leaving it armed would stop the AN-release path from arming a fresh one
+    // for the rest of the session: give the ids back and forget the pair.
     pfcp::pdr_id_t paging_pdr_id = {};
     pfcp::far_id_t paging_far_id = {};
     sps->get_session_handler()->get_paging_rule_ids(
@@ -1931,8 +1948,8 @@ void session_update_sm_context_procedure::abandon_paging_reactivation(
       sps->get_session_handler()->release_far_id(paging_far_id);
     sps->get_session_handler()->clear_paging_rule_ids();
   }
-  // keep_armed = false also clears paging_armed, in the same critical section
-  // as the stage: this is the failure counterpart of commit_paging_activated().
+  // keep_armed = false clears paging_armed in the same critical section as
+  // the stage: the failure counterpart of commit_paging_activated().
   sps->end_paging(/* keep_armed = */ false);
 }
 
@@ -2067,10 +2084,9 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
   if (get_current_upf(dl_edges, ul_edges, current_upf) ==
       smf_procedure_code::ERROR) {
     Logger::smf_app().error("SMF DL procedure: Could not get current UPF");
-    // SP11 - this ERROR return is ahead of the switch below, so neither
-    // commit_paging_activated() nor end_paging() would run and the paging
-    // stage would stay AWAITING_M5_RESPONSE for ever, which
-    // try_begin_activation() refuses as busy for the rest of the session.
+    // This ERROR return is ahead of the switch below, so nothing else would
+    // close the paging stage: it would stay AWAITING_M5_RESPONSE and every
+    // later page would be refused as busy.
     abandon_paging_reactivation("the current UPF could not be resolved");
     // TODO is this enough as an error message? We have cause 31 but not
     // values
@@ -2142,7 +2158,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
     Logger::smf_app().error(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
-    // SP11 - as above: give the paging stage back before this early return.
+    // As above: close the paging stage before this early return.
     abandon_paging_reactivation("the N4 response did not serve every QFI");
     n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
@@ -2190,16 +2206,14 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
        * we only change the first UPF
        */
 
-      // SP11 - M5 succeeded. This case body is SHARED BY FIVE procedure types,
-      // so everything below is qualified by the procedure type: an unrelated
-      // completion must not release paging ids nor force paging_stage -> IDLE
-      // underneath a running paging cycle.
+      // This case body is shared by five procedure types, so everything below
+      // is qualified by the procedure type: an unrelated completion must not
+      // release the paging ids or close the stage under a running page.
       if (session_procedure_type == session_management_procedures_type_e::
                                         SERVICE_REQUEST_UE_TRIGGERED_STEP2) {
         if (m_paging_removes_emitted) {
-          // Only NOW is it known that the UPF applied the two Removes: the
-          // rules are gone, so the ids may go back to the pool. Nothing before
-          // this point releases them.
+          // Only now is it known that the UPF applied the two Removes, so
+          // only now may the ids go back to the pool.
           pfcp::pdr_id_t paging_pdr_id = {};
           pfcp::far_id_t paging_far_id = {};
           sps->get_session_handler()->get_paging_rule_ids(
@@ -2213,26 +2227,20 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
               "Paging: the paging rule of SEID " SEID_FMT
               " is removed from the UPF (PDR %u / FAR %u released)",
               sps->seid, paging_pdr_id.rule_id, paging_far_id.far_id);
-          // m_paging_removes_emitted stays true: it must keep a re-entry of
-          // send_n4_session_modification_request() from re-sending the Removes
-          // to a further UPF that never held them.
+          // m_paging_removes_emitted stays true so that a re-entry of
+          // send_n4_session_modification_request() does not re-send the
+          // Removes to a further UPF that never held them.
         }
-        // PUBLISH THE WHOLE END STATE IN ONE CRITICAL SECTION. end_paging()
-        // followed by set_upCnx_state(ACTIVATED) would expose the intermediate
-        // `stage IDLE + ACTIVATING`, which passes BOTH of SP10's gates: step 0b
-        // needs ACTIVATED (not stored yet) so a second PDU_RES_SETUP_RSP would
-        // be accepted and re-Create on live ids, and step 4 matches neither
-        // ACTIVATED nor a paging stage so the duplicate ask's
-        // PDU_RES_SETUP_FAIL would reach the destructive establishment reject.
-        // Inbound N11 runs on the HTTP/2 worker thread while this runs on
-        // TASK_SMF_APP, so the window is real.
-        // Clearing paging_armed here is what lets the NEXT AN release arm a
-        // FRESH pair - the only thing that clears the UPF's notified_cp latch,
-        // and therefore the only thing that makes the session pageable again.
+        // The end state is published in one critical section: end_paging()
+        // followed by set_upCnx_state(ACTIVATED) would expose an idle stage on
+        // a session still reading ACTIVATING, and a duplicate setup response
+        // landing on the HTTP/2 thread would then be accepted and re-create
+        // the rules on live ids. Clearing paging_armed is also what lets the
+        // next AN release arm a fresh pair, i.e. makes the session pageable.
         if (smf_cfg->smf()->get_paging().enable()) {
           sps->commit_paging_activated();
         } else {
-          // Feature off: a no-op that cannot disturb the shipping path.
+          // Feature off: close the stage without touching the armed flag.
           sps->end_paging(/* keep_armed = */ sps->is_paging_armed());
         }
       }
@@ -2594,9 +2602,8 @@ session_network_triggered_service_request_procedure::prime_graph_cursor() {
     return smf_procedure_code::ERROR;
   }
 
-  // Read the two configuration gates now, while the association is in hand:
-  // send_m3() reads the two booleans and never touches the graph cursor or the
-  // association again
+  // Read the configuration gates now, while the association is in hand:
+  // send_m3() never takes the graph cursor or the association again
   const oai::config::smf::upf& upf_cfg = m_current_upf->get_upf_config();
   m_upf_enable_qers                    = upf_cfg.enable_qers();
   m_upf_enable_usage_reporting         = upf_cfg.enable_usage_reporting();
@@ -2629,7 +2636,8 @@ session_network_triggered_service_request_procedure::send_m3() {
   m_n4_triggered->r_endpoint =
       endpoint(m_current_upf->node_id.u1.ipv4_address, pfcp::default_port);
 
-  // The N6 edges carry the UPLINK FAR (Destination Interface = CORE)
+  // m_ul_edges are the N6 edges and carry the uplink FAR (Destination
+  // Interface = CORE): the vectors are named after the FAR, not the PDR
   // TODO do we still need this "trick" to increase precedence to not confuse
   // UPF?
   for (const auto& ul_edge : m_ul_edges) {
@@ -2639,8 +2647,9 @@ session_network_triggered_service_request_procedure::send_m3() {
       m_n4_triggered->pfcp_ies.set(pfcp_create_qer(ul_edge));
     }
   }
-  // The N3 edges carry the UPLINK PDR. Every rule ID is zero after the AN
-  // release, so the F-TEID is asked for with CH = 1 and the UPF allocates it
+  // m_dl_edges are the N3 edges and carry the uplink PDR. Every rule ID is
+  // zero after the AN release, so the F-TEID is asked for with CH = 1 and the
+  // UPF allocates it
   for (const auto& dl_edge : m_dl_edges) {
     dl_edge->precedence += 1;
     m_n4_triggered->pfcp_ies.set(pfcp_create_pdr(dl_edge));
@@ -2699,14 +2708,12 @@ smf_procedure_code session_network_triggered_service_request_procedure::run(
 smf_procedure_code
 session_network_triggered_service_request_procedure::abandon_page() {
   sps->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
-  // Load-bearing. This UPF applies the IE blocks of one message sequentially
-  // with no rollback, so an unknown prefix of M3's uplink rules may be live
-  // while the builders assigned edge->pdr_id / edge->far_id at build time
-  // regardless. Zeroing the whole PFCP session state of the cached edges makes
-  // the next Create a clean one: fresh rule IDs and a fresh CH = 1 F-TEID.
-  // The IDs are deliberately NOT released to the generators, because the UPF
-  // may still hold rules carrying them and uint_generator::get_uid() would
-  // hand them out again.
+  // The UPF applies the IE blocks of a message in order and without rollback,
+  // so an unknown prefix of the uplink rules may be live while the edges hold
+  // the ids the builders assigned. Zeroing the PFCP session state of the
+  // cached edges makes the next Create a clean one, with fresh rule IDs and a
+  // fresh CH = 1 F-TEID. The IDs are not given back to the generators: the UPF
+  // may still hold rules carrying them, and they would be handed out again.
   clear_cached_edges();
   sps->end_paging(/* keep_armed = */ true);
   return smf_procedure_code::ERROR;
@@ -2725,7 +2732,6 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
       "SEID " SEID_FMT ", cause %d",
       sps->up_fseid.seid, cause.cause_value);
 
-  // Step 1: the UPF refused M3, so no uplink rule is guaranteed to be live
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
     Logger::smf_app().error(
         "Paging: the UPF refused M3 for SEID " SEID_FMT
@@ -2734,22 +2740,22 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
     return abandon_page();
   }
 
-  // Step 2: harvest the uplink F-TEIDs the UPF allocated, into the edges
-  // CACHED by run(). Never re-take the graph cursor here: get_current_upf()
-  // would advance the shared DFS state that run() already consumed.
+  // Harvest the uplink F-TEIDs the UPF allocated into the edges cached by
+  // run(): re-taking the graph cursor here would advance the shared DFS state
+  // that run() has already consumed.
   associate_fteid_with_created_pdrs(resp.pfcp_ies.created_pdrs, m_dl_edges);
 
-  // Step 3: only now does get_qos_flow_context_updated() return a non-zero
-  // ul_fteid, because it reads edge->fteid
+  // Only now does get_qos_flow_context_updated() report a non-zero ul_fteid:
+  // it reads edge->fteid
   sps->get_session_handler()->set_qfis_to_be_updated(
       sps->get_session_handler()->get_all_qfis());
   std::vector<qos_flow_context_updated> flows =
       sps->get_session_handler()->get_qos_flows_context_updated();
 
-  // Step 4: gate on a usable uplink F-TEID for EVERY flow, not just for one.
-  // The N2 builder reads only the lowest-QFI flow for the tunnel, and the AMF
-  // gets a single shot at the blob it buffers, so a partial harvest must
-  // refuse the page rather than advertise a dead tunnel.
+  // Every flow needs a usable uplink F-TEID, not just the lowest-QFI one the
+  // N2 builder reads for the tunnel: the AMF gets a single shot at the
+  // container it buffers, so a partial harvest has to refuse the page rather
+  // than advertise a dead tunnel.
   if (flows.empty() ||
       std::any_of(flows.begin(), flows.end(), [](const auto& flow) {
         return flow.ul_fteid.teid == 0;
@@ -2762,11 +2768,11 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
     return abandon_page();
   }
 
-  // Step 5: populate the N1N2 message transfer content
+  // Populate the N1N2 message transfer content
   pdu_session_report_response session_report_msg = {};
   session_report_msg.set_supi(sc->get_supi());
-  // Never called on this path before: without it the JSON carries PDU session
-  // ID 0 and the AMF cannot route the transfer
+  // Without this the JSON carries PDU session ID 0 and the AMF cannot route
+  // the transfer
   session_report_msg.set_pdu_session_id(
       static_cast<pdu_session_id_t>(sps->get_pdu_session_id()));
   session_report_msg.set_snssai(sps->get_snssai());
@@ -2777,15 +2783,15 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
       sps->get_amf_addr() +
       oai::smf::api::smf_sbi_helper::
           get_amf_comm_ue_context_n1_n2_message_base_uri(sc->get_supi()));
-  // The SMF-LOCAL SEID: it is the key of seid_2_smf_context, which is how the
-  // AMF's answer is resolved back to this session. NOT up_fseid.seid.
+  // The SMF-local SEID, not up_fseid.seid: it is the key of
+  // seid_2_smf_context, which is how the AMF's answer finds this session again
   session_report_msg.set_seid(sps->seid);
   session_report_msg.set_trxn_id(this->trxn_id);
   for (const auto& flow : flows) {
     session_report_msg.add_qos_flow_context_updated(flow);
   }
 
-  // Step 6: build the N2 container from EVERY flow, and check the result
+  // Build the N2 container from every flow
   std::string n2_sm_info     = {};
   std::string n2_sm_info_hex = {};
   if (!smf_n2::get_instance()
@@ -2801,9 +2807,8 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
   oai::utils::conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
   session_report_msg.set_n2_sm_information(n2_sm_info_hex);
 
-  // Step 7: the JSON part. No n1MessageContainer and no
-  // n1n2FailureTxfNotifURI: there is no N1 to carry and no failure
-  // notification route in this cut.
+  // The JSON part. No n1MessageContainer and no n1n2FailureTxfNotifURI:
+  // there is no N1 message to carry and no failure notification route yet.
   const qos_flow_context_updated& first_flow = *flows.begin();
   nlohmann::json json_data                   = {};
   json_data["pduSessionId"] = session_report_msg.get_pdu_session_id();
@@ -2821,36 +2826,33 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
   json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
       session_report_msg.get_snssai().sd;
   // Assign the generated model and let its to_json() emit priorityLevel,
-  // preemptCap and preemptVuln: never hand-map it
+  // preemptCap and preemptVuln rather than hand-mapping them
   json_data["arp"] = first_flow.qos_profile.getArp();
   json_data["5qi"] = first_flow.qos_profile.getR5qi();
-  // Mandatory in practice: this AMF gates the paging path on the field being
-  // present, and without it it answers 200 / N1_N2_TRANSFER_INITIATED and
-  // pushes the N2 at a UE that has no RAN context
+  // The AMF gates its paging path on this field being present: without it it
+  // answers N1_N2_TRANSFER_INITIATED and pushes the N2 at a UE that has no
+  // RAN context
   json_data["ppi"] = smf_cfg->smf()->get_paging().paging_policy_indicator();
   session_report_msg.set_json_data(json_data);
 
-  // Step 8: publish upCnxState = ACTIVATING and paging_stage =
-  // AWAITING_SETUP_RSP in ONE locked transition, BEFORE the POST. After the
-  // POST would leave a window in which a UE-triggered service request landing
-  // on the HTTP/2 thread still reads DEACTIVATED and emits a second
-  // PDU_RES_SETUP_REQ; two separate setters would leave a window in which it
-  // reads ACTIVATING with the stale stage. Setting ACTIVATING here is an OAI
-  // decision, not a 3GPP rule: the AMF's PDU_RES_SETUP_RSP carries no
-  // upCnxState and the inbound dispatcher keys on the stored state.
+  // upCnxState and the paging stage move in one locked transition, and before
+  // the POST: afterwards a UE-triggered service request on the HTTP/2 thread
+  // would still read DEACTIVATED and emit a second PDU_RES_SETUP_REQ. Moving
+  // to ACTIVATING here is a local choice, not a 3GPP rule - the setup response
+  // carries no upCnxState, so the dispatcher keys on the stored state.
   if (!sps->commit_paging_activating()) {
+    // commit_paging_activating() logs the rejected stage under the lock that
+    // made the decision; re-reading it here would print a stale value
     Logger::smf_app().error(
         "Paging: SEID " SEID_FMT
-        " could not move to ACTIVATING (paging stage %s); abandoning the page",
-        sps->seid,
-        paging_stage_e2str.at(static_cast<int>(sps->get_paging_stage()))
-            .c_str());
+        " could not move to ACTIVATING; abandoning the page",
+        sps->seid);
     return abandon_page();
   }
 
-  // Step 9: POST the N1N2 message transfer. smf_sbi already assembles the
-  // multipart body with the JSON part first and the N2 part as raw
-  // application/vnd.3gpp.ngap bytes.
+  // POST the N1N2 message transfer; smf_sbi assembles the multipart body with
+  // the JSON part first and the N2 part as raw application/vnd.3gpp.ngap
+  // bytes.
   std::shared_ptr<itti_sbi_session_report_request> itti_sbi_report =
       std::make_shared<itti_sbi_session_report_request>(
           TASK_SMF_APP, TASK_SMF_SBI);
@@ -2866,7 +2868,7 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
     return abandon_page();
   }
 
-  // Never CONTINUE: OK/ERROR is what makes the dispatcher unregister this
+  // Never CONTINUE: only OK or ERROR makes the dispatcher unregister this
   // procedure and decrement the N4 in-flight count
   return smf_procedure_code::OK;
 }

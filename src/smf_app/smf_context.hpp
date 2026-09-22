@@ -154,8 +154,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   upCnx_state_e get_upCnx_state() const;
 
   /*
-   * Registers one more N4 procedure in flight for this PDU session. Saturates
-   * at UINT16_MAX. Refreshes the in-flight timestamp on every call.
+   * Registers one more N4 procedure in flight for this PDU session and
+   * refreshes the in-flight timestamp. Saturates at UINT16_MAX.
    * @param void
    * @return void
    */
@@ -177,38 +177,37 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   uint16_t get_n4_in_flight() const;
 
   /*
-   * Compare-and-set taking the session from "idle, pageable" to "a page is
-   * running": requires DEACTIVATED, stage IDLE, no page in flight and no N4
-   * procedure in flight (unless that count is stale). Sets the stage to
-   * AWAITING_M3_RESPONSE.
+   * Compare-and-set taking the session from idle and pageable to paging:
+   * requires DEACTIVATED, stage IDLE, no page in flight and no N4 procedure
+   * in flight (unless that count is stale). Sets stage AWAITING_M3_RESPONSE.
    * @param void
    * @return bool: true if this caller now owns the paging procedure
    */
   bool try_begin_paging();
 
   /*
-   * Commits, in ONE locked transition, the state published just before the
-   * N1N2 message transfer: ACTIVATING + AWAITING_SETUP_RSP
+   * Publishes, in a single locked transition, the state the N1N2 message
+   * transfer is sent under: ACTIVATING and stage AWAITING_SETUP_RSP.
    * @param void
    * @return bool: true if the transition was taken
    */
   bool commit_paging_activating();
 
   /*
-   * Commits, in ONE locked transition, the whole end state of a successful
-   * page: ACTIVATED, stage IDLE, nothing in flight, nothing armed
+   * Publishes, in a single locked transition, the end state of a successful
+   * page: ACTIVATED, stage IDLE, nothing in flight, nothing armed.
    * @param void
    * @return void
    */
   void commit_paging_activated();
 
   /*
-   * Compare-and-set gating the processing of a PDU_RES_SETUP_RSP. Accepts only
-   * from stage IDLE (ordinary UE-triggered service request) or
-   * AWAITING_SETUP_RSP (the answer to our page), and takes
+   * Compare-and-set gating the processing of a PDU_RES_SETUP_RSP. Accepts
+   * only from stage IDLE (ordinary UE-triggered service request) or
+   * AWAITING_SETUP_RSP (the answer to a page), and takes
    * AWAITING_M5_RESPONSE when a paging rule is armed.
-   * @param [bool&] n4_busy: OUT, set under the SAME lock, true only when an N4
-   * procedure of the paging procedure itself is outstanding
+   * @param [bool&] n4_busy: out, set under the same lock as the test, true
+   * only when an N4 procedure of the paging procedure itself is outstanding
    * @return bool: true if the caller may proceed
    */
   bool try_begin_activation(bool& n4_busy);
@@ -221,13 +220,6 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void end_paging(bool keep_armed);
 
   /*
-   * Set the stage of the paging procedure
-   * @param [const paging_stage_e&] stage: new stage
-   * @return void
-   */
-  void set_paging_stage(const paging_stage_e& stage);
-
-  /*
    * Get the stage of the paging procedure
    * @param void
    * @return paging_stage_e: current stage
@@ -235,14 +227,14 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   paging_stage_e get_paging_stage() const;
 
   /*
-   * Whether the paging PDR/FAR pair is currently armed on the UPF
+   * Whether the paging PDR and FAR are currently armed on the UPF
    * @param void
    * @return bool: true if armed
    */
   bool is_paging_armed() const;
 
   /*
-   * Set whether the paging PDR/FAR pair is armed on the UPF
+   * Set whether the paging PDR and FAR are armed on the UPF
    * @param [bool] armed: new value
    * @return void
    */
@@ -424,15 +416,15 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
   // Number of smf_session_procedures currently registered for this PDU
-  // session. A COUNT, not a flag, and uint16_t on purpose: every completion
-  // decrements it, but an orphaned registration is never unwound, so each one
-  // raises a permanent floor the count can never fall back below.
+  // session. A count rather than a flag: every completion decrements it, but
+  // an orphaned registration is never unwound and raises a permanent floor
+  // the count can no longer fall below.
   uint16_t n4_procedures_in_flight;
-  // Refreshed on EVERY increment, not only on the 0 -> 1 edge: a timestamp
-  // pinned at the moment of a loss would make all later N4 work read as stale.
+  // Refreshed on every increment, not only on the 0 -> 1 edge: a timestamp
+  // pinned at the moment of a loss would make later N4 work read as stale.
   std::chrono::steady_clock::time_point n4_in_flight_since;
   bool paging_in_flight;  // a network-triggered service request is running
-  bool paging_armed;      // the paging PDR/FAR pair is live on the UPF
+  bool paging_armed;      // the paging PDR and FAR are live on the UPF
   paging_stage_e paging_stage;
   uint64_t paging_trxn_id;
   ho_state_e ho_state;
@@ -483,8 +475,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
  private:
   /*
-   * Whether the N4 in-flight count is old enough to be overridden. MUST be
-   * called with m_pdu_session_mutex already held: it is not recursive.
+   * Whether the N4 in-flight count is old enough to be overridden.
+   * m_pdu_session_mutex must be held by the caller; it is not recursive.
    * @param void
    * @return bool: true if the count is stale
    */

@@ -642,24 +642,26 @@ void smf_app::handle_itti_msg(
 
         Logger::smf_app().warn(
             "Paging: the AMF refused the N1N2 message transfer for "
-            "SEID " SEID_FMT
-            " (response code %d, cause %s); returning the "
-            "user plane to DEACTIVATED",
+            "SEID " SEID_FMT " (response code %d, cause %s)",
             m.seid, m.response_code, m.cause.c_str());
 
-        sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
-        // MANDATORY, and it must happen BEFORE end_paging(). The paging
-        // procedure returned OK and the N4 response dispatcher already
-        // unregistered it, so its cached edges are gone and its failure branch
-        // cannot run here - but M3's edges still carry live pdr_id/far_id and
-        // the harvested F-TEID. Left set, the next UE-originated wake-up would
-        // re-Create on LIVE rule IDs under the SAME F-TEID key, and the UPF
-        // stacks duplicate PDRs rather than replacing them: the stale one then
-        // wins, permanently. The stage test is the ownership check: only the
-        // cycle that reached AWAITING_SETUP_RSP owns these IDs. The IDs are
-        // deliberately NOT released to the generators, because the UPF may
-        // still hold M3's rules.
+        // Both the roll-back and the edge cleanup are gated on the stage,
+        // since both are only ours to do while this paging cycle still owns
+        // the session: a late refusal must not write DEACTIVATED over a
+        // session the restoring modification has just brought up, nor over
+        // one an AN release has already torn down. The cleanup runs before
+        // end_paging(), because by then the paging procedure is unregistered
+        // yet its edges still carry live rule IDs and the harvested F-TEID;
+        // left set, the next wake-up re-Creates on them under the same F-TEID
+        // key, and the UPF stacks duplicate PDRs rather than replacing them,
+        // so the stale one wins for good. The IDs are not handed back to the
+        // generators, since the UPF may still hold the rules.
         if (sp->get_paging_stage() == paging_stage_e::AWAITING_SETUP_RSP) {
+          Logger::smf_app().warn(
+              "Paging: returning the user plane of SEID " SEID_FMT
+              " to DEACTIVATED",
+              m.seid);
+          sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
           std::shared_ptr<upf_graph> graph =
               sp->get_session_handler()->get_session_graph();
           if (graph) {
