@@ -520,6 +520,9 @@ void smf_config_type::from_yaml(const YAML::Node& node) {
   if (node["ngap"]) {
     m_ngap_config.from_yaml(node["ngap"]);
   }
+  if (node["paging"]) {
+    m_paging_config.from_yaml(node["paging"]);
+  }
 }
 
 nlohmann::json smf_config_type::to_json() {
@@ -528,6 +531,7 @@ nlohmann::json smf_config_type::to_json() {
   json_data                                      = nf::to_json();
   json_data[m_support_feature.get_config_name()] = m_support_feature.to_json();
   json_data[m_ue_dns.get_config_name()]          = m_ue_dns.to_json();
+  json_data[m_paging_config.get_config_name()]   = m_paging_config.to_json();
   json_data["upfs"]                              = nlohmann::json::array();
   for (auto u : m_upfs) {
     json_data["upfs"].push_back(u.to_json());
@@ -550,6 +554,9 @@ bool smf_config_type::from_json(const nlohmann::json& json_data) {
     }
     if (json_data.find(m_ue_dns.get_config_name()) != json_data.end()) {
       m_ue_dns.from_json(json_data[m_ue_dns.get_config_name()]);
+    }
+    if (json_data.find(m_paging_config.get_config_name()) != json_data.end()) {
+      m_paging_config.from_json(json_data[m_paging_config.get_config_name()]);
     }
     if (json_data.find("smf_info") != json_data.end()) {
       nlohmann::from_json(json_data["smf_info"], m_smf_info);
@@ -579,6 +586,7 @@ std::string smf_config_type::to_string(const std::string& indent) const {
       m_ue_mtu.to_string("")));
   out.append(m_ims_config.to_string(indent));
   out.append(m_ngap_config.to_string(indent));
+  out.append(m_paging_config.to_string(indent));
   std::string inner_indent = indent + indent;
   if (!m_upfs.empty()) {
     out.append(indent).append("UPF List:\n");
@@ -611,6 +619,20 @@ void smf_config_type::validate() {
     sub.validate();
   }
   m_smf_info.validate();
+  m_paging_config.validate();
+  // a UPF that installs the downlink PDR already at session establishment
+  // gets a DROP FAR for every N3 edge, which would kill the user plane we
+  // restore after paging
+  if (m_paging_config.enable()) {
+    for (const auto& upf : m_upfs) {
+      if (upf.enable_dl_pdr_in_session_establishment()) {
+        throw std::runtime_error(fmt::format(
+            "paging.{} is not supported together with a UPF configured with "
+            "{}: disable one of them",
+            PAGING_ENABLE, "enable_dl_pdr_in_pfcp_session_establishment"));
+      }
+    }
+  }
 }
 
 const smf_support_features& smf_config_type::get_smf_support_features() const {
@@ -648,6 +670,10 @@ const SmfInfo& smf_config_type::get_smf_info() {
 
 ngap_config_value smf_config_type::get_ngap() const {
   return m_ngap_config;
+}
+
+paging_config_value smf_config_type::get_paging() const {
+  return m_paging_config;
 }
 
 subscription_info_config::subscription_info_config(
@@ -999,4 +1025,67 @@ void ngap_config_value::validate() {
 
 bool ngap_config_value::send_default_qos_characteristics() const {
   return m_send_default_qos_characteristics.get_value();
+}
+
+paging_config_value::paging_config_value() {
+  m_config_name             = "paging_config";
+  m_enable                  = option_config_value(PAGING_ENABLE, false);
+  m_paging_policy_indicator = int_config_value(PAGING_POLICY_INDICATOR, 1);
+  m_paging_policy_indicator.set_validation_interval(0, 7);
+}
+
+void paging_config_value::from_yaml(const YAML::Node& node) {
+  if (node[PAGING_ENABLE]) {
+    m_enable.from_yaml(node[PAGING_ENABLE]);
+  }
+  if (node[PAGING_POLICY_INDICATOR]) {
+    m_paging_policy_indicator.from_yaml(node[PAGING_POLICY_INDICATOR]);
+  }
+}
+
+nlohmann::json paging_config_value::to_json() {
+  nlohmann::json json_data              = {};
+  json_data[m_enable.get_config_name()] = m_enable.to_json();
+  json_data[m_paging_policy_indicator.get_config_name()] =
+      m_paging_policy_indicator.to_json();
+  return json_data;
+}
+
+bool paging_config_value::from_json(const nlohmann::json& json_data) {
+  if (json_data.find(m_enable.get_config_name()) != json_data.end()) {
+    m_enable.from_json(json_data[m_enable.get_config_name()]);
+  }
+  if (json_data.find(m_paging_policy_indicator.get_config_name()) !=
+      json_data.end()) {
+    m_paging_policy_indicator.from_json(
+        json_data[m_paging_policy_indicator.get_config_name()]);
+  }
+  return false;
+}
+
+std::string paging_config_value::to_string(const std::string& indent) const {
+  auto value_fmt = get_value_formatter(1);
+  auto title_fmt = get_title_formatter(0);
+
+  std::string out;
+  out.append(indent).append(fmt::format(title_fmt, m_config_name));
+  out.append(indent).append(fmt::format(
+      value_fmt, m_enable.get_config_name(), m_enable.to_string("")));
+  out.append(indent).append(fmt::format(
+      value_fmt, m_paging_policy_indicator.get_config_name(),
+      m_paging_policy_indicator.to_string("")));
+  return out;
+}
+
+void paging_config_value::validate() {
+  m_enable.validate();
+  m_paging_policy_indicator.validate();
+}
+
+bool paging_config_value::enable() const {
+  return m_enable.get_value();
+}
+
+uint8_t paging_config_value::paging_policy_indicator() const {
+  return m_paging_policy_indicator.get_value();
 }

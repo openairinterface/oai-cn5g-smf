@@ -31,6 +31,8 @@ const std::string USE_LOCAL_SUBSCRIPTION_INFOS_CONFIG_VALUE =
 const std::string USE_EXTERNAL_NSSF_CONFIG_VALUE = "use_external_nssf";
 const std::string NGAP_SEND_DEFAULT_QOS_CHARACTERISTICS =
     "send_default_qos_characteristics";
+const std::string PAGING_ENABLE           = "enable";
+const std::string PAGING_POLICY_INDICATOR = "paging_policy_indicator";
 
 const oai::_3gpp::model::Snssai DEFAULT_SNSSAI{1};
 const session_ambr_t DEFAULT_S_AMBR{"1000Mbps", "1000Mbps"};

@@ -620,84 +620,58 @@ void smf_app::handle_itti_msg(
           m.response_code, m.cause.c_str());
       if ((m.response_code != http_status_code::OK) and
           (m.response_code != http_status_code::ACCEPTED)) {
-        Logger::smf_app().debug("Send failure indication to UPF");
-        // TODO: to be completed
-        pfcp::node_id_t up_node_id = {};
-        // Get UPF node
-        std::shared_ptr<smf_context_ref> scf = {};
-        if (smf_app_inst->is_scid_2_smf_context(m.scid)) {
-          scf = scid_2_smf_context(m.scid);
-          // up_node_id = scf.get()->upf_node_id;
-        } else {
-          Logger::smf_app().warn(
-              "SM Context associated with this id " SCID_FMT " does not exit!",
-              m.scid);
-          return;
-        }
-
+        // The AMF refused the N1N2 message transfer, so the UE will never be
+        // paged for this downlink packet. Resolve by SEID: the scid is never
+        // set on this path.
         std::shared_ptr<smf_context> sc = {};
-        if (is_supi_2_smf_context(scf.get()->supi)) {
-          Logger::smf_app().debug(
-              "Update SMF context with SUPI %s", scf.get()->supi);
-          sc = supi_2_smf_context(scf.get()->supi);
-        }
-
-        if (sc.get() == nullptr) {
+        if (!seid_2_smf_context(m.seid, sc)) {
           Logger::smf_app().warn(
-              "SM Context associated with this id " SCID_FMT " does not exit!",
-              m.scid);
+              "Paging: no SMF context for SEID " SEID_FMT
+              ", cannot clean up after the refused N1N2 message transfer",
+              m.seid);
           return;
         }
-
         std::shared_ptr<smf_pdu_session> sp = {};
-        if (!sc.get()->find_pdu_session(scf.get()->pdu_session_id, sp)) {
-          Logger::smf_app().warn("PDU session context does not exist!");
+        if (!sc->find_pdu_session_from_seid(m.seid, sp)) {
+          Logger::smf_app().warn(
+              "Paging: no PDU session for SEID " SEID_FMT
+              ", cannot clean up after the refused N1N2 message transfer",
+              m.seid);
           return;
         }
 
-        // TODO when is this triggered and what should we do in that case?
+        Logger::smf_app().warn(
+            "Paging: the AMF refused the N1N2 message transfer for "
+            "SEID " SEID_FMT
+            " (response code %d, cause %s); returning the "
+            "user plane to DEACTIVATED",
+            m.seid, m.response_code, m.cause.c_str());
 
-        std::shared_ptr<upf_graph> graph =
-            sp->get_session_handler()->get_session_graph();
-        if (!graph) {
-          Logger::smf_app().warn("PDU sessions graph does not exist!");
-          return;
+        sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
+        // MANDATORY, and it must happen BEFORE end_paging(). The paging
+        // procedure returned OK and the N4 response dispatcher already
+        // unregistered it, so its cached edges are gone and its failure branch
+        // cannot run here - but M3's edges still carry live pdr_id/far_id and
+        // the harvested F-TEID. Left set, the next UE-originated wake-up would
+        // re-Create on LIVE rule IDs under the SAME F-TEID key, and the UPF
+        // stacks duplicate PDRs rather than replacing them: the stale one then
+        // wins, permanently. The stage test is the ownership check: only the
+        // cycle that reached AWAITING_SETUP_RSP owns these IDs. The IDs are
+        // deliberately NOT released to the generators, because the UPF may
+        // still hold M3's rules.
+        if (sp->get_paging_stage() == paging_stage_e::AWAITING_SETUP_RSP) {
+          std::shared_ptr<upf_graph> graph =
+              sp->get_session_handler()->get_session_graph();
+          if (graph) {
+            for (const auto& e3 : graph->get_access_edges()) {  // N3 edges
+              if (e3->associated_edge) {
+                e3->associated_edge->clear_session();  // its N6 peer
+              }
+              e3->clear_session();
+            }
+          }
         }
-        std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
-        std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
-        std::shared_ptr<pfcp_association> current_upf;
-        // TODO what is exactly happening here or should happen?
-        // and why is this not in the procedure?
-        graph->start_asynch_dfs_procedure(true);
-        graph->dfs_next_upf(dl_edges, ul_edges, current_upf);
-
-        if (!current_upf) {
-          Logger::smf_app().warn("Could not select UPF in graph!");
-          return;
-        }
-
-        up_node_id = current_upf->node_id;
-
-        std::shared_ptr<itti_n4_session_failure_indication>
-            itti_n4_failure_indication =
-                std::make_shared<itti_n4_session_failure_indication>(
-                    TASK_SMF_APP, TASK_SMF_N4);
-
-        itti_n4_failure_indication->seid    = m.seid;
-        itti_n4_failure_indication->trxn_id = m.trxn_id;
-        itti_n4_failure_indication->r_endpoint =
-            endpoint(up_node_id.u1.ipv4_address, pfcp::default_port);
-
-        Logger::smf_app().info(
-            "Sending ITTI message %s to task TASK_SMF_N4",
-            itti_n4_failure_indication->get_msg_name());
-        int ret = itti_inst->send_msg(itti_n4_failure_indication);
-        if (RETURNok != ret) {
-          Logger::smf_app().error(
-              "Could not send ITTI message %s to task TASK_SMF_N4",
-              itti_n4_failure_indication->get_msg_name());
-          return;
-        }
+        sp->end_paging(/* keep_armed = */ true);
       }
     } break;
 
