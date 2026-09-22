@@ -194,6 +194,32 @@ class session_handler {
    */
   void release_pdr_id(const pfcp::pdr_id_t& pdr_id);
 
+  /**
+   * Stores the PDR ID / FAR ID pair of the paging rule armed on AN release.
+   * They must survive the AN release, so they cannot be kept on the edge:
+   * qos_upf_edge::clear_session() zeroes the edge rule IDs on the very path
+   * that arms the rule.
+   * @param [const pfcp::pdr_id_t&] pdr_id: PDR ID of the paging rule
+   * @param [const pfcp::far_id_t&] far_id: FAR ID of the paging rule
+   */
+  void set_paging_rule_ids(
+      const pfcp::pdr_id_t& pdr_id, const pfcp::far_id_t& far_id);
+
+  /**
+   * Gets the PDR ID / FAR ID pair of the armed paging rule
+   * @param [pfcp::pdr_id_t&] pdr_id: PDR ID of the paging rule
+   * @param [pfcp::far_id_t&] far_id: FAR ID of the paging rule
+   * @return void
+   */
+  void get_paging_rule_ids(
+      pfcp::pdr_id_t& pdr_id, pfcp::far_id_t& far_id) const;
+
+  /**
+   * Forgets the paging rule IDs (the rule has been removed from the UPF)
+   * @return void
+   */
+  void clear_paging_rule_ids();
+
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
@@ -226,6 +252,11 @@ class session_handler {
   std::map<uint8_t, oai::nas::QosRule> m_qos_rules;  // QRI <-> QoS Rules
   std::vector<uint8_t> m_qos_rules_to_be_synchronised;
   std::vector<uint8_t> m_qos_rules_to_be_removed;
+
+  // PDR ID / FAR ID of the paging rule armed on AN release, zeroed when no
+  // rule is armed
+  pfcp::pdr_id_t m_paging_pdr_id{};
+  pfcp::far_id_t m_paging_far_id{};
 
   mutable std::shared_mutex m_session_handler_mutex;
 

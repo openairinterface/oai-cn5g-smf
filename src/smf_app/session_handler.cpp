@@ -85,9 +85,22 @@ qos_flow_context_updated session_handler::get_qos_flow_context_updated(
 //------------------------------------------------------------------------------
 std::vector<::oai::app::smf::qos_flow_context_updated>
 session_handler::get_qos_flows_context_updated() {
+  // Snapshot under a shared lock, then RELEASE it before the loop: the
+  // singular getter below reaches the session graph and
+  // m_session_handler_mutex is not recursive, so a lock held around the loop
+  // would deadlock. Iterating the member directly is a data race, not a stale
+  // value risk: set_qfis_to_be_updated() assigns the WHOLE vector and
+  // smf_http2_server calls into the SMF app with no ITTI hop, so the HTTP/2
+  // thread can reallocate the buffer under a live iterator here.
+  std::vector<pfcp::qfi_t> qfis_snapshot;
+  {
+    std::shared_lock lock(m_session_handler_mutex);
+    qfis_snapshot = m_qfis_to_be_updated;
+  }
+
   std::vector<::oai::app::smf::qos_flow_context_updated> flows;
-  flows.reserve(m_qfis_to_be_updated.size());
-  for (const auto& qfi : m_qfis_to_be_updated) {
+  flows.reserve(qfis_snapshot.size());
+  for (const auto& qfi : qfis_snapshot) {
     flows.push_back(get_qos_flow_context_updated(qfi));
   }
 
@@ -97,6 +110,7 @@ session_handler::get_qos_flows_context_updated() {
 //------------------------------------------------------------------------------
 void session_handler::set_qfis_to_be_updated(
     const std::vector<pfcp::qfi_t>& qfis) {
+  std::unique_lock lock(m_session_handler_mutex);
   m_qfis_to_be_updated = qfis;
 }
 
@@ -542,6 +556,29 @@ pfcp::pdr_id_t session_handler::generate_pdr_id() {
 //------------------------------------------------------------------------------
 void session_handler::release_pdr_id(const pfcp::pdr_id_t& pdr_id) {
   m_pdr_id_generator.free_uid(pdr_id.rule_id);
+}
+
+//------------------------------------------------------------------------------
+void session_handler::set_paging_rule_ids(
+    const pfcp::pdr_id_t& pdr_id, const pfcp::far_id_t& far_id) {
+  std::unique_lock lock(m_session_handler_mutex);
+  m_paging_pdr_id = pdr_id;
+  m_paging_far_id = far_id;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::get_paging_rule_ids(
+    pfcp::pdr_id_t& pdr_id, pfcp::far_id_t& far_id) const {
+  std::shared_lock lock(m_session_handler_mutex);
+  pdr_id = m_paging_pdr_id;
+  far_id = m_paging_far_id;
+}
+
+//------------------------------------------------------------------------------
+void session_handler::clear_paging_rule_ids() {
+  std::unique_lock lock(m_session_handler_mutex);
+  m_paging_pdr_id = {};
+  m_paging_far_id = {};
 }
 
 //------------------------------------------------------------------------------
