@@ -7,6 +7,8 @@
 #include <Ngap_GBR-QosInformation.h>
 #include <arpa/inet.h>
 
+#include <cstdlib>
+#include <memory>
 #include <stdexcept>
 #include <Ngap_GBR-QosInformation.h>
 #include <3gpp_conversions.hpp>
@@ -521,11 +523,84 @@ bool smf_n2::create_n2_pdu_session_resource_release_command_transfer(
 bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     pdu_session_report_response& msg, n2_sm_info_type_e ngap_info_type,
     std::string& ngap_msg_str) {
-  Logger::smf_n2().debug(
-      "Create N2 SM Information: NGAP PDU Session Resource Setup Request "
-      "Transfer IE");
-  // TODO:
-  Logger::smf_n2().warn("This function has not been implemented!");
+  Logger::smf_n2().info(
+      "Create N2 SM Information, PDU Session Resource Setup Request Transfer "
+      "(SEID " SEID_FMT ")",
+      msg.get_seid());
+
+  PduSessionResourceSetupRequestTransfer
+      pdu_session_resource_setup_request_transfer = {};
+
+  // get QoS flows
+  std::map<uint8_t, qos_flow_context_updated> qos_flows = {};
+  msg.get_all_qos_flow_context_updateds(qos_flows);
+
+  // the common part below reads qos_flows.begin() without checking, and an
+  // empty QoS Flow Setup Request List would be refused by the RAN anyway
+  if (qos_flows.empty()) {
+    Logger::smf_n2().warn(
+        "No QoS flow to be sent to the RAN, couldn't create the NGAP PDU "
+        "Session Resource Setup Request Transfer (SEID " SEID_FMT ")",
+        msg.get_seid());
+    return false;
+  }
+
+  // PriorityLevelARP ::= INTEGER (1..15) has no extension marker: a value
+  // outside that range is a transfer syntax error and, the IEs carrying it
+  // being critical (reject), makes the RAN drop the whole PDU session
+  const int32_t arp_priority_level_first = 1;
+  const int32_t arp_priority_level_last  = 15;
+
+  for (const auto& qos_flow_pair : qos_flows) {
+    Logger::smf_n2().debug(
+        "QoS Flow context to be updated QFI %d", qos_flow_pair.first);
+    int32_t arp_priority_level =
+        qos_flow_pair.second.qos_profile.getArp().getPriorityLevel();
+    if ((arp_priority_level < arp_priority_level_first) or
+        (arp_priority_level > arp_priority_level_last)) {
+      Logger::smf_n2().warn(
+          "Incorrect ARP priority level %d (expected %d..%d) for QFI %d, "
+          "couldn't create the NGAP PDU Session Resource Setup Request "
+          "Transfer",
+          arp_priority_level, arp_priority_level_first, arp_priority_level_last,
+          qos_flow_pair.first);
+      return false;
+    }
+  }
+
+  std::shared_ptr<pdu_session_report_response> sm_context_response =
+      std::make_shared<pdu_session_report_response>(msg);
+  if (!create_n2_pdu_session_resource_setup_request_transfer(
+          sm_context_response, qos_flows, ngap_info_type,
+          pdu_session_resource_setup_request_transfer)) {
+    Logger::smf_n2().warn(
+        "Couldn't fill NGAP PDU Session Resource Setup Request Transfer "
+        "contents");
+    return false;
+  }
+
+  // Encode: encode2NewBuffer overwrites the pointer with a buffer allocated
+  // by the ASN.1 runtime (malloc), which must be released with free. It
+  // leaves the pointer untouched when the encoding fails, hence the nullptr
+  // initialisation and both checks below.
+  uint8_t* buffer  = nullptr;
+  int encoded_size = 0;
+  pdu_session_resource_setup_request_transfer.encode2NewBuffer(
+      buffer, encoded_size);
+  std::unique_ptr<uint8_t, decltype(&std::free)> encoded_buffer(
+      buffer, &std::free);
+
+  if ((buffer == nullptr) or (encoded_size <= 0)) {
+    Logger::smf_n2().warn(
+        "NGAP PDU Session Resource Setup Request Transfer encode failed "
+        "(encode size %d)",
+        encoded_size);
+    return false;
+  }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "N2 SM Buffer Data:", buffer, encoded_size);
+  ngap_msg_str.assign(reinterpret_cast<const char*>(buffer), encoded_size);
 
   return true;
 }
