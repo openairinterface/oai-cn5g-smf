@@ -545,9 +545,9 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // PriorityLevelARP ::= INTEGER (1..15) has no extension marker: a value
-  // outside that range is a transfer syntax error and, the IEs carrying it
-  // being critical (reject), makes the RAN drop the whole PDU session
+  // PriorityLevelARP ::= INTEGER (1..15) has no extension marker: an out of
+  // range value is a transfer syntax error on a critical (reject) IE, so the
+  // RAN drops the whole PDU session
   const int32_t arp_priority_level_first = 1;
   const int32_t arp_priority_level_last  = 15;
 
@@ -579,10 +579,9 @@ bool smf_n2::create_n2_pdu_session_resource_setup_request_transfer(
     return false;
   }
 
-  // Encode: encode2NewBuffer overwrites the pointer with a buffer allocated
-  // by the ASN.1 runtime (malloc), which must be released with free. It
-  // leaves the pointer untouched when the encoding fails, hence the nullptr
-  // initialisation and both checks below.
+  // encode2NewBuffer hands back a buffer the ASN.1 runtime malloc'ed, to be
+  // released with free, and leaves the pointer untouched when the encoding
+  // fails - hence the nullptr initialisation and the checks below
   uint8_t* buffer  = nullptr;
   int encoded_size = 0;
   pdu_session_resource_setup_request_transfer.encode2NewBuffer(

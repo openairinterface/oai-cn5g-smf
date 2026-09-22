@@ -200,10 +200,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
-  // value(), not operator[]: a body that parses as JSON but carries no "cause"
-  // member - an RFC 7807 ProblemDetails from a proxy, say - would otherwise
-  // reach set_cause() as a null and throw nlohmann::json::type_error on the
-  // TASK_SMF_SBI thread, which has no handler in its call chain
+  // value(), not operator[]: a JSON body without a "cause" member - an RFC
+  // 7807 ProblemDetails from a proxy, say - would reach set_cause() as a null
+  // and throw on the TASK_SMF_SBI thread, which has no handler in its call
+  // chain
   const std::string cause =
       response_data_json.value("cause", std::string("UNSPECIFIED"));
   Logger::smf_sbi().debug(
@@ -315,11 +315,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     // Set the default Cause
     response_data_json["cause"] = "504 Gateway Timeout";
   }
-  // value(), not operator[]: a body that parses as JSON but carries no "cause"
-  // member - an RFC 7807 ProblemDetails, which is exactly what a 4xx from the
-  // AMF carries - would otherwise reach set_cause() as a null and throw
-  // nlohmann::json::type_error on the TASK_SMF_SBI thread, which has no
-  // handler in its call chain
+  // value(), not operator[]: a JSON body without a "cause" member - which is
+  // exactly what a 4xx from the AMF carries - would reach set_cause() as a
+  // null and throw on the TASK_SMF_SBI thread, which has no handler in its
+  // call chain
   const std::string cause =
       response_data_json.value("cause", std::string("UNSPECIFIED"));
   Logger::smf_sbi().debug(
