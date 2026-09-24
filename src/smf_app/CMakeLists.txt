@@ -47,5 +47,9 @@ add_library (SMF STATIC
   smf_config_types.cpp
   smf_qos_upf_edge.cpp
   session_handler.cpp
+  smf_policy_manager.cpp
 )
 
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
