@@ -36,5 +36,6 @@ archives
 src/oai_rules_result*
 test_results_oai_smf.html
 
-# VS Code
-.vscode
+# IDE files
+.vscode/
+.idea/

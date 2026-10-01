@@ -56,10 +56,12 @@ struct policy_association {
       const pdu_session_type_t& pdu_session_type,
       const subscribed_default_qos_t& default_qos,
       const session_ambr_t& session_ambr,
-      const std::optional<paa_t> paa = std::nullopt) {
+      const std::optional<paa_t> paa           = std::nullopt,
+      const std::optional<std::string> an_type = std::nullopt) {
     oai::_3gpp::model::Snssai snssai_model = {};
     xgpp_conv::snssai_to_model(snssai, snssai_model);
     oai::_3gpp::model::PlmnIdNid plmn_id_model = {};
+
     plmn_id_model.setMcc(plmn.mcc);
     plmn_id_model.setMnc(plmn.mnc);
     context = {};
@@ -72,7 +74,21 @@ struct policy_association {
     context.setPduSessionType(pdu_session_type_model);
     context.setDnn(dnn);
     context.setSliceInfo(snssai_model);
+    // Set ServingNetwork (per 3GPP TS 29.512 clause 4.2.2.2)
+    // ServingNetwork identifies the PLMN in which the PDU session is
+    // established
     context.setServingNetwork(plmn_id_model);
+
+    // Set AccessType if available (per 3GPP TS 29.512 clause 4.2.2.2)
+    // AccessType indicates the access technology type (3GPP_ACCESS,
+    // NON_3GPP_ACCESS, etc.)
+    if (an_type.has_value()) {
+      oai::_3gpp::model::AccessType access_type_model = {};
+      // Convert AN Type string to AccessType model
+      // AN Type values: "3GPP_ACCESS", "NON_3GPP_ACCESS"
+      from_json(an_type.value(), access_type_model);
+      context.setAccessType(access_type_model);
+    }
     // Set UE IP addresses if available
     if (paa.has_value()) {
       switch (paa.value().pdu_session_type.pdu_session_type) {
