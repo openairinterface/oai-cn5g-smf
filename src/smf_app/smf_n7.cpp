@@ -84,6 +84,18 @@ sm_policy_status_code smf_n7::create_sm_policy_association(
     Logger::smf_n7().debug(
         "Successfully created policy association with ID: %lu ",
         association.id);
+  } else if (!association.pcf_location.empty()) {
+    // The PCF answered 201 Created and the location was read off the response,
+    // but something after that failed, so the association is never handed to
+    // the caller. The PCF is holding one that nothing will ever delete unless
+    // it is terminated here.
+    Logger::smf_n7().warn(
+        "SM Policy Association creation failed after the PCF had created one, "
+        "terminating it at %s",
+        association.pcf_location.c_str());
+    oai::_3gpp::model::SmPolicyDeleteData delete_data;
+    storage->remove_policy_association(association, delete_data);
+    association.pcf_location.clear();
   }
 
   return res;
@@ -110,6 +122,19 @@ sm_policy_status_code smf_n7::update_sm_policy_association(
   if (!storage) return sm_policy_status_code::PCF_NOT_AVAILABLE;
 
   return storage->update_policy_association(update_data, association);
+}
+
+//------------------------------------------------------------------------------
+void smf_n7::set_policy_storage(
+    uint32_t pcf_id, const std::shared_ptr<policy_storage>& storage) {
+  std::unique_lock policies_lock(policy_storages_mutex);
+  policy_storages[pcf_id] = storage;
+}
+
+//------------------------------------------------------------------------------
+void smf_n7::clear_policy_storages() {
+  std::unique_lock policies_lock(policy_storages_mutex);
+  policy_storages.clear();
 }
 
 //------------------------------------------------------------------------------
