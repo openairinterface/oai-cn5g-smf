@@ -162,6 +162,15 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   void deallocate_ressources(const std::string& dnn);
 
   /*
+   * Terminate the SM Policy Association this session holds at the PCF, as
+   * required by 3GPP TS 29.512 section 4.2.4. Takes ownership of policy_ptr
+   * before sending, so that the DELETE is sent at most once however many
+   * teardown paths reach this session. A no-op when the session has no
+   * association, which is the case when no PCF was selected for it.
+   */
+  void terminate_policy_association();
+
+  /*
    * Represent PDU Session as string to be printed
    * @param void
    * @return void

@@ -168,6 +168,14 @@ void smf_pdu_session::deallocate_ressources(const std::string& dnn) {
     return;
   }
 
+  // The SM Policy Association at the PCF is one of the resources this session
+  // holds. Release it here rather than at each caller, so that every path that
+  // ends a session frees it: the Release SM Context Request from the AMF, the
+  // network-requested release, and the last expiry of T3592. Only the
+  // UE-initiated path used to do this, and the association survived at the PCF
+  // for the PCF's lifetime on all the others.
+  terminate_policy_association();
+
   m_session_handler->deallocate_resources();
 
   if (ipv4 && !dnn.empty()) {
@@ -281,6 +289,35 @@ pdu_session_type_t smf_pdu_session::get_pdu_session_type() const {
   return pdu_session_type;
 }
 
+//------------------------------------------------------------------------------
+void smf_pdu_session::terminate_policy_association() {
+  if (!policy_ptr) return;
+
+  // Claim the association before sending, so a teardown path that reaches this
+  // session afterwards finds nothing left to delete rather than sending a
+  // second DELETE for an association the PCF has already dropped.
+  std::shared_ptr<n7::policy_association> policy;
+  policy.swap(policy_ptr);
+
+  if (policy->pcf_location.empty()) {
+    Logger::smf_n7().warn(
+        "SM Policy Association (Id %lu) has no PCF location, cannot terminate "
+        "it at the PCF",
+        policy->id);
+    return;
+  }
+
+  oai::_3gpp::model::SmPolicyDeleteData delete_data;
+  // TODO set data such as release cause, usage reports etc
+  if (n7::smf_n7::get_instance().remove_sm_policy_association(
+          *policy, delete_data) != n7::sm_policy_status_code::OK) {
+    Logger::smf_n7().warn(
+        "Could not terminate the SM Policy Association at the PCF (%s)",
+        policy->pcf_location.c_str());
+  }
+}
+
+//------------------------------------------------------------------------------
 std::shared_ptr<session_handler> smf_pdu_session::get_session_handler() const {
   return m_session_handler;
 }
@@ -1759,12 +1796,7 @@ bool smf_context::handle_pdu_session_release_complete(
   }
 
   // SM Policy Association termination
-  if (sp->policy_ptr) {
-    oai::_3gpp::model::SmPolicyDeleteData delete_data;
-    // TODO set data such as release cause, usage reports etc
-    n7::smf_n7::get_instance().remove_sm_policy_association(
-        *sp->policy_ptr, delete_data);
-  }
+  sp->terminate_policy_association();
   // TODO: SMF un-subscribes from Session Management Subscription data
   // changes notification from UDM by invoking Numd_SDM_Unsubscribe
 
@@ -3818,10 +3850,27 @@ bool smf_context::add_pdu_session(
 
 //------------------------------------------------------------------------------
 bool smf_context::remove_pdu_session(const pdu_session_id_t& psi) {
-  Logger::smf_app().debug(
-      "Failed to add PDU Session (Id %d) failed: invalid Id", psi);
-  std::unique_lock lock(m_pdu_sessions_mutex);
-  return (pdu_sessions.erase(psi) > 0);
+  std::shared_ptr<smf_pdu_session> sp = {};
+  {
+    std::unique_lock lock(m_pdu_sessions_mutex);
+    auto it = pdu_sessions.find(psi);
+    if (it == pdu_sessions.end()) {
+      Logger::smf_app().debug(
+          "Failed to remove PDU Session (Id %d): unknown Id", psi);
+      return false;
+    }
+    sp = it->second;
+    pdu_sessions.erase(it);
+  }
+
+  // Once the session is out of the context nothing else holds its SM Policy
+  // Association, so this is the last chance to terminate it. The colliding
+  // INITIAL_REQUEST that smf_app handles this way is the common case, and each
+  // one used to leave an association behind at the PCF. Sent outside the lock,
+  // because it goes over N7.
+  sp->terminate_policy_association();
+  Logger::smf_app().debug("PDU Session (Id %d) has been removed", psi);
+  return true;
 }
 
 //------------------------------------------------------------------------------
