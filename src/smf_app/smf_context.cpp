@@ -736,9 +736,8 @@ void smf_context::handle_itti_msg(
         smresp.seid, smresp.trxn_id);
     smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
     if (res != smf_procedure_code::CONTINUE) {
-      std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
-          std::static_pointer_cast<session_update_sm_context_procedure>(proc);
-
+      auto proc_session_update =
+          std::dynamic_pointer_cast<session_update_sm_context_procedure>(proc);
       if (proc_session_update) {
         send_pdu_session_update_response(
             proc_session_update->n11_trigger,
