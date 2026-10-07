@@ -74,6 +74,54 @@ extern itti_mw* itti_inst;
 void smf_app_task(void*);
 
 //------------------------------------------------------------------------------
+static void send_n4_session_deletion_for_stale_session(
+    const std::shared_ptr<smf_pdu_session>& stale_session) {
+  if (!stale_session) return;
+  if (stale_session->up_fseid.seid == 0) {
+    Logger::smf_app().debug(
+        "Stale PDU Session has no UPF SEID, skip N4 Session Deletion");
+    return;
+  }
+
+  std::shared_ptr<upf_graph> graph =
+      stale_session->get_session_handler()->get_session_graph();
+  if (!graph) {
+    Logger::smf_app().warn(
+        "Stale PDU Session has no UPF graph, skip N4 Session Deletion");
+    return;
+  }
+
+  graph->start_asynch_dfs_procedure(false);
+  while (true) {
+    std::vector<std::shared_ptr<qos_upf_edge>> dl_edges;
+    std::vector<std::shared_ptr<qos_upf_edge>> ul_edges;
+    std::shared_ptr<pfcp_association> current_upf = {};
+
+    graph->dfs_next_upf(dl_edges, ul_edges, current_upf);
+    if (!current_upf) break;
+
+    auto n4_triggered = std::make_shared<itti_n4_session_deletion_request>(
+        TASK_SMF_APP, TASK_SMF_N4);
+    n4_triggered->seid = stale_session->up_fseid.seid;
+    n4_triggered->trxn_id =
+        oai::utils::uint_uid_generator<uint64_t>::get_instance().get_uid();
+    n4_triggered->r_endpoint =
+        endpoint(current_upf->node_id.u1.ipv4_address, pfcp::default_port);
+
+    Logger::smf_app().info(
+        "Sending N4 Session Deletion for stale PDU Session (SEID " SEID_FMT
+        ") to UPF %s",
+        n4_triggered->seid, current_upf->get_printable_name().c_str());
+    int ret = itti_inst->send_msg(n4_triggered);
+    if (RETURNok != ret) {
+      Logger::smf_app().error(
+          "Could not send ITTI message %s to task TASK_SMF_N4",
+          n4_triggered->get_msg_name());
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 int smf_app::apply_config() {
   Logger::smf_app().info("Apply config...");
 
@@ -1075,16 +1123,21 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   }
 
   // Step 5. If colliding with an existing SM context (session is already
-  // existed and request type is INITIAL_REQUEST). Delete the local context
-  // (including and any associated resources in the UPF and PCF) and create a
-  // new one
+  // existed and request type is INITIAL_REQUEST). Release the stale session
+  // resources before removing the local context and creating a new one.
   if (is_scid_2_smf_context(supi, pdu_session_id) &&
       (request_type.compare("INITIAL_REQUEST") == 0)) {
-    // Remove smf_pdu_session (including all flows associated to this session)
+    std::shared_ptr<smf_pdu_session> stale_session = {};
+    if (sc->find_pdu_session(pdu_session_id, stale_session) && stale_session) {
+      send_n4_session_deletion_for_stale_session(stale_session);
+      stale_session->deallocate_ressources(stale_session->get_dnn());
+    }
+
     sc->remove_pdu_session(pdu_session_id);
     Logger::smf_app().warn(
-        "PDU Session already existed (SUPI %s, PDU Session ID %d)", supi,
-        pdu_session_id);
+        "PDU Session already existed (SUPI %s, PDU Session ID %d), replaced "
+        "stale session",
+        supi, pdu_session_id);
   }
 
   // Step 6. Retrieve Session Management Subscription data from UDM if not
