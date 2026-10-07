@@ -736,10 +736,9 @@ void smf_context::handle_itti_msg(
         smresp.seid, smresp.trxn_id);
     smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
     if (res != smf_procedure_code::CONTINUE) {
-      std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
-
-          if (proc_session_update) {
-        std::static_pointer_cast<session_update_sm_context_procedure>(proc);
+      auto proc_session_update =
+          std::dynamic_pointer_cast<session_update_sm_context_procedure>(proc);
+      if (proc_session_update) {
         send_pdu_session_update_response(
             proc_session_update->n11_trigger,
             proc_session_update->n11_triggered_pending,
@@ -858,79 +857,6 @@ void smf_context::handle_itti_msg(
               Logger::smf_app().debug(
                   "Paging disabled; DLDR acknowledged and ignored");
               break;
-            }
-
-            // Step 2. Send N1N2MessageTranfer to AMF
-            pdu_session_report_response session_report_msg = {};
-            // set the required IEs
-            session_report_msg.set_supi(supi);
-            session_report_msg.set_snssai(sp->get_snssai());
-            session_report_msg.set_dnn(sp->get_dnn());
-            session_report_msg.set_pdu_session_type(
-                sp->get_pdu_session_type().pdu_session_type);
-            // TODO: use sbi_helper
-            std::string api_version =
-                smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
-                    ->get_sbi()
-                    .get_api_version();
-            std::string url =
-                sp->get_amf_addr() +
-                oai::smf::api::smf_sbi_helper::
-                    get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
-            session_report_msg.set_amf_url(url);
-            // seid and trxn_id to be used in Failure indication
-            session_report_msg.set_seid(req->seid);
-            session_report_msg.set_trxn_id(req->trxn_id);
-
-            qos_flow_context_updated qcu =
-                sp->get_session_handler()->get_qos_flow_context_updated(qfi);
-            session_report_msg.add_qos_flow_context_updated(qcu);
-
-            // Create N2 SM Information: PDU Session Resource Setup Request
-            // Transfer IE
-            std::string n2_sm_info     = {};
-            std::string n2_sm_info_hex = {};
-            smf_n2::get_instance()
-                .create_n2_pdu_session_resource_setup_request_transfer(
-                    session_report_msg, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-                    n2_sm_info);
-
-            conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-            session_report_msg.set_n2_sm_information(n2_sm_info_hex);
-
-            // Fill the json part
-            nlohmann::json json_data = {};
-            json_data["n2InfoContainer"]["n2InformationClass"] =
-                oai::utils::N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
-                session_report_msg.get_pdu_session_id();
-            // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
-                     ["ngapIeType"] = "PDU_RES_SETUP_REQ";  // NGAP message type
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
-                     ["contentId"] = N2_SM_CONTENT_ID;  // NGAP part
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
-                session_report_msg.get_snssai().sst;
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-                session_report_msg.get_snssai().sd;
-
-            session_report_msg.set_json_data(json_data);
-
-            std::shared_ptr<itti_sbi_session_report_request> itti_sbi_report =
-                std::make_shared<itti_sbi_session_report_request>(
-                    TASK_SMF_APP, TASK_SMF_SBI);
-            itti_sbi_report->res = session_report_msg;
-            // send ITTI message to N11 interface to trigger N1N2MessageTransfer
-            // towards AMFs
-            Logger::smf_app().info(
-                "Sending ITTI message %s to task TASK_SMF_SBI",
-                itti_sbi_report->get_msg_name());
-
-            ret = itti_inst->send_msg(itti_sbi_report);
-            if (RETURNok != ret) {
-              Logger::smf_app().error(
-                  "Could not send ITTI message %s to task TASK_SMF_SBI",
-                  itti_sbi_report->get_msg_name());
             }
             // Sanity check only: with one session-wide paging PDR, the PDR ID
             // carries no QoS flow information
@@ -5365,34 +5291,30 @@ void smf_context::send_pdu_session_update_response(
   // SMF registers to the UDM for this PDU Session
   // see TS29503_Nudm_UECM.yaml, Nudm_UECM_Registration:
   // nudm-uecm/v1/{ueId}/registrations/smf-registrations/{pduSessionId}:
+  // once, when the PDU session is established (TS 23.502 §4.3.2.2.1). On every
+  // other update - AN release, service request, PCF-initiated modification -
+  // it re-registered for nothing, and with the UDM slow or absent it held
+  // TASK_SMF_SBI, delaying the N1N2 transfers queued behind it.
+  if (session_procedure_type == session_management_procedures_type_e::
+                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED) {
+    std::string supi = req->req.get_supi();
+    pdu_session_id_t pdu_session_id =
+        (pdu_session_id_t) req->req.get_pdu_session_id();
 
-  std::string supi = req->req.get_supi();
-  pdu_session_id_t pdu_session_id =
-      (pdu_session_id_t) req->req.get_pdu_session_id();
-
-  // Set SMF registration info
-  oai::_3gpp::model::SmfRegistration smf_registration = {};
-  smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
-  smf_registration.setPduSessionId(pdu_session_id);
-  auto smf_info = smf_cfg->smf()->get_smf_info();
-  if (smf_info.getSNssaiSmfInfoList().size() > 0) {
-    // Use the first SNssai
-    smf_registration.setSingleNssai(
-        (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
-  }
-  if (smf_info.getTaiList().size() > 0) {
-    // Use the first TAI
-    smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
-  }
-  // Register with the UDM
-  // [QOS] Skip UDM UECM (re)registration for PCF-initiated modification.
-  // register_with_udm() blocks the response thread on a synchronous UDM
-  // round-trip (queued on the SBI task behind the N1N2MessageTransfer call),
-  // which pushes the PCF UpdateNotify response past the API server's promise
-  // wait (FUTURE_STATUS_TIMEOUT_MS) and makes the endpoint return an error.
-  // UDM UECM registration is an establishment concern, not a policy-update one.
-  if (session_procedure_type != session_management_procedures_type_e::
-                                    PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    // Set SMF registration info
+    oai::_3gpp::model::SmfRegistration smf_registration = {};
+    smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
+    smf_registration.setPduSessionId(pdu_session_id);
+    auto smf_info = smf_cfg->smf()->get_smf_info();
+    if (smf_info.getSNssaiSmfInfoList().size() > 0) {
+      // Use the first SNssai
+      smf_registration.setSingleNssai(
+          (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
+    }
+    if (smf_info.getTaiList().size() > 0) {
+      // Use the first TAI
+      smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
+    }
     register_with_udm(supi, pdu_session_id, smf_registration);
   }
 
@@ -5819,19 +5741,14 @@ bool smf_context::register_with_udm(
   nlohmann::json smf_registration_json = {};
   to_json(smf_registration_json, smf_registration);
 
-  boost::shared_ptr<boost::promise<nlohmann::json>> p =
-      boost::make_shared<boost::promise<nlohmann::json>>();
-  boost::shared_future<nlohmann::json> f;
-  f = p->get_future();
-
-  // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = smf_app_inst->generate_promise_id();
-  Logger::smf_app().debug("Promise ID generated %d", promise_id);
-  smf_app_inst->add_promise(promise_id, p);
-
+  // Sent without waiting for the answer, as deregister_with_udm() does. The
+  // answer is not used, and waiting for it held TASK_SMF_APP - and with it the
+  // SM context update answer to the AMF - for up to KFutureStatusTimeoutMs
+  // whenever the UDM was slow or absent. Promise ID 0: the SBI task resolves
+  // no promise.
   std::shared_ptr<itti_sbi_register_with_udm> itti_msg =
       std::make_shared<itti_sbi_register_with_udm>(
-          TASK_SMF_APP, TASK_SMF_SBI, promise_id);
+          TASK_SMF_APP, TASK_SMF_SBI, 0);
 
   itti_msg->supi             = supi;
   itti_msg->pdu_session_id   = pdu_session_id;
@@ -5842,32 +5759,9 @@ bool smf_context::register_with_udm(
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
+    return false;
   }
-
-  // Wait for the result available and process accordingly
-  std::optional<nlohmann::json> result_opt = std::nullopt;
-  oai::utils::utils::wait_for_result(f, result_opt);
-
-  // process data
-  uint32_t http_response_code = 0;
-  nlohmann::json json_data    = {};
-
-  if (result_opt.has_value()) {
-    Logger::smf_app().debug("Got result for promise ID %d", promise_id);
-    nlohmann::json result = result_opt.value();
-
-    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code =
-          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
-    }
-
-    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
-      json_data = result[oai::http::kSbiResponseJsonData];
-    }
-
-    return true;
-  }
-  return false;
+  return true;
 }
 
 //------------------------------------------------------------------------------
