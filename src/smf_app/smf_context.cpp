@@ -264,10 +264,6 @@ upCnx_state_e smf_pdu_session::get_upCnx_state() const {
 
 //------------------------------------------------------------------------------
 namespace {
-/*
- * Logs the decision of one of the paging compare-and-sets. The caller holds
- * m_pdu_session_mutex, so the values logged are the ones that decided.
- */
 void log_paging_decision(
     const uint64_t& seid, const char* method, bool accepted,
     const paging_stage_e& stage_before, const paging_stage_e& stage_after,
@@ -379,12 +375,8 @@ bool smf_pdu_session::try_begin_paging() {
 
 //------------------------------------------------------------------------------
 bool smf_pdu_session::commit_paging_activating() {
-  // A single transition, published before the N1N2 message transfer.
   std::unique_lock lock(m_pdu_session_mutex);
   const paging_stage_e stage_before = paging_stage;
-  // Logged under the lock: the caller can only read the stage back once the
-  // lock is released, so a log at the call site could not say which value
-  // caused the rejection.
   if (paging_stage != paging_stage_e::AWAITING_M3_RESPONSE) {
     log_paging_decision(
         seid, "commit_paging_activating", false, stage_before, paging_stage,
@@ -403,7 +395,6 @@ bool smf_pdu_session::commit_paging_activating() {
 
 //------------------------------------------------------------------------------
 void smf_pdu_session::commit_paging_activated() {
-  // A single transition publishing the whole end state of a successful page.
   std::unique_lock lock(m_pdu_session_mutex);
   upCnx_state      = upCnx_state_e::UPCNX_STATE_ACTIVATED;
   paging_stage     = paging_stage_e::IDLE;
@@ -414,9 +405,6 @@ void smf_pdu_session::commit_paging_activated() {
 
 //------------------------------------------------------------------------------
 bool smf_pdu_session::try_begin_activation(bool& n4_busy) {
-  // A single lock, held from the test through the set. n4_busy is set under
-  // that same lock; re-deriving it from a later get_paging_stage() would
-  // race.
   std::unique_lock lock(m_pdu_session_mutex);
   const paging_stage_e stage_before = paging_stage;
   n4_busy                           = false;
@@ -791,8 +779,6 @@ void smf_context::handle_itti_msg(itti_n4_session_deletion_response& sdresp) {
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     std::shared_ptr<itti_n4_session_report_request>& req) {
-  // Resolved once; the acknowledgement and every report type below share it.
-  // sp stays null when the lookup misses.
   std::shared_ptr<smf_pdu_session> sp = {};
   const bool session_found = find_pdu_session_from_seid(req->seid, sp);
 
@@ -850,8 +836,6 @@ void smf_context::handle_itti_msg(
           // a bitfield, so leave this block by breaking rather than by
           // returning: the other report types still have to be processed.
           do {
-            // sp is null when the session lookup missed, and every line
-            // below dereferences it
             if (!session_found) break;
             if (!smf_cfg->smf()->get_paging().enable()) {
               Logger::smf_app().debug(
@@ -2576,13 +2560,12 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // Service Request Procedure (step 2)
         //
         // With paging enabled this response can also be the answer to a page,
-        // a duplicate of one, or a leftover from an earlier page, so the two
-        // arms below filter it and try_begin_activation() sorts the rest.
+        // a duplicate of one, or a leftover from an earlier page
         const bool paging_enabled = smf_cfg->smf()->get_paging().enable();
 
         // The gNB is asked twice per page, so drop the second successful
         // response before the gate and before the decode. Once the user plane
-        // is restored the stored state is ACTIVATED, which is the only thing
+        // is restored (state is ACTIVATED), which is the only thing
         // that tells this response from an ordinary step 2. Otherwise it falls
         // into the establishment branch below, re-registers the session with
         // the UDM and creates rules on live, non-zero edge IDs.
@@ -2597,8 +2580,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           json_data["upCnxState"]  = "ACTIVATED";
           sm_context_resp_pending->res.set_json_data(json_data);
           sm_context_resp_pending->res.set_http_code(http_status_code::OK);
-          // break rather than return: the response is emitted by the
-          // update_upf == false branch at the end of this function.
           break;  // update_upf stays false
         }
 
@@ -2712,9 +2693,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
               "the next page, SEID " SEID_FMT,
               sp->seid);
           nlohmann::json json_data = {};
-          // The stored state, not one synthesised from the stage.
-          // upCnx_state_e2str() spells "UPCNX_STATE_ACTIVATED", which is not
-          // the SBI enum value.
           json_data["upCnxState"] =
               (fail_state == upCnx_state_e::UPCNX_STATE_ACTIVATED) ?
                   "ACTIVATED" :
@@ -2723,8 +2701,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                   "DEACTIVATED";
           sm_context_resp_pending->res.set_json_data(json_data);
           sm_context_resp_pending->res.set_http_code(http_status_code::OK);
-          // break rather than return: the response is emitted by the
-          // update_upf == false branch at the end of this function.
           break;  // update_upf stays false; no N1, no state change
         }
 
@@ -2928,10 +2904,10 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
     } else if (boost::iequals(up_cnx_state, "ACTIVATING")) {
       Logger::smf_app().info("Service Request (UE-triggered, step 1)");
       // The AMF sends this /modify both for an ordinary UE-triggered service
-      // request and when the UE answers a page of ours; nothing on the wire
-      // tells the two apart, only the paging stage does. With paging disabled
-      // the stage is never anything but IDLE, but it is still read behind the
-      // config knob so that only the last branch is reachable.
+      // request and when the UE answers a SMF-initiated page; nothing on the
+      // wire tells the two apart, only the paging stage does. With paging
+      // disabled the stage is never anything but IDLE, but it is still read
+      // behind the config knob so that only the last branch is reachable.
       const paging_stage_e stage = smf_cfg->smf()->get_paging().enable() ?
                                        sp->get_paging_stage() :
                                        paging_stage_e::IDLE;
