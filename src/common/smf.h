@@ -73,11 +73,28 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
 
 };
 
+// Stage of the network-triggered service request (paging) procedure for one
+// PDU session.
+enum class paging_stage_e : uint8_t {
+  IDLE                 = 0,
+  AWAITING_M3_RESPONSE = 1,
+  AWAITING_SETUP_RSP   = 2,
+  AWAITING_M5_RESPONSE = 3
+};
+
+static const std::vector<std::string> paging_stage_e2str = {
+    "IDLE", "AWAITING_M3_RESPONSE", "AWAITING_SETUP_RSP",
+    "AWAITING_M5_RESPONSE"};
+
+// Time in seconds after which an outstanding N4 procedure count is treated as
+// stale.
+static constexpr uint16_t PAGING_STALE_SECONDS = 30;
+
 // for N1N2
 #define BUF_LEN 2046
 
 // FOR FUTURE PROMISE
-#define FUTURE_STATUS_TIMEOUT_MS 100
+#define FUTURE_STATUS_TIMEOUT_MS 1000
 
 // for PFCP
 constexpr uint64_t SECONDS_SINCE_FIRST_EPOCH = 2208988800;

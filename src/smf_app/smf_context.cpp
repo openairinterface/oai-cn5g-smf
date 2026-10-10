@@ -263,6 +263,227 @@ upCnx_state_e smf_pdu_session::get_upCnx_state() const {
 }
 
 //------------------------------------------------------------------------------
+namespace {
+void log_paging_decision(
+    const uint64_t& seid, const char* method, bool accepted,
+    const paging_stage_e& stage_before, const paging_stage_e& stage_after,
+    const upCnx_state_e& up_state, bool armed, bool n4_busy,
+    uint16_t n4_in_flight) {
+  Logger::smf_app().debug(
+      "[SEID 0x%llx] %s -> %s (stage %d -> %d) [%s -> %s], upCnxState %s, "
+      "armed %d, n4_busy %d, n4_in_flight %u",
+      (unsigned long long) seid, method, accepted ? "ACCEPT" : "REJECT",
+      static_cast<int>(stage_before), static_cast<int>(stage_after),
+      paging_stage_e2str.at(static_cast<int>(stage_before)).c_str(),
+      paging_stage_e2str.at(static_cast<int>(stage_after)).c_str(),
+      upCnx_state_e2str.at(static_cast<int>(up_state)).c_str(), armed, n4_busy,
+      n4_in_flight);
+}
+}  // namespace
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::n4_in_flight_inc() {
+  std::unique_lock lock(m_pdu_session_mutex);
+  if (n4_procedures_in_flight == UINT16_MAX) {
+    Logger::smf_app().error(
+        "[SEID 0x%llx] N4 procedures in flight saturated at %u, not increasing",
+        (unsigned long long) seid, n4_procedures_in_flight);
+  } else {
+    n4_procedures_in_flight++;
+  }
+  // Refreshed on every increment, not only on the 0 -> 1 edge: a timestamp
+  // pinned at the moment of a lost response would make later N4 work read as
+  // stale and let graph walks overlap forever.
+  n4_in_flight_since = std::chrono::steady_clock::now();
+  Logger::smf_app().debug(
+      "[SEID 0x%llx] N4 procedures in flight: %u", (unsigned long long) seid,
+      n4_procedures_in_flight);
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::n4_in_flight_dec() {
+  std::unique_lock lock(m_pdu_session_mutex);
+  if (n4_procedures_in_flight == 0) {
+    Logger::smf_app().error(
+        "[SEID 0x%llx] N4 procedures in flight already 0, not decreasing",
+        (unsigned long long) seid);
+    return;
+  }
+  n4_procedures_in_flight--;
+  Logger::smf_app().debug(
+      "[SEID 0x%llx] N4 procedures in flight: %u", (unsigned long long) seid,
+      n4_procedures_in_flight);
+}
+
+//------------------------------------------------------------------------------
+uint16_t smf_pdu_session::get_n4_in_flight() const {
+  std::shared_lock lock(m_pdu_session_mutex);
+  return n4_procedures_in_flight;
+}
+
+//------------------------------------------------------------------------------
+bool smf_pdu_session::n4_in_flight_is_stale() const {
+  // m_pdu_session_mutex is held by the caller; it is not recursive.
+  return (std::chrono::steady_clock::now() - n4_in_flight_since) >=
+         std::chrono::seconds(PAGING_STALE_SECONDS);
+}
+
+//------------------------------------------------------------------------------
+bool smf_pdu_session::try_begin_paging() {
+  // A single lock, held from the test through the set.
+  std::unique_lock lock(m_pdu_session_mutex);
+  const paging_stage_e stage_before = paging_stage;
+
+  if (upCnx_state != upCnx_state_e::UPCNX_STATE_DEACTIVATED) {
+    log_paging_decision(
+        seid, "try_begin_paging", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+        n4_procedures_in_flight);
+    return false;
+  }
+  if (paging_stage != paging_stage_e::IDLE) {
+    log_paging_decision(
+        seid, "try_begin_paging", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+        n4_procedures_in_flight);
+    return false;
+  }
+  if (paging_in_flight) {
+    log_paging_decision(
+        seid, "try_begin_paging", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+        n4_procedures_in_flight);
+    return false;
+  }
+  // The only place staleness overrides the count: nothing times out an N4
+  // response and an orphaned procedure is never unregistered, so one lost
+  // response would otherwise leave this session unpageable for good.
+  if (n4_procedures_in_flight != 0 && !n4_in_flight_is_stale()) {
+    log_paging_decision(
+        seid, "try_begin_paging", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+        n4_procedures_in_flight);
+    return false;
+  }
+  paging_in_flight = true;
+  paging_stage     = paging_stage_e::AWAITING_M3_RESPONSE;
+  log_paging_decision(
+      seid, "try_begin_paging", true, stage_before, paging_stage, upCnx_state,
+      paging_armed, n4_procedures_in_flight != 0, n4_procedures_in_flight);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+bool smf_pdu_session::commit_paging_activating() {
+  std::unique_lock lock(m_pdu_session_mutex);
+  const paging_stage_e stage_before = paging_stage;
+  if (paging_stage != paging_stage_e::AWAITING_M3_RESPONSE) {
+    log_paging_decision(
+        seid, "commit_paging_activating", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+        n4_procedures_in_flight);
+    return false;
+  }
+  upCnx_state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
+  paging_stage = paging_stage_e::AWAITING_SETUP_RSP;
+  log_paging_decision(
+      seid, "commit_paging_activating", true, stage_before, paging_stage,
+      upCnx_state, paging_armed, n4_procedures_in_flight != 0,
+      n4_procedures_in_flight);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::commit_paging_activated() {
+  std::unique_lock lock(m_pdu_session_mutex);
+  upCnx_state      = upCnx_state_e::UPCNX_STATE_ACTIVATED;
+  paging_stage     = paging_stage_e::IDLE;
+  paging_in_flight = false;
+  paging_armed     = false;  // the restoring modification removed the rules
+  paging_trxn_id   = 0;
+}
+
+//------------------------------------------------------------------------------
+bool smf_pdu_session::try_begin_activation(bool& n4_busy) {
+  std::unique_lock lock(m_pdu_session_mutex);
+  const paging_stage_e stage_before = paging_stage;
+  n4_busy                           = false;
+
+  if (paging_stage == paging_stage_e::AWAITING_M3_RESPONSE ||
+      paging_stage == paging_stage_e::AWAITING_M5_RESPONSE) {
+    // One of our own N4 procedures is outstanding. No staleness escape here:
+    // it would admit a second live procedure on the same PFCP session, two
+    // owners mutating the same edge IDs under the same F-TEID key.
+    n4_busy = true;
+    log_paging_decision(
+        seid, "try_begin_activation", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_busy, n4_procedures_in_flight);
+    return false;
+  }
+  if (upCnx_state != upCnx_state_e::UPCNX_STATE_ACTIVATING) {
+    // The ordinary establishment fall-through, so n4_busy stays false;
+    // setting it here would answer every PDU session establishment with
+    // 200 OK DEACTIVATED.
+    log_paging_decision(
+        seid, "try_begin_activation", false, stage_before, paging_stage,
+        upCnx_state, paging_armed, n4_busy, n4_procedures_in_flight);
+    return false;
+  }
+  // DEACTIVATED with a rule armed is not accepted: there a response left
+  // over from an earlier page (the UE has gone idle again and a fresh paging
+  // PDR and FAR are armed) would pass for this cycle's, and the restoring
+  // modification would remove the new rules and program the old gNB F-TEID.
+  // Every legitimate arrival is ACTIVATING, set either before the N1N2
+  // message transfer or on entry to handle_service_request().
+  if (paging_armed) paging_stage = paging_stage_e::AWAITING_M5_RESPONSE;
+  log_paging_decision(
+      seid, "try_begin_activation", true, stage_before, paging_stage,
+      upCnx_state, paging_armed, n4_busy, n4_procedures_in_flight);
+  return true;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::end_paging(bool keep_armed) {
+  // Abandons the cycle; keep_armed leaves the paging rules on the UPF so the
+  // next downlink packet still reports.
+  std::unique_lock lock(m_pdu_session_mutex);
+  paging_in_flight = false;
+  paging_stage     = paging_stage_e::IDLE;
+  paging_trxn_id   = 0;
+  if (!keep_armed) paging_armed = false;
+}
+
+//------------------------------------------------------------------------------
+paging_stage_e smf_pdu_session::get_paging_stage() const {
+  std::shared_lock lock(m_pdu_session_mutex);
+  return paging_stage;
+}
+
+//------------------------------------------------------------------------------
+bool smf_pdu_session::is_paging_armed() const {
+  std::shared_lock lock(m_pdu_session_mutex);
+  return paging_armed;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::set_paging_armed(bool armed) {
+  std::unique_lock lock(m_pdu_session_mutex);
+  paging_armed = armed;
+}
+
+//------------------------------------------------------------------------------
+void smf_pdu_session::set_paging_trxn_id(uint64_t trxn_id) {
+  std::unique_lock lock(m_pdu_session_mutex);
+  paging_trxn_id = trxn_id;
+}
+
+//------------------------------------------------------------------------------
+uint64_t smf_pdu_session::get_paging_trxn_id() const {
+  std::shared_lock lock(m_pdu_session_mutex);
+  return paging_trxn_id;
+}
+
+//------------------------------------------------------------------------------
 void smf_pdu_session::set_ho_state(const ho_state_e& state) {
   Logger::smf_app().info(
       "Set HOState to %s", ho_state_e2str.at(static_cast<int>(state)).c_str());
@@ -423,6 +644,13 @@ bool session_management_subscription::dnn_configuration(
 void smf_context::insert_procedure(std::shared_ptr<smf_procedure>& sproc) {
   std::unique_lock<std::recursive_mutex> lock(m_context);
   pending_procedures.push_back(sproc);
+  // Keeps n4_procedures_in_flight equal to the number of registered
+  // smf_session_procedures. n4_session_restore_procedure derives from
+  // smf_procedure only, so the cast skips it, which is what we want.
+  if (auto session_proc =
+          std::dynamic_pointer_cast<smf_session_procedure>(sproc)) {
+    if (session_proc->sps) session_proc->sps->n4_in_flight_inc();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -450,6 +678,12 @@ void smf_context::remove_procedure(smf_procedure* proc) {
         return i.get() == proc;
       });
   if (found != pending_procedures.end()) {
+    // Mirror of insert_procedure, before the erase: erasing invalidates the
+    // iterator and drops the container's reference to the procedure.
+    if (auto session_proc =
+            std::dynamic_pointer_cast<smf_session_procedure>(*found)) {
+      if (session_proc->sps) session_proc->sps->n4_in_flight_dec();
+    }
     pending_procedures.erase(found);
   }
 }
@@ -490,13 +724,18 @@ void smf_context::handle_itti_msg(
         smresp.seid, smresp.trxn_id);
     smf_procedure_code res = proc->handle_itti_msg(smresp, shared_from_this());
     if (res != smf_procedure_code::CONTINUE) {
-      std::shared_ptr<session_update_sm_context_procedure> proc_session_update =
-          std::static_pointer_cast<session_update_sm_context_procedure>(proc);
-      send_pdu_session_update_response(
-          proc_session_update->n11_trigger,
-          proc_session_update->n11_triggered_pending,
-          proc_session_update->session_procedure_type, proc_session_update->sps,
-          proc_session_update->partial_success_report);
+      auto proc_session_update =
+          std::dynamic_pointer_cast<session_update_sm_context_procedure>(proc);
+      if (proc_session_update) {
+        send_pdu_session_update_response(
+            proc_session_update->n11_trigger,
+            proc_session_update->n11_triggered_pending,
+            proc_session_update->session_procedure_type,
+            proc_session_update->sps,
+            proc_session_update->partial_success_report);
+      }
+      // Unconditional: this is what keeps the N4 in-flight count balanced,
+      // whatever the concrete type of the procedure.
       remove_procedure(proc.get());
     }
   } else {
@@ -540,117 +779,119 @@ void smf_context::handle_itti_msg(itti_n4_session_deletion_response& sdresp) {
 //------------------------------------------------------------------------------
 void smf_context::handle_itti_msg(
     std::shared_ptr<itti_n4_session_report_request>& req) {
+  std::shared_ptr<smf_pdu_session> sp = {};
+  const bool session_found = find_pdu_session_from_seid(req->seid, sp);
+
   pfcp::report_type_t report_type;
-  if (req->pfcp_ies.get(report_type)) {
+  const bool report_type_present = req->pfcp_ies.get(report_type);
+
+  // Acknowledge the Session Report Request immediately and exactly once,
+  // whatever the (bitfield) Report Type carries and even when that mandatory
+  // IE is absent, otherwise the UPF retransmits the report.
+  std::shared_ptr<itti_n4_session_report_response> n4_report_ack =
+      std::make_shared<itti_n4_session_report_response>(
+          TASK_SMF_APP, TASK_SMF_N4);
+  // The PFCP header carries the SEID allocated by the UPF, not our own
+  n4_report_ack->seid       = session_found ? sp->up_fseid.seid : 0;
+  n4_report_ack->trxn_id    = req->trxn_id;
+  n4_report_ack->r_endpoint = req->r_endpoint;
+
+  pfcp::cause_t cause = {};
+  if (!session_found) {
+    cause.cause_value = pfcp::CAUSE_VALUE_SESSION_CONTEXT_NOT_FOUND;
+    Logger::smf_app().warn(
+        "PFCP_SESSION_REPORT_REQUEST: no PDU session found for SEID " SEID_FMT,
+        req->seid);
+  } else if (!report_type_present) {
+    cause.cause_value                 = pfcp::CAUSE_VALUE_MANDATORY_IE_MISSING;
+    pfcp::offending_ie_t offending_ie = {};
+    offending_ie.offending_ie         = PFCP_IE_REPORT_TYPE;
+    n4_report_ack->pfcp_ies.set(offending_ie);
+    Logger::smf_app().warn(
+        "PFCP_SESSION_REPORT_REQUEST: missing Report Type IE, SEID " SEID_FMT,
+        req->seid);
+  } else {
+    cause.cause_value = pfcp::CAUSE_VALUE_REQUEST_ACCEPTED;
+  }
+  n4_report_ack->pfcp_ies.set(cause);
+
+  Logger::smf_app().info(
+      "Sending ITTI message %s to task TASK_SMF_N4",
+      n4_report_ack->get_msg_name());
+  if (RETURNok != itti_inst->send_msg(n4_report_ack)) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_N4",
+        n4_report_ack->get_msg_name());
+    // Carry on: the report itself still has to be processed
+  }
+
+  if (report_type_present) {
     pfcp::pdr_id_t pdr_id;
     // Downlink Data Report
     if (report_type.dldr) {
       pfcp::downlink_data_report data_report;
       if (req->pfcp_ies.get(data_report)) {
-        pfcp::pdr_id_t pdr_id;
         if (data_report.get(pdr_id)) {
-          std::shared_ptr<smf_pdu_session> sp = {};
-          pfcp::qfi_t qfi                     = {};
-          if (find_pdu_session_from_seid(req->seid, sp)) {
-            // Step 1. send N4 Data Report Ack to UPF
-            std::shared_ptr<itti_n4_session_report_response> n4_report_ack =
-                std::make_shared<itti_n4_session_report_response>(
-                    TASK_SMF_APP, TASK_SMF_N4);
-            n4_report_ack->seid       = req->seid;
-            n4_report_ack->trxn_id    = req->trxn_id;
-            n4_report_ack->r_endpoint = req->r_endpoint;
-
-            Logger::smf_app().info(
-                "Sending ITTI message %s to task TASK_SMF_N4",
-                n4_report_ack->get_msg_name());
-            int ret = itti_inst->send_msg(n4_report_ack);
-            if (RETURNok != ret) {
-              Logger::smf_app().error(
-                  "Could not send ITTI message %s to task TASK_SMF_N4",
-                  n4_report_ack->get_msg_name());
-              return;
+          // The acknowledgement has already gone out above. Report Type is
+          // a bitfield, so leave this block by breaking rather than by
+          // returning: the other report types still have to be processed.
+          do {
+            if (!session_found) break;
+            if (!smf_cfg->smf()->get_paging().enable()) {
+              Logger::smf_app().debug(
+                  "Paging disabled; DLDR acknowledged and ignored");
+              break;
             }
-
-            // Step 2. Send N1N2MessageTranfer to AMF
-            pdu_session_report_response session_report_msg = {};
-            // set the required IEs
-            session_report_msg.set_supi(supi);
-            session_report_msg.set_snssai(sp->get_snssai());
-            session_report_msg.set_dnn(sp->get_dnn());
-            session_report_msg.set_pdu_session_type(
-                sp->get_pdu_session_type().pdu_session_type);
-            // TODO: use sbi_helper
-            std::string api_version =
-                smf_cfg->get_nf(oai::config::AMF_CONFIG_NAME)
-                    ->get_sbi()
-                    .get_api_version();
-            std::string url =
-                sp->get_amf_addr() +
-                oai::smf::api::smf_sbi_helper::
-                    get_amf_comm_ue_context_n1_n2_message_base_uri(supi);
-            session_report_msg.set_amf_url(url);
-            // seid and trxn_id to be used in Failure indication
-            session_report_msg.set_seid(req->seid);
-            session_report_msg.set_trxn_id(req->trxn_id);
-
-            qos_flow_context_updated qcu =
-                sp->get_session_handler()->get_qos_flow_context_updated(qfi);
-            session_report_msg.add_qos_flow_context_updated(qcu);
-
-            // Create N2 SM Information: PDU Session Resource Setup Request
-            // Transfer IE
-            std::string n2_sm_info     = {};
-            std::string n2_sm_info_hex = {};
-            smf_n2::get_instance()
-                .create_n2_pdu_session_resource_setup_request_transfer(
-                    session_report_msg, n2_sm_info_type_e::PDU_RES_SETUP_REQ,
-                    n2_sm_info);
-
-            conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
-            session_report_msg.set_n2_sm_information(n2_sm_info_hex);
-
-            // Fill the json part
-            nlohmann::json json_data = {};
-            json_data["n2InfoContainer"]["n2InformationClass"] =
-                oai::utils::N1N2_MESSAGE_CLASS;
-            json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
-                session_report_msg.get_pdu_session_id();
-            // N2InfoContent (section 6.1.6.2.27@3GPP TS 29.518)
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]
-                     ["ngapIeType"] = "PDU_RES_SETUP_REQ";  // NGAP message type
-            json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
-                     ["contentId"] = N2_SM_CONTENT_ID;  // NGAP part
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sst"] =
-                session_report_msg.get_snssai().sst;
-            json_data["n2InfoContainer"]["smInfo"]["sNssai"]["sd"] =
-                session_report_msg.get_snssai().sd;
-
-            session_report_msg.set_json_data(json_data);
-
-            std::shared_ptr<itti_sbi_session_report_request> itti_sbi_report =
-                std::make_shared<itti_sbi_session_report_request>(
-                    TASK_SMF_APP, TASK_SMF_SBI);
-            itti_sbi_report->res = session_report_msg;
-            // send ITTI message to N11 interface to trigger N1N2MessageTransfer
-            // towards AMFs
-            Logger::smf_app().info(
-                "Sending ITTI message %s to task TASK_SMF_SBI",
-                itti_sbi_report->get_msg_name());
-
-            ret = itti_inst->send_msg(itti_sbi_report);
-            if (RETURNok != ret) {
-              Logger::smf_app().error(
-                  "Could not send ITTI message %s to task TASK_SMF_SBI",
-                  itti_sbi_report->get_msg_name());
+            // Sanity check only: with one session-wide paging PDR, the PDR ID
+            // carries no QoS flow information
+            pfcp::pdr_id_t armed_pdr_id = {};
+            pfcp::far_id_t armed_far_id = {};
+            sp->get_session_handler()->get_paging_rule_ids(
+                armed_pdr_id, armed_far_id);
+            if (!sp->is_paging_armed() ||
+                armed_pdr_id.rule_id != pdr_id.rule_id) {
+              Logger::smf_app().warn(
+                  "DLDR for PDR ID %d does not match the armed paging PDR ID "
+                  "%d (armed %d); ignoring",
+                  pdr_id.rule_id, armed_pdr_id.rule_id, sp->is_paging_armed());
+              break;
             }
-          }
+            // A duplicate DLDR is normal - the UPF retransmits its report
+            // until it is answered - so gate on a compare-and-set.
+            if (!sp->try_begin_paging()) {
+              Logger::smf_app().info(
+                  "DLDR received but a page is already in flight, or the "
+                  "session is not DEACTIVATED, or an N4 procedure is "
+                  "outstanding; acknowledged and ignored");
+              break;
+            }
+            Logger::smf_app().info(
+                "Paging: starting a network-triggered service request for "
+                "SEID " SEID_FMT,
+                sp->seid);
+            auto proc = std::make_shared<
+                session_network_triggered_service_request_procedure>(sp);
+            std::shared_ptr<smf_procedure> sproc = proc;
+            // Registered before run(): that is what keeps the N4 in-flight
+            // count balanced
+            insert_procedure(sproc);
+            sp->set_paging_trxn_id(proc->trxn_id);
+            if (proc->run(shared_from_this()) == smf_procedure_code::ERROR) {
+              Logger::smf_app().error(
+                  "Paging: could not start the network-triggered service "
+                  "request");
+              // Otherwise the in-flight count sticks and the session never
+              // pages again
+              remove_procedure(sproc.get());
+              sp->end_paging(/* keep_armed = */ true);
+            }
+          } while (false);
         }
       }
     }
     // Usage Report
     if (report_type.usar) {
       // TODO
-      // Step 1. send N4 Data Report Ack to UPF
       pfcp::usage_report_within_pfcp_session_report_request ur;
       if (req->pfcp_ies.get(ur)) {
         pfcp::volume_measurement_t vm;
@@ -717,26 +958,6 @@ void smf_context::handle_itti_msg(
               ". Unable to notify QoS Monitoring Event Report.",
               req->seid);
         }
-      }
-
-      std::shared_ptr<itti_n4_session_report_response> n4_report_ack =
-          std::make_shared<itti_n4_session_report_response>(
-              TASK_SMF_APP, TASK_SMF_N4);
-      n4_report_ack->seid    = req->seid;
-      n4_report_ack->trxn_id = req->trxn_id;
-      pfcp::cause_t cause = {.cause_value = pfcp::CAUSE_VALUE_REQUEST_ACCEPTED};
-      n4_report_ack->pfcp_ies.set(cause);
-      n4_report_ack->r_endpoint = req->r_endpoint;
-
-      Logger::smf_app().info(
-          "Sending ITTI message %s to task TASK_SMF_N4",
-          n4_report_ack->get_msg_name());
-      int ret = itti_inst->send_msg(n4_report_ack);
-      if (RETURNok != ret) {
-        Logger::smf_app().error(
-            "Could not send ITTI message %s to task TASK_SMF_N4",
-            n4_report_ack->get_msg_name());
-        return;
       }
     }
     // Error Indication Report
@@ -2337,6 +2558,51 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // following procedures:  1 - UE-Requested PDU Session Establishment
         // procedure (Section 4.3.2.2.1@3GPP TS 23.502)  2 - UE Triggered
         // Service Request Procedure (step 2)
+        //
+        // With paging enabled this response can also be the answer to a page,
+        // a duplicate of one, or a leftover from an earlier page
+        const bool paging_enabled = smf_cfg->smf()->get_paging().enable();
+
+        // The gNB is asked twice per page, so drop the second successful
+        // response before the gate and before the decode. Once the user plane
+        // is restored (state is ACTIVATED), which is the only thing
+        // that tells this response from an ordinary step 2. Otherwise it falls
+        // into the establishment branch below, re-registers the session with
+        // the UDM and creates rules on live, non-zero edge IDs.
+        if (paging_enabled and
+            (sp->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_ACTIVATED)) {
+          Logger::smf_app().warn(
+              "PDU_RES_SETUP_RSP ignored: the user plane of this session is "
+              "already ACTIVATED (duplicate response for a completed page), "
+              "SEID " SEID_FMT,
+              sp->seid);
+          nlohmann::json json_data = {};
+          json_data["upCnxState"]  = "ACTIVATED";
+          sm_context_resp_pending->res.set_json_data(json_data);
+          sm_context_resp_pending->res.set_http_code(http_status_code::OK);
+          break;  // update_upf stays false
+        }
+
+        // DEACTIVATED with a paging rule armed means no page of ours is in
+        // flight and a fresh rule is already armed, so this response is left
+        // over from an earlier or abandoned page. try_begin_activation()
+        // rejects it; without this arm it would fall into the establishment
+        // branch and re-register the session with the UDM.
+        if (paging_enabled and
+            (sp->get_upCnx_state() ==
+             upCnx_state_e::UPCNX_STATE_DEACTIVATED) and
+            sp->is_paging_armed()) {
+          Logger::smf_app().warn(
+              "PDU_RES_SETUP_RSP ignored: stale response, this session is "
+              "DEACTIVATED with a fresh paging rule armed, SEID " SEID_FMT,
+              sp->seid);
+          nlohmann::json json_data = {};
+          json_data["upCnxState"]  = "DEACTIVATED";
+          json_data["cause"]       = "INSUFFICIENT_UP_RESOURCES";
+          sm_context_resp_pending->res.set_json_data(json_data);
+          sm_context_resp_pending->res.set_http_code(http_status_code::OK);
+          break;  // update_upf stays false
+        }
 
         Logger::smf_app().info("PDU Session Resource Setup Response Transfer");
 
@@ -2359,26 +2625,84 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           return false;
         }
 
-        if (sp->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_ACTIVATING) {
+        // A compare-and-set, not a read: the procedure that carries the
+        // session modification is only registered at the end of this
+        // function, and another thread can act in that interval.
+        // paging_n4_busy is set under the same lock as the test.
+        bool paging_n4_busy = false;
+        if (sp->try_begin_activation(paging_n4_busy)) {
           procedure_type = session_management_procedures_type_e::
               SERVICE_REQUEST_UE_TRIGGERED_STEP2;
           Logger::smf_app().info(
               "UE-Triggered Service Request, processing N2 SM Information");
+          // need to update UPF accordingly
+          update_upf = true;
+        } else if (paging_n4_busy) {
+          // One of our own N4 procedures is on the wire. Refuse rather than
+          // admit a second live procedure on the same PFCP session, and leave
+          // the stage alone so its owner still closes it.
+          Logger::smf_app().info(
+              "PDU_RES_SETUP_RSP refused: an N4 procedure of this paging "
+              "cycle is still outstanding, SEID " SEID_FMT,
+              sp->seid);
+          nlohmann::json json_data = {};
+          json_data["upCnxState"]  = "DEACTIVATED";
+          json_data["cause"]       = "INSUFFICIENT_UP_RESOURCES";
+          sm_context_resp_pending->res.set_json_data(json_data);
+          sm_context_resp_pending->res.set_http_code(http_status_code::OK);
+          break;  // update_upf stays false
         } else {
           procedure_type = session_management_procedures_type_e::
               PDU_SESSION_ESTABLISHMENT_UE_REQUESTED;
           Logger::smf_app().info(
               "PDU Session Establishment Request, processing N2 SM "
               "Information");
+          // need to update UPF accordingly
+          update_upf = true;
         }
-
-        // need to update UPF accordingly
-        update_upf = true;
       } break;
 
       case n2_sm_info_type_e::PDU_RES_SETUP_FAIL: {
         // PDU Session Establishment procedure
         // PDU Session Resource Setup Unsuccessful Transfer
+
+        // The gNB is asked twice per page (once from our answer to the
+        // ACTIVATING /modify, once from the blob the AMF buffered) and refuses
+        // the second ask, which the AMF relays as a PDU_RES_SETUP_FAIL even
+        // though the page succeeded. The handler below would take it for a
+        // failed establishment and answer 403 with a NAS Establishment
+        // Reject, which the AMF forwards to the UE, releasing the session that
+        // was just restored. So this arm sends no N1 and leaves upCnx_state
+        // and paging_stage alone: a PDU_RES_SETUP_RSP for the first ask may
+        // still be outstanding.
+        //
+        // paging_armed is in the predicate for the duplicate that arrives
+        // after the next AN release, where the other three tests are false; an
+        // establishing session can never hold it, so a genuine establishment
+        // failure still reaches the reject below.
+        const paging_stage_e fail_stage = sp->get_paging_stage();
+        const upCnx_state_e fail_state  = sp->get_upCnx_state();
+        if (smf_cfg->smf()->get_paging().enable() and
+            ((fail_state == upCnx_state_e::UPCNX_STATE_ACTIVATED) or
+             sp->is_paging_armed() or
+             (fail_stage == paging_stage_e::AWAITING_SETUP_RSP) or
+             (fail_stage == paging_stage_e::AWAITING_M5_RESPONSE))) {
+          Logger::smf_app().warn(
+              "PDU_RES_SETUP_FAIL ignored: the gNB is asked twice per page, "
+              "and this session's user plane is up, coming up, or armed for "
+              "the next page, SEID " SEID_FMT,
+              sp->seid);
+          nlohmann::json json_data = {};
+          json_data["upCnxState"] =
+              (fail_state == upCnx_state_e::UPCNX_STATE_ACTIVATED) ?
+                  "ACTIVATED" :
+              (fail_state == upCnx_state_e::UPCNX_STATE_ACTIVATING) ?
+                  "ACTIVATING" :
+                  "DEACTIVATED";
+          sm_context_resp_pending->res.set_json_data(json_data);
+          sm_context_resp_pending->res.set_http_code(http_status_code::OK);
+          break;  // update_upf stays false; no N1, no state change
+        }
 
         Logger::smf_app().info(
             "PDU Session Resource Setup Unsuccessful Transfer");
@@ -2574,14 +2898,98 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // TODO:
         return false;
       }
+      // need to update UPF: the AN release tears the user plane down (and,
+      // with paging enabled, arms the notification rule in the same message)
+      update_upf = true;
     } else if (boost::iequals(up_cnx_state, "ACTIVATING")) {
       Logger::smf_app().info("Service Request (UE-triggered, step 1)");
-      procedure_type = session_management_procedures_type_e::
-          SERVICE_REQUEST_UE_TRIGGERED_STEP1;
-      if (!handle_service_request(
-              n2_sm_info, smreq, sm_context_resp_pending, sp)) {
-        // TODO:
-        return false;
+      // The AMF sends this /modify both for an ordinary UE-triggered service
+      // request and when the UE answers a SMF-initiated page; nothing on the
+      // wire tells the two apart, only the paging stage does. With paging
+      // disabled the stage is never anything but IDLE, but it is still read
+      // behind the config knob so that only the last branch is reachable.
+      const paging_stage_e stage = smf_cfg->smf()->get_paging().enable() ?
+                                       sp->get_paging_stage() :
+                                       paging_stage_e::IDLE;
+
+      if (stage == paging_stage_e::AWAITING_SETUP_RSP) {
+        // The UE answered a page: send no N4 at all. The paging procedure
+        // already created the uplink rules under the F-TEID the AMF is about
+        // to advertise to the gNB, and STEP1 has no Remove and reuses those
+        // live rule IDs and that same F-TEID, so it would Create a duplicate
+        // PDR; the UPF stacks duplicates and the stale one then wins for good.
+        // handle_service_request() reads the same edge->fteid, so the answer
+        // still names the tunnel that is already set up.
+        procedure_type = session_management_procedures_type_e::
+            SERVICE_REQUEST_UE_TRIGGERED_STEP1;
+        if (!handle_service_request(
+                n2_sm_info, smreq, sm_context_resp_pending, sp)) {
+          // TODO:
+          return false;
+        }
+        Logger::smf_app().info(
+            "Service Request (UE-triggered, step 1): the UE answered a page, "
+            "the uplink is already restored by M3, no N4 is sent, "
+            "SEID " SEID_FMT,
+            sp->seid);
+        // The stage stays AWAITING_SETUP_RSP: the PDU_RES_SETUP_RSP and the
+        // modification that restores the user plane still have to run, and the
+        // gate there is what closes it. No procedure is registered to unwind.
+        update_upf = false;
+
+      } else if (stage != paging_stage_e::IDLE) {
+        // One of our own N4 procedures is on the wire. Refuse with a 4xx
+        // SmContextUpdateError carrying upCnxState DEACTIVATED, per
+        // TS 29.502 5.2.2.3.2.2 step 2b: the AMF reads a 2xx as success,
+        // stores ACTIVATED and never sends this /modify again. And while the
+        // paging modification is outstanding edge->fteid is not harvested
+        // yet, so the PDU_RES_SETUP_REQ would carry a zero tunnel.
+        //
+        // Nothing reads procedure_type on this arm today, but left at its
+        // initialiser the refusal would classify as
+        // PDU_SESSION_ESTABLISHMENT_UE_REQUESTED, whose error path builds a
+        // PDU Session Establishment Reject.
+        procedure_type = session_management_procedures_type_e::
+            SERVICE_REQUEST_UE_TRIGGERED_STEP1;
+        Logger::smf_app().warn(
+            "Service Request (UE-triggered, step 1) refused: a PFCP session "
+            "modification for this PDU session is already outstanding, "
+            "SEID " SEID_FMT,
+            sp->seid);
+        oai::_3gpp::model::SmContextUpdateError update_error = {};
+        oai::_3gpp::model::ExtProblemDetails problem_details = {};
+        problem_details.setCause(protocol_application_error_to_string(
+            protocol_application_error::UNSPECIFIED_MSG_FAILURE));
+        problem_details.setStatus(http_status_code::BAD_REQUEST);
+        problem_details.setDetail(
+            "A PFCP session modification for this PDU session is already "
+            "outstanding");
+        update_error.setError(problem_details);
+        oai::_3gpp::model::UpCnxState deactivated = {};
+        deactivated.setEnumValue(oai::_3gpp::model::UpCnxState_anyOf::
+                                     eUpCnxState_anyOf::DEACTIVATED);
+        update_error.setUpCnxState(deactivated);
+        nlohmann::json json_data = {};
+        to_json(json_data, update_error);
+        sm_context_resp_pending->res.set_json_data(json_data);
+        sm_context_resp_pending->res.set_json_format(
+            "application/problem+json");
+        sm_context_resp_pending->res.set_http_code(
+            http_status_code::BAD_REQUEST);
+        // No procedure is registered, and the stage is left as the running
+        // paging procedure set it: that procedure still owns it.
+        update_upf = false;
+
+      } else {
+        // An ordinary UE-triggered service request.
+        procedure_type = session_management_procedures_type_e::
+            SERVICE_REQUEST_UE_TRIGGERED_STEP1;
+        if (!handle_service_request(
+                n2_sm_info, smreq, sm_context_resp_pending, sp)) {
+          // TODO:
+          return false;
+        }
+        update_upf = true;
       }
     } else {
       // TODO:
@@ -2589,9 +2997,6 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
           "Invalid value for UpCnxState %s", up_cnx_state.c_str());
       return false;
     }
-
-    // do not need update UPF
-    update_upf = true;
   }
 
   // Step 4. For AMF-initiated Session Release (with release indication)
@@ -2952,6 +3357,15 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                 .at(static_cast<int>(procedure_type))
                 .c_str());
         remove_procedure(sproc.get());
+
+        // Give the stage back when the procedure never started:
+        // try_begin_activation() may have taken AWAITING_M5_RESPONSE and
+        // nothing else would ever close it. A no-op on a non-paged service
+        // request, where the stage is already IDLE.
+        if (procedure_type == session_management_procedures_type_e::
+                                  SERVICE_REQUEST_UE_TRIGGERED_STEP2) {
+          sp->end_paging(/* keep_armed = */ sp->is_paging_armed());
+        }
 
         // send error to AMF according to the procedure
         switch (procedure_type) {
@@ -4853,34 +5267,30 @@ void smf_context::send_pdu_session_update_response(
   // SMF registers to the UDM for this PDU Session
   // see TS29503_Nudm_UECM.yaml, Nudm_UECM_Registration:
   // nudm-uecm/v1/{ueId}/registrations/smf-registrations/{pduSessionId}:
+  // once, when the PDU session is established (TS 23.502 §4.3.2.2.1). On every
+  // other update - AN release, service request, PCF-initiated modification -
+  // it re-registered for nothing, and with the UDM slow or absent it held
+  // TASK_SMF_SBI, delaying the N1N2 transfers queued behind it.
+  if (session_procedure_type == session_management_procedures_type_e::
+                                    PDU_SESSION_ESTABLISHMENT_UE_REQUESTED) {
+    std::string supi = req->req.get_supi();
+    pdu_session_id_t pdu_session_id =
+        (pdu_session_id_t) req->req.get_pdu_session_id();
 
-  std::string supi = req->req.get_supi();
-  pdu_session_id_t pdu_session_id =
-      (pdu_session_id_t) req->req.get_pdu_session_id();
-
-  // Set SMF registration info
-  oai::_3gpp::model::SmfRegistration smf_registration = {};
-  smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
-  smf_registration.setPduSessionId(pdu_session_id);
-  auto smf_info = smf_cfg->smf()->get_smf_info();
-  if (smf_info.getSNssaiSmfInfoList().size() > 0) {
-    // Use the first SNssai
-    smf_registration.setSingleNssai(
-        (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
-  }
-  if (smf_info.getTaiList().size() > 0) {
-    // Use the first TAI
-    smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
-  }
-  // Register with the UDM
-  // [QOS] Skip UDM UECM (re)registration for PCF-initiated modification.
-  // register_with_udm() blocks the response thread on a synchronous UDM
-  // round-trip (queued on the SBI task behind the N1N2MessageTransfer call),
-  // which pushes the PCF UpdateNotify response past the API server's promise
-  // wait (FUTURE_STATUS_TIMEOUT_MS) and makes the endpoint return an error.
-  // UDM UECM registration is an establishment concern, not a policy-update one.
-  if (session_procedure_type != session_management_procedures_type_e::
-                                    PDU_SESSION_MODIFICATION_PCF_INITIATED) {
+    // Set SMF registration info
+    oai::_3gpp::model::SmfRegistration smf_registration = {};
+    smf_registration.setSmfInstanceId(smf_app_inst->get_smf_instance_id());
+    smf_registration.setPduSessionId(pdu_session_id);
+    auto smf_info = smf_cfg->smf()->get_smf_info();
+    if (smf_info.getSNssaiSmfInfoList().size() > 0) {
+      // Use the first SNssai
+      smf_registration.setSingleNssai(
+          (smf_info.getSNssaiSmfInfoList()[0]).getSNssai());
+    }
+    if (smf_info.getTaiList().size() > 0) {
+      // Use the first TAI
+      smf_registration.setPlmnId((smf_info.getTaiList()[0]).getPlmnId());
+    }
     register_with_udm(supi, pdu_session_id, smf_registration);
   }
 
@@ -4951,8 +5361,20 @@ void smf_context::send_pdu_session_update_response(
         // No need to create N1/N2 Container, just Cause
         Logger::smf_app().info("UE Triggered Service Request (Step 2)");
         nlohmann::json json_data = {};
-        json_data["cause"]       = resp->res.get_cause();
-        json_data["upCnxState"]  = "ACTIVATED";
+        // When the modification that restores the user plane fails,
+        // session_update_sm_context_procedure::handle_itti_msg() still answers
+        // with an accepted 5GSM cause but puts the session back to
+        // DEACTIVATED. Reporting ACTIVATED would tell the AMF a user plane is
+        // up that is not, and this is the only place that can say otherwise.
+        // An ordinary step 2 (ACTIVATING) and a successful page (ACTIVATED)
+        // both take the else and are unaffected.
+        if (sps->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_DEACTIVATED) {
+          json_data["upCnxState"] = "DEACTIVATED";
+          json_data["cause"]      = "INSUFFICIENT_UP_RESOURCES";
+        } else {
+          json_data["cause"]      = resp->res.get_cause();
+          json_data["upCnxState"] = "ACTIVATED";
+        }
         resp->res.set_json_data(json_data);
         resp->res.set_http_code(http_status_code::OK);
       } break;
@@ -5295,19 +5717,14 @@ bool smf_context::register_with_udm(
   nlohmann::json smf_registration_json = {};
   to_json(smf_registration_json, smf_registration);
 
-  boost::shared_ptr<boost::promise<nlohmann::json>> p =
-      boost::make_shared<boost::promise<nlohmann::json>>();
-  boost::shared_future<nlohmann::json> f;
-  f = p->get_future();
-
-  // Generate ID for this promise (to be used in SMF-APP)
-  uint32_t promise_id = smf_app_inst->generate_promise_id();
-  Logger::smf_app().debug("Promise ID generated %d", promise_id);
-  smf_app_inst->add_promise(promise_id, p);
-
+  // Sent without waiting for the answer, as deregister_with_udm() does. The
+  // answer is not used, and waiting for it held TASK_SMF_APP - and with it the
+  // SM context update answer to the AMF - for up to KFutureStatusTimeoutMs
+  // whenever the UDM was slow or absent. Promise ID 0: the SBI task resolves
+  // no promise.
   std::shared_ptr<itti_sbi_register_with_udm> itti_msg =
       std::make_shared<itti_sbi_register_with_udm>(
-          TASK_SMF_APP, TASK_SMF_SBI, promise_id);
+          TASK_SMF_APP, TASK_SMF_SBI, 0);
 
   itti_msg->supi             = supi;
   itti_msg->pdu_session_id   = pdu_session_id;
@@ -5318,32 +5735,9 @@ bool smf_context::register_with_udm(
     Logger::smf_app().error(
         "Could not send ITTI message %s to task TASK_SMF_SBI",
         itti_msg->get_msg_name());
+    return false;
   }
-
-  // Wait for the result available and process accordingly
-  std::optional<nlohmann::json> result_opt = std::nullopt;
-  oai::utils::utils::wait_for_result(f, result_opt);
-
-  // process data
-  uint32_t http_response_code = 0;
-  nlohmann::json json_data    = {};
-
-  if (result_opt.has_value()) {
-    Logger::smf_app().debug("Got result for promise ID %d", promise_id);
-    nlohmann::json result = result_opt.value();
-
-    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
-      http_response_code =
-          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
-    }
-
-    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
-      json_data = result[oai::http::kSbiResponseJsonData];
-    }
-
-    return true;
-  }
-  return false;
+  return true;
 }
 
 //------------------------------------------------------------------------------

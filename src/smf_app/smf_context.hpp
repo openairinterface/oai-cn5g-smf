@@ -5,6 +5,7 @@
 #ifndef FILE_SMF_CONTEXT_HPP_SEEN
 #define FILE_SMF_CONTEXT_HPP_SEEN
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <shared_mutex>
@@ -64,6 +65,12 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     number_retransmission_T3591                = 0;
     number_retransmission_T3592                = 0;
     resources_deallocated                      = false;
+    n4_procedures_in_flight                    = 0;
+    n4_in_flight_since                         = {};
+    paging_in_flight                           = false;
+    paging_armed                               = false;
+    paging_stage                               = paging_stage_e::IDLE;
+    paging_trxn_id                             = 0;
   }
 
   void clear() {
@@ -91,6 +98,12 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
     timer_T3592                 = ITTI_INVALID_TIMER_ID;
     number_retransmission_T3591 = 0;
     number_retransmission_T3592 = 0;
+    n4_procedures_in_flight     = 0;
+    n4_in_flight_since          = {};
+    paging_in_flight            = false;
+    paging_armed                = false;
+    paging_stage                = paging_stage_e::IDLE;
+    paging_trxn_id              = 0;
   }
 
   smf_pdu_session(smf_pdu_session& b) = delete;
@@ -139,6 +152,107 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
    * @return upCnx_state_e: current state of this N3 tunnel
    */
   upCnx_state_e get_upCnx_state() const;
+
+  /*
+   * Registers one more N4 procedure in flight for this PDU session and
+   * refreshes the in-flight timestamp. Saturates at UINT16_MAX.
+   * @param void
+   * @return void
+   */
+  void n4_in_flight_inc();
+
+  /*
+   * Unregisters one N4 procedure in flight for this PDU session. Saturates
+   * at 0.
+   * @param void
+   * @return void
+   */
+  void n4_in_flight_dec();
+
+  /*
+   * Gets the number of N4 procedures currently in flight for this session
+   * @param void
+   * @return uint16_t: the number of registered N4 procedures
+   */
+  uint16_t get_n4_in_flight() const;
+
+  /*
+   * Compare-and-set taking the session from idle and pageable to paging:
+   * requires DEACTIVATED, stage IDLE, no page in flight and no N4 procedure
+   * in flight (unless that count is stale). Sets stage AWAITING_M3_RESPONSE.
+   * @param void
+   * @return bool: true if this caller now owns the paging procedure
+   */
+  bool try_begin_paging();
+
+  /*
+   * Publishes, in a single locked transition, the state the N1N2 message
+   * transfer is sent under: ACTIVATING and stage AWAITING_SETUP_RSP.
+   * @param void
+   * @return bool: true if the transition was taken
+   */
+  bool commit_paging_activating();
+
+  /*
+   * Publishes, in a single locked transition, the end state of a successful
+   * page: ACTIVATED, stage IDLE, nothing in flight, nothing armed.
+   * @param void
+   * @return void
+   */
+  void commit_paging_activated();
+
+  /*
+   * Compare-and-set gating the processing of a PDU_RES_SETUP_RSP. Accepts
+   * only from stage IDLE (ordinary UE-triggered service request) or
+   * AWAITING_SETUP_RSP (the answer to a page), and takes
+   * AWAITING_M5_RESPONSE when a paging rule is armed.
+   * @param [bool&] n4_busy: out, set under the same lock as the test, true
+   * only when an N4 procedure of the paging procedure itself is outstanding
+   * @return bool: true if the caller may proceed
+   */
+  bool try_begin_activation(bool& n4_busy);
+
+  /*
+   * Abandons a paging procedure (failure paths)
+   * @param [bool] keep_armed: true to leave the paging rule armed on the UPF
+   * @return void
+   */
+  void end_paging(bool keep_armed);
+
+  /*
+   * Get the stage of the paging procedure
+   * @param void
+   * @return paging_stage_e: current stage
+   */
+  paging_stage_e get_paging_stage() const;
+
+  /*
+   * Whether the paging PDR and FAR are currently armed on the UPF
+   * @param void
+   * @return bool: true if armed
+   */
+  bool is_paging_armed() const;
+
+  /*
+   * Set whether the paging PDR and FAR are armed on the UPF
+   * @param [bool] armed: new value
+   * @return void
+   */
+  void set_paging_armed(bool armed);
+
+  /*
+   * Set the transaction ID of the running paging procedure
+   * @param [uint64_t] trxn_id: transaction ID
+   * @return void
+   */
+  void set_paging_trxn_id(uint64_t trxn_id);
+
+  /*
+   * Get the transaction ID of the running paging procedure
+   * @param void
+   * @return uint64_t: transaction ID
+   */
+  uint64_t get_paging_trxn_id() const;
 
   /*
    * Set HOState of a PDU Session
@@ -301,6 +415,18 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   uint8_t pdu_session_status;
   upCnx_state_e
       upCnx_state;  // N3 tunnel status (ACTIVATED, DEACTIVATED, ACTIVATING)
+  // Number of smf_session_procedures currently registered for this PDU
+  // session. A count rather than a flag: every completion decrements it, but
+  // an orphaned registration is never unwound and raises a permanent floor
+  // the count can no longer fall below.
+  uint16_t n4_procedures_in_flight;
+  // Refreshed on every increment, not only on the 0 -> 1 edge: a timestamp
+  // pinned at the moment of a loss would make later N4 work read as stale.
+  std::chrono::steady_clock::time_point n4_in_flight_since;
+  bool paging_in_flight;  // a network-triggered service request is running
+  bool paging_armed;      // the paging PDR and FAR are live on the UPF
+  paging_stage_e paging_stage;
+  uint64_t paging_trxn_id;
   ho_state_e ho_state;
   timer_id_t timer_T3590;
   timer_id_t timer_T3591;
@@ -348,6 +474,14 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   mutable std::shared_mutex m_pdu_session_mutex;
 
  private:
+  /*
+   * Whether the N4 in-flight count is old enough to be overridden.
+   * m_pdu_session_mutex must be held by the caller; it is not recursive.
+   * @param void
+   * @return bool: true if the count is stale
+   */
+  bool n4_in_flight_is_stale() const;
+
   std::shared_ptr<itti_sbi_msg> pending_n11_msg;
   uint8_t number_retransmission_T3591;
   uint8_t number_retransmission_T3592;
