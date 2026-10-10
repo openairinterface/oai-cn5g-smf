@@ -74,9 +74,7 @@ static const std::vector<std::string> session_management_procedures_type_e2str =
 };
 
 // Stage of the network-triggered service request (paging) procedure for one
-// PDU session. Declared here rather than in smf_context.hpp because that
-// header and smf_procedure.hpp include each other, so smf_procedure.hpp -
-// which needs this type in a signature - cannot see anything declared there.
+// PDU session.
 enum class paging_stage_e : uint8_t {
   IDLE                 = 0,
   AWAITING_M3_RESPONSE = 1,
@@ -88,10 +86,8 @@ static const std::vector<std::string> paging_stage_e2str = {
     "IDLE", "AWAITING_M3_RESPONSE", "AWAITING_SETUP_RSP",
     "AWAITING_M5_RESPONSE"};
 
-// Age after which an outstanding N4 procedure count is treated as stale.
-// Nothing times out an N4 response and an orphaned procedure is never
-// unregistered, so without this one lost response would leave the session
-// unpageable for the rest of its life. Checked lazily, not by a timer.
+// Time in seconds after which an outstanding N4 procedure count is treated as
+// stale.
 static constexpr uint16_t PAGING_STALE_SECONDS = 30;
 
 // for N1N2
