@@ -622,7 +622,7 @@ void smf_config_type::validate() {
   m_paging_config.validate();
   // A UPF that installs the downlink PDR already at session establishment
   // gets a DROP FAR on every N3 edge, which would kill the user plane that
-  // paging restores.
+  // paging brings back up.
   if (m_paging_config.enable()) {
     for (const auto& upf : m_upfs) {
       if (upf.enable_dl_pdr_in_session_establishment()) {

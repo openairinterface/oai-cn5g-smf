@@ -1782,7 +1782,7 @@ smf_procedure_code session_update_sm_context_procedure::run(
       // uplink F-TEID, so the paging state has to be closed here - before the
       // removes below - or the next wake-up would advertise a dead tunnel.
       // The rule stays armed: it is still installed in the UPF, and only the
-      // re-activation removes it.
+      // downlink N4 modification removes it.
       if (paging_enabled) {
         const paging_stage_e stage_at_an_release = sps->get_paging_stage();
         if (stage_at_an_release != paging_stage_e::IDLE) {
@@ -1807,8 +1807,9 @@ smf_procedure_code session_update_sm_context_procedure::run(
       }
       // With paging on, tear every edge down rather than the QFI-filtered
       // subset: a partial teardown leaves downlink PDRs competing with the
-      // paging PDR and non-zero rule IDs behind, so the re-activation would
-      // stack a duplicate on a live id, and the stale rule would win for good.
+      // paging PDR and non-zero rule IDs behind, so the next paging cycle's N4
+      // modifications would stack a duplicate on a live id, and the stale rule
+      // would win for good.
       remove_pdrs_fars_qers(paging_enabled ? ul_edges : ul_edges_to_update);
       remove_pdrs_fars_qers(paging_enabled ? dl_edges : dl_edges_to_update);
       if (paging_enabled && sps->ipv4 && !ul_edges.empty() &&
@@ -1907,12 +1908,13 @@ smf_procedure_code session_update_sm_context_procedure::run(
 }
 
 //------------------------------------------------------------------------------
-void session_update_sm_context_procedure::abandon_paging_reactivation(
+void session_update_sm_context_procedure::abandon_paging_activation(
     const char* reason) {
-  // Both call sites sit ahead of the switch on session_procedure_type, in
-  // code shared by every update procedure. Only the re-activation owns the
-  // paging cycle; anything else has to be a no-op here, or it would reset the
-  // state underneath the page's real owner and leak the stored ids.
+  // The two call sites in shared code sit ahead of the switch on
+  // session_procedure_type, in code run by every update procedure. Only the
+  // STEP2 procedure that sends the downlink N4 modification owns the paging
+  // cycle; anything else has to be a no-op here, or it would reset the state
+  // underneath the page's real owner and leak the stored ids.
   if (session_procedure_type !=
       session_management_procedures_type_e::SERVICE_REQUEST_UE_TRIGGERED_STEP2)
     return;
@@ -1924,7 +1926,7 @@ void session_update_sm_context_procedure::abandon_paging_reactivation(
     return;
   }
   Logger::smf_app().error(
-      "Paging: abandoning the re-activation of SEID " SEID_FMT
+      "Paging: abandoning the user-plane activation of SEID " SEID_FMT
       " (%s); the user plane stays down",
       sps->seid, reason);
   // The session was left ACTIVATING before the N1N2 transfer, and DEACTIVATED
@@ -2028,21 +2030,21 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
           m_paging_removes_emitted &&
           session_procedure_type == session_management_procedures_type_e::
                                         SERVICE_REQUEST_UE_TRIGGERED_STEP2) {
-        // SP11 - M5 of a PAGE was rejected by the UPF. The session itself is
-        // intact, it simply is not up, so the AMF must NOT be told the SM
-        // context is RELEASED: return early, before the status change below.
-        // m_paging_removes_emitted is the exact qualifier: it is true only if
-        // this very procedure put the paging Removes on the wire, i.e. only if
-        // (paging enabled) && (session armed) && (type == STEP2). With the
-        // feature off, or on an ordinary non-paged UE-triggered service
-        // request, this arm does NOT fire and control falls through to the
-        // shipping RELEASED notification + ERROR return below, byte for byte
-        // as before this work package.
+        // The UPF rejected a downlink N4 modification that carried the paging
+        // Removes. The session itself is intact, it simply is not up, so the
+        // AMF must NOT be told the SM context is RELEASED: return early,
+        // before the status change below. m_paging_removes_emitted is the
+        // exact qualifier: it is true only if this very procedure put the
+        // paging Removes on the wire, i.e. only if (paging enabled) &&
+        // (session armed) && (type == STEP2). With the feature off, or on an
+        // ordinary non-paged UE-triggered service request, this arm does NOT
+        // fire and control falls through to the RELEASED notification + ERROR
+        // return below, unchanged from before paging support.
         Logger::smf_app().error(
-            "Paging: the UPF rejected the re-activation of SEID " SEID_FMT
-            " with cause %d",
+            "Paging: the UPF rejected the downlink N4 modification of "
+            "SEID " SEID_FMT " with cause %d",
             sps->seid, cause.cause_value);
-        abandon_paging_reactivation("the UPF rejected the N4 modification");
+        abandon_paging_activation("the UPF rejected the N4 modification");
         // An ACCEPTED 5GSM cause on purpose: send_pdu_session_update_response()
         // gates its whole switch on it, and a rejected one would force a 406
         // and throw the 200 OK DEACTIVATED / INSUFFICIENT_UP_RESOURCES answer
@@ -2085,9 +2087,9 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
       smf_procedure_code::ERROR) {
     Logger::smf_app().error("SMF DL procedure: Could not get current UPF");
     // This ERROR return is ahead of the switch below, so nothing else would
-    // close the paging stage: it would stay AWAITING_M5_RESPONSE and every
+    // close the paging stage: it would stay AWAITING_DOWNLINK_N4_RSP and every
     // later page would be refused as busy.
-    abandon_paging_reactivation("the current UPF could not be resolved");
+    abandon_paging_activation("the current UPF could not be resolved");
     // TODO is this enough as an error message? We have cause 31 but not
     // values
     return smf_procedure_code::ERROR;
@@ -2159,7 +2161,7 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
         "PDU Session establishment modification failed. Wrong QFI. Sending "
         "reject");
     // As above: close the paging stage before this early return.
-    abandon_paging_reactivation("the N4 response did not serve every QFI");
+    abandon_paging_activation("the N4 response did not serve every QFI");
     n11_triggered_pending->res.set_cause(k5gsmCauseRequestRejectedUnspecified);
     return smf_procedure_code::ERROR;
   }
@@ -2598,12 +2600,13 @@ session_network_triggered_service_request_procedure::prime_graph_cursor() {
 
   if (m_dl_edges.empty() || m_ul_edges.empty()) {
     Logger::smf_app().error(
-        "Paging: the selected UPF has no N3 or no N6 edge; nothing to restore");
+        "Paging: the selected UPF has no N3 or no N6 edge; nothing to set up");
     return smf_procedure_code::ERROR;
   }
 
   // Read the configuration gates now, while the association is in hand:
-  // send_m3() never takes the graph cursor or the association again
+  // send_n4_uplink_modification() never takes the graph cursor or the
+  // association again
   const oai::config::smf::upf& upf_cfg = m_current_upf->get_upf_config();
   m_upf_enable_qers                    = upf_cfg.enable_qers();
   m_upf_enable_usage_reporting         = upf_cfg.enable_usage_reporting();
@@ -2622,10 +2625,10 @@ void session_network_triggered_service_request_procedure::clear_cached_edges() {
 }
 
 //------------------------------------------------------------------------------
-smf_procedure_code
-session_network_triggered_service_request_procedure::send_m3() {
+smf_procedure_code session_network_triggered_service_request_procedure::
+    send_n4_uplink_modification() {
   Logger::smf_app().debug(
-      "Paging: send M3 (N4 Session Modification Request, uplink rules) for "
+      "Paging: send the uplink N4 Session Modification Request for "
       "SEID " SEID_FMT,
       sps->up_fseid.seid);
 
@@ -2701,7 +2704,7 @@ smf_procedure_code session_network_triggered_service_request_procedure::run(
   if (prime_graph_cursor() != smf_procedure_code::OK) {
     return smf_procedure_code::ERROR;
   }
-  return send_m3();
+  return send_n4_uplink_modification();
 }
 
 //------------------------------------------------------------------------------
@@ -2728,14 +2731,14 @@ session_network_triggered_service_request_procedure::handle_itti_msg(
   resp.pfcp_ies.get(cause);
 
   Logger::smf_app().info(
-      "Paging: received the M3 N4 Session Modification Response for "
+      "Paging: received the uplink N4 Session Modification Response for "
       "SEID " SEID_FMT ", cause %d",
       sps->up_fseid.seid, cause.cause_value);
 
   if (cause.cause_value != CAUSE_VALUE_REQUEST_ACCEPTED) {
     Logger::smf_app().error(
-        "Paging: the UPF refused M3 for SEID " SEID_FMT
-        " (cause %d); abandoning the page",
+        "Paging: the UPF refused the uplink N4 modification of "
+        "SEID " SEID_FMT " (cause %d); abandoning the page",
         sps->seid, cause.cause_value);
     return abandon_page();
   }

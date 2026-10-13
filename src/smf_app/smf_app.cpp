@@ -648,7 +648,7 @@ void smf_app::handle_itti_msg(
         // Both the roll-back and the edge cleanup are gated on the stage,
         // since both are only ours to do while this paging cycle still owns
         // the session: a late refusal must not write DEACTIVATED over a
-        // session the restoring modification has just brought up, nor over
+        // session the downlink N4 modification has just brought up, nor over
         // one an AN release has already torn down. The cleanup runs before
         // end_paging(), because by then the paging procedure is unregistered
         // yet its edges still carry live rule IDs and the harvested F-TEID;
@@ -656,7 +656,7 @@ void smf_app::handle_itti_msg(
         // key, and the UPF stacks duplicate PDRs rather than replacing them,
         // so the stale one wins for good. The IDs are not handed back to the
         // generators, since the UPF may still hold the rules.
-        if (sp->get_paging_stage() == paging_stage_e::AWAITING_SETUP_RSP) {
+        if (sp->get_paging_stage() == paging_stage_e::AWAITING_N2_SETUP_RSP) {
           Logger::smf_app().warn(
               "Paging: returning the user plane of SEID " SEID_FMT
               " to DEACTIVATED",

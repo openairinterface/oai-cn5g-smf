@@ -366,7 +366,7 @@ bool smf_pdu_session::try_begin_paging() {
     return false;
   }
   paging_in_flight = true;
-  paging_stage     = paging_stage_e::AWAITING_M3_RESPONSE;
+  paging_stage     = paging_stage_e::AWAITING_UPLINK_N4_RSP;
   log_paging_decision(
       seid, "try_begin_paging", true, stage_before, paging_stage, upCnx_state,
       paging_armed, n4_procedures_in_flight != 0, n4_procedures_in_flight);
@@ -377,7 +377,7 @@ bool smf_pdu_session::try_begin_paging() {
 bool smf_pdu_session::commit_paging_activating() {
   std::unique_lock lock(m_pdu_session_mutex);
   const paging_stage_e stage_before = paging_stage;
-  if (paging_stage != paging_stage_e::AWAITING_M3_RESPONSE) {
+  if (paging_stage != paging_stage_e::AWAITING_UPLINK_N4_RSP) {
     log_paging_decision(
         seid, "commit_paging_activating", false, stage_before, paging_stage,
         upCnx_state, paging_armed, n4_procedures_in_flight != 0,
@@ -385,7 +385,7 @@ bool smf_pdu_session::commit_paging_activating() {
     return false;
   }
   upCnx_state  = upCnx_state_e::UPCNX_STATE_ACTIVATING;
-  paging_stage = paging_stage_e::AWAITING_SETUP_RSP;
+  paging_stage = paging_stage_e::AWAITING_N2_SETUP_RSP;
   log_paging_decision(
       seid, "commit_paging_activating", true, stage_before, paging_stage,
       upCnx_state, paging_armed, n4_procedures_in_flight != 0,
@@ -399,7 +399,7 @@ void smf_pdu_session::commit_paging_activated() {
   upCnx_state      = upCnx_state_e::UPCNX_STATE_ACTIVATED;
   paging_stage     = paging_stage_e::IDLE;
   paging_in_flight = false;
-  paging_armed     = false;  // the restoring modification removed the rules
+  paging_armed     = false;  // the downlink N4 modification removed the rules
   paging_trxn_id   = 0;
 }
 
@@ -409,8 +409,8 @@ bool smf_pdu_session::try_begin_activation(bool& n4_busy) {
   const paging_stage_e stage_before = paging_stage;
   n4_busy                           = false;
 
-  if (paging_stage == paging_stage_e::AWAITING_M3_RESPONSE ||
-      paging_stage == paging_stage_e::AWAITING_M5_RESPONSE) {
+  if (paging_stage == paging_stage_e::AWAITING_UPLINK_N4_RSP ||
+      paging_stage == paging_stage_e::AWAITING_DOWNLINK_N4_RSP) {
     // One of our own N4 procedures is outstanding. No staleness escape here:
     // it would admit a second live procedure on the same PFCP session, two
     // owners mutating the same edge IDs under the same F-TEID key.
@@ -431,11 +431,11 @@ bool smf_pdu_session::try_begin_activation(bool& n4_busy) {
   }
   // DEACTIVATED with a rule armed is not accepted: there a response left
   // over from an earlier page (the UE has gone idle again and a fresh paging
-  // PDR and FAR are armed) would pass for this cycle's, and the restoring
+  // PDR and FAR are armed) would pass for this cycle's, and the downlink N4
   // modification would remove the new rules and program the old gNB F-TEID.
   // Every legitimate arrival is ACTIVATING, set either before the N1N2
   // message transfer or on entry to handle_service_request().
-  if (paging_armed) paging_stage = paging_stage_e::AWAITING_M5_RESPONSE;
+  if (paging_armed) paging_stage = paging_stage_e::AWAITING_DOWNLINK_N4_RSP;
   log_paging_decision(
       seid, "try_begin_activation", true, stage_before, paging_stage,
       upCnx_state, paging_armed, n4_busy, n4_procedures_in_flight);
@@ -2565,7 +2565,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
 
         // The gNB is asked twice per page, so drop the second successful
         // response before the gate and before the decode. Once the user plane
-        // is restored (state is ACTIVATED), which is the only thing
+        // is up again (state is ACTIVATED), which is the only thing
         // that tells this response from an ordinary step 2. Otherwise it falls
         // into the establishment branch below, re-registers the session with
         // the UDM and creates rules on live, non-zero edge IDs.
@@ -2672,7 +2672,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // though the page succeeded. The handler below would take it for a
         // failed establishment and answer 403 with a NAS Establishment
         // Reject, which the AMF forwards to the UE, releasing the session that
-        // was just restored. So this arm sends no N1 and leaves upCnx_state
+        // has just come back up. So this arm sends no N1 and leaves upCnx_state
         // and paging_stage alone: a PDU_RES_SETUP_RSP for the first ask may
         // still be outstanding.
         //
@@ -2685,8 +2685,8 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         if (smf_cfg->smf()->get_paging().enable() and
             ((fail_state == upCnx_state_e::UPCNX_STATE_ACTIVATED) or
              sp->is_paging_armed() or
-             (fail_stage == paging_stage_e::AWAITING_SETUP_RSP) or
-             (fail_stage == paging_stage_e::AWAITING_M5_RESPONSE))) {
+             (fail_stage == paging_stage_e::AWAITING_N2_SETUP_RSP) or
+             (fail_stage == paging_stage_e::AWAITING_DOWNLINK_N4_RSP))) {
           Logger::smf_app().warn(
               "PDU_RES_SETUP_FAIL ignored: the gNB is asked twice per page, "
               "and this session's user plane is up, coming up, or armed for "
@@ -2912,7 +2912,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
                                        sp->get_paging_stage() :
                                        paging_stage_e::IDLE;
 
-      if (stage == paging_stage_e::AWAITING_SETUP_RSP) {
+      if (stage == paging_stage_e::AWAITING_N2_SETUP_RSP) {
         // The UE answered a page: send no N4 at all. The paging procedure
         // already created the uplink rules under the F-TEID the AMF is about
         // to advertise to the gNB, and STEP1 has no Remove and reuses those
@@ -2929,12 +2929,12 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         }
         Logger::smf_app().info(
             "Service Request (UE-triggered, step 1): the UE answered a page, "
-            "the uplink is already restored by M3, no N4 is sent, "
+            "the uplink N4 modification has already run, no N4 is sent, "
             "SEID " SEID_FMT,
             sp->seid);
-        // The stage stays AWAITING_SETUP_RSP: the PDU_RES_SETUP_RSP and the
-        // modification that restores the user plane still have to run, and the
-        // gate there is what closes it. No procedure is registered to unwind.
+        // The stage stays AWAITING_N2_SETUP_RSP: the PDU_RES_SETUP_RSP and the
+        // downlink N4 modification still have to run, and the gate there is
+        // what closes it. No procedure is registered to unwind.
         update_upf = false;
 
       } else if (stage != paging_stage_e::IDLE) {
@@ -2942,7 +2942,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // SmContextUpdateError carrying upCnxState DEACTIVATED, per
         // TS 29.502 5.2.2.3.2.2 step 2b: the AMF reads a 2xx as success,
         // stores ACTIVATED and never sends this /modify again. And while the
-        // paging modification is outstanding edge->fteid is not harvested
+        // uplink N4 modification is outstanding edge->fteid is not harvested
         // yet, so the PDU_RES_SETUP_REQ would carry a zero tunnel.
         //
         // Nothing reads procedure_type on this arm today, but left at its
@@ -3359,7 +3359,7 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         remove_procedure(sproc.get());
 
         // Give the stage back when the procedure never started:
-        // try_begin_activation() may have taken AWAITING_M5_RESPONSE and
+        // try_begin_activation() may have taken AWAITING_DOWNLINK_N4_RSP and
         // nothing else would ever close it. A no-op on a non-paged service
         // request, where the stage is already IDLE.
         if (procedure_type == session_management_procedures_type_e::
@@ -5361,7 +5361,7 @@ void smf_context::send_pdu_session_update_response(
         // No need to create N1/N2 Container, just Cause
         Logger::smf_app().info("UE Triggered Service Request (Step 2)");
         nlohmann::json json_data = {};
-        // When the modification that restores the user plane fails,
+        // When the downlink N4 modification fails, its response handler
         // session_update_sm_context_procedure::handle_itti_msg() still answers
         // with an accepted 5GSM cause but puts the session back to
         // DEACTIVATED. Reporting ACTIVATED would tell the AMF a user plane is
