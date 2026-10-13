@@ -2222,6 +2222,26 @@ void smf_app::add_event_subscription(
 }
 
 //---------------------------------------------------------------------------------------------
+bool smf_app::remove_event_subscription(const evsub_id_t& sub_id) {
+  Logger::smf_app().debug("Remove an Event subscription (Sub ID %d)", sub_id);
+  std::unique_lock lock(m_smf_event_subscriptions);
+
+  // Keyed by (subscription id, event), so one id can hold several entries when
+  // the subscription covers several events -- all of them go together.
+  bool removed = false;
+  for (auto it = smf_event_subscriptions.cbegin();
+       it != smf_event_subscriptions.cend();) {
+    if (std::get<0>(it->first) == sub_id) {
+      it      = smf_event_subscriptions.erase(it);
+      removed = true;
+    } else {
+      ++it;
+    }
+  }
+  return removed;
+}
+
+//---------------------------------------------------------------------------------------------
 void smf_app::get_ee_subscriptions(
     smf_event_t ev,
     std::vector<std::shared_ptr<smf_subscription>>& subscriptions) {
