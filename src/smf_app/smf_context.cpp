@@ -525,6 +525,20 @@ void smf_context::handle_itti_msg(itti_n4_session_deletion_response& sdresp) {
           proc_session_delete->n11_triggered_pending,
           proc_session_delete->session_procedure_type,
           proc_session_delete->sps);
+      // Once released (Release SM Context Request), the SM context reference
+      // must not resolve to a later session with the same PDU Session ID
+      if ((res == smf_procedure_code::OK) &&
+          (proc_session_delete->session_procedure_type ==
+           session_management_procedures_type_e::DEREGISTRATION_UE_INITIATED)) {
+        try {
+          smf_app_inst->remove_scid_2_smf_context((scid_t) std::stoul(
+              proc_session_delete->n11_trigger->scid, nullptr, 10));
+        } catch (const std::exception& e) {
+          Logger::smf_app().warn(
+              "Invalid SMF Context ID %s",
+              proc_session_delete->n11_trigger->scid.c_str());
+        }
+      }
       remove_procedure(proc.get());
     }
   } else {

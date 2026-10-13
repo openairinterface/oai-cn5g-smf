@@ -1076,15 +1076,24 @@ void smf_app::handle_pdu_session_create_sm_context_request(
 
   // Step 5. If colliding with an existing SM context (session is already
   // existed and request type is INITIAL_REQUEST). Delete the local context
-  // (including and any associated resources in the UPF and PCF) and create a
-  // new one
-  if (is_scid_2_smf_context(supi, pdu_session_id) &&
-      (request_type.compare("INITIAL_REQUEST") == 0)) {
-    // Remove smf_pdu_session (including all flows associated to this session)
-    sc->remove_pdu_session(pdu_session_id);
+  // (including and any associated resources in the UPF) and create a new one
+  std::shared_ptr<smf_pdu_session> old_sp = {};
+  if ((request_type.compare("INITIAL_REQUEST") == 0) &&
+      sc->find_pdu_session(pdu_session_id, old_sp)) {
     Logger::smf_app().warn(
         "PDU Session already existed (SUPI %s, PDU Session ID %d)", supi,
         pdu_session_id);
+    std::vector<scid_t> old_scids = scids_2_smf_context(supi, pdu_session_id);
+    if (!old_scids.empty() && !old_sp->resources_deallocated) {
+      release_replaced_pdu_session(
+          sc, supi, pdu_session_id, old_sp, old_scids.front());
+    }
+    // The old SM context references must not resolve to the new session
+    for (const auto& old_scid : old_scids) {
+      remove_scid_2_smf_context(old_scid);
+    }
+    // Remove smf_pdu_session (including all flows associated to this session)
+    sc->remove_pdu_session(pdu_session_id);
   }
 
   // Step 6. Retrieve Session Management Subscription data from UDM if not
@@ -1592,14 +1601,42 @@ bool smf_app::is_scid_2_smf_context(const scid_t& scid) const {
 }
 
 //------------------------------------------------------------------------------
-bool smf_app::is_scid_2_smf_context(
+void smf_app::release_replaced_pdu_session(
+    const std::shared_ptr<smf_context>& sc, const std::string& supi,
+    const pdu_session_id_t& pdu_session_id,
+    const std::shared_ptr<smf_pdu_session>& sp, const scid_t& scid) {
+  Logger::smf_app().info(
+      "Release the replaced PDU Session (SUPI %s, PDU Session ID %d, SMF "
+      "Context ID " SCID_FMT ")",
+      supi.c_str(), pdu_session_id, scid);
+
+  // No promise is stored for this ID, so the final response is dropped
+  uint32_t promise_id = generate_promise_id();
+  auto smreq          = std::make_shared<itti_sbi_release_sm_context_request>(
+      TASK_SMF_APP, TASK_SMF_APP, promise_id, std::to_string(scid));
+  smreq->req.set_supi(supi);
+  smreq->req.set_pdu_session_id(pdu_session_id);
+  smreq->req.set_dnn(sp->get_dnn());
+  smreq->req.set_snssai(sp->get_snssai());
+  sc->handle_pdu_session_release_sm_context_request(smreq);
+}
+
+//------------------------------------------------------------------------------
+std::vector<scid_t> smf_app::scids_2_smf_context(
     const std::string& supi, const pdu_session_id_t& pid) const {
   std::shared_lock lock(m_scid2smf_context);
-  for (auto it : scid2smf_context) {
+  std::vector<scid_t> scids;
+  for (const auto& it : scid2smf_context) {
     if ((it.second->supi == supi) and (it.second->pdu_session_id == pid))
-      return true;
+      scids.push_back(it.first);
   }
-  return false;
+  return scids;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::remove_scid_2_smf_context(const scid_t& scid) {
+  std::unique_lock lock(m_scid2smf_context);
+  scid2smf_context.erase(scid);
 }
 
 //------------------------------------------------------------------------------
