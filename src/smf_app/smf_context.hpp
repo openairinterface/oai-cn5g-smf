@@ -179,7 +179,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   /*
    * Compare-and-set taking the session from idle and pageable to paging:
    * requires DEACTIVATED, stage IDLE, no page in flight and no N4 procedure
-   * in flight (unless that count is stale). Sets stage AWAITING_M3_RESPONSE.
+   * in flight (unless that count is stale). Sets stage AWAITING_UPLINK_N4_RSP.
    * @param void
    * @return bool: true if this caller now owns the paging procedure
    */
@@ -187,7 +187,7 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
 
   /*
    * Publishes, in a single locked transition, the state the N1N2 message
-   * transfer is sent under: ACTIVATING and stage AWAITING_SETUP_RSP.
+   * transfer is sent under: ACTIVATING and stage AWAITING_N2_SETUP_RSP.
    * @param void
    * @return bool: true if the transition was taken
    */
@@ -204,8 +204,8 @@ class smf_pdu_session : public std::enable_shared_from_this<smf_pdu_session> {
   /*
    * Compare-and-set gating the processing of a PDU_RES_SETUP_RSP. Accepts
    * only from stage IDLE (ordinary UE-triggered service request) or
-   * AWAITING_SETUP_RSP (the answer to a page), and takes
-   * AWAITING_M5_RESPONSE when a paging rule is armed.
+   * AWAITING_N2_SETUP_RSP (the answer to a page), and takes
+   * AWAITING_DOWNLINK_N4_RSP when a paging rule is armed.
    * @param [bool&] n4_busy: out, set under the same lock as the test, true
    * only when an N4 procedure of the paging procedure itself is outstanding
    * @return bool: true if the caller may proceed

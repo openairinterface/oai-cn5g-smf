@@ -325,14 +325,17 @@ class session_update_sm_context_procedure : public smf_session_procedure {
   void commit_staged_flow_removals();
 
   /**
-   * Abandons a paging cycle whose re-activation did not complete: back to
-   * DEACTIVATED, the only state a page can start from, paging rule IDs given
-   * back if this procedure emitted their Removes, paging stage closed. A
-   * no-op on an ordinary service request and when paging is disabled.
+   * Gives up the user-plane activation of a session in a paging cycle, when
+   * the UPF rejected the downlink N4 modification or its response could not
+   * be used: back to DEACTIVATED, the only state a page can start from,
+   * paging rule IDs released if this procedure emitted their Removes, paging
+   * state reset. It sends no N4 message and rolls nothing back on the UPF:
+   * whatever the UPF applied stays. A no-op on an ordinary service request
+   * and when paging is disabled.
    * @param [const char*] reason: what went wrong, for the log line
    * @return void
    */
-  void abandon_paging_reactivation(const char* reason);
+  void abandon_paging_activation(const char* reason);
 
   // Paging rule IDs allocated by this procedure; handed over to the session
   // handler only once the N4 response says the rule is live
@@ -388,9 +391,10 @@ class session_release_sm_context_procedure : public smf_session_procedure {
 
 //------------------------------------------------------------------------------
 /*
- * Network-triggered service request (paging): owns the N4 round trip that
- * restores the uplink on the UPF before the UE is paged, so that the F-TEID
- * of the N2 container the AMF buffers is already live.
+ * Network-triggered service request (paging): owns the uplink N4
+ * modification, the N4 round trip that sets up the uplink on the UPF before
+ * the UE is paged, so that the F-TEID of the N2 container the AMF buffers is
+ * already live.
  */
 class session_network_triggered_service_request_procedure
     : public smf_session_procedure {
@@ -401,15 +405,15 @@ class session_network_triggered_service_request_procedure
 
   /*
    * Execute the network-triggered service request procedure: prime the UPF
-   * graph cursor and send the modification that restores the uplink. The
-   * caller registers this procedure with insert_procedure() before run().
+   * graph cursor and send the uplink N4 modification. The caller registers
+   * this procedure with insert_procedure() before run().
    * @param [std::shared_ptr<smf::smf_context>] sc: smf context
    * @return CONTINUE when the modification is on the wire, ERROR otherwise
    */
   smf_procedure_code run(std::shared_ptr<oai::app::smf::smf_context> sc);
 
   /*
-   * Handle the N4 Session Modification Response that restores the uplink
+   * Handle the response to the uplink N4 modification
    * @param [itti_n4_session_modification_response] resp
    * @param [std::shared_ptr<smf::smf_context>] sc smf context
    * @return OK or ERROR, never CONTINUE: only those two make the dispatcher
@@ -422,17 +426,17 @@ class session_network_triggered_service_request_procedure
  private:
   /**
    * Takes the UPF graph cursor once, caches the edges of the selected UPF and
-   * the UPF configuration gates send_m3() needs
+   * the UPF configuration gates send_n4_uplink_modification() needs
    * @return OK when successful, ERROR otherwise
    */
   smf_procedure_code prime_graph_cursor();
 
   /**
-   * Builds and sends the modification that restores the uplink: the uplink
-   * FAR on every N6 edge and the uplink PDR on every N3 edge
+   * Builds and sends the uplink N4 modification: the uplink FAR on every N6
+   * edge and the uplink PDR on every N3 edge
    * @return CONTINUE when the message is on the wire, ERROR otherwise
    */
-  smf_procedure_code send_m3();
+  smf_procedure_code send_n4_uplink_modification();
 
   /**
    * Clears the PFCP session state of every cached edge: the cleanup path when
