@@ -470,14 +470,21 @@ class smf_app {
   bool is_scid_2_smf_context(const scid_t& scid) const;
 
   /*
-   * Verify whether a SMF Context Reference exist
+   * Get the IDs of the SMF Context References of a PDU session
    * @param [const std::string &] supi: SUPI
    * @param [const pdu_session_id_t &] pid: PDU Session ID
-   * @return bool: True if SMF Context Reference found, otherwise return false
+   * @return std::vector<scid_t>: SM Context Reference IDs (empty if none)
    */
-
-  bool is_scid_2_smf_context(
+  std::vector<scid_t> scids_2_smf_context(
       const std::string& supi, const pdu_session_id_t& pid) const;
+
+  /*
+   * Remove a SMF Context Reference, so this ID no longer resolves to a PDU
+   * session
+   * @param [const scid_t &] scid: SM Context Reference ID
+   * @return void
+   */
+  void remove_scid_2_smf_context(const scid_t& scid);
 
   /*
    * Find SMF Context Reference by its ID
@@ -538,6 +545,22 @@ class smf_app {
    */
   void handle_pdu_session_create_sm_context_request(
       std::shared_ptr<itti_sbi_create_sm_context_request> smreq);
+
+  /*
+   * Release a PDU session replaced by a new one with the same PDU Session ID
+   * (N4 Session Deletion, UE IP address and other resources), as for a
+   * Release SM Context Request from the AMF but without answering anyone
+   * @param [const std::shared_ptr<smf_context>&] sc: SMF context of the UE
+   * @param [const std::string&] supi: SUPI
+   * @param [const pdu_session_id_t&] pdu_session_id: PDU Session ID
+   * @param [const std::shared_ptr<smf_pdu_session>&] sp: replaced PDU session
+   * @param [const scid_t&] scid: an SM Context Reference ID of sp
+   * @return void
+   */
+  void release_replaced_pdu_session(
+      const std::shared_ptr<smf_context>& sc, const std::string& supi,
+      const pdu_session_id_t& pdu_session_id,
+      const std::shared_ptr<smf_pdu_session>& sp, const scid_t& scid);
 
   /*
    * Handle PDUSession_UpdateSMContextRequest from AMF
