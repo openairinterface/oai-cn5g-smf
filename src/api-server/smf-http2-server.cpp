@@ -23,6 +23,8 @@
 #include "http_definitions.hpp"
 #include "smf_sbi_helper.hpp"
 
+#include <memory>
+
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 using namespace oai::_3gpp::model;
@@ -365,36 +367,75 @@ void smf_http2_server::start() {
         });
       });
   // Event Exposure
-  server.handle(
+  //
+  // Registered for the collection and for the subtree beneath it, because
+  // nghttp2 follows Go's ServeMux rules: a pattern with no trailing slash
+  // matches that path only. Without the second registration a DELETE of
+  // ".../subscriptions/1" reached no handler and nghttp2 answered its own 404,
+  // so a subscriber had no way to unsubscribe over HTTP/2.
+  auto event_exposure_handler = [&](const request& request,
+                                    const response& response) {
+    // on_data is called again with len == 0 once the body has been
+    // delivered, so a request that was already answered has to say so --
+    // otherwise the fall-through below writes a second response onto a
+    // stream that is already finished.
+    auto handled = std::make_shared<bool>(false);
+    request.on_data([&, handled](const uint8_t* data, std::size_t len) {
+      try {
+        if (request.method().compare("GET") == 0) {
+          // TODO: Get subscriptions
+        }
+        if (request.method().compare("PUT") == 0 && len > 0) {
+          std::string msg((char*) data, len);
+          // TODO: Update subscription
+        }
+        if (request.method().compare("POST") == 0 && len > 0) {
+          std::string msg((char*) data, len);
+          NsmfEventExposure subsctiptionData = {};
+          auto subscription_create_data =
+              nlohmann::json::parse(msg.c_str()).get_to(subsctiptionData);
+          this->create_event_subscription_handler(
+              subscription_create_data, response);
+          *handled = true;
+          return;
+        }
+        // len == 0 is the terminating callback. Without that guard a
+        // DELETE carrying a body would land here twice and write two
+        // responses onto one stream.
+        if (request.method().compare("DELETE") == 0 && len == 0) {
+          // The id is the last path segment, which only arrives here
+          // because of the subtree registration below.
+          const std::string& path = request.uri().path;
+          this->delete_event_subscription_handler(
+              path.substr(path.find_last_of('/') + 1), response);
+          *handled = true;
+          return;
+        }
+
+        // Anything else gets an answer. The GET and PUT branches above are
+        // still TODO and wrote no response at all, which does not read as
+        // "unimplemented" to a client -- it reads as a hang, until the
+        // client's own timeout. 501 is the honest code for a method this
+        // server does not implement (RFC 9110 15.6.2).
+        if (len == 0 && !*handled) {
+          response.write_head(http_status_code::NOT_IMPLEMENTED);
+          response.end();
+        }
+      } catch (nlohmann::detail::exception& e) {
+        Logger::smf_sbi().warn(
+            "Can not parse the JSON data (error: %s)!", e.what());
+        response.write_head(http_status_code::BAD_REQUEST);
+        response.end();
+        return;
+      }
+    });
+  };
+
+  const std::string event_exposure_path =
       smf_sbi_helper::SmfEventExposureBase() +
-          smf_sbi_helper::SmfEventExposurePathSubscriptions,
-      [&](const request& request, const response& response) {
-        request.on_data([&](const uint8_t* data, std::size_t len) {
-          try {
-            if (request.method().compare("GET") == 0) {
-              // TODO: Get subscriptions
-            }
-            if (request.method().compare("PUT") == 0 && len > 0) {
-              std::string msg((char*) data, len);
-              // TODO: Update subscription
-            }
-            if (request.method().compare("POST") == 0 && len > 0) {
-              std::string msg((char*) data, len);
-              NsmfEventExposure subsctiptionData = {};
-              auto subscription_create_data =
-                  nlohmann::json::parse(msg.c_str()).get_to(subsctiptionData);
-              this->create_event_subscription_handler(
-                  subscription_create_data, response);
-            }
-          } catch (nlohmann::detail::exception& e) {
-            Logger::smf_sbi().warn(
-                "Can not parse the JSON data (error: %s)!", e.what());
-            response.write_head(http_status_code::BAD_REQUEST);
-            response.end();
-            return;
-          }
-        });
-      });
+      smf_sbi_helper::SmfEventExposurePathSubscriptions;
+  server.handle(event_exposure_path, event_exposure_handler);
+  server.handle(event_exposure_path + "/", event_exposure_handler);
 
   // SMF Callback (including SM Policy Notification)
   server.handle(
@@ -1025,15 +1066,54 @@ void smf_http2_server::create_event_subscription_handler(
 
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
+    // Same URI the HTTP/1.1 server returns. This built
+    //   host/nsmf-event-exposure/v1/subscriptions1
+    // -- no port, and no separator before the id, so the id ran into the
+    // collection name.
     h.emplace(
         "Location", header_value{
-                        m_address + smf_sbi_helper::SmfEventExposureBase() +
+                        "http://" + m_address + ":" + std::to_string(m_port) +
+                        smf_sbi_helper::SmfEventExposureBase() +
                         smf_sbi_helper::SmfEventExposurePathSubscriptions +
-                        std::to_string(sub_id)});
+                        "/" + std::to_string(sub_id)});
   }
 
   h.emplace("content-type", header_value{"application/json"});
   response.write_head(http_status_code::CREATED, h);
+  response.end(json_data.dump().c_str());
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::delete_event_subscription_handler(
+    const std::string& sub_id, const response& response) {
+  Logger::smf_api_server().info(
+      "Received a request to remove event subscription %s", sub_id.c_str());
+
+  header_map h;
+  evsub_id_t id = {};
+  try {
+    id = std::stoi(sub_id);
+  } catch (const std::exception& e) {
+    Logger::smf_api_server().warn(
+        "Unsubscribe request with a non-numeric subscription ID (%s)",
+        sub_id.c_str());
+    response.write_head(http_status_code::BAD_REQUEST, h);
+    response.end();
+    return;
+  }
+
+  if (m_smf_app->remove_event_subscription(id)) {
+    response.write_head(http_status_code::NO_CONTENT, h);
+    response.end();
+    return;
+  }
+
+  nlohmann::json json_data       = {};
+  ProblemDetails problem_details = {};
+  problem_details.setCause("SUBSCRIPTION_NOT_FOUND");
+  to_json(json_data, problem_details);
+  h.emplace("content-type", header_value{"application/json"});
+  response.write_head(http_status_code::NOT_FOUND, h);
   response.end(json_data.dump().c_str());
 }
 
