@@ -1125,14 +1125,19 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // Step 5. If colliding with an existing SM context (session is already
   // existed and request type is INITIAL_REQUEST). Release the stale session
   // resources before removing the local context and creating a new one.
-  if (is_scid_2_smf_context(supi, pdu_session_id) &&
-      (request_type.compare("INITIAL_REQUEST") == 0)) {
+  std::vector<scid_t> stale_scids = scids_2_smf_context(supi, pdu_session_id);
+  if (!stale_scids.empty() && (request_type.compare("INITIAL_REQUEST") == 0)) {
     std::shared_ptr<smf_pdu_session> stale_session = {};
     if (sc->find_pdu_session(pdu_session_id, stale_session) && stale_session) {
       send_n4_session_deletion_for_stale_session(stale_session);
       stale_session->deallocate_ressources(stale_session->get_dnn());
     }
 
+    // The stale SM context references must not resolve to the new session,
+    // or a release on them (e.g. from a stale AMF context) releases it
+    for (const auto& stale_scid : stale_scids) {
+      remove_scid_2_smf_context(stale_scid);
+    }
     sc->remove_pdu_session(pdu_session_id);
     Logger::smf_app().warn(
         "PDU Session already existed (SUPI %s, PDU Session ID %d), replaced "
@@ -1645,14 +1650,21 @@ bool smf_app::is_scid_2_smf_context(const scid_t& scid) const {
 }
 
 //------------------------------------------------------------------------------
-bool smf_app::is_scid_2_smf_context(
+std::vector<scid_t> smf_app::scids_2_smf_context(
     const std::string& supi, const pdu_session_id_t& pid) const {
   std::shared_lock lock(m_scid2smf_context);
-  for (auto it : scid2smf_context) {
+  std::vector<scid_t> scids;
+  for (const auto& it : scid2smf_context) {
     if ((it.second->supi == supi) and (it.second->pdu_session_id == pid))
-      return true;
+      scids.push_back(it.first);
   }
-  return false;
+  return scids;
+}
+
+//------------------------------------------------------------------------------
+void smf_app::remove_scid_2_smf_context(const scid_t& scid) {
+  std::unique_lock lock(m_scid2smf_context);
+  scid2smf_context.erase(scid);
 }
 
 //------------------------------------------------------------------------------

@@ -470,14 +470,21 @@ class smf_app {
   bool is_scid_2_smf_context(const scid_t& scid) const;
 
   /*
-   * Verify whether a SMF Context Reference exist
+   * Get the IDs of the SMF Context References of a PDU session
    * @param [const std::string &] supi: SUPI
    * @param [const pdu_session_id_t &] pid: PDU Session ID
-   * @return bool: True if SMF Context Reference found, otherwise return false
+   * @return std::vector<scid_t>: SM Context Reference IDs (empty if none)
    */
-
-  bool is_scid_2_smf_context(
+  std::vector<scid_t> scids_2_smf_context(
       const std::string& supi, const pdu_session_id_t& pid) const;
+
+  /*
+   * Remove a SMF Context Reference, so this ID no longer resolves to a PDU
+   * session
+   * @param [const scid_t &] scid: SM Context Reference ID
+   * @return void
+   */
+  void remove_scid_2_smf_context(const scid_t& scid);
 
   /*
    * Find SMF Context Reference by its ID
