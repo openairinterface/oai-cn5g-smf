@@ -21,6 +21,7 @@ add_executable(${SMF_TEST_TARGET}
   test_session_handler.cpp
   test_smf_msg.cpp
   test_pcf_qod_workflow.cpp
+  test_sm_policy_association_lifecycle.cpp
   ${SRC_TOP_DIR}/itti/itti.cpp
   ${SRC_TOP_DIR}/itti/itti_msg.cpp
 )
