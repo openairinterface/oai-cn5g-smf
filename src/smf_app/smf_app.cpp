@@ -997,6 +997,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     reply_with_pdu_session_establishment_reject(
         smreq->req, n1_sm_message, cause_n1, http_status_code::FORBIDDEN,
         PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, smreq->pid);
+    return;
   }
 
   // Get SUPI, SNSSAI

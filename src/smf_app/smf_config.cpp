@@ -131,8 +131,15 @@ bool smf_config::is_dotted_dnn_handled(
       Logger::smf_app().debug(
           "PDU Session Type %d, PDN Type %d", pdn_session_type.pdu_session_type,
           it.second.pdu_session_type.pdu_session_type);
-      if (pdn_session_type.pdu_session_type ==
-          it.second.pdu_session_type.pdu_session_type) {
+      // An IPv4v6 DNN also serves IPv4 requests, and an IPv4v6 request on an
+      // IPv4 DNN gets IPv4 (TS 23.501 5.8.2.2.1)
+      const auto requested  = pdn_session_type.pdu_session_type;
+      const auto configured = it.second.pdu_session_type.pdu_session_type;
+      if ((requested == configured) ||
+          ((requested == PDU_SESSION_TYPE_E_IPV4) &&
+           (configured == PDU_SESSION_TYPE_E_IPV4V6)) ||
+          ((requested == PDU_SESSION_TYPE_E_IPV4V6) &&
+           (configured == PDU_SESSION_TYPE_E_IPV4))) {
         return true;
       }
     }
@@ -216,7 +223,14 @@ void smf_config::to_smf_config() {
 
     dnn.paa_pool6_prefix     = cfg_dnn.get_ipv6_prefix();
     dnn.paa_pool6_prefix_len = cfg_dnn.get_ipv6_prefix_length();
-    dnns[dnn.dnn]            = dnn;
+    if (dnns.count(dnn.dnn)) {
+      logger::logger_registry::get_logger(LOGGER_NAME)
+          .warn(
+              "DNN %s is configured more than once, only its last entry is "
+              "used",
+              dnn.dnn);
+    }
+    dnns[dnn.dnn] = dnn;
   }
 }
 
