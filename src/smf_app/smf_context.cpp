@@ -884,6 +884,32 @@ void smf_context::get_session_ambr(
 }
 
 //------------------------------------------------------------------------------
+// The SMF configuration (DNN) or the subscription is limited to IPv4 only
+// (TS 24.501 6.4.1.3): the DNN is when it is IPv4 or has no IPv6 prefix to
+// allocate from, the subscription is when neither its default nor its allowed
+// session types include IPv6 (TS 29.503 PduSessionTypes)
+static bool is_ipv4_only(
+    const std::string& dnn, const std::shared_ptr<dnn_configuration_t>& sdc) {
+  const auto cfg_dnn = smf_cfg->dnns.find(dnn);
+  if ((cfg_dnn != smf_cfg->dnns.end()) &&
+      ((cfg_dnn->second.pdu_session_type.pdu_session_type ==
+        PDU_SESSION_TYPE_E_IPV4) ||
+       (cfg_dnn->second.paa_pool6_prefix_len == 0) ||
+       IN6_IS_ADDR_UNSPECIFIED(&cfg_dnn->second.paa_pool6_prefix)))
+    return true;
+  if (nullptr == sdc) return false;
+  std::vector<pdu_session_type_t> subscribed_types =
+      sdc->pdu_session_types.allowed_session_types;
+  subscribed_types.push_back(sdc->pdu_session_types.default_session_type);
+  for (const auto& t : subscribed_types) {
+    if ((t.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) ||
+        (t.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6))
+      return false;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_create_sm_context_request(
     std::shared_ptr<itti_sbi_create_sm_context_request> smreq) {
   Logger::smf_app().info(
@@ -981,14 +1007,17 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   std::shared_ptr<session_management_subscription> ss = {};
   std::shared_ptr<dnn_configuration_t> sdc            = {};
   find_dnn_subscription(snssai, ss);
+  if (nullptr != ss) ss->find_dnn_configuration(dnn, sdc);
+  // Selected PDU session type: the requested one, narrowed to IPv4 when the
+  // DNN or the subscription allows IPv4 only (TS 23.501 5.8.2.2.1)
+  if ((sp->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4V6) &&
+      is_ipv4_only(dnn, sdc)) {
+    sp->pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_IPV4;
+  }
+  paa.pdu_session_type = sp->pdu_session_type;
   if (nullptr != ss) {
-    ss->find_dnn_configuration(dnn, sdc);
     if (nullptr != sdc) {
-      paa.pdu_session_type.pdu_session_type =
-          sdc->pdu_session_types.default_session_type
-              .pdu_session_type;  // TODO: Verified if use default session
-                                  // type or requested session type
-                                  // Static IP address allocation
+      // Static IP address allocation
       for (auto addr : sdc->static_ip_addresses) {
         if ((sp->pdu_session_type.pdu_session_type ==
              PDU_SESSION_TYPE_E_IPV4V6) or
@@ -1000,8 +1029,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
                 inet_ntoa(*((struct in_addr*) &addr.u1.ipv4_address)));
             paa.ipv4_address.s_addr = addr.u1.ipv4_address.s_addr;
             paa.pdu_session_type = pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4;
-            set_paa              = true;
-            paa_static_ip        = true;
+            // No IPv6 prefix comes with a static IPv4 address: the session
+            // is IPv4
+            sp->pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_IPV4;
+            set_paa                               = true;
+            paa_static_ip                         = true;
           }
         } else if (
             sp->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV6) {
@@ -1166,8 +1198,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   sp->policy_ptr->set_context(
       smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
-      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(),
-      default_qos, session_ambr, paa_opt);
+      smreq->req.get_pdu_session_id(), sp->pdu_session_type, default_qos,
+      session_ambr, paa_opt);
 
   sp->policy_ptr->id = smreq->scid;
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
