@@ -247,6 +247,11 @@ std::shared_ptr<smf_config_type> smf_config::smf() const {
 }
 
 //------------------------------------------------------------------------------
+const oam_config& smf_config::get_oam() const {
+  return smf()->get_oam();
+}
+
+//------------------------------------------------------------------------------
 void smf_config::update_used_nfs() {
   config::update_used_nfs();
   if (config::register_nrf()) {
