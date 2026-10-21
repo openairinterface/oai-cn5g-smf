@@ -61,6 +61,24 @@
 #include "http_definitions.hpp"
 #include "fqdn.hpp"
 
+#include <ctime>
+
+namespace {
+// The SBI event timeStamp is a DateTime (TS 29.508 5.6.2.3), so RFC 3339 in
+// UTC. It used to be NTP seconds rendered as a decimal string, which meant the
+// AMF and the SMF reported the same instant 2208988800 apart and neither was a
+// DateTime. NTP format is still right for PFCP/N4 timestamps elsewhere in this
+// NF -- that is why SECONDS_SINCE_FIRST_EPOCH remains in use there.
+std::string event_timestamp() {
+  const std::time_t now = std::time(nullptr);
+  std::tm utc           = {};
+  gmtime_r(&now, &utc);
+  char formatted[sizeof("1970-01-01T00:00:00Z")] = {};
+  std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc);
+  return formatted;
+}
+}  // namespace
+
 using namespace oai::app::smf;
 using namespace oai::utils;
 using namespace oai::utils::sdf_conversions;
@@ -4005,6 +4023,9 @@ void smf_context::handle_ee_pdu_session_release(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PDU_SES_REL);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
+      // Every other event here sets one; without it a consumer ordering by
+      // timestamp discarded the release as older than the establishment.
+      ev_notif.set_timestamp(event_timestamp());
       // custom json e.g., for FlexCN
       // nlohmann::json cj = {};
       // cj["ue_ipv4_addr"]  = "12.1.1.2";
@@ -4068,10 +4089,7 @@ void smf_context::handle_ddds(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_DDDS);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       // DDDS Status
       // TODO: where to get this information in SMF???
@@ -4136,10 +4154,7 @@ void smf_context::handle_ue_ip_change(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_UE_IP_CH);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       // New UE IPv4
       if (sp->ipv4) {
@@ -4216,10 +4231,7 @@ void smf_context::handle_qos_monitoring(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_QOS_MON);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       // Custom json for Usage Report
       nlohmann::json cj = {};
@@ -4303,10 +4315,7 @@ void smf_context::handle_flexcn_event(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_FLEXCN);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       // custom json e.g., for FlexCN
       nlohmann::json cj = {};
@@ -4403,10 +4412,7 @@ void smf_context::handle_pdusesest(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PDUSESEST);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       //  UE IPv4
       if (sp->ipv4) {
@@ -4502,10 +4508,7 @@ void smf_context::handle_plmn_change(
       ev_notif.set_smf_event(smf_event_t::SMF_EVENT_PLMN_CH);
       ev_notif.set_notif_uri(i.get()->notif_uri);
       ev_notif.set_notif_id(i.get()->notif_id);
-      // timestamp
-      std::time_t time_epoch_ntp = std::time(nullptr);
-      uint64_t tv_ntp            = time_epoch_ntp + SECONDS_SINCE_FIRST_EPOCH;
-      ev_notif.set_timestamp(std::to_string(tv_ntp));
+      ev_notif.set_timestamp(event_timestamp());
 
       // PLMN
       plmn_t _plmn = {};
