@@ -125,6 +125,25 @@ class ngap_config_value : public config_type {
   [[nodiscard]] bool send_default_qos_characteristics() const;
 };
 
+class paging_config_value : public config_type {
+ private:
+  option_config_value m_enable;
+  int_config_value m_paging_policy_indicator;
+
+ public:
+  explicit paging_config_value();
+  void from_yaml(const YAML::Node& node) override;
+  nlohmann::json to_json() override;
+  bool from_json(const nlohmann::json& json_data) override;
+
+  [[nodiscard]] std::string to_string(const std::string& indent) const override;
+
+  void validate() override;
+
+  [[nodiscard]] bool enable() const;
+  [[nodiscard]] uint8_t paging_policy_indicator() const;
+};
+
 class qos_profile_config_value : public config_type {
   // TODO this is not ideal we should merge this ( and also the validation) with
   // the QosProfile from the UDM API
@@ -199,6 +218,7 @@ class smf_config_type : public nf {
 
   int_config_value m_ue_mtu;
   ngap_config_value m_ngap_config;
+  paging_config_value m_paging_config;
 
  public:
   explicit smf_config_type(
@@ -223,6 +243,7 @@ class smf_config_type : public nf {
   [[nodiscard]] const oai::_3gpp::model::SmfInfo& get_smf_info();
   [[nodiscard]] const local_interface& get_n4() const;
   [[nodiscard]] ngap_config_value get_ngap() const;
+  [[nodiscard]] paging_config_value get_paging() const;
 };
 
 }  // namespace oai::config::smf
