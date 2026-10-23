@@ -984,11 +984,21 @@ void smf_context::handle_pdu_session_create_sm_context_request(
   if (nullptr != ss) {
     ss->find_dnn_configuration(dnn, sdc);
     if (nullptr != sdc) {
-      paa.pdu_session_type.pdu_session_type =
-          sdc->pdu_session_types.default_session_type
-              .pdu_session_type;  // TODO: Verified if use default session
-                                  // type or requested session type
-                                  // Static IP address allocation
+      // Selected PDU session type: the requested one, narrowed to IPv4 when
+      // the subscription or the DNN allows IPv4 only (TS 23.501 5.8.2.2.1)
+      const auto subscribed_type =
+          sdc->pdu_session_types.default_session_type.pdu_session_type;
+      const auto cfg_dnn = smf_cfg->dnns.find(dnn);
+      if ((sp->pdu_session_type.pdu_session_type ==
+           PDU_SESSION_TYPE_E_IPV4V6) &&
+          ((subscribed_type == PDU_SESSION_TYPE_E_IPV4) ||
+           ((cfg_dnn != smf_cfg->dnns.end()) &&
+            (cfg_dnn->second.pdu_session_type.pdu_session_type ==
+             PDU_SESSION_TYPE_E_IPV4)))) {
+        sp->pdu_session_type.pdu_session_type = PDU_SESSION_TYPE_E_IPV4;
+      }
+      paa.pdu_session_type = sp->pdu_session_type;
+      // Static IP address allocation
       for (auto addr : sdc->static_ip_addresses) {
         if ((sp->pdu_session_type.pdu_session_type ==
              PDU_SESSION_TYPE_E_IPV4V6) or
@@ -1166,8 +1176,8 @@ void smf_context::handle_pdu_session_create_sm_context_request(
 
   sp->policy_ptr->set_context(
       smreq->req.get_supi(), smreq->req.get_dnn(), snssai, plmn,
-      smreq->req.get_pdu_session_id(), smreq->req.get_pdu_session_type(),
-      default_qos, session_ambr, paa_opt);
+      smreq->req.get_pdu_session_id(), sp->pdu_session_type, default_qos,
+      session_ambr, paa_opt);
 
   sp->policy_ptr->id = smreq->scid;
   // [Policy Control] The SMF shall set the notification URI for the PCF to use
@@ -4764,6 +4774,14 @@ void smf_context::send_pdu_session_create_response(
 
     // TODO: Support IPv4 only for now
     if (resp->res.get_pdu_session_type() == PDU_SESSION_TYPE_E_IPV6) {
+      resp->res.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
+      cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
+    }
+
+    // An IPv4v6 request served with IPv4 only: the Accept (and N2) carry the
+    // selected type, with cause #50 (TS 24.501 6.4.1.3)
+    if ((resp->res.get_pdu_session_type() == PDU_SESSION_TYPE_E_IPV4V6) &&
+        (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4)) {
       resp->res.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
       cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
     }
