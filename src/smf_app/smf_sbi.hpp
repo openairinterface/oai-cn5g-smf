@@ -14,17 +14,18 @@
 #include "smf_context.hpp"
 #include "SmfRegistration.h"
 #include "itti_msg_sbi.hpp"
+#include "smf_http.hpp"
 
 namespace oai::app::smf {
 
-class smf_sbi {
+class smf_sbi : public oai::sba::nf_service {
  private:
   std::thread::id thread_id;
   std::thread thread;
 
  public:
   smf_sbi();
-  virtual ~smf_sbi()             = default;
+  ~smf_sbi() override            = default;
   smf_sbi(smf_sbi const&)        = delete;
   void operator=(smf_sbi const&) = delete;
 

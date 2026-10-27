@@ -17,6 +17,7 @@
 #include "logger.hpp"
 #include "smf.h"
 #include "3gpp_29.510.h"
+#include "../common-src/sba/nf_profile.hpp"
 
 namespace oai::app::smf {
 
@@ -310,11 +311,13 @@ class nf_profile : public std::enable_shared_from_this<nf_profile> {
   uint16_t capacity;
 };
 
-class smf_profile : public nf_profile {
+class smf_profile : public oai::sba::nf_profile {
  public:
-  smf_profile() : nf_profile() { custom_info = {}; }
+  smf_profile() : oai::sba::nf_profile() { set_nf_type("NF_TYPE_UNKNOWN"); }
 
-  smf_profile(const std::string& id) : nf_profile(id) { custom_info = {}; }
+  smf_profile(const std::string& id) : oai::sba::nf_profile(id) {
+    set_nf_type("NF_TYPE_UNKNOWN");
+  }
 
   smf_profile& operator=(const smf_profile& s) {
     nf_instance_id   = s.nf_instance_id;
@@ -336,7 +339,7 @@ class smf_profile : public nf_profile {
   }
   // smf_profile(smf_profile &b) = delete;
 
-  virtual ~smf_profile() {
+  ~smf_profile() override {
     // Logger::smf_app().debug("Delete SMF Profile instance...");
   }
 
@@ -408,14 +411,14 @@ class smf_profile : public nf_profile {
    * @param void
    * @return void:
    */
-  void display() const;
+  void display() override;
 
   /*
    * Represent NF profile as json object
    * @param [nlohmann::json &] data: Json data
    * @return void
    */
-  void to_json(nlohmann::json& data) const;
+  void to_json(nlohmann::json& data) const override;
 
   /*
    * Covert from a json represetation to SMF profile
@@ -432,9 +435,7 @@ class smf_profile : public nf_profile {
   void handle_heartbeart_timeout(uint64_t ms);
 
  protected:
-  std::vector<oai::common::sbi::nf_service_t> nf_services;
   std::map<std::string, oai::common::sbi::nf_service_t> nf_service_list;
-  nlohmann::json custom_info;  // store extra json data
   oai::common::sbi::smf_info_t smf_info;
 };
 

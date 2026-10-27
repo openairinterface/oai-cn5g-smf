@@ -227,6 +227,13 @@ include(CheckTypeSize)
 
 add_boolean_option( DISPLAY_LICENCE_INFO            False    "If a module has a licence banner to show")
 add_boolean_option( LOG_OAI                         False    "Thread safe logging utility")
+add_boolean_option( USE_NGHTTP2_CLIENT              False    "Use the nghttp2 HTTP client instead of the CPR HTTP client")
+
+if(USE_NGHTTP2_CLIENT)
+  set(SMF_HTTP_CLIENT_DIR nghttp)
+else()
+  set(SMF_HTTP_CLIENT_DIR http)
+endif()
 
 
 # System packages that are required
@@ -281,7 +288,7 @@ include_directories(${SRC_TOP_DIR}/api-server/api)
 include_directories(${SRC_TOP_DIR}/api-server/impl)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies)
-include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http)
+include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/${SMF_HTTP_CLIENT_DIR})
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/pfcp)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/ies)
 include_directories(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/common)
@@ -300,7 +307,11 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/logger/logger.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
+if(USE_NGHTTP2_CLIENT)
+  include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nghttp/nghttp.cmake)
+else()
+  include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
+endif()
 
 IF(STATIC_LINKING)
     SET(CMAKE_EXE_LINKER_FLAGS "-static")
@@ -311,6 +322,10 @@ ENDIF(STATIC_LINKING)
 
 target_link_libraries (smf ${ASAN}
     -Wl,--start-group SMF UDP PFCP SMF_API SMF_COMMON_TYPES -lnettle ${NETTLE_LIBRARIES} ${CRYPTO_LIBRARIES} -lnghttp2_asio -lboost_system -lboost_thread -lssl -lcrypto -lfmt -lspdlog NGAP NAS dl -Wl,--end-group pthread m rt event boost_system boost_chrono pistache curl -lyaml-cpp cpr::cpr)
+
+if(USE_NGHTTP2_CLIENT)
+  target_link_libraries(smf nghttp2 boost_system boost_thread boost_date_time)
+endif()
 
 add_boolean_option(USE_LTTNG  False "Activate the LTTNG tracer, a debugging/monitoring framework" ON)
 if (USE_LTTNG)

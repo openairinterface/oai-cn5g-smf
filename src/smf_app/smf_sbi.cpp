@@ -22,7 +22,7 @@
 
 using namespace oai::app::smf;
 using namespace oai::common::sbi;
-using namespace oai::http;
+using namespace oai::sba;
 using namespace oai::utils;
 using json = nlohmann::json;
 
@@ -30,7 +30,7 @@ extern itti_mw* itti_inst;
 extern smf_sbi* smf_sbi_inst;
 extern smf_app* smf_app_inst;
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-extern std::shared_ptr<oai::http::http_client> http_client_inst;
+extern std::shared_ptr<oai::sba::http_client> http_client_inst;
 void smf_sbi_task(void*);
 
 //------------------------------------------------------------------------------
@@ -147,7 +147,9 @@ void smf_sbi_task(void* args_p) {
 }
 
 //------------------------------------------------------------------------------
-smf_sbi::smf_sbi() {
+smf_sbi::smf_sbi()
+    : oai::sba::nf_service(
+          std::make_shared<oai::sba::nf_event>(), http_client_inst) {
   Logger::smf_sbi().startup("Starting...");
   if (itti_inst->create_task(TASK_SMF_SBI, smf_sbi_task, nullptr)) {
     Logger::smf_sbi().error("Cannot create task TASK_SMF_SBI");
@@ -172,12 +174,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY,
+        body, json_part, client_api::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         sm_context_res->res.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY,
+        body, json_part, client_api::MIME_BOUNDARY,
         sm_context_res->res.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -244,12 +246,12 @@ void smf_sbi::send_n1n2_message_transfer_request(
   auto n2_sm_found = json_data.count("n2InfoContainer");
   if (n2_sm_found > 0) {
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY,
+        body, json_part, client_api::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         sm_session_modification->msg.get_n2_sm_information());
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY,
+        body, json_part, client_api::MIME_BOUNDARY,
         sm_session_modification->msg.get_n1_sm_message(),
         multipart_related_content_part_e::NAS);
   }
@@ -288,10 +290,10 @@ void smf_sbi::send_n1n2_message_transfer_request(
     std::string n1_message = report_msg->res.get_n1_sm_message();
     // prepare the body content for Curl
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY, n1_message, n2_message);
+        body, json_part, client_api::MIME_BOUNDARY, n1_message, n2_message);
   } else {
     mime_parser::create_multipart_related_content(
-        body, json_part, oai::http::MIME_BOUNDARY, n2_message,
+        body, json_part, client_api::MIME_BOUNDARY, n2_message,
         multipart_related_content_part_e::NGAP);
   }
 
@@ -662,9 +664,9 @@ bool smf_sbi::retrieve_sm_data(
   if (!json_data.empty()) {
     Logger::smf_sbi().debug("Response from UDM %s", json_data.dump().c_str());
     // Notify to the result
-    nlohmann::json response_data                           = {};
-    response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
-    response_data[oai::http::kSbiResponseJsonData]         = json_data;
+    nlohmann::json response_data                            = {};
+    response_data[client_api::kSbiResponseHttpResponseCode] = resp.status_code;
+    response_data[client_api::kSbiResponseJsonData]         = json_data;
     if (msg->promise_id > 0) {
       smf_app_inst->make_future_ready(response_data, msg->promise_id);
       return true;
@@ -715,9 +717,9 @@ void smf_sbi::register_with_udm(
   }
 
   // Notify to the result
-  nlohmann::json response_data                           = {};
-  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[oai::http::kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                            = {};
+  response_data[client_api::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[client_api::kSbiResponseJsonData]         = json_data;
 
   if (msg->promise_id > 0) {
     smf_app_inst->make_future_ready(response_data, msg->promise_id);
@@ -746,8 +748,8 @@ void smf_sbi::deregister_with_udm(
   Logger::smf_sbi().debug("HTTP Response Code: %d", resp.status_code);
 
   // Send response to APP to process
-  nlohmann::json response_data                           = {};
-  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
+  nlohmann::json response_data                            = {};
+  response_data[client_api::kSbiResponseHttpResponseCode] = resp.status_code;
 
   if (resp.status_code == oai::common::sbi::http_status_code::NO_CONTENT) {
     std::shared_ptr<itti_sbi_deregister_with_udm_response> itti_msg_response =
@@ -793,9 +795,9 @@ void smf_sbi::subscribe_sdm_subscriptions(
   }
 
   // Send response to APP to process
-  nlohmann::json response_data                           = {};
-  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[oai::http::kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                            = {};
+  response_data[client_api::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[client_api::kSbiResponseJsonData]         = json_data;
 
   if (resp.status_code == oai::common::sbi::http_status_code::CREATED) {
     std::shared_ptr<itti_sbi_subscribe_sdm_subscriptions_response>
@@ -879,9 +881,9 @@ void smf_sbi::discover_upf(const std::shared_ptr<itti_sbi_discover_upf>& msg) {
   }
 
   // Send response to APP to process
-  nlohmann::json response_data                           = {};
-  response_data[oai::http::kSbiResponseHttpResponseCode] = resp.status_code;
-  response_data[oai::http::kSbiResponseJsonData]         = json_data;
+  nlohmann::json response_data                            = {};
+  response_data[client_api::kSbiResponseHttpResponseCode] = resp.status_code;
+  response_data[client_api::kSbiResponseJsonData]         = json_data;
 
   if (resp.status_code == oai::common::sbi::http_status_code::OK) {
     std::shared_ptr<itti_sbi_discover_upf_response> itti_msg_response =

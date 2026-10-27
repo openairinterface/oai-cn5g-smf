@@ -352,9 +352,9 @@ void smf_profile::get_smf_info(smf_info_t& s) const {
 }
 
 //------------------------------------------------------------------------------
-void smf_profile::display() const {
+void smf_profile::display() {
   // display NF part
-  nf_profile::display();
+  oai::sba::nf_profile::display();
 
   // NF services
   if (nf_services.size() > 0) {
@@ -403,7 +403,7 @@ void smf_profile::display() const {
 
 //------------------------------------------------------------------------------
 void smf_profile::to_json(nlohmann::json& data) const {
-  nf_profile::to_json(data);
+  oai::sba::nf_profile::to_json(data);
 
   // NF services
   data["nfServices"] = nlohmann::json::array();
@@ -499,7 +499,46 @@ void smf_profile::to_json(nlohmann::json& data) const {
 
 //------------------------------------------------------------------------------
 void smf_profile::from_json(const nlohmann::json& data) {
-  nf_profile::from_json(data);
+  if (data.contains("nfInstanceId"))
+    set_nf_instance_id(data.at("nfInstanceId").get<std::string>());
+  if (data.contains("nfInstanceName"))
+    set_nf_instance_name(data.at("nfInstanceName").get<std::string>());
+  if (data.contains("nfType"))
+    set_nf_type(data.at("nfType").get<std::string>());
+  if (data.contains("nfStatus"))
+    set_nf_status(data.at("nfStatus").get<std::string>());
+  if (data.contains("heartBeatTimer"))
+    set_nf_heartBeat_timer(data.at("heartBeatTimer").get<int32_t>());
+
+  if (data.contains("sNssais")) {
+    for (const auto& item : data.at("sNssais")) {
+      snssai_t snssai{};
+      if (item.contains("sst")) snssai.sst = item.at("sst").get<int>();
+      if (item.contains("sd")) snssai.sd = item.at("sd").get<std::string>();
+      add_snssai(snssai);
+    }
+  }
+
+  if (data.contains("fqdn")) set_fqdn(data.at("fqdn").get<std::string>());
+
+  if (data.contains("ipv4Addresses")) {
+    for (const auto& item : data.at("ipv4Addresses")) {
+      struct in_addr address{};
+      auto value = item.get<std::string>();
+      oai::utils::trim(value);
+      if (inet_pton(AF_INET, value.c_str(), &address) == 1) {
+        add_nf_ipv4_addresses(address);
+      } else {
+        Logger::smf_app().warn(
+            "Address conversion: Bad value %s", value.c_str());
+      }
+    }
+  }
+
+  if (data.contains("priority"))
+    set_nf_priority(data.at("priority").get<uint16_t>());
+  if (data.contains("capacity"))
+    set_nf_capacity(data.at("capacity").get<uint16_t>());
 
   // TODO: custom_info;
 
@@ -541,8 +580,8 @@ void smf_profile::from_json(const nlohmann::json& data) {
 //------------------------------------------------------------------------------
 void smf_profile::handle_heartbeart_timeout(uint64_t ms) {
   Logger::smf_app().info(
-      "Handle heartbeart timeout profile %s, time %d", nf_instance_id.c_str(),
-      ms);
+      "Handle heartbeart timeout profile %s, time %d",
+      get_nf_instance_id().c_str(), ms);
   set_nf_status("SUSPENDED");
 }
 

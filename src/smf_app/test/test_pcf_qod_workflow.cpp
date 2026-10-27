@@ -82,8 +82,8 @@ TEST(PcfQodWorkflowTest, ErrorReport_BuildsProblemDetailsWithRuleReports) {
   nlohmann::json serialized;
   response.to_json(serialized);
 
-  const auto& body = serialized[oai::http::kSbiResponseJsonData];
-  EXPECT_EQ(serialized[oai::http::kSbiResponseHttpResponseCode], 500);
+  const auto& body = serialized[client_api::kSbiResponseJsonData];
+  EXPECT_EQ(serialized[client_api::kSbiResponseHttpResponseCode], 500);
   EXPECT_EQ(serialized["json_format"], "application/problem+json");
   EXPECT_EQ(body["error"]["status"], 500);
   EXPECT_EQ(body["error"]["cause"], "RULE_PERMANENT_ERROR");

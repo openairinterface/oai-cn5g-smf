@@ -35,8 +35,8 @@ TEST(SmfMsgTest, SmPolicyUpdateNotifyResponse_ToJsonSerializesAllFields) {
   response.to_json(serialized_json);
 
   // The API server reads the envelope back under these very keys
-  EXPECT_EQ(serialized_json[oai::http::kSbiResponseHttpResponseCode], 204);
+  EXPECT_EQ(serialized_json[client_api::kSbiResponseHttpResponseCode], 204);
   EXPECT_EQ(
-      serialized_json[oai::http::kSbiResponseJsonData]["status"], "SUCCESS");
+      serialized_json[client_api::kSbiResponseJsonData]["status"], "SUCCESS");
   EXPECT_EQ(serialized_json["json_format"], "application/json");
 }
