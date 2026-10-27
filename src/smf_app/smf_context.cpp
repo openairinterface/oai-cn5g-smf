@@ -4800,6 +4800,20 @@ void smf_context::send_pdu_session_create_response(
       cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
     }
 
+    // An IPv4v6 request served with IPv4: the Accept (and N2) carry the
+    // selected type, with cause #50 when the DNN or the subscription is
+    // limited to IPv4 only (TS 24.501 6.4.1.3)
+    if ((resp->res.get_pdu_session_type() == PDU_SESSION_TYPE_E_IPV4V6) &&
+        (sps->pdu_session_type.pdu_session_type == PDU_SESSION_TYPE_E_IPV4)) {
+      resp->res.set_pdu_session_type(PDU_SESSION_TYPE_E_IPV4);
+      std::shared_ptr<session_management_subscription> ss = {};
+      std::shared_ptr<dnn_configuration_t> sdc            = {};
+      if (find_dnn_subscription(sps->get_snssai(), ss))
+        ss->find_dnn_configuration(sps->get_dnn(), sdc);
+      if (is_ipv4_only(sps->get_dnn(), sdc))
+        cause_n1 = k5gsmCausePduSessionTypeIpv4OnlyAllowed;
+    }
+
     smf_n1::get_instance().create_n1_pdu_session_establishment_accept(
         resp->res, n1_sm_msg, cause_n1);
     conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
