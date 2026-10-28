@@ -1377,6 +1377,11 @@ void smf_context::handle_pdu_session_create_sm_context_request(
         case PDU_SESSION_TYPE_E_IPV4V6:
         case PDU_SESSION_TYPE_E_IPV6:
           paa_dynamic::get_instance().release_paa(dnn, free_paa);
+          // The session object stays in the context: forget the address, or
+          // releasing it later (e.g. on a colliding INITIAL_REQUEST) returns
+          // it to the pool again, possibly while another UE holds it
+          sp->ipv4 = false;
+          sp->ipv6 = false;
           break;
         case PDU_SESSION_TYPE_E_UNSTRUCTURED:
         case PDU_SESSION_TYPE_E_ETHERNET:
