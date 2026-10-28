@@ -1126,9 +1126,16 @@ void smf_app::handle_pdu_session_create_sm_context_request(
   // existed and request type is INITIAL_REQUEST). Release the stale session
   // resources before removing the local context and creating a new one.
   std::vector<scid_t> stale_scids = scids_2_smf_context(supi, pdu_session_id);
-  if (!stale_scids.empty() && (request_type.compare("INITIAL_REQUEST") == 0)) {
-    std::shared_ptr<smf_pdu_session> stale_session = {};
-    if (sc->find_pdu_session(pdu_session_id, stale_session) && stale_session) {
+  // A session released by UE-initiated deregistration has no SM context
+  // reference any more, but its (cleared) object is still in the context:
+  // replace it too, or the new session would reuse it with the
+  // resources_deallocated latch set and never return its UE IP
+  std::shared_ptr<smf_pdu_session> stale_session = {};
+  const bool has_stale_session =
+      sc->find_pdu_session(pdu_session_id, stale_session) && stale_session;
+  if ((has_stale_session || !stale_scids.empty()) &&
+      (request_type.compare("INITIAL_REQUEST") == 0)) {
+    if (has_stale_session) {
       send_n4_session_deletion_for_stale_session(stale_session);
       stale_session->deallocate_ressources(stale_session->get_dnn());
     }
