@@ -96,10 +96,14 @@ bool smf_n1::create_n1_pdu_session_establishment_accept(
   qos_rules.Set(qos_rule_list);
   pdu_session_estb_accept->SetAuthorizedQosRules(qos_rules);
 
-  // 5GSM Cause
-  // _5gsmCause cause = {};
-  // cause.SetValue(static_cast<uint8_t>(sm_cause));
-  // pdu_session_estb_accept->Set5gsmCause(cause);
+  // 5GSM Cause: only #50, for an IPv4v6 request served with IPv4 only
+  if (sm_cause == k5gsmCausePduSessionTypeIpv4OnlyAllowed) {
+    _5gsmCause cause = {};
+    cause.SetValue(sm_cause);
+    pdu_session_estb_accept->Set5gsmCause(cause);
+    Logger::smf_n1().debug(
+        "PDU Session Establishment Accept, 5GSM Cause: %d", sm_cause);
+  }
 
   // SessionAMBR
   Logger::smf_n1().debug("Get default values for Session-AMBR");

@@ -997,6 +997,7 @@ void smf_app::handle_pdu_session_create_sm_context_request(
     reply_with_pdu_session_establishment_reject(
         smreq->req, n1_sm_message, cause_n1, http_status_code::FORBIDDEN,
         PDU_SESSION_APPLICATION_ERROR_PDUTYPE_DENIED, smreq->pid);
+    return;
   }
 
   // Get SUPI, SNSSAI
@@ -2655,6 +2656,14 @@ bool smf_app::get_sm_data(
           pdu_session_type_t pdu_session_type(default_session_type);
           dnn_configuration->pdu_session_types.default_session_type =
               pdu_session_type;
+          // PDU Session Types: allowed ones (Optional)
+          if (it.value()["pduSessionTypes"].contains("allowedSessionTypes")) {
+            for (const auto& t :
+                 it.value()["pduSessionTypes"]["allowedSessionTypes"]) {
+              dnn_configuration->pdu_session_types.allowed_session_types
+                  .push_back(pdu_session_type_t(t.get<std::string>()));
+            }
+          }
 
           // SSC_Mode (Mandatory)
           std::string default_ssc_mode =
