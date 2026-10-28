@@ -186,6 +186,12 @@ class smf_config : public config {
   std::shared_ptr<smf_config_type> smf() const;
 
   /**
+   * Returns the OAM interface configuration
+   * @return OAM configuration
+   */
+  const oam_config& get_oam() const;
+
+  /**
    * Returns UE DNS from the DNN, returns default DNS if DNN is not found
    * @param dnn
    * @return
