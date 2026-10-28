@@ -21,6 +21,7 @@
 #include "SmPolicyDecision.h"
 #include "pistache/http.h"
 #include "smf.h"
+#include "smf_http.hpp"
 #include "smf_profile.hpp"
 
 typedef enum {

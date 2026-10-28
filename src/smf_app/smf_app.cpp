@@ -858,10 +858,10 @@ void smf_app::handle_itti_msg(
   Logger::smf_app().debug("Process SDM Subscription response");
 
   uint32_t response_code = oai::common::sbi::http_status_code::NO_RESPONSE;
-  if (response.response_data.find(oai::http::kSbiResponseHttpResponseCode) !=
+  if (response.response_data.find(client_api::kSbiResponseHttpResponseCode) !=
       response.response_data.end()) {
     response_code =
-        response.response_data[oai::http::kSbiResponseHttpResponseCode]
+        response.response_data[client_api::kSbiResponseHttpResponseCode]
             .get<int>();
   }
 
@@ -871,10 +871,10 @@ void smf_app::handle_itti_msg(
     if (is_supi_2_smf_context(response.supi)) {
       sc = supi_2_smf_context(response.supi);
       // Store location
-      if (response.response_data.find(oai::http::kSbiResponseHeaderLocation) !=
+      if (response.response_data.find(client_api::kSbiResponseHeaderLocation) !=
           response.response_data.end()) {
         std::string sub_location =
-            response.response_data[oai::http::kSbiResponseHeaderLocation]
+            response.response_data[client_api::kSbiResponseHeaderLocation]
                 .get<std::string>();
         // Get Subscription ID from the location
         // Location's format:
@@ -892,7 +892,7 @@ void smf_app::handle_itti_msg(
       try {
         oai::_3gpp::model::SdmSubscription sdm_subscription = {};
         from_json(
-            response.response_data[oai::http::kSbiResponseJsonData],
+            response.response_data[client_api::kSbiResponseJsonData],
             sdm_subscription);
         sdm_subscription.setSubscriptionId(subscription_id);
         std::shared_ptr<oai::_3gpp::model::SdmSubscription>
@@ -919,10 +919,10 @@ void smf_app::handle_itti_msg(itti_sbi_discover_upf_response& response) {
   Logger::smf_app().debug("Process UPF Discovery response");
 
   uint32_t response_code = oai::common::sbi::http_status_code::NO_RESPONSE;
-  if (response.response_data.find(oai::http::kSbiResponseHttpResponseCode) !=
+  if (response.response_data.find(client_api::kSbiResponseHttpResponseCode) !=
       response.response_data.end()) {
     response_code =
-        response.response_data[oai::http::kSbiResponseHttpResponseCode]
+        response.response_data[client_api::kSbiResponseHttpResponseCode]
             .get<int>();
   }
 
@@ -931,7 +931,7 @@ void smf_app::handle_itti_msg(itti_sbi_discover_upf_response& response) {
     try {
       oai::_3gpp::model::SearchResult search_result = {};
       from_json(
-          response.response_data[oai::http::kSbiResponseJsonData],
+          response.response_data[client_api::kSbiResponseJsonData],
           search_result);
 
       std::vector<oai::_3gpp::model::NFProfile> nf_instances =
@@ -1531,10 +1531,10 @@ void smf_app::handle_sbi_get_configuration(
   if (read_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data[oai::http::kSbiResponseHttpResponseCode] =
+    response_data[client_api::kSbiResponseHttpResponseCode] =
         http_status_code::OK;
   } else {
-    response_data[oai::http::kSbiResponseHttpResponseCode] =
+    response_data[client_api::kSbiResponseHttpResponseCode] =
         http_status_code::BAD_REQUEST;
     oai::_3gpp::model::ProblemDetails problem_details = {};
     // TODO set problem_details
@@ -1563,7 +1563,7 @@ void smf_app::handle_sbi_update_configuration(
   if (update_smf_configuration(response_data["content"])) {
     Logger::smf_app().debug(
         "SMF configuration:\n %s", response_data["content"].dump().c_str());
-    response_data[oai::http::kSbiResponseHttpResponseCode] =
+    response_data[client_api::kSbiResponseHttpResponseCode] =
         http_status_code::OK;
 
     // Update SMF profile
@@ -1574,7 +1574,7 @@ void smf_app::handle_sbi_update_configuration(
     if (smf_cfg->register_nrf()) register_to_nrf();
 
   } else {
-    response_data[oai::http::kSbiResponseHttpResponseCode] =
+    response_data[client_api::kSbiResponseHttpResponseCode] =
         http_status_code::NOT_ACCEPTABLE;
     oai::_3gpp::model::ProblemDetails problem_details = {};
     // TODO set problem_details
@@ -2591,13 +2591,13 @@ bool smf_app::get_sm_data(
     Logger::smf_app().debug("Got result for promise ID %d", promise_id);
     nlohmann::json result = result_opt.value();
 
-    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+    if (result.find(client_api::kSbiResponseHttpResponseCode) != result.end()) {
       http_response_code =
-          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
+          result[client_api::kSbiResponseHttpResponseCode].get<int>();
     }
 
-    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
-      json_data = result[oai::http::kSbiResponseJsonData];
+    if (result.find(client_api::kSbiResponseJsonData) != result.end()) {
+      json_data = result[client_api::kSbiResponseJsonData];
     }
 
   } else {

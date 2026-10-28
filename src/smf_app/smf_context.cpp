@@ -5346,13 +5346,13 @@ bool smf_context::register_with_udm(
     Logger::smf_app().debug("Got result for promise ID %d", promise_id);
     nlohmann::json result = result_opt.value();
 
-    if (result.find(oai::http::kSbiResponseHttpResponseCode) != result.end()) {
+    if (result.find(client_api::kSbiResponseHttpResponseCode) != result.end()) {
       http_response_code =
-          result[oai::http::kSbiResponseHttpResponseCode].get<int>();
+          result[client_api::kSbiResponseHttpResponseCode].get<int>();
     }
 
-    if (result.find(oai::http::kSbiResponseJsonData) != result.end()) {
-      json_data = result[oai::http::kSbiResponseJsonData];
+    if (result.find(client_api::kSbiResponseJsonData) != result.end()) {
+      json_data = result[client_api::kSbiResponseJsonData];
     }
 
     return true;
