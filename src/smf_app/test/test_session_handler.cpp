@@ -113,3 +113,18 @@ TEST(SessionHandlerTest, ParseNasValueUnitToBps_CalculatesBitratesCorrectly) {
   // Unit = 2 (Multiples of 4 Kbps = 4096 bps)
   EXPECT_EQ(session_handler::parse_nas_value_unit_to_bps(1, 2), 4096u);
 }
+// =============================================================================
+// Resource release without a session graph
+// =============================================================================
+
+// A PDU session rejected before UPF selection (e.g. UE IP address pool
+// exhausted) has no session graph. A later INITIAL_REQUEST with the same PDU
+// Session ID releases that stale session, which calls deallocate_resources().
+TEST(SessionHandlerTest, DeallocateResources_WithoutSessionGraph_DoesNothing) {
+  session_handler handler(pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
+  ASSERT_FALSE(handler.has_session_graph());
+
+  handler.deallocate_resources();
+
+  EXPECT_FALSE(handler.has_session_graph());
+}
