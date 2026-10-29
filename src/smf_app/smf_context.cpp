@@ -1344,7 +1344,12 @@ void smf_context::handle_pdu_session_create_sm_context_request(
         case PDU_SESSION_TYPE_E_IPV4:
         case PDU_SESSION_TYPE_E_IPV4V6:
         case PDU_SESSION_TYPE_E_IPV6:
-          paa_dynamic::get_instance().release_paa(dnn, free_paa);
+          if (!paa_dynamic::get_instance().release_paa(dnn, free_paa)) {
+            Logger::smf_app().warn(
+                "Could not return the UE IP address of the rejected session "
+                "to the pool (DNN %s)",
+                dnn.c_str());
+          }
           // The session object stays in the context: forget the address, or
           // releasing it later (e.g. on a colliding INITIAL_REQUEST) returns
           // it to the pool again, possibly while another UE holds it
