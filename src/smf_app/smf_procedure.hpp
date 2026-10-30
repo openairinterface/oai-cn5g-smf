@@ -82,7 +82,7 @@ class smf_session_procedure : public smf_procedure {
    * @brief Builds the Packet Detection Information of an edge's PDR.
    *
    * Shared by pfcp_create_pdr() and pfcp_update_pdr(): an Update PDR replaces
-   * the stored PDI wholesale (TS 29.244 §7.5.4.3), so both have to describe
+   * the stored PDI wholesale (TS 29.244 §7.5.4.2), so both have to describe
    * the packet detection identically or the UPF loses the F-TEID / QFI it
    * matches tunnelled traffic on.
    *
