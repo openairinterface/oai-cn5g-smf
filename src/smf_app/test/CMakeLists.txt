@@ -20,6 +20,7 @@ add_executable(${SMF_TEST_TARGET}
   test_upf_graph.cpp
   test_session_handler.cpp
   test_smf_msg.cpp
+  test_smf_procedure.cpp
   test_pcf_qod_workflow.cpp
   ${SRC_TOP_DIR}/itti/itti.cpp
   ${SRC_TOP_DIR}/itti/itti_msg.cpp
