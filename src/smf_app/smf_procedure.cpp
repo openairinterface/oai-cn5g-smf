@@ -810,6 +810,24 @@ bool smf_session_procedure::pfcp_sdf_filter(
     add_sdf_filter = true;
   }
 
+  // A PDI without an SDF filter matches every packet on its source interface.
+  // When the flow information describes only the opposite direction, leaving
+  // this PDR unfiltered gives the PCC rule's QER the whole of the UE's traffic
+  // in this direction -- and because AF-derived rules carry a lower (stronger)
+  // precedence than the default rule, it wins for every packet. The SDF
+  // template describes the service data flow as a whole; TS 29.244 clause
+  // 8.2.5 has the UPF evaluate it against the PDR's own direction, so the same
+  // description is the correct filter for both edges. The direction the rule
+  // actually limits is carried by the QER's per-direction MBR/GBR, not by
+  // omitting the filter.
+  if (!add_sdf_filter) {
+    add_sdf_filter =
+        ethernet_sdf_filter ?
+            edge->flow_information.getEthFlowDescription().fDescIsSet() :
+            (edge->flow_information.flowDescriptionIsSet() &&
+             !edge->flow_information.getFlowDescription().empty());
+  }
+
   if (add_sdf_filter) {
     sdf_filter.fd = 1;
     if (ethernet_sdf_filter) {
