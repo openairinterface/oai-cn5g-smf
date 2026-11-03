@@ -1060,7 +1060,7 @@ bool paging_config_value::from_json(const nlohmann::json& json_data) {
     m_paging_policy_indicator.from_json(
         json_data[m_paging_policy_indicator.get_config_name()]);
   }
-  return false;
+  return true;
 }
 
 std::string paging_config_value::to_string(const std::string& indent) const {
