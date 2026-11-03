@@ -742,6 +742,9 @@ std::shared_ptr<qos_upf_edge> session_handler::get_edge_for_qfi(uint8_t qfi) {
 
 //------------------------------------------------------------------------------
 void session_handler::deallocate_resources() {
+  // no graph: the session was rejected before UPF selection, so it holds no
+  // PDR, QER, FAR, URR or QoS rule IDs
+  if (!m_session_graph) return;
   for (const auto& edge : m_session_graph->get_access_edges()) {
     release_pdr_id(edge->pdr_id);
     release_qer_id(edge->qer_id);
