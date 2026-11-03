@@ -13,16 +13,17 @@
 #include "SmPolicyControl.h"
 #include <regex>
 #include "http_client.hpp"
+#include "smf_http.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::app::smf::n7;
 using namespace oai::_3gpp::model;
 using namespace oai::_3gpp::model;
 using namespace oai::common::sbi;
-using namespace oai::http;
+using namespace oai::sba;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-extern std::shared_ptr<oai::http::http_client> http_client_inst;
+extern std::shared_ptr<oai::sba::http_client> http_client_inst;
 
 //------------------------------------------------------------------------------
 uint32_t smf_n7::select_pcf(const SmPolicyContextData& context) {

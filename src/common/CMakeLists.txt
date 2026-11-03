@@ -27,3 +27,6 @@ add_library(SMF_COMMON_TYPES STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/smf_3gpp_conversions.cpp
 )
 
+target_include_directories(SMF_COMMON_TYPES PRIVATE
+  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/${SMF_HTTP_CLIENT_DIR}
+)

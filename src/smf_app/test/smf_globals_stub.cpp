@@ -6,6 +6,7 @@
 
 #include "http_client.hpp"
 #include "smf_config.hpp"
+#include "smf_http.hpp"
 
 class itti_mw;
 class smf_app;
@@ -13,4 +14,4 @@ class smf_app;
 itti_mw* itti_inst    = nullptr;
 smf_app* smf_app_inst = nullptr;
 std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
-std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
+std::shared_ptr<oai::sba::http_client> http_client_inst = nullptr;

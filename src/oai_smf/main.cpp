@@ -46,9 +46,9 @@ using namespace std::chrono_literals;
 itti_mw* itti_inst    = nullptr;
 smf_app* smf_app_inst = nullptr;
 std::unique_ptr<smf_config> smf_cfg;
-SMFApiServer* smf_api_server_1                           = nullptr;
-smf_http2_server* smf_api_server_2                       = nullptr;
-std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
+SMFApiServer* smf_api_server_1                          = nullptr;
+smf_http2_server* smf_api_server_2                      = nullptr;
+std::shared_ptr<oai::sba::http_client> http_client_inst = nullptr;
 std::unique_ptr<oai::config::lttng_configuration> lttng_config_yaml;
 
 void send_heartbeat_to_tasks(const uint32_t sequence);
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   itti_inst->start(smf_cfg->itti.itti_timer_sched_params);
 
   // HTTP Client
-  http_client_inst = oai::http::http_client::create_instance(
+  http_client_inst = oai::sba::http_client::create_instance(
       Logger::smf_sbi(), smf_cfg->get_http_request_timeout(),
       smf_cfg->sbi.if_name, smf_cfg->http_version, smf_cfg->enable_tls());
 

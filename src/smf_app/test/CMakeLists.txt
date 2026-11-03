@@ -30,7 +30,11 @@ include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/config/config.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/model/smf_model.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/utils/utils.cmake)
 include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/common/common.cmake)
-include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
+if(USE_NGHTTP2_CLIENT)
+  include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/nghttp/nghttp.cmake)
+else()
+  include(${SRC_TOP_DIR}/${MOUNTED_COMMON}/http/http.cmake)
+endif()
 
 target_include_directories(${SMF_TEST_TARGET} PRIVATE
   ${SRC_TOP_DIR}/common/msg
@@ -49,7 +53,7 @@ target_include_directories(${SMF_TEST_TARGET} PRIVATE
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/nas/5gsm-msgs
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/ngap/libngap_ies
-  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/http
+  ${SRC_TOP_DIR}/${MOUNTED_COMMON}/${SMF_HTTP_CLIENT_DIR}
   ${SRC_TOP_DIR}/${MOUNTED_COMMON}/config
 )
 
