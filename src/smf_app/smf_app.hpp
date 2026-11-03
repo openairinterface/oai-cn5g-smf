@@ -920,6 +920,13 @@ class smf_app {
       evsub_id_t sub_id, smf_event_t ev, std::shared_ptr<smf_subscription> ss);
 
   /*
+   * Remove every event subscription held under this subscription ID
+   * @param [const evsub_id_t&] sub_id: Subscription ID
+   * @return true if at least one subscription was removed
+   */
+  bool remove_event_subscription(const evsub_id_t& sub_id);
+
+  /*
    * Get a list of subscription associated with a particular event
    * @param [smf_event_t] ev: Event type
    * @param [std::vector<std::shared_ptr<smf_subscription>>&] subscriptions:

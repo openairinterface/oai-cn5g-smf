@@ -69,8 +69,13 @@ void SubscriptionsCollectionApiImpl::create_individual_subcription(
 
   if (sub_id != -1) {
     json_data["subId"] = std::to_string(sub_id);
+    // Location is the URI of the created subscription (TS 29.508 5.2.2.2), so
+    // it needs the scheme and the base path exactly once. `base` was
+    // concatenated twice here, producing
+    //   host:port/nsmf-event-exposure/v1/nsmf-event-exposure/v1/subscriptions/1
+    // which is not a URI the SMF itself would route.
     response.headers().add<Pistache::Http::Header::Location>(
-        m_address + base + base +
+        "http://" + m_address + base +
         oai::smf::api::smf_sbi_helper::SmfEventExposurePathSubscriptions + "/" +
         std::to_string(sub_id));  // Location header
   }

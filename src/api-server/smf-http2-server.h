@@ -55,6 +55,9 @@ class smf_http2_server {
       const NsmfEventExposure& smfCreateEventSubscription,
       const response& response);
 
+  void delete_event_subscription_handler(
+      const std::string& sub_id, const response& response);
+
   void get_configuration_handler(const response& response);
   void update_configuration_handler(
       nlohmann::json& configuration_info, const response& response);
