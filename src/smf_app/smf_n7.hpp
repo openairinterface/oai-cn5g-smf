@@ -339,6 +339,22 @@ class smf_n7 {
       const oai::_3gpp::model::SmPolicyUpdateContextData& update_data,
       std::shared_ptr<policy_association>& association);
 
+  /**
+   * @brief Registers a policy storage under the given PCF ID, replacing the
+   * storage currently registered under that ID, if any.
+   *
+   * @param pcf_id ID the storage is reachable under, must be > 0
+   * @param storage the storage to register, must not be null
+   */
+  void set_policy_storage(
+      uint32_t pcf_id, const std::shared_ptr<policy_storage>& storage);
+
+  /**
+   * @brief Drops every registered policy storage, so that the next
+   * create_sm_policy_association() re-runs the PCF selection.
+   */
+  void clear_policy_storages();
+
  private:
   /**
    * @brief Allows the discovery of a PCF, either via NRF or local
