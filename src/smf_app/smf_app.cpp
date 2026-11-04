@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <stdexcept>
 
 #include "3gpp_24.007.hpp"
@@ -180,12 +181,12 @@ void smf_app::free_teid(const uint32_t& teid) {
 
 //------------------------------------------------------------------------------
 void smf_app::generate_smf_context_ref(std::string& smf_ref) {
-  smf_ref = std::to_string(sm_context_ref_generator.get_uid());
+  smf_ref = std::to_string(generate_smf_context_ref());
 }
 
 //------------------------------------------------------------------------------
 scid_t smf_app::generate_smf_context_ref() {
-  return sm_context_ref_generator.get_uid();
+  return sm_context_ref_offset + sm_context_ref_generator.get_uid();
 }
 
 //------------------------------------------------------------------------------
@@ -396,6 +397,9 @@ smf_app::smf_app(const std::string& config_file)
   Logger::smf_app().startup("Starting...");
 
   supi2smf_context = {};
+  // Below 2^30, so that the references stay below 2^31 for a run that issues
+  // fewer than 2^30 contexts: they are parsed back with std::stoi.
+  sm_context_ref_offset = std::random_device{}() % (1u << 30);
 
   apply_config();
 
