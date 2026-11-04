@@ -342,28 +342,11 @@ void smf_http2_server::start() {
       });
 
   // SMF Configuration
-  server.handle(
-      smf_sbi_helper::SmfConfBase() + smf_sbi_helper::SmfConfPathConfiguration,
-      [&](const request& request, const response& response) {
-        request.on_data([&](const uint8_t* data, std::size_t len) {
-          try {
-            if (request.method().compare("GET") == 0) {
-              this->get_configuration_handler(response);
-            }
-            if (request.method().compare("PUT") == 0 && len > 0) {
-              std::string msg((char*) data, len);
-              auto configuration_info = nlohmann::json::parse(msg.c_str());
-              this->update_configuration_handler(configuration_info, response);
-            }
-          } catch (nlohmann::detail::exception& e) {
-            Logger::smf_sbi().warn(
-                "Can not parse the JSON data (error: %s)!", e.what());
-            response.write_head(http_status_code::BAD_REQUEST);
-            response.end();
-            return;
-          }
-        });
-      });
+  // The configuration service is served on the dedicated OAM interface when
+  // enabled, on this server otherwise
+  if (!smf_cfg->get_oam().is_enabled()) {
+    register_configuration_api(server);
+  }
   // Event Exposure
   server.handle(
       smf_sbi_helper::SmfEventExposureBase() +
@@ -491,6 +474,32 @@ void smf_http2_server::start() {
   running_server = false;
   Logger::smf_api_server().info("HTTP2 server fully stopped");
   return;
+}
+
+//------------------------------------------------------------------------------
+void smf_http2_server::register_configuration_api(http2& srv) {
+  srv.handle(
+      smf_sbi_helper::SmfConfBase() + smf_sbi_helper::SmfConfPathConfiguration,
+      [&](const request& request, const response& response) {
+        request.on_data([&](const uint8_t* data, std::size_t len) {
+          try {
+            if (request.method().compare("GET") == 0) {
+              this->get_configuration_handler(response);
+            }
+            if (request.method().compare("PUT") == 0 && len > 0) {
+              std::string msg((char*) data, len);
+              auto configuration_info = nlohmann::json::parse(msg.c_str());
+              this->update_configuration_handler(configuration_info, response);
+            }
+          } catch (nlohmann::detail::exception& e) {
+            Logger::smf_sbi().warn(
+                "Can not parse the JSON data (error: %s)!", e.what());
+            response.write_head(http_status_code::BAD_REQUEST);
+            response.end();
+            return;
+          }
+        });
+      });
 }
 
 //------------------------------------------------------------------------------

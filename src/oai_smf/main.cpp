@@ -28,6 +28,7 @@
 #include "smf-http2-server.h"
 #include "sbi_helper.hpp"
 #include "http_client.hpp"
+#include "oam_server.hpp"
 
 #include <iostream>
 #include <thread>
@@ -48,6 +49,7 @@ smf_app* smf_app_inst = nullptr;
 std::unique_ptr<smf_config> smf_cfg;
 SMFApiServer* smf_api_server_1                           = nullptr;
 smf_http2_server* smf_api_server_2                       = nullptr;
+oai::oam::oam_server* oam_api_server                     = nullptr;
 std::shared_ptr<oai::http::http_client> http_client_inst = nullptr;
 std::unique_ptr<oai::config::lttng_configuration> lttng_config_yaml;
 
@@ -81,6 +83,10 @@ void my_app_signal_handler(int s) {
     Logger::system().debug("Stopping HTTP/2 server.");
     smf_api_server_2->stop();
   }
+  if (oam_api_server) {
+    Logger::system().debug("Stopping OAM server.");
+    oam_api_server->stop();
+  }
   if (smf_app_inst) {
     smf_app_inst->stop();
   }
@@ -100,6 +106,11 @@ void my_app_signal_handler(int s) {
     delete smf_api_server_2;
     smf_api_server_2 = nullptr;
     Logger::system().debug("SMF API Server (HTTP/2) memory done.");
+  }
+  if (oam_api_server) {
+    delete oam_api_server;
+    oam_api_server = nullptr;
+    Logger::system().debug("OAM server memory done.");
   }
 
   if (smf_app_inst) {
@@ -214,12 +225,30 @@ int main(int argc, char** argv) {
     smf_api_server_2 = new smf_http2_server(
         oai::utils::conv::toString(smf_cfg->sbi.addr4), smf_cfg->sbi_http2_port,
         smf_app_inst);
+    // Dedicated OAM server serving the configuration service when enabled
+    std::thread oam_http2_manager;
+    if (smf_cfg->get_oam().is_enabled()) {
+      oam_api_server = new oai::oam::oam_server(
+          oai::utils::conv::toString(smf_cfg->get_oam().get_addr4()),
+          smf_cfg->get_oam().get_port(), Logger::smf_api_server(),
+          smf_cfg->enable_tls(),
+          smf_cfg->get_tls_config().get_cert_key_path() + "/oai_smf.key",
+          smf_cfg->get_tls_config().get_cert_certificate_path() +
+              "/oai_smf.crt");
+      smf_api_server_2->register_configuration_api(
+          oam_api_server->get_server());
+      oam_http2_manager =
+          std::thread(&oai::oam::oam_server::start, oam_api_server);
+    }
     std::thread smf_http2_manager(&smf_http2_server::start, smf_api_server_2);
     // Quick fix: without sleep, http server is not ready for NF Subscribe
     // Notify
     std::this_thread::sleep_for(1000ms);
     // Subscribe to be notified when UPFs become available
     smf_app_inst->start_nf_discovery();
+    if (oam_http2_manager.joinable()) {
+      oam_http2_manager.join();
+    }
     smf_http2_manager.join();
   }
 
