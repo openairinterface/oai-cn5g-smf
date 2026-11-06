@@ -134,6 +134,8 @@ struct policy_association {
     arp.setPreemptVuln(pv);
     def_qos.setArp(arp);
     context.setSubsDefQos(def_qos);
+    // Supplied in the POST; no feature of §5.8 offered (TS 29.512 §5.6.2.3)
+    context.setSuppFeat("0");
   }
 
   std::string toString() const {
