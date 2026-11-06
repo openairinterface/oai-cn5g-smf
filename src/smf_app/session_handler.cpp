@@ -875,16 +875,51 @@ bool session_handler::is_downlink_flow_direction(
   return is_flow_direction(false, flow_info);
 }
 
+//------------------------------------------------------------------------------
+// TS 29.512 §5.6.2.14: flowDirection gives the direction of an Ethernet flow
+// (bidirectional when absent); fDir of its ethFlowDescription only states how
+// the addresses are encoded
+static FlowDirection_anyOf::eFlowDirection_anyOf eth_flow_direction(
+    const FlowInformation& flow_info) {
+  if (!flow_info.flowDirectionIsSet())
+    return FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL;
+  return flow_info.getFlowDirection().getEnumValue();
+}
+
 bool session_handler::is_uplink_eth_flow_direction(
     const FlowInformation& flow_info) {
-  return is_flow_direction(
-      true, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+  return is_flow_direction(true, eth_flow_direction(flow_info));
 }
 
 bool session_handler::is_downlink_eth_flow_direction(
     const FlowInformation& flow_info) {
-  return is_flow_direction(
-      false, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+  return is_flow_direction(false, eth_flow_direction(flow_info));
+}
+
+//------------------------------------------------------------------------------
+EthFlowDescription session_handler::get_eth_flow_description(
+    const FlowInformation& flow_info, bool uplink) {
+  const EthFlowDescription eth_flow = flow_info.getEthFlowDescription();
+  const bool uplink_addresses =
+      eth_flow.fDirIsSet() &&
+      (eth_flow.getFDir().getEnumValue() ==
+       FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK);
+  if (uplink == uplink_addresses) return eth_flow;
+
+  EthFlowDescription swapped = eth_flow;
+  swapped.unsetSourceMacAddr();
+  swapped.unsetSrcMacAddrEnd();
+  swapped.unsetDestMacAddr();
+  swapped.unsetDestMacAddrEnd();
+  if (eth_flow.destMacAddrIsSet())
+    swapped.setSourceMacAddr(eth_flow.getDestMacAddr());
+  if (eth_flow.destMacAddrEndIsSet())
+    swapped.setSrcMacAddrEnd(eth_flow.getDestMacAddrEnd());
+  if (eth_flow.sourceMacAddrIsSet())
+    swapped.setDestMacAddr(eth_flow.getSourceMacAddr());
+  if (eth_flow.srcMacAddrEndIsSet())
+    swapped.setDestMacAddrEnd(eth_flow.getSrcMacAddrEnd());
+  return swapped;
 }
 
 //------------------------------------------------------------------------------

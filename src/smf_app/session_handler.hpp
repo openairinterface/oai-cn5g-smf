@@ -206,6 +206,20 @@ class session_handler {
   static bool is_downlink_eth_flow_direction(
       const oai::_3gpp::model::FlowInformation& flow_direction);
 
+  /**
+   * @brief The Ethernet flow description with its MAC addresses as the
+   * packets of one direction carry them
+   *
+   * Unless fDir is UPLINK, sourceMacAddr is the remote address and
+   * destMacAddr the UE's (TS 29.514 §5.6.2.17 NOTE 2, TS 29.512 §5.6.2.14).
+   * For the other direction the source and destination addresses are swapped.
+   *
+   * @param flow_info Flow information with an ethFlowDescription
+   * @param uplink true for packets from the UE
+   */
+  static oai::_3gpp::model::EthFlowDescription get_eth_flow_description(
+      const oai::_3gpp::model::FlowInformation& flow_info, bool uplink);
+
  private:
   std::shared_ptr<upf_graph> m_session_graph;
   std::vector<pfcp::qfi_t> m_qfis_to_be_updated;

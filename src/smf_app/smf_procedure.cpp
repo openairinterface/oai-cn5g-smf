@@ -860,7 +860,9 @@ bool smf_session_procedure::pfcp_ethernet_packet_filter(
     Logger::smf_app().warn("No Ethernet Flow Description found!");
     return false;
   }
-  auto ethFlowDescription = edge->flow_information.getEthFlowDescription();
+  // MACs as this PDR's packets carry them (TS 29.514 §5.6.2.17 NOTE 2)
+  auto ethFlowDescription = session_handler::get_eth_flow_description(
+      edge->flow_information, !edge->uplink);
 
   // UL and DL edge is reversed, as it is from UPF point of view
   bool add_eth_filter = false;
