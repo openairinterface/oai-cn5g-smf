@@ -114,8 +114,11 @@ struct policy_association {
     // SubsDefQos
     oai::_3gpp::model::SubscribedDefaultQos def_qos = {};
     def_qos.setR5qi(default_qos._5qi);
+    // Only to override the 5QI's standardized value (TS 29.571 §5.4.4.1)
+    if (default_qos.priority_level != 0)
+      def_qos.setPriorityLevel(default_qos.priority_level);
     oai::_3gpp::model::Arp arp = {};
-    arp.setPriorityLevel(default_qos.priority_level);
+    arp.setPriorityLevel(default_qos.arp.priority_level);
     oai::_3gpp::model::PreemptionCapability pc = {};
     if (default_qos.arp.preempt_cap == "MAY_PREEMPT")
       pc.setEnumValue(oai::_3gpp::model::PreemptionCapability_anyOf::
