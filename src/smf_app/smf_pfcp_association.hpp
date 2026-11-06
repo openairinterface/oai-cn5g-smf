@@ -19,6 +19,8 @@
 #include "itti.hpp"
 #include "smf_profile.hpp"
 #include "fqdn.hpp"
+#include "AuthorizedDefaultQos.h"
+#include "QosData.h"
 #include "SmPolicyDecision.h"
 #include "3gpp_24.007.hpp"
 #include "UpfInfo.h"
@@ -387,6 +389,22 @@ class upf_graph {
   std::shared_ptr<upf_graph> select_upf_nodes(
       const oai::_3gpp::model::SmPolicyDecision& policy_decision,
       const upf_selection_criteria& criteria);
+
+  /**
+   * @brief The default QoS profile once a session rule's authorized default
+   * QoS is applied to it
+   *
+   * The 5QI and the ARP are the PCF's. The 5QI priority level is the PCF's
+   * when it includes one; otherwise it is unset, so the authorized 5QI's
+   * standardized value applies (TS 29.512 §4.2.6.3.3).
+   *
+   * @param default_qos default QoS profile from the subscription
+   * @param auth_default_qos authDefQos of the session rule
+   * @return the QoS profile of the default QoS flow
+   */
+  static oai::_3gpp::model::QosData get_authorized_default_qos(
+      const oai::_3gpp::model::QosData& default_qos,
+      const oai::_3gpp::model::AuthorizedDefaultQos& auth_default_qos);
 
   /**
    * @brief Select UPF nodes based on the selection criteria. This method is
