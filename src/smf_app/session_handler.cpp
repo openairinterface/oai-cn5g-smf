@@ -406,7 +406,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 
   // TS 24.501 §6.2.5.1.1.2: Default QoS rule with match-all filter uses highest
   // precedence value (255)
-  uint8_t nas_precedence = edge->precedence;
+  uint8_t nas_precedence = get_nas_qos_rule_precedence(edge->precedence);
   if (edge->default_qos &&
       edge->flow_information.getFlowDescription() == DEFAULT_FLOW_DESCRIPTION) {
     nas_precedence = 255;  // Lowest priority for default flow
@@ -843,6 +843,16 @@ std::vector<oai::nas::QosRule> session_handler::get_qos_rules() {
     }
   }
   return qos_rules;
+}
+
+//------------------------------------------------------------------------------
+uint8_t session_handler::get_nas_qos_rule_precedence(unsigned int precedence) {
+  if (precedence <= 255) return static_cast<uint8_t>(precedence);
+  Logger::smf_n1().warn(
+      "PCC rule precedence %u is out of the range 0-255 (TS 29.512 §5.6.2.6), "
+      "QoS rule precedence set to 254",
+      precedence);
+  return 254;
 }
 
 //------------------------------------------------------------------------------

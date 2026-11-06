@@ -291,3 +291,13 @@ TEST(SessionHandlerTest, EthFlowDirection_FollowsFlowDirectionNotFDir) {
   EXPECT_TRUE(session_handler::is_uplink_eth_flow_direction(unset));
   EXPECT_TRUE(session_handler::is_downlink_eth_flow_direction(unset));
 }
+
+// TS 29.512 §5.6.2.6 NOTE 4: precedence 0-255; the NAS field is one octet
+TEST(SessionHandlerTest, GetNasQosRulePrecedence_ClampsAbove255) {
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(0), 0);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(100), 100);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(255), 255);
+  // 1001 used to become 233 (1001 mod 256)
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(1001), 254);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(256), 254);
+}

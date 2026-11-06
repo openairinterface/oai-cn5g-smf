@@ -197,6 +197,19 @@ class session_handler {
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
+  /**
+   * @brief The QoS rule precedence (TS 24.501 §9.11.4.13, one octet) for a
+   * PCC rule precedence
+   *
+   * A PCC rule precedence is 0 to 255 (TS 29.512 §5.6.2.6 NOTE 4). A larger
+   * value is clamped to 254, below the match-all default rule's 255, and
+   * logged instead of being truncated.
+   *
+   * @param precedence PCC rule precedence
+   * @return the NAS precedence
+   */
+  static uint8_t get_nas_qos_rule_precedence(unsigned int precedence);
+
   static bool is_uplink_flow_direction(
       const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_downlink_flow_direction(
