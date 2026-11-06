@@ -339,11 +339,16 @@ pfcp::pdi smf_session_procedure::pfcp_build_pdi(
     pdi.set(pfcp_ue_ip_address(edge));
   }
 
+  bool have_interface_type = false;
   if (edge->type == n3_type) {
+    // TS 29.244 Table 8.2.118-1: 11 = N3 3GPP Access. 14 (N3 for data
+    // forwarding) is for indirect forwarding tunnels only.
     source_interface_type.interface_type_value =
         pfcp::_3GPP_INTERFACE_TYPE_N3_3GPP_ACCESS;
+    have_interface_type = true;
   } else if (edge->type == n9_type) {
     source_interface_type.interface_type_value = pfcp::_3GPP_INTERFACE_TYPE_N9;
+    have_interface_type                        = true;
   }
 
   if (set_qfi) {
@@ -389,7 +394,9 @@ pfcp::pdi smf_session_procedure::pfcp_build_pdi(
     pdi.set(sdf_filter);
   }
 
-  pdi.set(source_interface_type);
+  if (have_interface_type) {
+    pdi.set(source_interface_type);
+  }
 
   return pdi;
 }
@@ -527,7 +534,7 @@ pfcp::remove_far smf_session_procedure::pfcp_remove_far(
 //------------------------------------------------------------------------------
 pfcp::update_pdr smf_session_procedure::pfcp_update_pdr(
     const std::shared_ptr<qos_upf_edge>& edge) {
-  // An Update PDR replaces the stored PDI (TS 29.244 §7.5.4.3), so it is built
+  // An Update PDR replaces the stored PDI (TS 29.244 §7.5.4.2), so it is built
   // from the same helper as the Create PDR: a partial PDI would drop the
   // F-TEID and QFI the UPF matches tunnelled traffic on.
   oai::config::smf::upf cfg = edge->source_upf->get_upf_config();
