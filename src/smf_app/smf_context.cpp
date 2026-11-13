@@ -2896,10 +2896,10 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
             uint8_t qfi_to_use = change.qfi;
             if (qfi_to_use == 0 && session_graph) {
               qfi_to_use = session_graph->generate_qfi();
-              if (qfi_to_use == 0 || qfi_to_use > 63) {
-                if (qfi_to_use != 0) {
-                  session_graph->release_qfi(qfi_to_use);  // out of range
-                }
+              // The allocator only hands out QFIs of this PDU session that no
+              // flow holds, within the 6 bit range of TS 29.244 §8.2.89, so 0
+              // means every one of the session's 63 QFIs is in use.
+              if (qfi_to_use == 0) {
                 Logger::smf_app().error(
                     "QFI pool exhausted, cannot add flow for rule '%s'",
                     change.pcc_rule_id.c_str());
