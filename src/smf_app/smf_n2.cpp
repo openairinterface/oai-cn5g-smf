@@ -561,56 +561,65 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
     }
   }
 
-  if (qos_flows.empty()) {
-    Logger::smf_n2().error(
-        "No QoS flow to add for the PCF-initiated N2 Modify Request Transfer");
-    return false;
-  }
-
-  // Add/Modify side via the real core builder (Session-AMBR, UL TNL Modify
-  // List, QoS Flow Add/Modify Request List).
-  auto sm_context_response =
-      std::make_shared<pdu_session_update_sm_context_response>(sm_context_res);
-  PduSessionResourceModifyRequestTransfer transfer = {};
-  if (!create_n2_pdu_session_resource_modify_request_transfer(
-          sm_context_response, qos_flows, ngap_info_type, transfer)) {
-    Logger::smf_n2().warn(
-        "Couldn't fill NGAP PDU Session Resource Modify Request Transfer "
-        "contents");
-    return false;
-  }
-
-  // Append QoS Flow To Release List from the removed PCC rules stashed on the
-  // session handler
-  std::shared_ptr<smf_context> sc     = {};
-  std::shared_ptr<smf_pdu_session> sp = {};
+  // QoS flows of the removed PCC rules, stashed on the session handler. A
+  // decision that only removes rules has nothing to add or modify, so look
+  // them up before deciding whether there is anything to send.
+  std::vector<qos_flow_context_updated> released_flows = {};
+  std::shared_ptr<smf_context> sc                      = {};
+  std::shared_ptr<smf_pdu_session> sp                  = {};
   if (smf_app_inst->is_supi_2_smf_context(msg.get_supi())) {
     sc = smf_app_inst->supi_2_smf_context(msg.get_supi());
     if (sc->find_pdu_session(msg.get_pdu_session_id(), sp) && sp) {
-      std::vector<qos_flow_context_updated> released_flows =
+      released_flows =
           sp->get_session_handler()->get_qos_flows_to_be_released();
-      if (!released_flows.empty()) {
-        QosFlowListWithCause release_list = {};
-        for (const auto& rf : released_flows) {
-          QosFlowWithCauseItem item = {};
-          QosFlowIdentifier qfi_id  = {};
-          qfi_id.set(rf.qfi.qfi);
-          // Qualify: both oai::ngap::Cause and oai::_3gpp::model::Cause are in
-          // scope here (two using-namespace directives) → unqualified is
-          // ambiguous.
-          oai::ngap::Cause cause = {};
-          cause.set(
-              Ngap_CauseRadioNetwork_release_due_to_5gc_generated_reason,
-              Ngap_Cause_PR_radioNetwork);
-          item.set(qfi_id, cause);
-          release_list.addItem(item);
-        }
-        transfer.setQosFlowToReleaseList(release_list);
-        Logger::smf_n2().info(
-            "N2 QoS Flow To Release List built with %zu flow(s)",
-            released_flows.size());
-      }
     }
+  }
+
+  if (qos_flows.empty() && released_flows.empty()) {
+    Logger::smf_n2().error(
+        "No QoS flow to add, modify or release for the PCF-initiated N2 "
+        "Modify Request Transfer");
+    return false;
+  }
+
+  PduSessionResourceModifyRequestTransfer transfer = {};
+
+  // Add/Modify side via the real core builder (Session-AMBR, UL TNL Modify
+  // List, QoS Flow Add/Modify Request List). It needs at least one flow.
+  if (!qos_flows.empty()) {
+    auto sm_context_response =
+        std::make_shared<pdu_session_update_sm_context_response>(
+            sm_context_res);
+    if (!create_n2_pdu_session_resource_modify_request_transfer(
+            sm_context_response, qos_flows, ngap_info_type, transfer)) {
+      Logger::smf_n2().warn(
+          "Couldn't fill NGAP PDU Session Resource Modify Request Transfer "
+          "contents");
+      return false;
+    }
+  }
+
+  // QoS Flow To Release List
+  if (!released_flows.empty()) {
+    QosFlowListWithCause release_list = {};
+    for (const auto& rf : released_flows) {
+      QosFlowWithCauseItem item = {};
+      QosFlowIdentifier qfi_id  = {};
+      qfi_id.set(rf.qfi.qfi);
+      // Qualify: both oai::ngap::Cause and oai::_3gpp::model::Cause are in
+      // scope here (two using-namespace directives) → unqualified is
+      // ambiguous.
+      oai::ngap::Cause cause = {};
+      cause.set(
+          Ngap_CauseRadioNetwork_release_due_to_5gc_generated_reason,
+          Ngap_Cause_PR_radioNetwork);
+      item.set(qfi_id, cause);
+      release_list.addItem(item);
+    }
+    transfer.setQosFlowToReleaseList(release_list);
+    Logger::smf_n2().info(
+        "N2 QoS Flow To Release List built with %zu flow(s)",
+        released_flows.size());
   }
 
   // Encode
