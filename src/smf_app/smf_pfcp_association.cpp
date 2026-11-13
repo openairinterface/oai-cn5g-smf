@@ -1534,12 +1534,33 @@ std::string upf_graph::to_string_from_start_node(
 
 //---------------------------------------------------------------------------------------------
 uint8_t upf_graph::generate_qfi() {
-  return qfi_generator.get_uid();
+  std::lock_guard<std::mutex> l(m_qfi_allocator);
+
+  uint8_t qfi = qfi_last_;
+  // One lap over the session's whole pool, starting after the QFI handed out
+  // last and wrapping QFI_MAX -> QFI_MIN.
+  for (uint8_t i = QFI_MIN; i <= QFI_MAX; ++i) {
+    qfi = (qfi >= QFI_MAX) ? QFI_MIN : static_cast<uint8_t>(qfi + 1);
+    const uint64_t bit = UINT64_C(1) << (qfi - QFI_MIN);
+    if ((qfi_in_use_ & bit) == 0) {
+      qfi_in_use_ |= bit;
+      qfi_last_ = qfi;
+      return qfi;
+    }
+  }
+
+  // All 63 QFIs of this PDU session belong to an active QoS flow.
+  return 0;
 }
 
 //---------------------------------------------------------------------------------------------
 void upf_graph::release_qfi(uint8_t qfi) {
-  qfi_generator.free_uid(qfi);
+  if (qfi >= QFI_MIN && qfi <= QFI_MAX) {
+    std::lock_guard<std::mutex> l(m_qfi_allocator);
+    // qfi_last_ is deliberately left alone: the released QFI is the last one
+    // to be handed out again, not the first.
+    qfi_in_use_ &= ~(UINT64_C(1) << (qfi - QFI_MIN));
+  }
   // Remove all rules that use this QFI
   for (auto it = pcc_rule_id_to_qfi_.begin();
        it != pcc_rule_id_to_qfi_.end();) {

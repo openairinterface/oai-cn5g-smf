@@ -5,6 +5,7 @@
 #ifndef FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 #define FILE_SMF_PFCP_ASSOCIATION_HPP_SEEN
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <set>
@@ -238,11 +239,48 @@ class upf_graph {
       const std::string& indent,
       const std::shared_ptr<pfcp_association>& start) const;
 
-  oai::utils::uint_generator<uint8_t> qfi_generator;
+  // ---------------------------------------------------------------------
+  // Per-PDU-session QFI allocator.
+  //
+  // A QFI is a 6 bit value (TS 29.244 V18.10.0 §8.2.89), and 0 is the SMF's
+  // "no QFI assigned" sentinel, so a session's QoS flows draw from 1..63.
+  // TS 23.501 V18.12.0 §5.7.1.1 only requires a QFI to be unique *within a
+  // PDU session*, so a QFI that no longer belongs to any of the session's
+  // flows may be handed out again.
+  //
+  // generate_qfi() walks forward from the last QFI it returned, wrapping
+  // 63 -> 1, and takes the first value that is not in use; a released QFI is
+  // therefore the last one to come back, not the first. That matters because a
+  // PCF-initiated flow removal is not signalled to the RAN or the UE today, so
+  // the old flow may still be configured under that QFI for a while.
+  // ---------------------------------------------------------------------
+  static constexpr uint8_t QFI_MIN = 1;
+  static constexpr uint8_t QFI_MAX = 63;
+
+  // Bit (qfi - QFI_MIN) is set while that QFI belongs to one of the session's
+  // QoS flows. The default flow's bit stays set for the session's lifetime.
+  uint64_t qfi_in_use_ = 0;
+  // The QFI handed out last, so that the first allocation returns QFI_MIN.
+  uint8_t qfi_last_ = QFI_MAX;
+  mutable std::mutex m_qfi_allocator;
 
  public:
+  /**
+   * @brief Allocates the next free QFI of this PDU session.
+   *
+   * Standards: TS 29.244 V18.10.0 §8.2.89 (QFI is a 6 bit value),
+   * TS 23.501 V18.12.0 §5.7.1.1 (a QFI is unique within a PDU session)
+   *
+   * @return a QFI in 1..63, or 0 when all 63 QFIs of the session are in use
+   */
   uint8_t generate_qfi();
 
+  /**
+   * @brief Returns a QFI to the session's pool and drops every PCC rule
+   * mapped onto it. Values outside 1..63 are ignored.
+   *
+   * @param qfi the QoS Flow Identifier to release
+   */
   void release_qfi(uint8_t qfi);
 
   upf_graph() : adjacency_list(), visited_asynch() {};
@@ -252,6 +290,11 @@ class upf_graph {
     adjacency_list      = g.adjacency_list;
     visited_asynch      = g.visited_asynch;
     pcc_rule_id_to_qfi_ = g.pcc_rule_id_to_qfi_;
+    // The copy serves the same PDU session, so it must not hand out the QFIs
+    // the original already gave away.
+    std::lock_guard<std::mutex> l(g.m_qfi_allocator);
+    qfi_in_use_ = g.qfi_in_use_;
+    qfi_last_   = g.qfi_last_;
     // do not copy mutex
   }
 
