@@ -794,13 +794,14 @@ qos_flow_context_updated session_handler::update_qos_rule(
       m_session_handler_mutex,
       std::defer_lock);  // Do not lock it first
 
-  auto edge = get_edge_for_qfi(
-      qos_rules_ie.GetQosRuleId());  // TODO: verify Rule Id or QFI Id?
-
-  // TODO there is absolutely no link between this and the QoS rules
-  flow = get_qos_flow_context_updated(edge->qfi);
+  // A QoS rule is bound to the QoS flow of its QFI (TS 24.501 §9.11.4.13)
+  std::optional<uint8_t> qfi = qos_rules_ie.GetQfi();
+  auto edge = qfi.has_value() ? get_edge_for_qfi(qfi.value()) : nullptr;
 
   if (edge) {
+    // TODO there is absolutely no link between this and the QoS rules
+    flow = get_qos_flow_context_updated(edge->qfi);
+
     Logger::smf_app().debug(
         "Update existing QRI %d", qos_rules_ie.GetQosRuleId());
 
