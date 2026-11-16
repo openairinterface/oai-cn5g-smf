@@ -68,6 +68,10 @@ class smf_app {
   mutable std::shared_mutex m_supi2smf_context;
 
   oai::utils::uint_generator<uint32_t> sm_context_ref_generator;
+  // Added to every SM context reference. A restarted SMF starts the generator
+  // from 0 again; with a new offset it does not hand out the references of
+  // its previous run, which an AMF may still hold.
+  scid_t sm_context_ref_offset = 0;
   std::map<scid_t, std::shared_ptr<smf_context_ref>> scid2smf_context;
 
   oai::utils::uint_generator<uint64_t> seid_generator;
