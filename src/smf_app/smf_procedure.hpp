@@ -323,6 +323,27 @@ class session_update_sm_context_procedure : public smf_session_procedure {
    * Standards: TS 23.501 §5.7.1.4 (QFI allocation), TS 29.244 §7.5.4
    */
   void commit_staged_flow_removals();
+
+  /**
+   * Gives up the user-plane activation of a session in a paging cycle, when
+   * the UPF rejected the downlink N4 modification or its response could not
+   * be used: back to DEACTIVATED, the only state a page can start from,
+   * paging rule IDs released if this procedure emitted their Removes, paging
+   * state reset. It sends no N4 message and rolls nothing back on the UPF:
+   * whatever the UPF applied stays. A no-op on an ordinary service request
+   * and when paging is disabled.
+   * @param [const char*] reason: what went wrong, for the log line
+   * @return void
+   */
+  void abandon_paging_activation(const char* reason);
+
+  // Paging rule IDs allocated by this procedure; handed over to the session
+  // handler only once the N4 response says the rule is live
+  pfcp::pdr_id_t m_pending_paging_pdr_id{};
+  pfcp::far_id_t m_pending_paging_far_id{};
+  // set when this procedure emitted the Remove PDR/FAR of the armed paging
+  // rule; also keeps a re-entry for the next UPF from removing them again
+  bool m_paging_removes_emitted = false;
 };
 
 //------------------------------------------------------------------------------
@@ -366,6 +387,81 @@ class session_release_sm_context_procedure : public smf_session_procedure {
 
  private:
   smf_procedure_code send_n4_session_deletion_request();
+};
+
+//------------------------------------------------------------------------------
+/*
+ * Network-triggered service request (paging): owns the uplink N4
+ * modification, the N4 round trip that sets up the uplink on the UPF before
+ * the UE is paged, so that the F-TEID of the N2 container the AMF buffers is
+ * already live.
+ */
+class session_network_triggered_service_request_procedure
+    : public smf_session_procedure {
+ public:
+  explicit session_network_triggered_service_request_procedure(
+      std::shared_ptr<smf_pdu_session>& ps)
+      : smf_session_procedure(ps), m_n4_triggered() {}
+
+  /*
+   * Execute the network-triggered service request procedure: prime the UPF
+   * graph cursor and send the uplink N4 modification. The caller registers
+   * this procedure with insert_procedure() before run().
+   * @param [std::shared_ptr<smf::smf_context>] sc: smf context
+   * @return CONTINUE when the modification is on the wire, ERROR otherwise
+   */
+  smf_procedure_code run(std::shared_ptr<oai::app::smf::smf_context> sc);
+
+  /*
+   * Handle the response to the uplink N4 modification
+   * @param [itti_n4_session_modification_response] resp
+   * @param [std::shared_ptr<smf::smf_context>] sc smf context
+   * @return OK or ERROR, never CONTINUE: only those two make the dispatcher
+   * unregister the procedure and decrement the N4 in-flight count
+   */
+  smf_procedure_code handle_itti_msg(
+      itti_n4_session_modification_response& resp,
+      std::shared_ptr<oai::app::smf::smf_context> sc) override;
+
+ private:
+  /**
+   * Takes the UPF graph cursor once, caches the edges of the selected UPF and
+   * the UPF configuration gates send_n4_uplink_modification() needs
+   * @return OK when successful, ERROR otherwise
+   */
+  smf_procedure_code prime_graph_cursor();
+
+  /**
+   * Builds and sends the uplink N4 modification: the uplink FAR on every N6
+   * edge and the uplink PDR on every N3 edge
+   * @return CONTINUE when the message is on the wire, ERROR otherwise
+   */
+  smf_procedure_code send_n4_uplink_modification();
+
+  /**
+   * Clears the PFCP session state of every cached edge: the cleanup path when
+   * the page could not be started
+   */
+  void clear_cached_edges();
+
+  /**
+   * The one failure branch of the response: returns upCnxState to
+   * DEACTIVATED, clears the PFCP session state the modification assigned to
+   * the cached edges and ends the page with the paging rule left armed
+   * @return ERROR, always
+   */
+  smf_procedure_code abandon_page();
+
+  // dl_edges hold the N3 edges and ul_edges the N6 edges: the vectors are
+  // named after the FAR built on them, not after the PDR
+  std::vector<std::shared_ptr<qos_upf_edge>> m_dl_edges;
+  std::vector<std::shared_ptr<qos_upf_edge>> m_ul_edges;
+  std::shared_ptr<pfcp_association> m_current_upf;
+  // Copied out of the UPF configuration while the association is in hand:
+  // oai::config::smf::upf is not default-constructible
+  bool m_upf_enable_qers            = false;
+  bool m_upf_enable_usage_reporting = false;
+  std::shared_ptr<itti_n4_session_modification_request> m_n4_triggered;
 };
 
 }  // namespace oai::app::smf

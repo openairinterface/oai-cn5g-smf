@@ -148,6 +148,9 @@ smf:
   ue_mtu: 1500
   ngap:
     send_default_qos_characteristics: no
+  paging:
+    enable: no
+    paging_policy_indicator: 1
   support_features:
     use_local_subscription_info: yes # Use infos from local_subscription_info or from UDM
     use_local_pcc_rules: yes # Use infos from local_pcc_rules or from PCF
