@@ -644,6 +644,36 @@ bool smf_n1::create_n1_pdu_session_release_reject(
 }
 
 //-----------------------------------------------------------------------------------------------------
+bool smf_n1::create_n1_pdu_session_modification_reject(
+    uint8_t pdu_session_id, uint8_t pti, std::string& nas_msg_str,
+    uint8_t sm_cause) {
+  Logger::smf_n1().info(
+      "Create N1 SM Container, PDU Session Modification Reject (cause %d)",
+      sm_cause);
+  auto pdu_session_modification_reject =
+      std::make_unique<PduSessionModificationReject>();
+  pdu_session_modification_reject->SetHeader(pdu_session_id, pti);
+
+  _5gsmCause cause = {};
+  cause.SetValue(sm_cause);
+  pdu_session_modification_reject->Set5gsmCause(cause);
+
+  uint32_t msg_len        = pdu_session_modification_reject->GetLength();
+  uint8_t buffer[msg_len] = {0};
+  int encoded_size = pdu_session_modification_reject->Encode(buffer, msg_len);
+  if (encoded_size <= 0) {
+    Logger::smf_n1().error(
+        "Encode PDU Session Modification Reject message error");
+    return false;
+  }
+
+  oai::utils::output_wrapper::print_buffer(
+      {}, "Buffer Data:", buffer, encoded_size);
+  nas_msg_str.assign((char*) buffer, encoded_size);
+  return true;
+}
+
+//-----------------------------------------------------------------------------------------------------
 bool smf_n1::create_n1_pdu_session_release_command(
     const std::shared_ptr<pdu_session_msg>& msg, std::string& nas_msg_str,
     uint8_t sm_cause) {

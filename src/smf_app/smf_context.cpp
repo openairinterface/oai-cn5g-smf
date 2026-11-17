@@ -1554,6 +1554,43 @@ bool smf_context::handle_pdu_session_modification_request(
     // TODO: PDU Session ID mismatch
   }
 
+  // The SMF cannot create a QoS flow requested by the UE (no PCF request for
+  // UE-initiated resource modification, no N4 update), so reject a request
+  // to create a QoS rule (TS 24.501 6.4.2.4.3, cause #37)
+  std::optional<oai::nas::QosRules> requested_qos_rules = std::nullopt;
+  std::dynamic_pointer_cast<oai::nas::PduSessionModificationRequest>(
+      nas_message)
+      ->GetRequestedQosRules(requested_qos_rules);
+  std::vector<oai::nas::QosRule> requested_rules = {};
+  if (requested_qos_rules.has_value())
+    requested_qos_rules.value().Get(requested_rules);
+  if (std::any_of(
+          requested_rules.begin(), requested_rules.end(), [](const auto& r) {
+            return r.GetRuleOperationCode() ==
+                   oai::nas::kQosRuleRuleOperationCodeCreateNewQosRule;
+          })) {
+    Logger::smf_app().warn(
+        "UE requested a new QoS rule, which is not supported, send PDU "
+        "Session Modification Reject");
+    std::string n1_sm_msg = {}, n1_sm_msg_hex = {};
+    if (smf_n1::get_instance().create_n1_pdu_session_modification_reject(
+            nas_message->GetHeader().GetPduSessionIdentity(),
+            nas_message->GetHeader().GetProcedureTransactionIdentity(),
+            n1_sm_msg, k5gsmCause5gsQosNotAccepted)) {
+      conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
+      smf_app_inst->trigger_update_context_error_response(
+          http_status_code::FORBIDDEN,
+          PDU_SESSION_APPLICATION_ERROR_N1_SM_ERROR, n1_sm_msg_hex,
+          sm_context_request.get()->pid);
+    } else {
+      smf_app_inst->trigger_http_response(
+          http_status_code::INTERNAL_SERVER_ERROR,
+          sm_context_request.get()->pid,
+          N11_SESSION_UPDATE_SM_CONTEXT_RESPONSE);
+    }
+    return false;
+  }
+
   // PTI
   Logger::smf_app().info(
       "PTI %d", nas_message->GetHeader().GetProcedureTransactionIdentity());
