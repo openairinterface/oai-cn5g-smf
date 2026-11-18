@@ -1092,12 +1092,20 @@ void smf_http2_server::modify_sm_context_handler(
     nlohmann::json json_data    = {};
     header_map h                = {};
 
+    // Error responses are built as pdu_session_sm_policy_update_notify_response
+    // (key "httpResponseCode"), while the success path completes the promise
+    // with pdu_session_update_sm_context_response (key "http_code"). Read both,
+    // otherwise a 204 full success falls back to "200 null".
     if (policy_notification_response.find(
             oai::http::kSbiResponseHttpResponseCode) !=
         policy_notification_response.end()) {
       http_response_code =
           policy_notification_response[oai::http::kSbiResponseHttpResponseCode]
               .get<int>();
+    } else if (
+        policy_notification_response.find("http_code") !=
+        policy_notification_response.end()) {
+      http_response_code = policy_notification_response["http_code"].get<int>();
     }
 
     if (http_response_code ==
@@ -1111,6 +1119,10 @@ void smf_http2_server::modify_sm_context_handler(
           policy_notification_response.end()) {
         json_data =
             policy_notification_response[oai::http::kSbiResponseJsonData];
+      } else if (
+          policy_notification_response.find("json_data") !=
+          policy_notification_response.end()) {
+        json_data = policy_notification_response["json_data"];
       }
       if (http_response_code >= 400) {
         h.emplace("content-type", header_value{"application/problem+json"});
