@@ -184,6 +184,21 @@ class smf_n2 {
       n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
 
   /*
+   * Build and encode the PCF-initiated PDU Session Resource Modify Request
+   * Transfer from flows that are already looked up: the Add/Modify side from
+   * qos_flows, the QoS Flow To Release List from released_flows. Either may be
+   * empty, but not both. Kept apart from the SMF context lookup so that it can
+   * be unit tested.
+   * Standards: TS 38.413 §9.3.4.3
+   * @return true if the transfer has been encoded, otherwise false
+   */
+  bool create_n2_pcf_modify_request_transfer(
+      const pdu_session_update_sm_context_response& sm_context_res,
+      const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+      const std::vector<qos_flow_context_updated>& released_flows,
+      n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str);
+
+  /*
    * Create N2 SM Information: PDU Session Resource Modify Response Transfer IE
    *
    * @param [pdu_session_update_sm_context_response] sm_context_res: include

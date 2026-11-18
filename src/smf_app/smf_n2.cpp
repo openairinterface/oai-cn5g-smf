@@ -575,6 +575,16 @@ bool smf_n2::create_n2_pdu_session_resource_modify_request_transfer(
     }
   }
 
+  return create_n2_pcf_modify_request_transfer(
+      sm_context_res, qos_flows, released_flows, ngap_info_type, ngap_msg_str);
+}
+
+//------------------------------------------------------------------------------
+bool smf_n2::create_n2_pcf_modify_request_transfer(
+    const pdu_session_update_sm_context_response& sm_context_res,
+    const std::map<uint8_t, qos_flow_context_updated>& qos_flows,
+    const std::vector<qos_flow_context_updated>& released_flows,
+    n2_sm_info_type_e ngap_info_type, std::string& ngap_msg_str) {
   if (qos_flows.empty() && released_flows.empty()) {
     Logger::smf_n2().error(
         "No QoS flow to add, modify or release for the PCF-initiated N2 "
