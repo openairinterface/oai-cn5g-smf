@@ -35,9 +35,29 @@ void IndividualSubscriptionDocumentApiImpl::delete_individual_subcription(
   Logger::smf_api_server().info(
       "IndividualSubscriptionDocumentApiImpl::delete_individual_subcription.."
       ".");
-  response.send(
-      Pistache::Http::Code::Not_Implemented,
-      "delete_individual_subcription API has not been implemented yet!\n");
+
+  // A subscriber that cannot unsubscribe leaves the SMF notifying an endpoint
+  // that has gone away, for the lifetime of the process.
+  evsub_id_t sub_id = {};
+  try {
+    sub_id = std::stoi(subId);
+  } catch (const std::exception& e) {
+    Logger::smf_api_server().warn(
+        "Unsubscribe request with a non-numeric subscription ID (%s)",
+        subId.c_str());
+    response.send(Pistache::Http::Code::Bad_Request, "");
+    return;
+  }
+
+  if (m_smf_app->remove_event_subscription(sub_id)) {
+    response.send(Pistache::Http::Code::No_Content, "");
+  } else {
+    nlohmann::json json_data       = {};
+    ProblemDetails problem_details = {};
+    problem_details.setCause("SUBSCRIPTION_NOT_FOUND");
+    to_json(json_data, problem_details);
+    response.send(Pistache::Http::Code::Not_Found, json_data.dump());
+  }
 }
 void IndividualSubscriptionDocumentApiImpl::get_individual_subcription(
     const std::string& subId, Pistache::Http::ResponseWriter& response) {
