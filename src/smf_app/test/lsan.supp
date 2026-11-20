@@ -1,0 +1,6 @@
+# LeakSanitizer suppressions for smf_unit_tests.
+#
+# oai::ngap::PduSessionResourceModifyRequestTransfer (src/common-src) has no
+# destructor, so its ASN.1 structure is never freed. The leak is in the shared
+# NGAP library, not in the SMF code under test.
+leak:oai::ngap::PduSessionResourceModifyRequestTransfer
