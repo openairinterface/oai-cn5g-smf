@@ -351,6 +351,10 @@ void smf_app_task(void*) {
               smf_app_inst->timer_t3591_timeout(
                   to->timer_id, (scid_t) to->arg2_user);
               break;
+            case TASK_SMF_APP_TRIGGER_T3592:
+              smf_app_inst->timer_t3592_timeout(
+                  to->timer_id, (scid_t) to->arg2_user);
+              break;
             case TASK_SMF_APP_TIMEOUT_NRF_HEARTBEAT:
               smf_app_inst->timer_nrf_heartbeat_timeout(
                   to->timer_id, to->arg2_user);
@@ -1931,7 +1935,18 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
           "T3592 expired %d times without a PDU Session Release Complete, "
           "releasing the resources locally",
           (int) number_retransmission);
+      // As after a PDU Session Release Complete, tell the AMF that the SM
+      // context is released (TS 23.502 section 4.3.4.2, step 11) and remove
+      // it. Notify first: deallocate_ressources() clears the AMF URI.
+      std::shared_ptr<smf_context_ref> scf = {};
+      std::shared_ptr<smf_context> sc      = {};
+      if (scid_2_smf_context(scid, scf) && is_supi_2_smf_context(scf->supi)) {
+        sc = supi_2_smf_context(scf->supi);
+      }
+      if (sc) sc->handle_sm_context_status_change(scid, "RELEASED");
       sp.get()->deallocate_ressources(sp.get()->dnn);
+      remove_scid_2_smf_context(scid);
+      if (sc) sc->remove_pdu_session(scf->pdu_session_id);
       return;
     }
     Logger::smf_app().info(
