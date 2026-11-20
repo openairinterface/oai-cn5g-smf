@@ -2452,6 +2452,18 @@ bool smf_context::handle_pdu_session_update_sm_context_request(
         // associated QoS flows
         sp->deallocate_ressources(dnn);
 
+        // The AMF was notified that the SM context is released (TS 23.502
+        // section 4.3.4.2, step 11), so remove it. Otherwise it stays in the
+        // SMF until the UE asks again for the same PDU Session ID.
+        try {
+          smf_app_inst->remove_scid_2_smf_context(
+              (scid_t) std::stoul(smreq->scid, nullptr, 10));
+        } catch (const std::exception& e) {
+          Logger::smf_app().warn(
+              "Invalid SMF Context ID %s", smreq->scid.c_str());
+        }
+        remove_pdu_session(sm_context_req_msg.get_pdu_session_id());
+
         // display info
         Logger::smf_app().info("SMF context: \n %s", toString().c_str());
 
