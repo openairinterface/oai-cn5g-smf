@@ -1671,6 +1671,8 @@ bool smf_context::handle_pdu_session_modification_request(
   // Store the context for the timer handling
   sp.get()->set_pending_n11_msg(
       std::dynamic_pointer_cast<itti_sbi_msg>(sm_context_resp));
+  // A new procedure gets its own four retransmissions
+  sp.get()->set_number_retransmission_T3591(0);
   // start timer T3591
   // get smf_pdu_session and set the corresponding timer
   sp.get()->timer_T3591 = itti_inst->timer_setup(
@@ -5371,6 +5373,7 @@ void smf_context::send_pdu_session_release_response(
         // Store the context for the timer handling
         sps.get()->set_pending_n11_msg(
             std::dynamic_pointer_cast<itti_sbi_msg>(resp));
+        sps.get()->set_number_retransmission_T3592(0);
 
         sps->timer_T3592 = itti_inst->timer_setup(
             T3592_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3592,

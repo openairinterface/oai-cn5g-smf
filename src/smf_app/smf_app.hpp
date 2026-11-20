@@ -717,6 +717,19 @@ class smf_app {
       const scid_t& scid, const upCnx_state_e& state);
 
   /*
+   * Send again the N1 SM message of a stored Update SM Context Response to the
+   * UE, through Namf_Communication_N1N2MessageTransfer (T3591, T3592)
+   * @param [const scid_t&] scid: SMF Context ID
+   * @param [const std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @param [const std::shared_ptr<itti_sbi_update_sm_context_response>&]
+   * n11_msg: stored response with the N1 SM message
+   * @return bool: True if the message was handed to TASK_SMF_SBI
+   */
+  bool resend_n1_sm_message(
+      const scid_t& scid, const std::shared_ptr<smf_pdu_session>& sp,
+      const std::shared_ptr<itti_sbi_update_sm_context_response>& n11_msg);
+
+  /*
    * will be executed when timer T3591 expires
    * @param [timer_id_t] timer_id
    * @param [scid_t] scid

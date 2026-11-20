@@ -1840,6 +1840,48 @@ void smf_app::update_pdu_session_upCnx_state(
 }
 
 //---------------------------------------------------------------------------------------------
+bool smf_app::resend_n1_sm_message(
+    const scid_t& scid, const std::shared_ptr<smf_pdu_session>& sp,
+    const std::shared_ptr<itti_sbi_update_sm_context_response>& n11_msg) {
+  // The stored message is the Update SM Context Response that carried the N1
+  // SM message. Its HTTP transaction is over, so send the N1 SM message again
+  // to the UE through the AMF (Namf_Communication_N1N2MessageTransfer).
+  std::shared_ptr<smf_context_ref> scf = {};
+  if (!scid_2_smf_context(scid, scf)) {
+    Logger::smf_app().warn(
+        "SM Context associated with this id " SCID_FMT " does not exist!",
+        scid);
+    return false;
+  }
+
+  auto itti_msg = std::make_shared<itti_nx_trigger_pdu_session_modification>(
+      TASK_SMF_APP, TASK_SMF_SBI);
+  itti_msg->msg.set_n1_sm_message(n11_msg->res.get_n1_sm_message());
+  itti_msg->msg.set_amf_url(
+      sp->get_amf_addr() +
+      oai::smf::api::smf_sbi_helper::
+          get_amf_comm_ue_context_n1_n2_message_base_uri(scf->supi));
+  nlohmann::json json_data = {};
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
+      oai::utils::N1_SM_CONTENT_ID;
+  json_data["pduSessionId"] = scf->pdu_session_id;
+  itti_msg->msg.set_json_data(json_data);
+
+  Logger::smf_app().info(
+      "Retransmit the N1 SM message to the UE (SMF Context ID " SCID_FMT ")",
+      scid);
+  if (itti_inst->send_msg(itti_msg) != RETURNok) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+    return false;
+  }
+  return true;
+}
+
+//---------------------------------------------------------------------------------------------
 void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
   // Re-send Session Modification Command ...
 
@@ -1864,7 +1906,7 @@ void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
 
   if (n11_msg) {
     uint8_t number_retransmission = sp.get()->get_number_retransmission_T3591();
-    if (number_retransmission <= kNumberRetransmissionTimesT3591) {
+    if (number_retransmission < kNumberRetransmissionTimesT3591) {
       sp.get()->set_number_retransmission_T3591(number_retransmission + 1);
     } else {
       // Update PDU Session status -> ACTIVE
@@ -1872,16 +1914,7 @@ void smf_app::timer_t3591_timeout(timer_id_t timer_id, scid_t scid) {
       // TODO: check 6.3.2.5 a,@3GPP TS 24.501 V16.1.0 (2019-06)
       return;
     }
-    Logger::smf_app().info(
-        "Sending ITTI message %s to task TASK_SMF_APP to trigger response",
-        n11_msg->get_msg_name());
-    int ret = itti_inst->send_msg(n11_msg);
-    if (RETURNok != ret) {
-      Logger::smf_app().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
-          n11_msg->get_msg_name());
-    } else {
-      // Start timer T3591
+    if (resend_n1_sm_message(scid, sp, n11_msg)) {
       sp.get()->timer_T3591 = itti_inst->timer_setup(
           T3591_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3591,
           scid);
@@ -1917,7 +1950,7 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
 
   if (n11_msg) {
     uint8_t number_retransmission = sp.get()->get_number_retransmission_T3592();
-    if (number_retransmission <= kNumberRetransmissionTimesT3592) {
+    if (number_retransmission < kNumberRetransmissionTimesT3592) {
       sp.get()->set_number_retransmission_T3592(number_retransmission + 1);
     } else {
       // Update PDU Session status -> INACTIVE -  to be verified
@@ -1934,16 +1967,7 @@ void smf_app::timer_t3592_timeout(timer_id_t timer_id, scid_t scid) {
       sp.get()->deallocate_ressources(sp.get()->dnn);
       return;
     }
-    Logger::smf_app().info(
-        "Sending ITTI message %s to task TASK_SMF_APP to trigger response",
-        n11_msg->get_msg_name());
-    int ret = itti_inst->send_msg(n11_msg);
-    if (RETURNok != ret) {
-      Logger::smf_app().error(
-          "Could not send ITTI message %s to task TASK_SMF_APP",
-          n11_msg->get_msg_name());
-    } else {
-      // Start timer T3591
+    if (resend_n1_sm_message(scid, sp, n11_msg)) {
       sp.get()->timer_T3592 = itti_inst->timer_setup(
           T3592_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3592,
           scid);
