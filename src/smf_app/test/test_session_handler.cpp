@@ -5,8 +5,11 @@
 #include <gtest/gtest.h>
 
 #include "3gpp_24.501.hpp"
+#include "UPInterfaceType_anyOf.h"
 #include "session_handler.hpp"
+#include "smf_config_types.hpp"
 #include "smf_pfcp_association.hpp"
+#include "smf_qos_upf_edge.hpp"
 
 using namespace oai::app::smf;
 using namespace oai::_3gpp::model;
@@ -26,6 +29,40 @@ std::unique_ptr<session_handler> make_session_handler(
   handler->set_session_graph(graph);
 
   return handler;
+}
+
+// An N3 (access) edge, so that get_edge_for_qfi() can find it
+std::shared_ptr<qos_upf_edge> make_access_edge(uint8_t qfi, bool is_default) {
+  auto edge     = std::make_shared<qos_upf_edge>();
+  edge->qfi.qfi = qfi;
+  edge->type.setEnumValue(UPInterfaceType_anyOf::eUPInterfaceType_anyOf::N3);
+  edge->default_qos = is_default;
+  return edge;
+}
+
+// A session handler whose session graph has one access edge per QFI
+std::unique_ptr<session_handler> make_session_handler_with_flows(
+    const std::vector<uint8_t>& qfis) {
+  auto handler = std::make_unique<session_handler>(
+      pdu_session_type_e::PDU_SESSION_TYPE_E_IPV4);
+  auto graph = std::make_shared<upf_graph>();
+  oai::config::smf::upf upf_cfg("127.0.0.1", 8805, false, true, false, "");
+  auto upf = std::make_shared<pfcp_association>(upf_cfg);
+  for (const auto qfi : qfis) {
+    graph->add_qos_flow_edge(upf, make_access_edge(qfi, qfi == qfis.front()));
+  }
+  handler->set_session_graph(graph);
+  return handler;
+}
+
+oai::nas::QosRule make_qos_rule(uint8_t rule_id, uint8_t qfi) {
+  oai::nas::QosRule rule;
+  rule.SetQosRuleId(rule_id);
+  rule.SetRuleOperationCode(
+      oai::nas::
+          kQosRuleRuleOperationCodeModifyExistingQosRuleAndReplaceAllPacketFilters);
+  rule.SetQfi(qfi);
+  return rule;
 }
 
 }  // namespace
@@ -127,4 +164,40 @@ TEST(SessionHandlerTest, DeallocateResources_WithoutSessionGraph_DoesNothing) {
   handler.deallocate_resources();
 
   EXPECT_FALSE(handler.has_session_graph());
+}
+
+// =============================================================================
+// UE-requested QoS rule update (TS 24.501 §6.4.2.2, §9.11.4.13)
+// =============================================================================
+
+// The QoS rule IE carries both a QoS rule identifier and a QFI. The rule is
+// bound to the QoS flow of its QFI, not to a flow whose QFI equals the rule id.
+TEST(SessionHandlerTest, UpdateQosRule_UsesTheFlowOfTheRuleQfi) {
+  auto handler = make_session_handler_with_flows({1, 5});
+  handler->add_qos_rule(make_qos_rule(1, 5));
+
+  auto flow = handler->update_qos_rule(make_qos_rule(1, 5));
+
+  EXPECT_EQ(flow.qfi.qfi, 5);
+}
+
+// A UE-requested new QoS rule gets a generated rule id (e.g. 2) that is not
+// the QFI of any flow. This must not crash the SMF.
+TEST(
+    SessionHandlerTest, UpdateQosRule_RuleIdWithoutFlowOfThatQfi_DoesNotCrash) {
+  auto handler = make_session_handler_with_flows({1});
+  handler->add_qos_rule(make_qos_rule(2, 1));
+
+  auto flow = handler->update_qos_rule(make_qos_rule(2, 1));
+
+  EXPECT_EQ(flow.qfi.qfi, 1);
+}
+
+TEST(SessionHandlerTest, UpdateQosRule_UnknownQfi_ReturnsNoFlow) {
+  auto handler = make_session_handler_with_flows({1});
+  handler->add_qos_rule(make_qos_rule(3, 7));
+
+  auto flow = handler->update_qos_rule(make_qos_rule(3, 7));
+
+  EXPECT_EQ(flow.qfi.qfi, 0);
 }
