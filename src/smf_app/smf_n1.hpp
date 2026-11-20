@@ -109,6 +109,18 @@ class smf_n1 {
       pdu_session_update_sm_context_request& sm_context_res,
       std::string& nas_msg_str, uint8_t sm_cause);
 
+  /*
+   * Create N1 SM Container: PDU Session Modification Reject
+   * @param [uint8_t] pdu_session_id, [uint8_t] pti: from the header of the
+   * rejected PDU Session Modification Request
+   * @param [std::string&] nas_msg_str store the created NAS message
+   * @param [uint8_t] sm_cause 5GSM cause
+   * @return boolean: True if the NAS message has been created successfully
+   */
+  bool create_n1_pdu_session_modification_reject(
+      uint8_t pdu_session_id, uint8_t pti, std::string& nas_msg_str,
+      uint8_t sm_cause);
+
   bool create_n1_pdu_session_release_command(
       const std::shared_ptr<pdu_session_msg>& msg, std::string& nas_msg_str,
       uint8_t sm_cause);
