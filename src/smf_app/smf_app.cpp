@@ -220,6 +220,20 @@ bool smf_app::seid_2_smf_context(
 }
 
 //------------------------------------------------------------------------------
+bool smf_app::trxn_2_smf_context(
+    const uint64_t& trxn_id, std::shared_ptr<smf_context>& pc) const {
+  std::shared_lock lock(m_supi2smf_context);
+  for (const auto& it : supi2smf_context) {
+    std::shared_ptr<smf_procedure> proc = {};
+    if (it.second && it.second->find_procedure(trxn_id, proc)) {
+      pc = it.second;
+      return true;
+    }
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------
 void smf_app::delete_smf_context(std::shared_ptr<smf_context> spc) {
   std::unique_lock lock(m_supi2smf_context);
   supi2smf_context.erase(spc.get()->get_supi());
@@ -558,7 +572,8 @@ void smf_app::handle_itti_msg(itti_n4_session_establishment_response& seresp) {
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n4_session_modification_response& smresp) {
   std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(smresp.seid, pc)) {
+  if (seid_2_smf_context(smresp.seid, pc) ||
+      ((smresp.seid == 0) && trxn_2_smf_context(smresp.trxn_id, pc))) {
     pc.get()->handle_itti_msg(smresp);
   } else {
     Logger::smf_app().debug(
@@ -571,7 +586,8 @@ void smf_app::handle_itti_msg(itti_n4_session_modification_response& smresp) {
 //------------------------------------------------------------------------------
 void smf_app::handle_itti_msg(itti_n4_session_deletion_response& smresp) {
   std::shared_ptr<smf_context> pc = {};
-  if (seid_2_smf_context(smresp.seid, pc)) {
+  if (seid_2_smf_context(smresp.seid, pc) ||
+      ((smresp.seid == 0) && trxn_2_smf_context(smresp.trxn_id, pc))) {
     pc.get()->handle_itti_msg(smresp);
     // TODO: Delete SM Context if there's no PDU Session associated with this
     // context
