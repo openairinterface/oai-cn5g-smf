@@ -224,6 +224,17 @@ class smf_app {
       const seid_t& seid, std::shared_ptr<smf_context>& pc) const;
 
   /*
+   * Find the SMF context of an N4 response by the transaction of its request.
+   * Use it when the response has SEID 0: the UPF sets SEID 0 when it does not
+   * know the session (section 7.2.2.4.2@3GPP TS 29.244)
+   * @param [const uint64_t &] trxn_id: PFCP transaction ID
+   * @param [std::shared_ptr<smf_context> &] pc : Shared_ptr to a SMF context
+   * @return bool: True if SMF context found, otherwise return false
+   */
+  bool trxn_2_smf_context(
+      const uint64_t& trxn_id, std::shared_ptr<smf_context>& pc) const;
+
+  /*
    * Delete the SMF Context
    * @param [std::shared_ptr<smf_context> &] pc : Shared_ptr to the SMF context
    * to be deleted
