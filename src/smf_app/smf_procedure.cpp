@@ -1851,23 +1851,30 @@ smf_procedure_code session_update_sm_context_procedure::handle_itti_msg(
 
       return smf_procedure_code::ERROR;
     } else {
-      // Original behavior for non-PCF-initiated: release session
-      // Nsmf_PDUSession_SMContextStatusNotify: If the PDU Session establishment
-      // is not successful, the SMF informs the AMF by invoking
-      // Nsmf_PDUSession_SMContextStatusNotify (Release). The
-      // SMF also releases any N4 session(s) created, any PDU Session address if
-      // allocated (e.g. IP address) and releases the association with PCF, if
-      // any. see step 18, section 4.3.2.2.1@3GPP TS 23.502)
-
-      scid_t scid = {};
+      // The UE and the RAN may already have this PDU session (e.g. a Service
+      // Request, or the N4 Session Modification of the establishment, which
+      // comes after the N2 setup). Notifying the AMF of the release here made
+      // the AMF drop the session while the UE, the RAN and the SMF kept it.
+      // Release it towards the UE and the RAN instead: the PDU Session Release
+      // Complete or the last expiry of T3592 then frees the resources and
+      // notifies the AMF (section 4.3.4.2@3GPP TS 23.502).
+      // In the establishment, this N4 Session Modification comes after the PDU
+      // Session Resource Setup Response, so the RAN has the user plane even
+      // though upCnx becomes ACTIVATED only on success
+      const bool an_has_user_plane =
+          (sps->get_upCnx_state() == upCnx_state_e::UPCNX_STATE_ACTIVATED) ||
+          (session_procedure_type ==
+           session_management_procedures_type_e::
+               PDU_SESSION_ESTABLISHMENT_UE_REQUESTED);
       try {
-        scid = std::stoi(n11_trigger->scid);
+        sc->release_pdu_session_network_requested(
+            sps, (scid_t) std::stoul(n11_trigger->scid, nullptr, 10),
+            an_has_user_plane);
       } catch (const std::exception& err) {
         Logger::smf_app().warn(
-            "SM Context associated with this id %s does not exit!",
+            "SM Context associated with this id %s does not exist!",
             n11_trigger->scid.c_str());
       }
-      sc->handle_sm_context_status_change(scid, "RELEASED");
 
       return smf_procedure_code::ERROR;
     }

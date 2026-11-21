@@ -3312,6 +3312,95 @@ void smf_context::handle_pdu_session_release_sm_context_request(
 }
 
 //------------------------------------------------------------------------------
+void smf_context::release_pdu_session_network_requested(
+    const std::shared_ptr<smf_pdu_session>& sp, const scid_t& scid,
+    bool an_has_user_plane) {
+  // A release is already running (e.g. the UE did not get the Release Command
+  // and sends a Service Request): keep it, and do not start a second T3592.
+  // The N2 resource release response already sets the status to INACTIVE.
+  const auto status = sp->get_pdu_session_status();
+  if ((status == pdu_session_status_t::InactivePending) ||
+      (status == pdu_session_status_t::Inactive)) {
+    Logger::smf_app().info(
+        "PDU Session Release already in progress (PDU Session Id %d)",
+        sp->get_pdu_session_id());
+    return;
+  }
+  Logger::smf_app().info(
+      "Network-requested PDU Session Release (PDU Session Id %d)",
+      sp->get_pdu_session_id());
+
+  // N1: PDU Session Release Command. It is not triggered by a UE request, so
+  // the PTI is "No procedure transaction identity assigned" (section 6.3.3.2@
+  // 3GPP TS 24.501). The response is kept for the retransmissions on T3592
+  // expiry.
+  auto stored = std::make_shared<itti_sbi_update_sm_context_response>(
+      TASK_SMF_APP, TASK_SMF_APP, 0);
+  stored->res.set_pdu_session_id(sp->get_pdu_session_id());
+  procedure_transaction_id_t pti = {.procedure_transaction_id = 0};
+  stored->res.set_pti(pti);
+  std::string n1_sm_msg     = {};
+  std::string n1_sm_msg_hex = {};
+  if (!smf_n1::get_instance().create_n1_pdu_session_release_command(
+          stored->res, n1_sm_msg, k5gsmCauseNetworkFailure)) {
+    Logger::smf_app().error("Could not create the PDU Session Release Command");
+    return;
+  }
+  conv::convert_string_2_hex(n1_sm_msg, n1_sm_msg_hex);
+  stored->res.set_n1_sm_message(n1_sm_msg_hex);
+
+  auto itti_msg = std::make_shared<itti_nx_trigger_pdu_session_modification>(
+      TASK_SMF_APP, TASK_SMF_SBI);
+  itti_msg->msg.set_n1_sm_message(n1_sm_msg_hex);
+  nlohmann::json json_data = {};
+  json_data["n1MessageContainer"]["n1MessageClass"] =
+      oai::utils::N1N2_MESSAGE_CLASS;
+  json_data["n1MessageContainer"]["n1MessageContent"]["contentId"] =
+      oai::utils::N1_SM_CONTENT_ID;
+
+  // N2: PDU Session Resource Release Command Transfer, only if the RAN has
+  // the user plane of this session
+  if (an_has_user_plane) {
+    std::string n2_sm_info     = {};
+    std::string n2_sm_info_hex = {};
+    oai::ngap::Cause cause     = {};
+    cause.set(1, Ngap_Cause_PR_radioNetwork);
+    smf_n2::get_instance()
+        .create_n2_pdu_session_resource_release_command_transfer(
+            cause, n2_sm_info_type_e::PDU_RES_REL_CMD, n2_sm_info);
+    conv::convert_string_2_hex(n2_sm_info, n2_sm_info_hex);
+    itti_msg->msg.set_n2_sm_information(n2_sm_info_hex);
+    json_data["n2InfoContainer"]["n2InformationClass"] =
+        oai::utils::N1N2_MESSAGE_CLASS;
+    json_data["n2InfoContainer"]["smInfo"]["pduSessionId"] =
+        sp->get_pdu_session_id();
+    json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapIeType"] =
+        "PDU_RES_REL_CMD";
+    json_data["n2InfoContainer"]["smInfo"]["n2InfoContent"]["ngapData"]
+             ["contentId"] = N2_SM_CONTENT_ID;
+  }
+  json_data["pduSessionId"] = sp->get_pdu_session_id();
+  itti_msg->msg.set_json_data(json_data);
+  itti_msg->msg.set_amf_url(
+      sp->get_amf_addr() +
+      oai::smf::api::smf_sbi_helper::
+          get_amf_comm_ue_context_n1_n2_message_base_uri(get_supi()));
+
+  sp->set_pdu_session_status(pdu_session_status_t::InactivePending);
+  sp->set_upCnx_state(upCnx_state_e::UPCNX_STATE_DEACTIVATED);
+  sp->set_pending_n11_msg(std::dynamic_pointer_cast<itti_sbi_msg>(stored));
+  sp->set_number_retransmission_T3592(0);
+  sp->timer_T3592 = itti_inst->timer_setup(
+      T3592_TIMER_VALUE_SEC, 0, TASK_SMF_APP, TASK_SMF_APP_TRIGGER_T3592, scid);
+
+  if (itti_inst->send_msg(itti_msg) != RETURNok) {
+    Logger::smf_app().error(
+        "Could not send ITTI message %s to task TASK_SMF_SBI",
+        itti_msg->get_msg_name());
+  }
+}
+
+//------------------------------------------------------------------------------
 void smf_context::handle_pdu_session_modification_network_requested(
     std::shared_ptr<itti_nx_trigger_pdu_session_modification> itti_msg) {
   Logger::smf_app().info(

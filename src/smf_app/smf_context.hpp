@@ -552,6 +552,23 @@ class smf_context : public std::enable_shared_from_this<smf_context> {
       std::shared_ptr<itti_sbi_release_sm_context_request> smreq);
 
   /*
+   * Release a PDU session that the UE and the RAN may still have
+   * (network-requested PDU session release, section 4.3.4.2@3GPP TS 23.502):
+   * send the PDU Session Release Command (and the N2 resource release if the
+   * RAN has the user plane) through Namf_Communication_N1N2MessageTransfer,
+   * and start T3592. The session is then released by the PDU Session Release
+   * Complete or by the last expiry of T3592.
+   * @param [const std::shared_ptr<smf_pdu_session>&] sp: PDU session
+   * @param [const scid_t&] scid: SMF Context ID
+   * @param [bool] an_has_user_plane: the RAN has the user plane of this
+   * session, so send the N2 resource release too
+   * @return void
+   */
+  void release_pdu_session_network_requested(
+      const std::shared_ptr<smf_pdu_session>& sp, const scid_t& scid,
+      bool an_has_user_plane);
+
+  /*
    * Handle network-requested session modification (SMF, AN, AMF -requested)
    * @param [std::shared_ptr<itti_nx_trigger_pdu_session_modification] msg:
    * Request message
