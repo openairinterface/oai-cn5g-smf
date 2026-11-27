@@ -1041,12 +1041,10 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
     auto rule_it                    = session_rules.begin();
     upf_selection_criteria criteria = base_criteria;
     if (rule_it->second.authDefQosIsSet()) {
-      criteria.default_qos  = true;
-      session_rule_exists   = true;
-      auto auth_default_qos = rule_it->second.getAuthDefQos();
-      default_qos_to_use.setPriorityLevel(auth_default_qos.getPriorityLevel());
-      default_qos_to_use.setArp(auth_default_qos.getArp());
-      default_qos_to_use.setR5qi(auth_default_qos.getR5qi());
+      criteria.default_qos = true;
+      session_rule_exists  = true;
+      default_qos_to_use   = get_authorized_default_qos(
+          default_qos_to_use, rule_it->second.getAuthDefQos());
     }
     // The match-all default flow sits at the bottom of the PFCP precedence
     // range. It belongs to the filter, not to authDefQos, so it applies to a
@@ -1212,6 +1210,22 @@ std::shared_ptr<upf_graph> upf_graph::select_upf_nodes(
   }
 
   return sub_graph_ptr;
+}
+
+//------------------------------------------------------------------------------
+QosData upf_graph::get_authorized_default_qos(
+    const QosData& default_qos, const AuthorizedDefaultQos& auth_default_qos) {
+  QosData authorized_qos = default_qos;
+  authorized_qos.setR5qi(auth_default_qos.getR5qi());
+  authorized_qos.setArp(auth_default_qos.getArp());
+  // Without the PCF's priorityLevel, the 5QI's standardized value applies
+  // (TS 29.512 §4.2.6.3.3); 0 would be outside 1..127 (TS 38.413 §9.3.1.84)
+  if (auth_default_qos.priorityLevelIsSet()) {
+    authorized_qos.setPriorityLevel(auth_default_qos.getPriorityLevel());
+  } else {
+    authorized_qos.unsetPriorityLevel();
+  }
+  return authorized_qos;
 }
 
 bool upf_graph::select_upf_nodes(

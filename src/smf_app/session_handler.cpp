@@ -406,7 +406,7 @@ oai::nas::QosRule session_handler::qos_rule_from_edge(
 
   // TS 24.501 §6.2.5.1.1.2: Default QoS rule with match-all filter uses highest
   // precedence value (255)
-  uint8_t nas_precedence = edge->precedence;
+  uint8_t nas_precedence = get_nas_qos_rule_precedence(edge->precedence);
   if (edge->default_qos &&
       edge->flow_information.getFlowDescription() == DEFAULT_FLOW_DESCRIPTION) {
     nas_precedence = 255;  // Lowest priority for default flow
@@ -846,6 +846,16 @@ std::vector<oai::nas::QosRule> session_handler::get_qos_rules() {
 }
 
 //------------------------------------------------------------------------------
+uint8_t session_handler::get_nas_qos_rule_precedence(unsigned int precedence) {
+  if (precedence <= 255) return static_cast<uint8_t>(precedence);
+  Logger::smf_n1().warn(
+      "PCC rule precedence %u is out of the range 0-255 (TS 29.512 §5.6.2.6), "
+      "QoS rule precedence set to 254",
+      precedence);
+  return 254;
+}
+
+//------------------------------------------------------------------------------
 uint64_t session_handler::parse_nas_value_unit_to_bps(
     const uint16_t& value, const uint8_t& unit) {
   uint64_t bit_rate_value;
@@ -875,16 +885,51 @@ bool session_handler::is_downlink_flow_direction(
   return is_flow_direction(false, flow_info);
 }
 
+//------------------------------------------------------------------------------
+// TS 29.512 §5.6.2.14: flowDirection gives the direction of an Ethernet flow
+// (bidirectional when absent); fDir of its ethFlowDescription only states how
+// the addresses are encoded
+static FlowDirection_anyOf::eFlowDirection_anyOf eth_flow_direction(
+    const FlowInformation& flow_info) {
+  if (!flow_info.flowDirectionIsSet())
+    return FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL;
+  return flow_info.getFlowDirection().getEnumValue();
+}
+
 bool session_handler::is_uplink_eth_flow_direction(
     const FlowInformation& flow_info) {
-  return is_flow_direction(
-      true, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+  return is_flow_direction(true, eth_flow_direction(flow_info));
 }
 
 bool session_handler::is_downlink_eth_flow_direction(
     const FlowInformation& flow_info) {
-  return is_flow_direction(
-      false, flow_info.getEthFlowDescription().getFDir().getEnumValue());
+  return is_flow_direction(false, eth_flow_direction(flow_info));
+}
+
+//------------------------------------------------------------------------------
+EthFlowDescription session_handler::get_eth_flow_description(
+    const FlowInformation& flow_info, bool uplink) {
+  const EthFlowDescription eth_flow = flow_info.getEthFlowDescription();
+  const bool uplink_addresses =
+      eth_flow.fDirIsSet() &&
+      (eth_flow.getFDir().getEnumValue() ==
+       FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK);
+  if (uplink == uplink_addresses) return eth_flow;
+
+  EthFlowDescription swapped = eth_flow;
+  swapped.unsetSourceMacAddr();
+  swapped.unsetSrcMacAddrEnd();
+  swapped.unsetDestMacAddr();
+  swapped.unsetDestMacAddrEnd();
+  if (eth_flow.destMacAddrIsSet())
+    swapped.setSourceMacAddr(eth_flow.getDestMacAddr());
+  if (eth_flow.destMacAddrEndIsSet())
+    swapped.setSrcMacAddrEnd(eth_flow.getDestMacAddrEnd());
+  if (eth_flow.sourceMacAddrIsSet())
+    swapped.setDestMacAddr(eth_flow.getSourceMacAddr());
+  if (eth_flow.srcMacAddrEndIsSet())
+    swapped.setDestMacAddrEnd(eth_flow.getSrcMacAddrEnd());
+  return swapped;
 }
 
 //------------------------------------------------------------------------------

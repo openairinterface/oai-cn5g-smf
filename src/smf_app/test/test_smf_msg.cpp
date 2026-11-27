@@ -60,3 +60,15 @@ TEST(SmfN1Test, PduSessionModificationReject_EchoesTheRequestHeader) {
       std::vector<uint8_t>(nas.begin(), nas.end()),
       (std::vector<uint8_t>{0x2e, 0x05, 0x07, 0xca, 0x25}));
 }
+
+// =============================================================================
+// TS 24.501 §6.3.2.2: a network-requested PDU SESSION MODIFICATION COMMAND not
+// triggered by the UE carries "No procedure transaction identity assigned"
+// =============================================================================
+
+TEST(SmfMsgTest, PduSessionMsg_PtiStartsUnassigned) {
+  pdu_session_modification_network_requested modification;
+  EXPECT_EQ(modification.get_pti().procedure_transaction_id, 0);
+  pdu_session_update_sm_context_request update;
+  EXPECT_EQ(update.get_pti().procedure_transaction_id, 0);
+}

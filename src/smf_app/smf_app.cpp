@@ -277,6 +277,13 @@ void smf_app_task(void*) {
             std::static_pointer_cast<itti_n4_node_failure>(shared_msg));
         break;
 
+      case N11_SESSION_UPDATE_SM_CONTEXT_REQUEST:
+        // PCF-initiated SM Policy Association Modification
+        smf_app_inst->handle_pdu_session_update_sm_context_request(
+            std::static_pointer_cast<itti_sbi_update_sm_context_request>(
+                shared_msg));
+        break;
+
       case N11_SESSION_N1N2_MESSAGE_TRANSFER_RESPONSE_STATUS:
         if (itti_sbi_n1n2_message_transfer_response_status* m =
                 dynamic_cast<itti_sbi_n1n2_message_transfer_response_status*>(

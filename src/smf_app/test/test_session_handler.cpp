@@ -4,8 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
+
 #include "3gpp_24.501.hpp"
 #include "UPInterfaceType_anyOf.h"
+#include "EthFlowDescription.h"
+#include "FlowDirection.h"
+#include "FlowDirectionRm.h"
+#include "FlowInformation.h"
 #include "session_handler.hpp"
 #include "smf_config_types.hpp"
 #include "smf_pfcp_association.hpp"
@@ -200,4 +206,98 @@ TEST(SessionHandlerTest, UpdateQosRule_UnknownQfi_ReturnsNoFlow) {
   auto flow = handler->update_qos_rule(make_qos_rule(3, 7));
 
   EXPECT_EQ(flow.qfi.qfi, 0);
+}
+
+// =============================================================================
+// Ethernet flows: direction and address orientation (TS 29.512 §5.6.2.14,
+// TS 29.514 §5.6.2.17 NOTE 2)
+// =============================================================================
+
+namespace {
+
+// A downlink-encoded Ethernet flow: destMacAddr is the UE's
+FlowInformation eth_flow(
+    std::optional<FlowDirection_anyOf::eFlowDirection_anyOf> f_dir,
+    std::optional<FlowDirection_anyOf::eFlowDirection_anyOf> direction) {
+  EthFlowDescription eth_flow;
+  eth_flow.setDestMacAddr("02-00-00-00-00-38");
+  eth_flow.setEthType("88B5");
+  if (f_dir.has_value()) {
+    FlowDirection value;
+    value.setEnumValue(f_dir.value());
+    eth_flow.setFDir(value);
+  }
+  FlowInformation flow;
+  flow.setEthFlowDescription(eth_flow);
+  if (direction.has_value()) {
+    FlowDirectionRm value;
+    value.setEnumValue(direction.value());
+    flow.setFlowDirection(value);
+  }
+  return flow;
+}
+
+}  // namespace
+
+TEST(
+    SessionHandlerTest,
+    GetEthFlowDescription_KeepsDownlinkAddressesForDownlinkPackets) {
+  const EthFlowDescription eth = session_handler::get_eth_flow_description(
+      eth_flow(std::nullopt, std::nullopt), false);
+  ASSERT_TRUE(eth.destMacAddrIsSet());
+  EXPECT_EQ(eth.getDestMacAddr(), "02-00-00-00-00-38");
+  EXPECT_FALSE(eth.sourceMacAddrIsSet());
+  EXPECT_EQ(eth.getEthType(), "88B5");
+}
+
+TEST(
+    SessionHandlerTest,
+    GetEthFlowDescription_SwapsDownlinkAddressesForUplinkPackets) {
+  // Uplink packets carry the UE's MAC as source
+  const EthFlowDescription eth = session_handler::get_eth_flow_description(
+      eth_flow(std::nullopt, std::nullopt), true);
+  ASSERT_TRUE(eth.sourceMacAddrIsSet());
+  EXPECT_EQ(eth.getSourceMacAddr(), "02-00-00-00-00-38");
+  EXPECT_FALSE(eth.destMacAddrIsSet());
+  EXPECT_EQ(eth.getEthType(), "88B5");
+}
+
+TEST(
+    SessionHandlerTest,
+    GetEthFlowDescription_KeepsUplinkAddressesForUplinkPackets) {
+  // fDir UPLINK: the addresses are already in the uplink sense
+  const EthFlowDescription eth = session_handler::get_eth_flow_description(
+      eth_flow(FlowDirection_anyOf::eFlowDirection_anyOf::UPLINK, std::nullopt),
+      true);
+  ASSERT_TRUE(eth.destMacAddrIsSet());
+  EXPECT_FALSE(eth.sourceMacAddrIsSet());
+}
+
+TEST(SessionHandlerTest, EthFlowDirection_FollowsFlowDirectionNotFDir) {
+  // fDir DOWNLINK only states the address encoding: both directions apply
+  const FlowInformation bidirectional = eth_flow(
+      FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK,
+      FlowDirection_anyOf::eFlowDirection_anyOf::BIDIRECTIONAL);
+  EXPECT_TRUE(session_handler::is_uplink_eth_flow_direction(bidirectional));
+  EXPECT_TRUE(session_handler::is_downlink_eth_flow_direction(bidirectional));
+
+  const FlowInformation downlink = eth_flow(
+      std::nullopt, FlowDirection_anyOf::eFlowDirection_anyOf::DOWNLINK);
+  EXPECT_FALSE(session_handler::is_uplink_eth_flow_direction(downlink));
+  EXPECT_TRUE(session_handler::is_downlink_eth_flow_direction(downlink));
+
+  // No flowDirection: bidirectional
+  const FlowInformation unset = eth_flow(std::nullopt, std::nullopt);
+  EXPECT_TRUE(session_handler::is_uplink_eth_flow_direction(unset));
+  EXPECT_TRUE(session_handler::is_downlink_eth_flow_direction(unset));
+}
+
+// TS 29.512 §5.6.2.6 NOTE 4: precedence 0-255; the NAS field is one octet
+TEST(SessionHandlerTest, GetNasQosRulePrecedence_ClampsAbove255) {
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(0), 0);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(100), 100);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(255), 255);
+  // 1001 used to become 233 (1001 mod 256)
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(1001), 254);
+  EXPECT_EQ(session_handler::get_nas_qos_rule_precedence(256), 254);
 }

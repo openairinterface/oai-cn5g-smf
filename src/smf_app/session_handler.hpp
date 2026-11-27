@@ -197,6 +197,19 @@ class session_handler {
   static uint64_t parse_nas_value_unit_to_bps(
       const uint16_t& value, const uint8_t& unit);
 
+  /**
+   * @brief The QoS rule precedence (TS 24.501 §9.11.4.13, one octet) for a
+   * PCC rule precedence
+   *
+   * A PCC rule precedence is 0 to 255 (TS 29.512 §5.6.2.6 NOTE 4). A larger
+   * value is clamped to 254, below the match-all default rule's 255, and
+   * logged instead of being truncated.
+   *
+   * @param precedence PCC rule precedence
+   * @return the NAS precedence
+   */
+  static uint8_t get_nas_qos_rule_precedence(unsigned int precedence);
+
   static bool is_uplink_flow_direction(
       const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_downlink_flow_direction(
@@ -205,6 +218,20 @@ class session_handler {
       const oai::_3gpp::model::FlowInformation& flow_direction);
   static bool is_downlink_eth_flow_direction(
       const oai::_3gpp::model::FlowInformation& flow_direction);
+
+  /**
+   * @brief The Ethernet flow description with its MAC addresses as the
+   * packets of one direction carry them
+   *
+   * Unless fDir is UPLINK, sourceMacAddr is the remote address and
+   * destMacAddr the UE's (TS 29.514 §5.6.2.17 NOTE 2, TS 29.512 §5.6.2.14).
+   * For the other direction the source and destination addresses are swapped.
+   *
+   * @param flow_info Flow information with an ethFlowDescription
+   * @param uplink true for packets from the UE
+   */
+  static oai::_3gpp::model::EthFlowDescription get_eth_flow_description(
+      const oai::_3gpp::model::FlowInformation& flow_info, bool uplink);
 
  private:
   std::shared_ptr<upf_graph> m_session_graph;

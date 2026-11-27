@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include "Arp.h"
+#include "AuthorizedDefaultQos.h"
+#include "QosData.h"
 #include "UPInterfaceType.h"
 #include "UPInterfaceType_anyOf.h"
 #include "smf_config_types.hpp"
@@ -45,6 +48,27 @@ std::vector<uint8_t> access_qfis(const std::shared_ptr<upf_graph>& graph) {
     qfis.push_back(edge->qfi.qfi);
   std::sort(qfis.begin(), qfis.end());
   return qfis;
+}
+
+// The default QoS profile as the SMF builds it from the subscription
+QosData make_default_qos(int32_t _5qi, int32_t priority_level) {
+  QosData qos = {};
+  qos.setR5qi(_5qi);
+  Arp arp = {};
+  arp.setPriorityLevel(8);
+  qos.setArp(arp);
+  if (priority_level != 0) qos.setPriorityLevel(priority_level);
+  return qos;
+}
+
+AuthorizedDefaultQos make_auth_default_qos(
+    int32_t _5qi, int32_t arp_priority_level) {
+  AuthorizedDefaultQos auth_default_qos = {};
+  auth_default_qos.setR5qi(_5qi);
+  Arp arp = {};
+  arp.setPriorityLevel(arp_priority_level);
+  auth_default_qos.setArp(arp);
+  return auth_default_qos;
 }
 
 }  // namespace
@@ -321,4 +345,38 @@ TEST(UpfGraphTest, CopiedGraphDoesNotReissueTheOriginalsQfis) {
 
   EXPECT_EQ(copy.generate_qfi(), 4);
   EXPECT_EQ(copy.generate_qfi(), 5);
+}
+
+// =============================================================================
+// 3GPP TS 29.512 §4.2.6.3.3 - Authorized Default QoS of a Session Rule
+// =============================================================================
+
+TEST(UpfGraphTest, GetAuthorizedDefaultQos_LeavesPriorityLevelUnsetWhenAbsent) {
+  // No subscribed priority level, and the PCF includes none
+  auto qos = upf_graph::get_authorized_default_qos(
+      make_default_qos(9, 0), make_auth_default_qos(9, 1));
+  // Unset: the 5QI's standardized value applies, not 0 (outside 1..127)
+  EXPECT_FALSE(qos.priorityLevelIsSet());
+  EXPECT_EQ(qos.getR5qi(), 9);
+  EXPECT_EQ(qos.getArp().getPriorityLevel(), 1);
+
+  // 5QI 5 authorized without a level: its own applies, not the subscribed one
+  qos = upf_graph::get_authorized_default_qos(
+      make_default_qos(9, 90), make_auth_default_qos(5, 2));
+  EXPECT_FALSE(qos.priorityLevelIsSet());
+  EXPECT_EQ(qos.getR5qi(), 5);
+  EXPECT_EQ(qos.getArp().getPriorityLevel(), 2);
+}
+
+TEST(UpfGraphTest, GetAuthorizedDefaultQos_TakesThePcfPriorityLevel) {
+  auto auth_default_qos = make_auth_default_qos(9, 1);
+  auth_default_qos.setPriorityLevel(20);
+
+  auto qos = upf_graph::get_authorized_default_qos(
+      make_default_qos(9, 90), auth_default_qos);
+
+  ASSERT_TRUE(qos.priorityLevelIsSet());
+  EXPECT_EQ(qos.getPriorityLevel(), 20);
+  EXPECT_EQ(qos.getR5qi(), 9);
+  EXPECT_EQ(qos.getArp().getPriorityLevel(), 1);
 }

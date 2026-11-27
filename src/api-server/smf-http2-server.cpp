@@ -14,6 +14,7 @@
 #include "3gpp_29.502.h"
 #include "smf_3gpp_conversions.hpp"
 #include "http_client.hpp"
+#include "itti.hpp"
 #include "itti_msg_sbi.hpp"
 #include "logger.hpp"
 #include "mime_parser.hpp"
@@ -33,6 +34,7 @@ using namespace oai::common::sbi;
 using namespace oai::smf::api;
 
 extern std::unique_ptr<oai::config::smf::smf_config> smf_cfg;
+extern itti_mw* itti_inst;
 
 //------------------------------------------------------------------------------
 void smf_http2_server::start() {
@@ -1071,7 +1073,12 @@ void smf_http2_server::modify_sm_context_handler(
   itti_msg->http_version           = 2;
   itti_msg->session_procedure_type = session_management_procedures_type_e::
       PDU_SESSION_MODIFICATION_PCF_INITIATED;
-  m_smf_app->handle_pdu_session_update_sm_context_request(itti_msg);
+  // Handled on TASK_SMF_APP, with the session's N4 responses
+  if (itti_inst->send_msg(itti_msg) != RETURNok) {
+    Logger::smf_api_server().error(
+        "Could not send ITTI message %s to task TASK_SMF_APP",
+        itti_msg->get_msg_name());
+  }
 
   // TODO: use wait_for_result from common src
   boost::future_status status;

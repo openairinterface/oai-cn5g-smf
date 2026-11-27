@@ -22,6 +22,7 @@ add_executable(${SMF_TEST_TARGET}
   test_smf_msg.cpp
   test_smf_procedure.cpp
   test_smf_n2.cpp
+  test_smf_n7.cpp
   test_pcf_qod_workflow.cpp
   test_sm_policy_association_lifecycle.cpp
   ${SRC_TOP_DIR}/itti/itti.cpp

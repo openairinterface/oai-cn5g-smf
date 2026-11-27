@@ -154,7 +154,8 @@ class pdu_session_msg {
   std::string m_dnn;
   snssai_t m_snssai;
   uint8_t m_pdu_session_type;
-  procedure_transaction_id_t m_pti;
+  // "No procedure transaction identity assigned" until set (TS 24.501 §9.6)
+  procedure_transaction_id_t m_pti{};
   std::string m_n1_sm_message;
   bool m_n1_sm_msg_is_set;
   std::string m_n2_sm_information;
